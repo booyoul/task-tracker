@@ -11,10 +11,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
 
     <style>
-        body {
-            font-family: 'Noto Sans KR', sans-serif;
-            background-color: #f8fafc;
-        }
+        body { font-family: 'Noto Sans KR', sans-serif; background-color: #f8fafc; }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
@@ -35,115 +32,63 @@
                     </span>
                     <h1 class="text-2xl font-bold tracking-tight text-slate-900">Task Flow Tracker</h1>
                 </div>
-                <p class="mt-1 text-sm text-slate-500">실시간 업무 배정, 기한 관리 및 진척도 모니터링 시스템 (카드를 클릭해 필터링해 보세요)</p>
+                <p class="mt-1 text-sm text-slate-500">실시간 업무 배정, 기한 관리 및 진척도 모니터링 시스템</p>
             </div>
             
             <div class="flex flex-wrap items-center gap-2">
-                <button id="undo-btn" onclick="undoDelete()" class="hidden inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-700 shadow-sm hover:bg-amber-100 transition">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                    </svg>
+                <button id="btn-undo" class="hidden inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-700 shadow-sm hover:bg-amber-100 transition">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
                     실행 취소
                 </button>
 
-                <button id="batch-delete-btn" onclick="batchDeleteSelected()" class="hidden inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 shadow-sm hover:bg-rose-100 transition">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    선택한 업무 삭제
+                <button id="btn-batch-delete" class="hidden inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 shadow-sm hover:bg-rose-100 transition">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    선택 일괄 삭제
                 </button>
 
-                <button onclick="exportToCSV()" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    Excel 다운로드
+                <button id="btn-export-csv" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition">
+                    <svg class="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                    CSV 다운로드
                 </button>
 
-                <button onclick="exportToJSON()" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                    </svg>
-                    동료와 공유(백업)
+                <button id="btn-export-json" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition">
+                    <svg class="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                    데이터 백업
                 </button>
 
-                <button onclick="triggerImport()" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                    </svg>
-                    업무 가져오기
+                <button id="btn-import-trigger" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition">
+                    <svg class="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                    데이터 가져오기
                 </button>
-                <input type="file" id="import-file-input" onchange="importFromJSON(event)" class="hidden" accept=".json">
+                <input type="file" id="input-import-json" class="hidden" accept=".json">
 
-                <button onclick="openAddTaskModal()" class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
-                    </svg>
+                <button id="btn-add-task" class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+                    <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
                     새 업무 추가
                 </button>
             </div>
         </header>
 
         <section class="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            <div id="card-total" onclick="selectDashboardFilter('ALL')" class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-md active:scale-95">
-                <div class="flex items-center justify-between">
-                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">전체 업무</span>
-                    <span class="rounded-full bg-slate-50 p-1.5 text-slate-600">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012 2h2a2 2 0 012-2m-3 7h3m-3 4h3m-6-4h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                    </span>
-                </div>
-                <div class="mt-2 flex items-baseline gap-2">
-                    <span id="stat-total" class="text-2xl font-bold text-slate-900">0</span>
-                    <span class="text-xs text-slate-400">건</span>
-                </div>
+            <div id="card-ALL" class="filter-card rounded-2xl border border-slate-100 bg-white p-5 shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
+                <div class="flex items-center justify-between"><span class="text-xs font-semibold text-slate-500 uppercase">전체 업무</span><span class="rounded-full bg-slate-50 p-1.5 text-slate-600"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012 2h2a2 2 0 012-2m-3 7h3m-3 4h3m-6-4h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg></span></div>
+                <div class="mt-2 flex items-baseline gap-2"><span id="stat-total" class="text-2xl font-bold text-slate-900">0</span><span class="text-xs text-slate-400">건</span></div>
             </div>
-            <div id="card-pending" onclick="selectDashboardFilter('PENDING')" class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-md active:scale-95">
-                <div class="flex items-center justify-between">
-                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">진행 대기</span>
-                    <span class="rounded-full bg-amber-50 p-1.5 text-amber-600">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    </span>
-                </div>
-                <div class="mt-2 flex items-baseline gap-2">
-                    <span id="stat-pending" class="text-2xl font-bold text-slate-900">0</span>
-                    <span class="text-xs text-amber-600 font-medium" id="stat-pending-pct">0%</span>
-                </div>
+            <div id="card-PENDING" class="filter-card rounded-2xl border border-slate-100 bg-white p-5 shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
+                <div class="flex items-center justify-between"><span class="text-xs font-semibold text-slate-500 uppercase">진행 대기</span><span class="rounded-full bg-amber-50 p-1.5 text-amber-600"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></span></div>
+                <div class="mt-2 flex items-baseline gap-2"><span id="stat-pending" class="text-2xl font-bold text-slate-900">0</span><span id="stat-pending-pct" class="text-xs text-amber-600 font-medium">0%</span></div>
             </div>
-            <div id="card-progress" onclick="selectDashboardFilter('PROGRESS')" class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-md active:scale-95">
-                <div class="flex items-center justify-between">
-                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">진행 중</span>
-                    <span class="rounded-full bg-blue-50 p-1.5 text-blue-600">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                    </span>
-                </div>
-                <div class="mt-2 flex items-baseline gap-2">
-                    <span id="stat-progress" class="text-2xl font-bold text-slate-900">0</span>
-                    <span class="text-xs text-blue-600 font-medium" id="stat-progress-pct">0%</span>
-                </div>
+            <div id="card-PROGRESS" class="filter-card rounded-2xl border border-slate-100 bg-white p-5 shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
+                <div class="flex items-center justify-between"><span class="text-xs font-semibold text-slate-500 uppercase">진행 중</span><span class="rounded-full bg-blue-50 p-1.5 text-blue-600"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg></span></div>
+                <div class="mt-2 flex items-baseline gap-2"><span id="stat-progress" class="text-2xl font-bold text-slate-900">0</span><span id="stat-progress-pct" class="text-xs text-blue-600 font-medium">0%</span></div>
             </div>
-            <div id="card-completed" onclick="selectDashboardFilter('COMPLETED')" class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-md active:scale-95">
-                <div class="flex items-center justify-between">
-                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">완료됨</span>
-                    <span class="rounded-full bg-emerald-50 p-1.5 text-emerald-600">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    </span>
-                </div>
-                <div class="mt-2 flex items-baseline gap-2">
-                    <span id="stat-completed" class="text-2xl font-bold text-slate-900">0</span>
-                    <span class="text-xs text-emerald-600 font-medium" id="stat-completed-pct">0%</span>
-                </div>
+            <div id="card-COMPLETED" class="filter-card rounded-2xl border border-slate-100 bg-white p-5 shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
+                <div class="flex items-center justify-between"><span class="text-xs font-semibold text-slate-500 uppercase">완료됨</span><span class="rounded-full bg-emerald-50 p-1.5 text-emerald-600"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></span></div>
+                <div class="mt-2 flex items-baseline gap-2"><span id="stat-completed" class="text-2xl font-bold text-slate-900">0</span><span id="stat-completed-pct" class="text-xs text-emerald-600 font-medium">0%</span></div>
             </div>
-            <div id="card-overdue" onclick="selectDashboardFilter('OVERDUE')" class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm col-span-2 lg:col-span-1 cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-md active:scale-95">
-                <div class="flex items-center justify-between">
-                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">기한 초과</span>
-                    <span class="rounded-full bg-rose-50 p-1.5 text-rose-600">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    </span>
-                </div>
-                <div class="mt-2 flex items-baseline gap-2">
-                    <span id="stat-overdue" class="text-2xl font-bold text-rose-600">0</span>
-                    <span class="text-xs text-rose-500 font-medium" id="stat-overdue-lbl">대기 중</span>
-                </div>
+            <div id="card-OVERDUE" class="filter-card rounded-2xl border border-slate-100 bg-white p-5 shadow-sm col-span-2 lg:col-span-1 cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
+                <div class="flex items-center justify-between"><span class="text-xs font-semibold text-slate-500 uppercase">기한 초과</span><span class="rounded-full bg-rose-50 p-1.5 text-rose-600"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></span></div>
+                <div class="mt-2 flex items-baseline gap-2"><span id="stat-overdue" class="text-2xl font-bold text-rose-600">0</span><span id="stat-overdue-lbl" class="text-xs font-medium">대기 중</span></div>
             </div>
         </section>
 
@@ -151,15 +96,14 @@
             <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div class="relative flex-1 max-w-md">
                     <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                     </span>
-                    <input type="text" id="search-input" onkeyup="filterTasks()" placeholder="업무명 또는 담당자 검색..." class="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-3 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
+                    <input type="text" id="filter-search" placeholder="업무명 또는 담당자 검색..." class="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-3 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
                 </div>
-
                 <div class="flex flex-wrap items-center gap-3">
                     <div class="flex items-center gap-1.5">
                         <label class="text-xs font-semibold text-slate-400">상태:</label>
-                        <select id="filter-status" onchange="filterTasks()" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 outline-none transition focus:border-indigo-500 focus:bg-indigo-50">
+                        <select id="filter-status" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 outline-none transition focus:border-indigo-500 focus:bg-indigo-50">
                             <option value="ALL">전체 보기</option>
                             <option value="PENDING">진행 대기</option>
                             <option value="PROGRESS">진행 중</option>
@@ -167,26 +111,23 @@
                             <option value="OVERDUE">기한 초과</option>
                         </select>
                     </div>
-
                     <div class="flex items-center gap-1.5">
                         <label class="text-xs font-semibold text-slate-400">우선순위:</label>
-                        <select id="filter-priority" onchange="filterTasks()" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 outline-none transition focus:border-indigo-500 focus:bg-indigo-50">
+                        <select id="filter-priority" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 outline-none transition focus:border-indigo-500 focus:bg-indigo-50">
                             <option value="ALL">전체 보기</option>
                             <option value="HIGH">높음</option>
                             <option value="NORMAL">보통</option>
                             <option value="LOW">낮음</option>
                         </select>
                     </div>
-
                     <div class="flex items-center gap-1.5">
                         <label class="text-xs font-semibold text-slate-400">담당자:</label>
-                        <select id="filter-assignee" onchange="filterTasks()" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 outline-none transition focus:border-indigo-500 focus:bg-indigo-50">
+                        <select id="filter-assignee" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 outline-none transition focus:border-indigo-500 focus:bg-indigo-50">
                             <option value="ALL">전체 담당자</option>
                         </select>
                     </div>
-                    
-                    <button onclick="resetFilters()" class="rounded-xl bg-slate-100 p-2 text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition" title="필터 초기화">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A9.006 9.006 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.968 8.968 0 01-15.356-2m15.356 2H15" /></svg>
+                    <button id="btn-reset-filters" class="rounded-xl bg-slate-100 p-2 text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition" title="필터 초기화">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A9.006 9.006 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.968 8.968 0 01-15.356-2m15.356 2H15" /></svg>
                     </button>
                 </div>
             </div>
@@ -198,7 +139,7 @@
                     <thead class="bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                         <tr>
                             <th class="w-[5%] px-4 py-4 text-center">
-                                <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll()" class="rounded border border-slate-300 cursor-pointer">
+                                <input type="checkbox" id="checkbox-select-all" class="rounded border border-slate-300 cursor-pointer text-indigo-600 focus:ring-indigo-500">
                             </th>
                             <th class="w-[28%] px-6 py-4">업무 상세</th>
                             <th class="w-[14%] px-6 py-4">담당자</th>
@@ -208,94 +149,78 @@
                             <th class="w-[13%] px-6 py-4 text-center">작업</th>
                         </tr>
                     </thead>
-                    <tbody id="task-table-body" class="divide-y divide-slate-100 text-sm">
-                        </tbody>
+                    <tbody id="task-table-body" class="divide-y divide-slate-100 text-sm"></tbody>
                 </table>
             </div>
-
+            
             <div id="empty-state" class="hidden flex-col items-center justify-center p-16 text-center">
                 <span class="rounded-full bg-slate-50 p-4 text-slate-300">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+                    <svg class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </span>
                 <h3 class="mt-4 text-base font-semibold text-slate-900">해당 조건의 업무가 없습니다.</h3>
                 <p class="mt-1 text-sm text-slate-400">새로운 업무를 등록하거나 필터를 조정해 보세요.</p>
-                <button onclick="openAddTaskModal()" class="mt-4 rounded-lg bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-600 hover:bg-indigo-100 transition">
-                    새 업무 추가하기
-                </button>
             </div>
         </main>
         
         <footer class="mt-8 text-center text-xs text-slate-400">
-            &copy; 2026 Smart Task Flow. All rights reserved. Firebase 실시간 데이터베이스 연동됨.
+            &copy; 2026 Smart Task Flow. All rights reserved. Firebase 실시간 동기화 지원.
         </footer>
     </div>
 
-    <div id="task-modal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div id="modal-task" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
         <div class="flex min-h-screen items-end justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            <div onclick="closeTaskModal()" class="fixed inset-0 bg-slate-500 bg-opacity-40 transition-opacity" aria-hidden="true"></div>
+            <div id="modal-task-backdrop" class="fixed inset-0 bg-slate-500 bg-opacity-40 transition-opacity"></div>
             <span class="hidden sm:inline-block sm:h-screen sm:align-middle" aria-hidden="true">&#8203;</span>
             <div class="inline-block transform overflow-hidden rounded-2xl bg-white text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:align-middle">
                 <div class="bg-white px-6 pt-6 pb-4">
                     <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                         <h3 class="text-lg font-bold text-slate-900" id="modal-title">새로운 업무 배정</h3>
-                        <button onclick="closeTaskModal()" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                            </svg>
+                        <button id="btn-close-task-modal" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition">
+                            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
                         </button>
                     </div>
 
-                    <form id="task-form" onsubmit="saveTask(event)" class="mt-4 space-y-4">
-                        <input type="hidden" id="task-id">
+                    <form id="form-task" class="mt-4 space-y-4">
+                        <input type="hidden" id="input-task-id">
                         <div>
-                            <label for="task-title" class="block text-xs font-semibold text-slate-500 mb-1">업무명 *</label>
-                            <input type="text" id="task-title" required placeholder="수행할 핵심 업무 내용을 적어주세요." class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">업무명 *</label>
+                            <input type="text" id="input-task-title" required maxlength="100" placeholder="수행할 핵심 업무 내용을 적어주세요." class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
                         </div>
                         <div>
-                            <label for="task-assignee" class="block text-xs font-semibold text-slate-500 mb-1">담당자 *</label>
-                            <input type="text" id="task-assignee" required placeholder="배정할 사람의 이름을 적어주세요." class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">담당자 *</label>
+                            <input type="text" id="input-task-assignee" required maxlength="30" placeholder="배정할 사람의 이름을 적어주세요." class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label for="task-start" class="block text-xs font-semibold text-slate-500 mb-1">시작일</label>
-                                <input type="date" id="task-start" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">시작일</label>
+                                <input type="date" id="input-task-start" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
                             </div>
                             <div>
-                                <label for="task-due" class="block text-xs font-semibold text-slate-500 mb-1">마감일 *</label>
-                                <input type="date" id="task-due" required class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">마감일 *</label>
+                                <input type="date" id="input-task-due" required class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label for="task-priority" class="block text-xs font-semibold text-slate-500 mb-1">우선순위</label>
-                                <select id="task-priority" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
-                                    <option value="HIGH">높음 🔴</option>
-                                    <option value="NORMAL" selected>보통 🟡</option>
-                                    <option value="LOW">낮음 🟢</option>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">우선순위</label>
+                                <select id="input-task-priority" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
+                                    <option value="HIGH">높음 🔴</option><option value="NORMAL" selected>보통 🟡</option><option value="LOW">낮음 🟢</option>
                                 </select>
                             </div>
                             <div>
-                                <label for="task-status" class="block text-xs font-semibold text-slate-500 mb-1">현재 상태</label>
-                                <select id="task-status" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
-                                    <option value="PENDING" selected>진행 대기 ⌛</option>
-                                    <option value="PROGRESS">진행 중 ⚙️</option>
-                                    <option value="COMPLETED">완료 ⭐️</option>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">현재 상태</label>
+                                <select id="input-task-status" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
+                                    <option value="PENDING" selected>진행 대기 ⌛</option><option value="PROGRESS">진행 중 ⚙️</option><option value="COMPLETED">완료 ⭐️</option>
                                 </select>
                             </div>
                         </div>
                         <div>
-                            <label for="task-notes" class="block text-xs font-semibold text-slate-500 mb-1">세부 안내 및 메모</label>
-                            <textarea id="task-notes" rows="3" placeholder="참고사항이나 전달사항을 남겨주세요." class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100"></textarea>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">세부 안내 및 메모</label>
+                            <textarea id="input-task-notes" rows="3" maxlength="300" placeholder="참고사항이나 전달사항을 남겨주세요." class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100"></textarea>
                         </div>
                         <div class="border-t border-slate-100 pt-4 flex items-center justify-end gap-2">
-                            <button type="button" onclick="closeTaskModal()" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
-                                취소
-                            </button>
-                            <button type="submit" class="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition">
-                                저장하기
-                            </button>
+                            <button type="button" id="btn-cancel-task" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">취소</button>
+                            <button type="submit" class="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition">저장하기</button>
                         </div>
                     </form>
                 </div>
@@ -303,26 +228,22 @@
         </div>
     </div>
 
-    <div id="confirm-modal" class="fixed inset-0 z-50 hidden overflow-y-auto" role="dialog" aria-modal="true">
+    <div id="modal-confirm" class="fixed inset-0 z-50 hidden overflow-y-auto" role="dialog" aria-modal="true">
         <div class="flex min-h-screen items-end justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            <div onclick="closeConfirmModal()" class="fixed inset-0 bg-slate-500 bg-opacity-40 transition-opacity"></div>
+            <div id="modal-confirm-backdrop" class="fixed inset-0 bg-slate-500 bg-opacity-40 transition-opacity"></div>
             <span class="hidden sm:inline-block sm:h-screen sm:align-middle">&#8203;</span>
             <div class="inline-block transform overflow-hidden rounded-2xl bg-white text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md sm:align-middle">
                 <div class="p-6">
                     <div class="flex items-center gap-3">
                         <span class="rounded-full bg-rose-50 p-2 text-rose-600">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4v2m0 4v2m0-16a9 9 0 010 18 9 9 0 010-18z" /></svg>
+                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4v2m0 4v2m0-16a9 9 0 010 18 9 9 0 010-18z" /></svg>
                         </span>
                         <h3 class="text-base font-bold text-slate-900" id="confirm-title">업무를 삭제하시겠습니까?</h3>
                     </div>
-                    <p class="mt-2 text-sm text-slate-500 pl-11" id="confirm-message">이 작업은 복구할 수 없습니다. 정말 해당 일정을 삭제 처리할까요?</p>
+                    <p class="mt-2 text-sm text-slate-500 pl-11" id="confirm-message">이 작업은 복구할 수 없습니다.</p>
                     <div class="mt-6 flex items-center justify-end gap-2 pl-11">
-                        <button onclick="closeConfirmModal()" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">
-                            취소
-                        </button>
-                        <button id="confirm-btn-action" class="rounded-xl bg-rose-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-rose-700 transition">
-                            삭제하기
-                        </button>
+                        <button id="btn-cancel-confirm" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">취소</button>
+                        <button id="btn-action-confirm" class="rounded-xl bg-rose-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-rose-700 transition">삭제하기</button>
                     </div>
                 </div>
             </div>
@@ -330,16 +251,11 @@
     </div>
 
     <div id="toast" class="pointer-events-none fixed bottom-5 right-5 z-50 flex transform items-center gap-2.5 rounded-xl bg-slate-900 px-4 py-3 text-sm text-white shadow-lg transition-all duration-300 translate-y-10 opacity-0">
-        <span id="toast-icon" class="text-emerald-400">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-            </svg>
-        </span>
-        <span id="toast-text">변경사항이 저장되었습니다.</span>
+        <span id="toast-icon"></span><span id="toast-text"></span>
     </div>
 
     <script>
-        // --- Firebase 초기화 ---
+        // 1. Firebase 설정 및 초기화 (오프라인 영구 저장소 활성화 포함)
         const firebaseConfig = {
             apiKey: "AIzaSyDzFpffymwAdYQUPcTD5nO4G-VZLSZ0ARg",
             authDomain: "task-tracker-99af4.firebaseapp.com",
@@ -349,181 +265,109 @@
             appId: "1:604212921594:web:c5ba2b450932c740ef7543",
             measurementId: "G-KX5CKT3K4Q"
         };
-        
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // 아바타 색상 배경 배열
-        const AVATAR_COLORS = [
-            'bg-indigo-100 text-indigo-700', 'bg-emerald-100 text-emerald-700',
-            'bg-sky-100 text-sky-700', 'bg-amber-100 text-amber-700',
-            'bg-rose-100 text-rose-700', 'bg-violet-100 text-violet-700',
-            'bg-teal-100 text-teal-700'
-        ];
+        // 오프라인 캐싱 활성화 (IndexedDB 기반 Fallback)
+        db.enablePersistence().catch(err => {
+            console.warn("오프라인 모드 활성화 실패:", err.code);
+        });
 
+        // 2. 상태 및 전역 변수
         let tasks = [];
         let deletionHistory = []; 
         let selectedTaskIds = new Set(); 
+        let confirmActionCb = null; // 삭제 동작용 콜백
 
-        const TODAY_STR = new Date().toISOString().split('T')[0];
+        const AVATAR_COLORS = [
+            'bg-indigo-100 text-indigo-700', 'bg-emerald-100 text-emerald-700', 'bg-sky-100 text-sky-700', 
+            'bg-amber-100 text-amber-700', 'bg-rose-100 text-rose-700', 'bg-violet-100 text-violet-700', 'bg-teal-100 text-teal-700'
+        ];
 
-        window.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('task-start').value = TODAY_STR;
-            document.getElementById('task-due').value = getFutureDateStr(7);
-
-            // Firestore 실시간 데이터 구독 (onSnapshot)
-            db.collection("tasks").onSnapshot((snapshot) => {
-                tasks = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-                initApp();
-            }, (error) => {
-                console.error("Error fetching tasks: ", error);
-                showToast("데이터를 불러오는 중 오류가 발생했습니다.", false);
-            });
-        });
-
-        function getFutureDateStr(days) {
+        // 3. 유틸리티 함수
+        const getTodayStr = () => new Date().toISOString().split('T')[0];
+        const getFutureDateStr = (days) => {
             const date = new Date();
             date.setDate(date.getDate() + days);
             return date.toISOString().split('T')[0];
+        };
+
+        // XSS 방어 (HTML Escape)
+        const escapeHTML = (str) => {
+            if (!str) return '';
+            return str.toString().replace(/[&<>'"]/g, 
+                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+            );
+        };
+
+        // 4. 앱 초기화 및 이벤트 리스너 바인딩
+        window.addEventListener('DOMContentLoaded', () => {
+            setupEventListeners();
+            
+            // 실시간 리스너
+            db.collection("tasks").onSnapshot((snapshot) => {
+                tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                updateUI();
+            }, (error) => {
+                showToast("데이터를 동기화하는 중 오류가 발생했습니다.", false);
+            });
+        });
+
+        function setupEventListeners() {
+            // 버튼들
+            document.getElementById('btn-add-task').addEventListener('click', openTaskModal);
+            document.getElementById('btn-export-csv').addEventListener('click', exportToCSV);
+            document.getElementById('btn-export-json').addEventListener('click', exportToJSON);
+            document.getElementById('btn-import-trigger').addEventListener('click', () => document.getElementById('input-import-json').click());
+            document.getElementById('input-import-json').addEventListener('change', importFromJSON);
+            document.getElementById('btn-batch-delete').addEventListener('click', confirmBatchDelete);
+            document.getElementById('btn-undo').addEventListener('click', undoDelete);
+            
+            // 필터
+            document.getElementById('filter-search').addEventListener('input', renderTable);
+            document.getElementById('filter-status').addEventListener('change', renderTable);
+            document.getElementById('filter-priority').addEventListener('change', renderTable);
+            document.getElementById('filter-assignee').addEventListener('change', renderTable);
+            document.getElementById('btn-reset-filters').addEventListener('click', resetFilters);
+
+            // 대시보드 카드 필터링 이벤트 위임
+            document.querySelectorAll('.filter-card').forEach(card => {
+                card.addEventListener('click', (e) => {
+                    const status = e.currentTarget.id.replace('card-', '');
+                    document.getElementById('filter-status').value = status;
+                    renderTable();
+                    showToast(`필터 적용됨: ${getStatusKorean(status)}`);
+                });
+            });
+
+            // 모달 제어
+            document.getElementById('form-task').addEventListener('submit', handleTaskSubmit);
+            document.getElementById('btn-close-task-modal').addEventListener('click', closeModal);
+            document.getElementById('btn-cancel-task').addEventListener('click', closeModal);
+            document.getElementById('modal-task-backdrop').addEventListener('click', closeModal);
+            document.getElementById('btn-cancel-confirm').addEventListener('click', closeConfirmModal);
+            document.getElementById('modal-confirm-backdrop').addEventListener('click', closeConfirmModal);
+            document.getElementById('btn-action-confirm').addEventListener('click', () => {
+                if (confirmActionCb) confirmActionCb();
+            });
+
+            // 테이블 내 이벤트 위임 (수정, 삭제, 상태변경, 개별 체크박스)
+            document.getElementById('task-table-body').addEventListener('click', handleTableClick);
+            document.getElementById('task-table-body').addEventListener('change', handleTableChange);
+            document.getElementById('checkbox-select-all').addEventListener('change', toggleSelectAll);
+
+            // 접근성: ESC키로 모달 닫기
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') { closeModal(); closeConfirmModal(); }
+            });
         }
 
-        function initApp() {
+        // 5. 핵심 렌더링 로직
+        function updateUI() {
             renderStats();
             buildAssigneeDropdownFilter();
-            renderTasks();
-            updateUndoButtonVisibility();
-            updateBatchDeleteButton();
-        }
-
-        function exportToJSON() {
-            try {
-                const dataStr = JSON.stringify(tasks, null, 4);
-                const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-                const linkElement = document.createElement('a');
-                linkElement.setAttribute('href', dataUri);
-                linkElement.setAttribute('download', `task_flow_backup_${TODAY_STR}.json`);
-                linkElement.click();
-                showToast('공유(백업) 파일이 다운로드되었습니다.');
-            } catch (e) {
-                showToast('파일 변환에 실패했습니다.', false);
-            }
-        }
-
-        function triggerImport() { document.getElementById('import-file-input').click(); }
-
-        async function importFromJSON(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = async function(e) {
-                try {
-                    const importedData = JSON.parse(e.target.result);
-                    if (Array.isArray(importedData)) {
-                        const batch = db.batch();
-                        importedData.forEach(taskData => {
-                            const { id, ...data } = taskData;
-                            const docRef = db.collection("tasks").doc(); // 새 ID 발급
-                            batch.set(docRef, data);
-                        });
-                        await batch.commit();
-                        showToast('업무 목록을 성공적으로 불러왔습니다!');
-                    } else {
-                        showToast('올바르지 않은 백업 파일 서식입니다.', false);
-                    }
-                } catch (err) {
-                    showToast('파일을 읽고 저장하는 도중 오류가 발생했습니다.', false);
-                }
-            };
-            reader.readAsText(file);
-            event.target.value = '';
-        }
-
-        function exportToCSV() {
-            try {
-                let csvContent = "\uFEFF업무명,담당자,시작일,마감일,우선순위,상태,세부메모\n";
-                tasks.forEach(task => {
-                    const title = `"${(task.title || '').replace(/"/g, '""')}"`;
-                    const assignee = `"${(task.assignee || '').replace(/"/g, '""')}"`;
-                    const start = `"${task.startDate || ''}"`;
-                    const due = `"${task.dueDate || ''}"`;
-                    const priority = `"${task.priority === 'HIGH' ? '높음' : task.priority === 'NORMAL' ? '보통' : '낮음'}"`;
-                    const status = `"${getStatusKorean(task.status)}"`;
-                    const notes = `"${(task.notes || '').replace(/"/g, '""')}"`;
-                    csvContent += `${title},${assignee},${start},${due},${priority},${status},${notes}\n`;
-                });
-                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.setAttribute("href", url);
-                link.setAttribute("download", `task_flow_excel_${TODAY_STR}.csv`);
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                showToast('엑셀 호환 CSV 파일이 정상 저장되었습니다.');
-            } catch (e) { showToast('Excel 내보내기에 실패했습니다.', false); }
-        }
-
-        function showToast(message, isSuccess = true) {
-            const toast = document.getElementById('toast');
-            document.getElementById('toast-text').textContent = message;
-            const toastIcon = document.getElementById('toast-icon');
-            
-            toastIcon.innerHTML = isSuccess 
-                ? `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>`
-                : `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg>`;
-            toastIcon.className = isSuccess ? "text-emerald-400" : "text-amber-400";
-
-            toast.classList.remove('translate-y-10', 'opacity-0');
-            toast.classList.add('translate-y-0', 'opacity-100');
-            setTimeout(() => {
-                toast.classList.remove('translate-y-0', 'opacity-100');
-                toast.classList.add('translate-y-10', 'opacity-0');
-            }, 4000);
-        }
-
-        function getAvatarStyle(name) {
-            if (!name) return AVATAR_COLORS[0];
-            let sum = 0; for(let i=0; i<name.length; i++) sum += name.charCodeAt(i);
-            return AVATAR_COLORS[sum % AVATAR_COLORS.length];
-        }
-
-        function getInitial(name) { return name ? name.trim().charAt(0) : 'U'; }
-
-        function getTimelineStatus(dueDateStr, status) {
-            if (status === 'COMPLETED') return { text: '완료됨', class: 'bg-emerald-50 text-emerald-700 border-emerald-100' };
-            const today = new Date(TODAY_STR.replace(/-/g, '/'));
-            const due = new Date(dueDateStr.replace(/-/g, '/'));
-            const diffDays = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
-
-            if (diffDays < 0) return { text: `기한 초과 (D+${Math.abs(diffDays)})`, class: 'bg-rose-50 text-rose-700 border-rose-100 font-semibold' };
-            else if (diffDays === 0) return { text: '오늘 마감 (D-Day)', class: 'bg-amber-50 text-amber-700 border-amber-200 animate-pulse font-semibold' };
-            else return { text: `${diffDays}일 남음 (D-${diffDays})`, class: 'bg-slate-100 text-slate-700 border-slate-200' };
-        }
-
-        function selectDashboardFilter(status) {
-            document.getElementById('filter-status').value = status;
-            filterTasks();
-            showToast(`대시보드 필터가 반영되었습니다: ${getStatusKorean(status)}`);
-        }
-
-        function updateDashboardCardHighlighting(status) {
-            const cardConfigs = [
-                { id: 'card-total', key: 'ALL', active: ['ring-2', 'ring-indigo-600', 'border-indigo-600', 'bg-indigo-50/10'] },
-                { id: 'card-pending', key: 'PENDING', active: ['ring-2', 'ring-amber-500', 'border-amber-500', 'bg-amber-50/10'] },
-                { id: 'card-progress', key: 'PROGRESS', active: ['ring-2', 'ring-blue-500', 'border-blue-500', 'bg-blue-50/10'] },
-                { id: 'card-completed', key: 'COMPLETED', active: ['ring-2', 'ring-emerald-500', 'border-emerald-500', 'bg-emerald-50/10'] },
-                { id: 'card-overdue', key: 'OVERDUE', active: ['ring-2', 'ring-rose-500', 'border-rose-500', 'bg-rose-50/10'] }
-            ];
-            cardConfigs.forEach(cfg => {
-                const el = document.getElementById(cfg.id);
-                if (!el) return;
-                if (cfg.key === status) { el.classList.remove('border-slate-100'); el.classList.add(...cfg.active); } 
-                else { el.classList.add('border-slate-100'); el.classList.remove(...cfg.active); }
-            });
+            renderTable();
+            updateUndoButton();
         }
 
         function renderStats() {
@@ -532,11 +376,8 @@
             const progress = tasks.filter(t => t.status === 'PROGRESS').length;
             const completed = tasks.filter(t => t.status === 'COMPLETED').length;
             
-            let overdue = 0;
-            const today = new Date(TODAY_STR.replace(/-/g, '/'));
-            tasks.forEach(t => {
-                if (t.status !== 'COMPLETED' && new Date(t.dueDate.replace(/-/g, '/')) < today) overdue++;
-            });
+            const today = new Date(getTodayStr().replace(/-/g, '/'));
+            const overdue = tasks.filter(t => t.status !== 'COMPLETED' && new Date((t.dueDate||'').replace(/-/g, '/')) < today).length;
 
             document.getElementById('stat-total').textContent = total;
             document.getElementById('stat-pending').textContent = pending;
@@ -548,129 +389,181 @@
             document.getElementById('stat-completed-pct').textContent = total > 0 ? `${Math.round((completed/total)*100)}%` : '0%';
             
             const overdueLbl = document.getElementById('stat-overdue-lbl');
-            if (overdue > 0) { overdueLbl.textContent = '조속히 조치 필요'; overdueLbl.className = 'text-xs text-rose-500 font-semibold'; }
-            else { overdueLbl.textContent = '매우 양호'; overdueLbl.className = 'text-xs text-emerald-500 font-medium'; }
+            overdueLbl.textContent = overdue > 0 ? '조속히 조치 필요' : '매우 양호';
+            overdueLbl.className = `text-xs font-medium ${overdue > 0 ? 'text-rose-500 font-semibold' : 'text-emerald-500'}`;
         }
 
         function buildAssigneeDropdownFilter() {
-            const assigneeSelect = document.getElementById('filter-assignee');
+            const select = document.getElementById('filter-assignee');
+            const currentValue = select.value; // 기존 선택 유지
             const uniqueAssignees = [...new Set(tasks.map(t => t.assignee).filter(Boolean))];
-            assigneeSelect.innerHTML = '<option value="ALL">전체 담당자</option>';
+            
+            select.innerHTML = '<option value="ALL">전체 담당자</option>';
             uniqueAssignees.forEach(name => {
                 const opt = document.createElement('option');
-                opt.value = opt.textContent = name;
-                assigneeSelect.appendChild(opt);
+                opt.value = opt.textContent = escapeHTML(name);
+                select.appendChild(opt);
             });
+            if (uniqueAssignees.includes(currentValue)) select.value = currentValue;
         }
 
-        function renderTasks() {
+        function renderTable() {
             const tbody = document.getElementById('task-table-body');
             const emptyState = document.getElementById('empty-state');
-            const keyword = document.getElementById('search-input').value.toLowerCase().trim();
+            const keyword = document.getElementById('filter-search').value.toLowerCase().trim();
             const fStatus = document.getElementById('filter-status').value;
             const fPriority = document.getElementById('filter-priority').value;
             const fAssignee = document.getElementById('filter-assignee').value;
 
-            updateDashboardCardHighlighting(fStatus);
+            // 대시보드 하이라이팅 동기화
+            document.querySelectorAll('.filter-card').forEach(card => card.classList.remove('ring-2', 'ring-indigo-600', 'bg-indigo-50/10'));
+            const activeCard = document.getElementById(`card-${fStatus}`);
+            if (activeCard) activeCard.classList.add('ring-2', 'ring-indigo-600', 'bg-indigo-50/10');
 
-            let filteredTasks = tasks.filter(t => {
-                const searchMatch = (t.title||'').toLowerCase().includes(keyword) || (t.assignee||'').toLowerCase().includes(keyword);
-                let statusMatch = true;
+            const filtered = tasks.filter(t => {
+                const sMatch = (t.title||'').toLowerCase().includes(keyword) || (t.assignee||'').toLowerCase().includes(keyword);
+                let stMatch = true;
                 if (fStatus !== 'ALL') {
-                    if (fStatus === 'OVERDUE') statusMatch = t.status !== 'COMPLETED' && new Date((t.dueDate||'').replace(/-/g, '/')) < new Date(TODAY_STR.replace(/-/g, '/'));
-                    else statusMatch = t.status === fStatus;
+                    if (fStatus === 'OVERDUE') stMatch = t.status !== 'COMPLETED' && new Date((t.dueDate||'').replace(/-/g, '/')) < new Date(getTodayStr().replace(/-/g, '/'));
+                    else stMatch = t.status === fStatus;
                 }
-                const priMatch = fPriority === 'ALL' || t.priority === fPriority;
-                const asgMatch = fAssignee === 'ALL' || t.assignee === fAssignee;
-                return searchMatch && statusMatch && priMatch && asgMatch;
+                const pMatch = fPriority === 'ALL' || t.priority === fPriority;
+                const aMatch = fAssignee === 'ALL' || t.assignee === fAssignee;
+                return sMatch && stMatch && pMatch && aMatch;
             });
 
             tbody.innerHTML = '';
-            if (filteredTasks.length === 0) {
-                emptyState.classList.remove('hidden'); emptyState.classList.add('flex'); return;
-            } else { emptyState.classList.remove('flex'); emptyState.classList.add('hidden'); }
+            if (filtered.length === 0) {
+                emptyState.classList.replace('hidden', 'flex');
+                updateSelectAllState(0);
+                return;
+            } else {
+                emptyState.classList.replace('flex', 'hidden');
+            }
 
-            filteredTasks.sort((a, b) => new Date((a.dueDate||'').replace(/-/g, '/')) - new Date((b.dueDate||'').replace(/-/g, '/')));
+            filtered.sort((a, b) => new Date((a.dueDate||'').replace(/-/g, '/')) - new Date((b.dueDate||'').replace(/-/g, '/')));
 
-            filteredTasks.forEach(task => {
+            let renderedSelectedCount = 0;
+
+            filtered.forEach(t => {
                 const tr = document.createElement('tr');
                 tr.className = 'hover:bg-slate-50 transition-colors group';
+                
+                const isChecked = selectedTaskIds.has(t.id);
+                if (isChecked) renderedSelectedCount++;
 
-                let pBadge = '';
-                if (task.priority === 'HIGH') pBadge = '<span class="inline-flex items-center rounded-md bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 ring-1 ring-inset ring-rose-600/10">높음</span>';
-                else if (task.priority === 'NORMAL') pBadge = '<span class="inline-flex items-center rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700 ring-1 ring-inset ring-amber-600/10">보통</span>';
-                else pBadge = '<span class="inline-flex items-center rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/10">낮음</span>';
-
-                const timeline = getTimelineStatus(task.dueDate || TODAY_STR, task.status);
-                const isChecked = selectedTaskIds.has(task.id) ? 'checked' : '';
+                const escTitle = escapeHTML(t.title);
+                const escAssignee = escapeHTML(t.assignee);
+                const escNotes = escapeHTML(t.notes || '추가 지침 없음');
+                const timeline = getTimelineStatus(t.dueDate || getTodayStr(), t.status);
 
                 tr.innerHTML = `
                     <td class="px-4 py-4 text-center">
-                        <input type="checkbox" class="task-checkbox rounded border border-slate-300 cursor-pointer" data-task-id="${task.id}" ${isChecked} onchange="toggleTaskSelection('${task.id}')">
+                        <input type="checkbox" class="cb-task rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" data-id="${t.id}" ${isChecked ? 'checked' : ''}>
                     </td>
                     <td class="px-6 py-4">
                         <div class="flex flex-col gap-1">
-                            <span class="font-semibold text-slate-900 line-clamp-1 group-hover:text-indigo-600 transition" title="${task.title || ''}">${task.title || ''}</span>
-                            <span class="text-xs text-slate-400 line-clamp-1" title="${task.notes || '메모 없음'}">${task.notes || '추가 지침 없음'}</span>
+                            <span class="font-semibold text-slate-900 line-clamp-1 group-hover:text-indigo-600 transition" title="${escTitle}">${escTitle}</span>
+                            <span class="text-xs text-slate-400 line-clamp-1" title="${escNotes}">${escNotes}</span>
                         </div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="flex items-center gap-2.5">
-                            <span class="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${getAvatarStyle(task.assignee)}">${getInitial(task.assignee)}</span>
-                            <span class="font-medium text-slate-700">${task.assignee || '미지정'}</span>
+                            <span class="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${getAvatarStyle(escAssignee)}">${escAssignee.charAt(0) || 'U'}</span>
+                            <span class="font-medium text-slate-700">${escAssignee || '미지정'}</span>
                         </div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="flex flex-col">
-                            <span class="text-xs text-slate-500 font-medium">${task.startDate ? task.startDate.substring(5) : '미정'} ~ ${(task.dueDate || '').substring(5)}</span>
+                            <span class="text-xs text-slate-500 font-medium">${t.startDate ? t.startDate.substring(5) : '미정'} ~ ${(t.dueDate || '').substring(5)}</span>
                             <span class="mt-1 inline-self-start text-[11px] font-medium border rounded-md px-1.5 py-0.5 text-center ${timeline.class}">${timeline.text}</span>
                         </div>
                     </td>
-                    <td class="px-4 py-4 text-center whitespace-nowrap">${pBadge}</td>
+                    <td class="px-4 py-4 text-center whitespace-nowrap">${getPriorityBadge(t.priority)}</td>
                     <td class="px-6 py-4 text-center">
-                        <select onchange="updateTaskStatus('${task.id}', this.value)" class="mx-auto block rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 outline-none transition focus:border-indigo-500 focus:bg-indigo-50">
-                            <option value="PENDING" ${task.status === 'PENDING' ? 'selected' : ''}>진행 대기 ⌛</option>
-                            <option value="PROGRESS" ${task.status === 'PROGRESS' ? 'selected' : ''}>진행 중 ⚙️</option>
-                            <option value="COMPLETED" ${task.status === 'COMPLETED' ? 'selected' : ''}>완료됨 ⭐️</option>
+                        <select class="sel-status mx-auto block rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 outline-none transition focus:border-indigo-500 focus:bg-indigo-50" data-id="${t.id}">
+                            <option value="PENDING" ${t.status === 'PENDING' ? 'selected' : ''}>진행 대기 ⌛</option>
+                            <option value="PROGRESS" ${t.status === 'PROGRESS' ? 'selected' : ''}>진행 중 ⚙️</option>
+                            <option value="COMPLETED" ${t.status === 'COMPLETED' ? 'selected' : ''}>완료됨 ⭐️</option>
                         </select>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-center">
                         <div class="flex items-center justify-center gap-2">
-                            <button onclick="editTask('${task.id}')" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-indigo-600 transition" title="상세 편집"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg></button>
-                            <button onclick="requestDeleteTask('${task.id}')" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-rose-600 transition" title="삭제"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                            <button class="btn-edit rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-indigo-600 transition" data-id="${t.id}" title="상세 편집"><svg class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg></button>
+                            <button class="btn-delete rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-rose-600 transition" data-id="${t.id}" title="삭제"><svg class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
                         </div>
                     </td>
                 `;
                 tbody.appendChild(tr);
             });
+
+            updateSelectAllState(filtered.length, renderedSelectedCount);
         }
 
-        function toggleSelectAll() {
-            const isChecked = document.getElementById('select-all-checkbox').checked;
-            document.querySelectorAll('.task-checkbox').forEach(cb => {
-                cb.checked = isChecked;
-                if(isChecked) selectedTaskIds.add(cb.dataset.taskId); else selectedTaskIds.delete(cb.dataset.taskId);
-            });
-            updateBatchDeleteButton();
+        // 6. 데이터 조작 로직 (Firebase)
+        async function handleTaskSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('input-task-id').value;
+            const start = document.getElementById('input-task-start').value;
+            const due = document.getElementById('input-task-due').value;
+
+            // 데이터 논리 검증 (시작일 > 마감일 불가)
+            if (start && due && start > due) {
+                return showToast('시작일은 마감일보다 늦을 수 없습니다.', false);
+            }
+
+            const data = {
+                title: document.getElementById('input-task-title').value.trim(),
+                assignee: document.getElementById('input-task-assignee').value.trim(),
+                startDate: start, dueDate: due,
+                priority: document.getElementById('input-task-priority').value,
+                status: document.getElementById('input-task-status').value,
+                notes: document.getElementById('input-task-notes').value.trim()
+            };
+
+            try {
+                if (id) {
+                    await db.collection("tasks").doc(id).update(data);
+                    showToast('업무 내용이 수정되었습니다.');
+                } else {
+                    await db.collection("tasks").add(data);
+                    showToast('새로운 업무가 추가되었습니다.');
+                }
+                closeModal();
+            } catch(err) { showToast('저장 중 오류가 발생했습니다.', false); }
         }
 
-        function toggleTaskSelection(taskId) {
-            const cb = document.querySelector(`[data-task-id="${taskId}"]`);
-            if (cb.checked) selectedTaskIds.add(taskId); else selectedTaskIds.delete(taskId);
-            updateBatchDeleteButton();
+        async function updateTaskStatus(id, newStatus) {
+            try {
+                await db.collection("tasks").doc(id).update({ status: newStatus });
+                showToast(`상태 변경됨: ${getStatusKorean(newStatus)}`);
+            } catch(e) { showToast('업데이트 실패', false); }
         }
 
-        function updateBatchDeleteButton() {
-            const btn = document.getElementById('batch-delete-btn');
-            selectedTaskIds.size > 0 ? btn.classList.remove('hidden') : btn.classList.add('hidden');
+        function confirmDelete(id) {
+            const t = tasks.find(x => x.id === id);
+            if (!t) return;
+            document.getElementById('confirm-title').textContent = '업무 삭제 알림';
+            document.getElementById('confirm-message').innerHTML = `<strong>'${escapeHTML(t.title)}'</strong> 업무를 삭제하시겠습니까?`;
+            
+            confirmActionCb = async () => {
+                try {
+                    await db.collection("tasks").doc(id).delete();
+                    deletionHistory.push({ timestamp: Date.now(), items: [t] });
+                    selectedTaskIds.delete(id);
+                    closeConfirmModal();
+                    showToast('업무가 삭제되었습니다.');
+                } catch(e) { showToast('삭제 실패', false); }
+            };
+            document.getElementById('modal-confirm').classList.remove('hidden');
         }
 
-        function batchDeleteSelected() {
+        function confirmBatchDelete() {
             if (selectedTaskIds.size === 0) return;
             document.getElementById('confirm-title').textContent = '선택한 업무 일괄 삭제';
             document.getElementById('confirm-message').innerHTML = `선택된 <strong>${selectedTaskIds.size}개</strong>의 업무를 삭제하시겠습니까?`;
-            document.getElementById('confirm-modal').classList.remove('hidden');
-            document.getElementById('confirm-btn-action').onclick = async () => {
+            
+            confirmActionCb = async () => {
                 const batch = db.batch();
                 const deleted = [];
                 selectedTaskIds.forEach(id => {
@@ -682,109 +575,19 @@
                     deletionHistory.push({ timestamp: Date.now(), items: deleted });
                     selectedTaskIds.clear();
                     closeConfirmModal();
-                    showToast(`${deleted.length}개의 업무가 삭제되었습니다.`);
-                } catch(e) { showToast('삭제 실패', false); }
+                    showToast(`${deleted.length}개의 업무가 일괄 삭제되었습니다.`);
+                } catch(e) { showToast('일괄 삭제 실패', false); }
             };
-        }
-
-        function filterTasks() { renderTasks(); }
-        function resetFilters() {
-            document.getElementById('search-input').value = '';
-            document.getElementById('filter-status').value = 'ALL';
-            document.getElementById('filter-priority').value = 'ALL';
-            document.getElementById('filter-assignee').value = 'ALL';
-            renderTasks();
-        }
-
-        function openAddTaskModal() {
-            document.getElementById('modal-title').textContent = '새로운 업무 추가';
-            document.getElementById('task-id').value = '';
-            document.getElementById('task-form').reset();
-            document.getElementById('task-start').value = TODAY_STR;
-            document.getElementById('task-due').value = getFutureDateStr(7);
-            document.getElementById('task-modal').classList.remove('hidden');
-        }
-
-        function editTask(id) {
-            const t = tasks.find(x => x.id === id);
-            if (!t) return;
-            document.getElementById('modal-title').textContent = '업무 상세 변경';
-            document.getElementById('task-id').value = t.id;
-            document.getElementById('task-title').value = t.title || '';
-            document.getElementById('task-assignee').value = t.assignee || '';
-            document.getElementById('task-start').value = t.startDate || '';
-            document.getElementById('task-due').value = t.dueDate || '';
-            document.getElementById('task-priority').value = t.priority || 'NORMAL';
-            document.getElementById('task-status').value = t.status || 'PENDING';
-            document.getElementById('task-notes').value = t.notes || '';
-            document.getElementById('task-modal').classList.remove('hidden');
-        }
-
-        async function updateTaskStatus(id, newStatus) {
-            try {
-                await db.collection("tasks").doc(id).update({ status: newStatus });
-                showToast(`상태가 변경되었습니다: ${getStatusKorean(newStatus)}`);
-            } catch(e) { showToast('업데이트 실패', false); }
-        }
-
-        function getStatusKorean(status) {
-            switch(status) { case 'PENDING': return '진행 대기'; case 'PROGRESS': return '진행 중'; case 'COMPLETED': return '완료됨'; case 'OVERDUE': return '기한 초과'; default: return '전체 보기'; }
-        }
-
-        function closeTaskModal() { document.getElementById('task-modal').classList.add('hidden'); }
-
-        async function saveTask(e) {
-            e.preventDefault();
-            const id = document.getElementById('task-id').value;
-            const data = {
-                title: document.getElementById('task-title').value.trim(),
-                assignee: document.getElementById('task-assignee').value.trim(),
-                startDate: document.getElementById('task-start').value,
-                dueDate: document.getElementById('task-due').value,
-                priority: document.getElementById('task-priority').value,
-                status: document.getElementById('task-status').value,
-                notes: document.getElementById('task-notes').value.trim()
-            };
-
-            if (!data.title || !data.assignee || !data.dueDate) return showToast('필수 사항(*)을 입력해 주세요.', false);
-
-            try {
-                if (id) {
-                    await db.collection("tasks").doc(id).update(data);
-                    showToast('업무 내용이 수정되었습니다.');
-                } else {
-                    await db.collection("tasks").add(data);
-                    showToast('새로운 업무가 추가되었습니다.');
-                }
-                closeTaskModal();
-            } catch(err) {
-                showToast('저장 중 오류가 발생했습니다.', false);
-            }
-        }
-
-        function requestDeleteTask(id) {
-            const t = tasks.find(x => x.id === id);
-            if (!t) return;
-            document.getElementById('confirm-title').textContent = '업무 삭제 알림';
-            document.getElementById('confirm-message').innerHTML = `<strong>'${t.title}'</strong> 업무를 삭제하시겠습니까?`;
-            document.getElementById('confirm-modal').classList.remove('hidden');
-            document.getElementById('confirm-btn-action').onclick = async () => {
-                try {
-                    await db.collection("tasks").doc(id).delete();
-                    deletionHistory.push({ timestamp: Date.now(), items: [t] });
-                    closeConfirmModal();
-                    showToast('업무가 삭제되었습니다.');
-                } catch(e) { showToast('삭제 실패', false); }
-            };
+            document.getElementById('modal-confirm').classList.remove('hidden');
         }
 
         async function undoDelete() {
-            if (deletionHistory.length === 0) return showToast('실행 취소할 작업이 없습니다.', false);
+            if (deletionHistory.length === 0) return;
             const last = deletionHistory.pop();
             const batch = db.batch();
             last.items.forEach(t => {
                 const { id, ...data } = t;
-                batch.set(db.collection("tasks").doc(id), data); // 기존 ID 유지 복원
+                batch.set(db.collection("tasks").doc(id), data);
             });
             try {
                 await batch.commit();
@@ -792,12 +595,174 @@
             } catch(e) { showToast('복원 실패', false); }
         }
 
-        function updateUndoButtonVisibility() {
-            const btn = document.getElementById('undo-btn');
+        // 7. 테이블 상호작용 (위임) 및 UI 유틸리티
+        function handleTableClick(e) {
+            const editBtn = e.target.closest('.btn-edit');
+            const delBtn = e.target.closest('.btn-delete');
+            if (editBtn) openTaskModal(editBtn.dataset.id);
+            if (delBtn) confirmDelete(delBtn.dataset.id);
+        }
+
+        function handleTableChange(e) {
+            const selStatus = e.target.closest('.sel-status');
+            const cbTask = e.target.closest('.cb-task');
+            
+            if (selStatus) updateTaskStatus(selStatus.dataset.id, selStatus.value);
+            if (cbTask) {
+                cbTask.checked ? selectedTaskIds.add(cbTask.dataset.id) : selectedTaskIds.delete(cbTask.dataset.id);
+                renderTable(); // select-all 체크박스 상태 동기화를 위해 재렌더링
+                updateBatchButton();
+            }
+        }
+
+        function toggleSelectAll(e) {
+            const isChecked = e.target.checked;
+            document.querySelectorAll('.cb-task').forEach(cb => {
+                isChecked ? selectedTaskIds.add(cb.dataset.id) : selectedTaskIds.delete(cb.dataset.id);
+            });
+            renderTable();
+            updateBatchButton();
+        }
+
+        function updateSelectAllState(totalVisible, totalSelected) {
+            const cbAll = document.getElementById('checkbox-select-all');
+            if (totalVisible === 0) {
+                cbAll.checked = false; cbAll.indeterminate = false; cbAll.disabled = true;
+            } else {
+                cbAll.disabled = false;
+                cbAll.checked = (totalVisible === totalSelected) && totalVisible > 0;
+                cbAll.indeterminate = totalSelected > 0 && totalSelected < totalVisible;
+            }
+            updateBatchButton();
+        }
+
+        function updateBatchButton() {
+            const btn = document.getElementById('btn-batch-delete');
+            selectedTaskIds.size > 0 ? btn.classList.remove('hidden') : btn.classList.add('hidden');
+        }
+
+        function updateUndoButton() {
+            const btn = document.getElementById('btn-undo');
             deletionHistory.length > 0 ? btn.classList.remove('hidden') : btn.classList.add('hidden');
         }
 
-        function closeConfirmModal() { document.getElementById('confirm-modal').classList.add('hidden'); }
+        function resetFilters() {
+            document.getElementById('filter-search').value = '';
+            document.getElementById('filter-status').value = 'ALL';
+            document.getElementById('filter-priority').value = 'ALL';
+            document.getElementById('filter-assignee').value = 'ALL';
+            renderTable();
+        }
+
+        function openTaskModal(id = null) {
+            document.getElementById('form-task').reset();
+            const modalTitle = document.getElementById('modal-title');
+            
+            if (typeof id === 'string') {
+                const t = tasks.find(x => x.id === id);
+                if (!t) return;
+                modalTitle.textContent = '업무 상세 변경';
+                document.getElementById('input-task-id').value = t.id;
+                document.getElementById('input-task-title').value = t.title || '';
+                document.getElementById('input-task-assignee').value = t.assignee || '';
+                document.getElementById('input-task-start').value = t.startDate || '';
+                document.getElementById('input-task-due').value = t.dueDate || '';
+                document.getElementById('input-task-priority').value = t.priority || 'NORMAL';
+                document.getElementById('input-task-status').value = t.status || 'PENDING';
+                document.getElementById('input-task-notes').value = t.notes || '';
+            } else {
+                modalTitle.textContent = '새로운 업무 배정';
+                document.getElementById('input-task-id').value = '';
+                document.getElementById('input-task-start').value = getTodayStr();
+                document.getElementById('input-task-due').value = getFutureDateStr(7);
+            }
+            document.getElementById('modal-task').classList.remove('hidden');
+        }
+
+        function closeModal() { document.getElementById('modal-task').classList.add('hidden'); }
+        function closeConfirmModal() { document.getElementById('modal-confirm').classList.add('hidden'); confirmActionCb = null; }
+
+        // 8. 가져오기 / 내보내기 로직 (엄격한 JSON 스키마 검증 포함)
+        async function importFromJSON(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (ev) => {
+                try {
+                    const imported = JSON.parse(ev.target.result);
+                    if (!Array.isArray(imported)) throw new Error("배열 형태가 아닙니다.");
+                    
+                    const batch = db.batch();
+                    const validStatus = ['PENDING', 'PROGRESS', 'COMPLETED', 'OVERDUE'];
+                    const validPri = ['HIGH', 'NORMAL', 'LOW'];
+
+                    imported.forEach(t => {
+                        // 스키마 검증
+                        if(!t.title || !t.assignee || !t.dueDate || !validStatus.includes(t.status) || !validPri.includes(t.priority)) {
+                            throw new Error("유효하지 않은 데이터 서식이 포함되어 있습니다.");
+                        }
+                        const { id, ...data } = t;
+                        batch.set(db.collection("tasks").doc(), data);
+                    });
+                    
+                    await batch.commit();
+                    showToast('업무 목록을 성공적으로 불러왔습니다!');
+                } catch (err) { showToast(err.message || '파일을 읽는 도중 오류가 발생했습니다.', false); }
+            };
+            reader.readAsText(file);
+            e.target.value = '';
+        }
+
+        function exportToJSON() {
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(JSON.stringify(tasks, null, 4));
+            const link = document.createElement('a'); link.href = dataUri; link.download = `task_flow_backup_${getTodayStr()}.json`;
+            link.click(); showToast('백업 파일이 다운로드되었습니다.');
+        }
+
+        function exportToCSV() {
+            let csv = "\uFEFF업무명,담당자,시작일,마감일,우선순위,상태,세부메모\n";
+            tasks.forEach(t => {
+                csv += `"${(t.title||'').replace(/"/g, '""')}","${(t.assignee||'').replace(/"/g, '""')}","${t.startDate||''}","${t.dueDate||''}","${t.priority === 'HIGH' ? '높음' : t.priority === 'NORMAL' ? '보통' : '낮음'}","${getStatusKorean(t.status)}","${(t.notes||'').replace(/"/g, '""')}"\n`;
+            });
+            const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); link.download = `task_flow_export_${getTodayStr()}.csv`;
+            link.click(); showToast('CSV 파일이 정상 다운로드되었습니다.');
+        }
+
+        // 9. UI 유틸리티 헬퍼
+        function showToast(message, isSuccess = true) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-text').textContent = message;
+            const icon = document.getElementById('toast-icon');
+            icon.innerHTML = isSuccess 
+                ? `<svg class="h-5 w-5 text-emerald-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>`
+                : `<svg class="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg>`;
+            toast.classList.remove('translate-y-10', 'opacity-0'); toast.classList.add('translate-y-0', 'opacity-100');
+            setTimeout(() => { toast.classList.remove('translate-y-0', 'opacity-100'); toast.classList.add('translate-y-10', 'opacity-0'); }, 4000);
+        }
+
+        function getAvatarStyle(name) {
+            if (!name) return AVATAR_COLORS[0];
+            let sum = 0; for(let i=0; i<name.length; i++) sum += name.charCodeAt(i);
+            return AVATAR_COLORS[sum % AVATAR_COLORS.length];
+        }
+
+        function getTimelineStatus(dueStr, status) {
+            if (status === 'COMPLETED') return { text: '완료됨', class: 'bg-emerald-50 text-emerald-700 border-emerald-100' };
+            const diff = Math.ceil((new Date(dueStr.replace(/-/g, '/')) - new Date(getTodayStr().replace(/-/g, '/'))) / 86400000);
+            if (diff < 0) return { text: `기한 초과 (D+${Math.abs(diff)})`, class: 'bg-rose-50 text-rose-700 border-rose-100 font-semibold' };
+            if (diff === 0) return { text: '오늘 마감 (D-Day)', class: 'bg-amber-50 text-amber-700 border-amber-200 animate-pulse font-semibold' };
+            return { text: `${diff}일 남음 (D-${diff})`, class: 'bg-slate-100 text-slate-700 border-slate-200' };
+        }
+
+        function getPriorityBadge(priority) {
+            if (priority === 'HIGH') return '<span class="inline-flex rounded-md bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 ring-1 ring-inset ring-rose-600/10">높음</span>';
+            if (priority === 'NORMAL') return '<span class="inline-flex rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700 ring-1 ring-inset ring-amber-600/10">보통</span>';
+            return '<span class="inline-flex rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/10">낮음</span>';
+        }
+
+        function getStatusKorean(status) {
+            return { 'PENDING': '진행 대기', 'PROGRESS': '진행 중', 'COMPLETED': '완료됨', 'OVERDUE': '기한 초과' }[status] || '전체 보기';
+        }
     </script>
 </body>
 </html>
