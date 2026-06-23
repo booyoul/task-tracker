@@ -69,7 +69,7 @@
             </div>
         </header>
 
-        <section class="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <section class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <div id="card-ALL" class="filter-card rounded-2xl border border-slate-100 bg-white p-5 shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
                 <div class="flex items-center justify-between"><span class="text-xs font-semibold text-slate-500 uppercase">전체 업무</span><span class="rounded-full bg-slate-50 p-1.5 text-slate-600"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012 2h2a2 2 0 012-2m-3 7h3m-3 4h3m-6-4h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg></span></div>
                 <div class="mt-2 flex items-baseline gap-2"><span id="stat-total" class="text-2xl font-bold text-slate-900">0</span><span class="text-xs text-slate-400">건</span></div>
@@ -92,48 +92,43 @@
             </div>
         </section>
 
-        <div class="mb-6 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+        <div class="mb-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
             <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div class="relative flex-1 max-w-md">
+                <div class="relative flex-1 max-w-sm">
                     <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                     </span>
                     <input type="text" id="filter-search" placeholder="업무명 또는 담당자 검색..." class="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-3 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
                 </div>
                 <div class="flex flex-wrap items-center gap-3">
-                    <div class="flex items-center gap-1.5">
-                        <label class="text-xs font-semibold text-slate-400">상태:</label>
-                        <select id="filter-status" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 outline-none transition focus:border-indigo-500 focus:bg-indigo-50">
-                            <option value="ALL">전체 보기</option>
-                            <option value="PENDING">진행 대기</option>
-                            <option value="PROGRESS">진행 중</option>
-                            <option value="COMPLETED">완료됨</option>
-                            <option value="OVERDUE">기한 초과</option>
-                        </select>
-                    </div>
-                    <div class="flex items-center gap-1.5">
-                        <label class="text-xs font-semibold text-slate-400">우선순위:</label>
-                        <select id="filter-priority" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 outline-none transition focus:border-indigo-500 focus:bg-indigo-50">
-                            <option value="ALL">전체 보기</option>
-                            <option value="HIGH">높음</option>
-                            <option value="NORMAL">보통</option>
-                            <option value="LOW">낮음</option>
-                        </select>
-                    </div>
-                    <div class="flex items-center gap-1.5">
-                        <label class="text-xs font-semibold text-slate-400">담당자:</label>
-                        <select id="filter-assignee" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 outline-none transition focus:border-indigo-500 focus:bg-indigo-50">
-                            <option value="ALL">전체 담당자</option>
-                        </select>
-                    </div>
+                    <select id="filter-status" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 outline-none transition focus:border-indigo-500 focus:bg-indigo-50">
+                        <option value="ALL">상태: 전체 보기</option>
+                        <option value="PENDING">진행 대기</option>
+                        <option value="PROGRESS">진행 중</option>
+                        <option value="COMPLETED">완료됨</option>
+                        <option value="OVERDUE">기한 초과</option>
+                    </select>
+                    <select id="filter-priority" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 outline-none transition focus:border-indigo-500 focus:bg-indigo-50">
+                        <option value="ALL">우선순위: 전체 보기</option>
+                        <option value="HIGH">높음</option>
+                        <option value="NORMAL">보통</option>
+                        <option value="LOW">낮음</option>
+                    </select>
+                    <select id="filter-assignee" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 outline-none transition focus:border-indigo-500 focus:bg-indigo-50">
+                        <option value="ALL">담당자: 전체</option>
+                    </select>
                     <button id="btn-reset-filters" class="rounded-xl bg-slate-100 p-2 text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition" title="필터 초기화">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A9.006 9.006 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.968 8.968 0 01-15.356-2m15.356 2H15" /></svg>
                     </button>
+                    <div class="ml-2 inline-flex rounded-xl bg-slate-100 p-1">
+                        <button id="btn-view-table" class="rounded-lg bg-white px-4 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition">목록</button>
+                        <button id="btn-view-calendar" class="rounded-lg px-4 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition">캘린더</button>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <main class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+        <main id="view-table" class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
             <div class="overflow-x-auto">
                 <table class="w-full min-w-[900px] divide-y divide-slate-100 text-left">
                     <thead class="bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-wider">
@@ -152,14 +147,35 @@
                     <tbody id="task-table-body" class="divide-y divide-slate-100 text-sm"></tbody>
                 </table>
             </div>
-            
-            <div id="empty-state" class="hidden flex-col items-center justify-center p-16 text-center">
+            <div id="empty-state-table" class="hidden flex-col items-center justify-center p-16 text-center">
                 <span class="rounded-full bg-slate-50 p-4 text-slate-300">
                     <svg class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </span>
                 <h3 class="mt-4 text-base font-semibold text-slate-900">해당 조건의 업무가 없습니다.</h3>
-                <p class="mt-1 text-sm text-slate-400">새로운 업무를 등록하거나 필터를 조정해 보세요.</p>
             </div>
+        </main>
+
+        <main id="view-calendar" class="hidden rounded-2xl border border-slate-100 bg-white shadow-sm p-6">
+            <div class="mb-6 flex items-center justify-between">
+                <h2 id="calendar-month-year" class="text-xl font-bold text-slate-800"></h2>
+                <div class="flex gap-1 bg-slate-100 p-1 rounded-xl">
+                    <button id="btn-prev-month" class="rounded-lg px-3 py-1.5 text-sm font-semibold text-slate-600 hover:bg-white hover:shadow-sm transition">&lt;</button>
+                    <button id="btn-today-month" class="rounded-lg px-4 py-1.5 text-sm font-semibold text-slate-600 hover:bg-white hover:shadow-sm transition">오늘</button>
+                    <button id="btn-next-month" class="rounded-lg px-3 py-1.5 text-sm font-semibold text-slate-600 hover:bg-white hover:shadow-sm transition">&gt;</button>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-7 gap-px bg-slate-200 border border-slate-200 rounded-t-lg overflow-hidden">
+                <div class="bg-slate-50 py-2 text-center text-xs font-semibold text-rose-500">일</div>
+                <div class="bg-slate-50 py-2 text-center text-xs font-semibold text-slate-500">월</div>
+                <div class="bg-slate-50 py-2 text-center text-xs font-semibold text-slate-500">화</div>
+                <div class="bg-slate-50 py-2 text-center text-xs font-semibold text-slate-500">수</div>
+                <div class="bg-slate-50 py-2 text-center text-xs font-semibold text-slate-500">목</div>
+                <div class="bg-slate-50 py-2 text-center text-xs font-semibold text-slate-500">금</div>
+                <div class="bg-slate-50 py-2 text-center text-xs font-semibold text-blue-500">토</div>
+            </div>
+            <div id="calendar-grid" class="grid grid-cols-7 gap-px bg-slate-200 border-x border-b border-slate-200 rounded-b-lg overflow-hidden">
+                </div>
         </main>
         
         <footer class="mt-8 text-center text-xs text-slate-400">
@@ -255,7 +271,6 @@
     </div>
 
     <script>
-        // 1. Firebase 설정 및 초기화 (오프라인 영구 저장소 활성화 포함)
         const firebaseConfig = {
             apiKey: "AIzaSyDzFpffymwAdYQUPcTD5nO4G-VZLSZ0ARg",
             authDomain: "task-tracker-99af4.firebaseapp.com",
@@ -268,54 +283,46 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // 오프라인 캐싱 활성화 (IndexedDB 기반 Fallback)
-        db.enablePersistence().catch(err => {
-            console.warn("오프라인 모드 활성화 실패:", err.code);
-        });
+        db.enablePersistence().catch(err => { console.warn("오프라인 모드 활성화 실패:", err.code); });
 
-        // 2. 상태 및 전역 변수
         let tasks = [];
         let deletionHistory = []; 
         let selectedTaskIds = new Set(); 
-        let confirmActionCb = null; // 삭제 동작용 콜백
+        let confirmActionCb = null; 
+        
+        let currentViewMode = 'TABLE'; // 'TABLE' | 'CALENDAR'
+        let currentCalDate = new Date(); // 캘린더 표시 기준월
 
         const AVATAR_COLORS = [
             'bg-indigo-100 text-indigo-700', 'bg-emerald-100 text-emerald-700', 'bg-sky-100 text-sky-700', 
             'bg-amber-100 text-amber-700', 'bg-rose-100 text-rose-700', 'bg-violet-100 text-violet-700', 'bg-teal-100 text-teal-700'
         ];
 
-        // 3. 유틸리티 함수
-        const getTodayStr = () => new Date().toISOString().split('T')[0];
+        const getTodayStr = () => {
+            const d = new Date();
+            return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        };
         const getFutureDateStr = (days) => {
-            const date = new Date();
-            date.setDate(date.getDate() + days);
-            return date.toISOString().split('T')[0];
+            const d = new Date(); d.setDate(d.getDate() + days);
+            return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
         };
 
-        // XSS 방어 (HTML Escape)
         const escapeHTML = (str) => {
             if (!str) return '';
-            return str.toString().replace(/[&<>'"]/g, 
-                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
-            );
+            return str.toString().replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
         };
 
-        // 4. 앱 초기화 및 이벤트 리스너 바인딩
         window.addEventListener('DOMContentLoaded', () => {
             setupEventListeners();
-            
-            // 실시간 리스너
             db.collection("tasks").onSnapshot((snapshot) => {
                 tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 updateUI();
-            }, (error) => {
-                showToast("데이터를 동기화하는 중 오류가 발생했습니다.", false);
-            });
+            }, (error) => { showToast("데이터 동기화 오류가 발생했습니다.", false); });
         });
 
         function setupEventListeners() {
-            // 버튼들
-            document.getElementById('btn-add-task').addEventListener('click', openTaskModal);
+            // 버튼 이벤트
+            document.getElementById('btn-add-task').addEventListener('click', () => openTaskModal());
             document.getElementById('btn-export-csv').addEventListener('click', exportToCSV);
             document.getElementById('btn-export-json').addEventListener('click', exportToJSON);
             document.getElementById('btn-import-trigger').addEventListener('click', () => document.getElementById('input-import-json').click());
@@ -323,61 +330,234 @@
             document.getElementById('btn-batch-delete').addEventListener('click', confirmBatchDelete);
             document.getElementById('btn-undo').addEventListener('click', undoDelete);
             
-            // 필터
-            document.getElementById('filter-search').addEventListener('input', renderTable);
-            document.getElementById('filter-status').addEventListener('change', renderTable);
-            document.getElementById('filter-priority').addEventListener('change', renderTable);
-            document.getElementById('filter-assignee').addEventListener('change', renderTable);
+            // 필터 이벤트 (변경 시 현재 뷰 다시 렌더링)
+            document.getElementById('filter-search').addEventListener('input', renderActiveViews);
+            document.getElementById('filter-status').addEventListener('change', renderActiveViews);
+            document.getElementById('filter-priority').addEventListener('change', renderActiveViews);
+            document.getElementById('filter-assignee').addEventListener('change', renderActiveViews);
             document.getElementById('btn-reset-filters').addEventListener('click', resetFilters);
 
-            // 대시보드 카드 필터링 이벤트 위임
             document.querySelectorAll('.filter-card').forEach(card => {
                 card.addEventListener('click', (e) => {
                     const status = e.currentTarget.id.replace('card-', '');
                     document.getElementById('filter-status').value = status;
-                    renderTable();
+                    renderActiveViews();
                     showToast(`필터 적용됨: ${getStatusKorean(status)}`);
                 });
             });
 
-            // 모달 제어
+            // 뷰 스위치 이벤트
+            document.getElementById('btn-view-table').addEventListener('click', () => switchViewMode('TABLE'));
+            document.getElementById('btn-view-calendar').addEventListener('click', () => switchViewMode('CALENDAR'));
+
+            // 캘린더 네비게이션
+            document.getElementById('btn-prev-month').addEventListener('click', () => { currentCalDate.setMonth(currentCalDate.getMonth() - 1); renderActiveViews(); });
+            document.getElementById('btn-next-month').addEventListener('click', () => { currentCalDate.setMonth(currentCalDate.getMonth() + 1); renderActiveViews(); });
+            document.getElementById('btn-today-month').addEventListener('click', () => { currentCalDate = new Date(); renderActiveViews(); });
+
+            // 모달
             document.getElementById('form-task').addEventListener('submit', handleTaskSubmit);
             document.getElementById('btn-close-task-modal').addEventListener('click', closeModal);
             document.getElementById('btn-cancel-task').addEventListener('click', closeModal);
             document.getElementById('modal-task-backdrop').addEventListener('click', closeModal);
             document.getElementById('btn-cancel-confirm').addEventListener('click', closeConfirmModal);
             document.getElementById('modal-confirm-backdrop').addEventListener('click', closeConfirmModal);
-            document.getElementById('btn-action-confirm').addEventListener('click', () => {
-                if (confirmActionCb) confirmActionCb();
-            });
+            document.getElementById('btn-action-confirm').addEventListener('click', () => { if (confirmActionCb) confirmActionCb(); });
 
-            // 테이블 내 이벤트 위임 (수정, 삭제, 상태변경, 개별 체크박스)
+            // 테이블 이벤트 위임
             document.getElementById('task-table-body').addEventListener('click', handleTableClick);
             document.getElementById('task-table-body').addEventListener('change', handleTableChange);
             document.getElementById('checkbox-select-all').addEventListener('change', toggleSelectAll);
 
-            // 접근성: ESC키로 모달 닫기
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') { closeModal(); closeConfirmModal(); }
-            });
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeModal(); closeConfirmModal(); } });
         }
 
-        // 5. 핵심 렌더링 로직
+        // --- View Switching ---
+        function switchViewMode(mode) {
+            currentViewMode = mode;
+            const btnTable = document.getElementById('btn-view-table');
+            const btnCal = document.getElementById('btn-view-calendar');
+            const viewTable = document.getElementById('view-table');
+            const viewCal = document.getElementById('view-calendar');
+
+            if (mode === 'TABLE') {
+                btnTable.className = 'rounded-lg bg-white px-4 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition';
+                btnCal.className = 'rounded-lg px-4 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition';
+                viewTable.classList.remove('hidden'); viewCal.classList.add('hidden');
+            } else {
+                btnCal.className = 'rounded-lg bg-white px-4 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition';
+                btnTable.className = 'rounded-lg px-4 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition';
+                viewCal.classList.remove('hidden'); viewTable.classList.add('hidden');
+            }
+            renderActiveViews();
+        }
+
         function updateUI() {
             renderStats();
             buildAssigneeDropdownFilter();
-            renderTable();
+            renderActiveViews();
             updateUndoButton();
         }
 
+        function renderActiveViews() {
+            // 필터링된 데이터를 두 뷰가 공유
+            const filteredTasks = getFilteredTasks();
+            
+            // 대시보드 하이라이팅 동기화
+            const fStatus = document.getElementById('filter-status').value;
+            document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('ring-2', 'ring-indigo-600', 'bg-indigo-50/10'));
+            const activeCard = document.getElementById(`card-${fStatus}`);
+            if (activeCard) activeCard.classList.add('ring-2', 'ring-indigo-600', 'bg-indigo-50/10');
+
+            renderTable(filteredTasks);
+            if (currentViewMode === 'CALENDAR') {
+                renderCalendar(filteredTasks);
+            }
+        }
+
+        function getFilteredTasks() {
+            const keyword = document.getElementById('filter-search').value.toLowerCase().trim();
+            const fStatus = document.getElementById('filter-status').value;
+            const fPriority = document.getElementById('filter-priority').value;
+            const fAssignee = document.getElementById('filter-assignee').value;
+            const today = getTodayStr();
+
+            return tasks.filter(t => {
+                const sMatch = (t.title||'').toLowerCase().includes(keyword) || (t.assignee||'').toLowerCase().includes(keyword);
+                let stMatch = true;
+                if (fStatus !== 'ALL') {
+                    if (fStatus === 'OVERDUE') stMatch = t.status !== 'COMPLETED' && (t.dueDate||'') < today;
+                    else stMatch = t.status === fStatus;
+                }
+                const pMatch = fPriority === 'ALL' || t.priority === fPriority;
+                const aMatch = fAssignee === 'ALL' || t.assignee === fAssignee;
+                return sMatch && stMatch && pMatch && aMatch;
+            });
+        }
+
+        // --- Render Table ---
+        function renderTable(filtered) {
+            const tbody = document.getElementById('task-table-body');
+            const emptyState = document.getElementById('empty-state-table');
+            
+            tbody.innerHTML = '';
+            if (filtered.length === 0) {
+                emptyState.classList.replace('hidden', 'flex');
+                updateSelectAllState(0);
+                return;
+            } else {
+                emptyState.classList.replace('flex', 'hidden');
+            }
+
+            filtered.sort((a, b) => (a.dueDate||'').localeCompare(b.dueDate||''));
+
+            let renderedSelectedCount = 0;
+            filtered.forEach(t => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition-colors group';
+                const isChecked = selectedTaskIds.has(t.id);
+                if (isChecked) renderedSelectedCount++;
+
+                const escTitle = escapeHTML(t.title);
+                const escAssignee = escapeHTML(t.assignee);
+                const timeline = getTimelineStatus(t.dueDate || getTodayStr(), t.status);
+
+                tr.innerHTML = `
+                    <td class="px-4 py-4 text-center"><input type="checkbox" class="cb-task rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" data-id="${t.id}" ${isChecked ? 'checked' : ''}></td>
+                    <td class="px-6 py-4"><div class="flex flex-col gap-1"><span class="font-semibold text-slate-900 line-clamp-1 group-hover:text-indigo-600 transition" title="${escTitle}">${escTitle}</span><span class="text-xs text-slate-400 line-clamp-1">${escapeHTML(t.notes || '추가 지침 없음')}</span></div></td>
+                    <td class="px-6 py-4 whitespace-nowrap"><div class="flex items-center gap-2.5"><span class="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${getAvatarStyle(escAssignee)}">${escAssignee.charAt(0) || 'U'}</span><span class="font-medium text-slate-700">${escAssignee || '미지정'}</span></div></td>
+                    <td class="px-6 py-4 whitespace-nowrap"><div class="flex flex-col"><span class="text-xs text-slate-500 font-medium">${t.startDate ? t.startDate.substring(5) : '미정'} ~ ${(t.dueDate || '').substring(5)}</span><span class="mt-1 inline-self-start text-[11px] font-medium border rounded-md px-1.5 py-0.5 text-center ${timeline.class}">${timeline.text}</span></div></td>
+                    <td class="px-4 py-4 text-center whitespace-nowrap">${getPriorityBadge(t.priority)}</td>
+                    <td class="px-6 py-4 text-center"><select class="sel-status mx-auto block rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 outline-none transition focus:border-indigo-500 focus:bg-indigo-50" data-id="${t.id}">
+                        <option value="PENDING" ${t.status === 'PENDING' ? 'selected' : ''}>진행 대기 ⌛</option><option value="PROGRESS" ${t.status === 'PROGRESS' ? 'selected' : ''}>진행 중 ⚙️</option><option value="COMPLETED" ${t.status === 'COMPLETED' ? 'selected' : ''}>완료됨 ⭐️</option>
+                    </select></td>
+                    <td class="px-6 py-4 whitespace-nowrap text-center"><div class="flex items-center justify-center gap-2">
+                        <button class="btn-edit rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-indigo-600 transition" data-id="${t.id}" title="상세 편집"><svg class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg></button>
+                        <button class="btn-delete rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-rose-600 transition" data-id="${t.id}" title="삭제"><svg class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                    </div></td>
+                `;
+                tbody.appendChild(tr);
+            });
+            updateSelectAllState(filtered.length, renderedSelectedCount);
+        }
+
+        // --- Render Calendar ---
+        function renderCalendar(filteredTasks) {
+            const year = currentCalDate.getFullYear();
+            const month = currentCalDate.getMonth();
+            document.getElementById('calendar-month-year').textContent = `${year}년 ${month + 1}월`;
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const grid = document.getElementById('calendar-grid');
+            grid.innerHTML = '';
+
+            // 빈 칸 채우기 (전월)
+            for (let i = 0; i < firstDay; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'bg-slate-50 min-h-[120px]';
+                grid.appendChild(cell);
+            }
+
+            const todayStr = getTodayStr();
+
+            // 이번 달 날짜 채우기 (마감일 기준 배치)
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateStr = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+                const isToday = dateStr === todayStr;
+                
+                const cell = document.createElement('div');
+                cell.className = `bg-white min-h-[120px] p-1.5 flex flex-col gap-1 transition-colors ${isToday ? 'bg-indigo-50/30 ring-inset ring-2 ring-indigo-400' : 'hover:bg-slate-50'}`;
+                
+                // 날짜 숫자
+                const dayHeader = document.createElement('div');
+                dayHeader.className = `text-xs font-semibold px-1 ${isToday ? 'text-indigo-700' : 'text-slate-600'}`;
+                dayHeader.textContent = day;
+                cell.appendChild(dayHeader);
+
+                // 이 날짜가 마감일인 업무들
+                const dayTasks = filteredTasks.filter(t => t.dueDate === dateStr);
+                
+                const taskContainer = document.createElement('div');
+                taskContainer.className = "flex flex-col gap-1 overflow-y-auto max-h-[90px] custom-scrollbar";
+                
+                dayTasks.forEach(t => {
+                    const taskEl = document.createElement('div');
+                    let bgClass = 'bg-slate-100 text-slate-700 border-slate-200';
+                    if (t.status === 'COMPLETED') bgClass = 'bg-emerald-50 text-emerald-700 border-emerald-100';
+                    else if (t.status === 'PROGRESS') bgClass = 'bg-blue-50 text-blue-700 border-blue-100';
+                    else if (t.priority === 'HIGH') bgClass = 'bg-rose-50 text-rose-700 border-rose-100';
+                    
+                    taskEl.className = `text-[11px] font-medium truncate border rounded px-1.5 py-1 cursor-pointer shadow-sm hover:shadow hover:-translate-y-px transition-all ${bgClass}`;
+                    taskEl.textContent = t.title;
+                    taskEl.title = `[${t.assignee}] ${t.title}`;
+                    taskEl.onclick = () => openTaskModal(t.id);
+                    taskContainer.appendChild(taskEl);
+                });
+                
+                cell.appendChild(taskContainer);
+                grid.appendChild(cell);
+            }
+            
+            // 빈 칸 채우기 (익월)
+            const totalCells = firstDay + daysInMonth;
+            const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+            for (let i = 0; i < remaining; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'bg-slate-50 min-h-[120px]';
+                grid.appendChild(cell);
+            }
+        }
+
+        // --- 기타 공통 로직 ---
         function renderStats() {
             const total = tasks.length;
             const pending = tasks.filter(t => t.status === 'PENDING').length;
             const progress = tasks.filter(t => t.status === 'PROGRESS').length;
             const completed = tasks.filter(t => t.status === 'COMPLETED').length;
             
-            const today = new Date(getTodayStr().replace(/-/g, '/'));
-            const overdue = tasks.filter(t => t.status !== 'COMPLETED' && new Date((t.dueDate||'').replace(/-/g, '/')) < today).length;
+            const today = getTodayStr();
+            const overdue = tasks.filter(t => t.status !== 'COMPLETED' && (t.dueDate||'') < today).length;
 
             document.getElementById('stat-total').textContent = total;
             document.getElementById('stat-pending').textContent = pending;
@@ -395,122 +575,24 @@
 
         function buildAssigneeDropdownFilter() {
             const select = document.getElementById('filter-assignee');
-            const currentValue = select.value; // 기존 선택 유지
-            const uniqueAssignees = [...new Set(tasks.map(t => t.assignee).filter(Boolean))];
+            const currentVal = select.value;
+            const assignees = [...new Set(tasks.map(t => t.assignee).filter(Boolean))];
             
-            select.innerHTML = '<option value="ALL">전체 담당자</option>';
-            uniqueAssignees.forEach(name => {
-                const opt = document.createElement('option');
-                opt.value = opt.textContent = escapeHTML(name);
+            select.innerHTML = '<option value="ALL">담당자: 전체</option>';
+            assignees.forEach(n => {
+                const opt = document.createElement('option'); opt.value = opt.textContent = escapeHTML(n);
                 select.appendChild(opt);
             });
-            if (uniqueAssignees.includes(currentValue)) select.value = currentValue;
+            if (assignees.includes(currentVal)) select.value = currentVal;
         }
 
-        function renderTable() {
-            const tbody = document.getElementById('task-table-body');
-            const emptyState = document.getElementById('empty-state');
-            const keyword = document.getElementById('filter-search').value.toLowerCase().trim();
-            const fStatus = document.getElementById('filter-status').value;
-            const fPriority = document.getElementById('filter-priority').value;
-            const fAssignee = document.getElementById('filter-assignee').value;
-
-            // 대시보드 하이라이팅 동기화
-            document.querySelectorAll('.filter-card').forEach(card => card.classList.remove('ring-2', 'ring-indigo-600', 'bg-indigo-50/10'));
-            const activeCard = document.getElementById(`card-${fStatus}`);
-            if (activeCard) activeCard.classList.add('ring-2', 'ring-indigo-600', 'bg-indigo-50/10');
-
-            const filtered = tasks.filter(t => {
-                const sMatch = (t.title||'').toLowerCase().includes(keyword) || (t.assignee||'').toLowerCase().includes(keyword);
-                let stMatch = true;
-                if (fStatus !== 'ALL') {
-                    if (fStatus === 'OVERDUE') stMatch = t.status !== 'COMPLETED' && new Date((t.dueDate||'').replace(/-/g, '/')) < new Date(getTodayStr().replace(/-/g, '/'));
-                    else stMatch = t.status === fStatus;
-                }
-                const pMatch = fPriority === 'ALL' || t.priority === fPriority;
-                const aMatch = fAssignee === 'ALL' || t.assignee === fAssignee;
-                return sMatch && stMatch && pMatch && aMatch;
-            });
-
-            tbody.innerHTML = '';
-            if (filtered.length === 0) {
-                emptyState.classList.replace('hidden', 'flex');
-                updateSelectAllState(0);
-                return;
-            } else {
-                emptyState.classList.replace('flex', 'hidden');
-            }
-
-            filtered.sort((a, b) => new Date((a.dueDate||'').replace(/-/g, '/')) - new Date((b.dueDate||'').replace(/-/g, '/')));
-
-            let renderedSelectedCount = 0;
-
-            filtered.forEach(t => {
-                const tr = document.createElement('tr');
-                tr.className = 'hover:bg-slate-50 transition-colors group';
-                
-                const isChecked = selectedTaskIds.has(t.id);
-                if (isChecked) renderedSelectedCount++;
-
-                const escTitle = escapeHTML(t.title);
-                const escAssignee = escapeHTML(t.assignee);
-                const escNotes = escapeHTML(t.notes || '추가 지침 없음');
-                const timeline = getTimelineStatus(t.dueDate || getTodayStr(), t.status);
-
-                tr.innerHTML = `
-                    <td class="px-4 py-4 text-center">
-                        <input type="checkbox" class="cb-task rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" data-id="${t.id}" ${isChecked ? 'checked' : ''}>
-                    </td>
-                    <td class="px-6 py-4">
-                        <div class="flex flex-col gap-1">
-                            <span class="font-semibold text-slate-900 line-clamp-1 group-hover:text-indigo-600 transition" title="${escTitle}">${escTitle}</span>
-                            <span class="text-xs text-slate-400 line-clamp-1" title="${escNotes}">${escNotes}</span>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="flex items-center gap-2.5">
-                            <span class="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${getAvatarStyle(escAssignee)}">${escAssignee.charAt(0) || 'U'}</span>
-                            <span class="font-medium text-slate-700">${escAssignee || '미지정'}</span>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="flex flex-col">
-                            <span class="text-xs text-slate-500 font-medium">${t.startDate ? t.startDate.substring(5) : '미정'} ~ ${(t.dueDate || '').substring(5)}</span>
-                            <span class="mt-1 inline-self-start text-[11px] font-medium border rounded-md px-1.5 py-0.5 text-center ${timeline.class}">${timeline.text}</span>
-                        </div>
-                    </td>
-                    <td class="px-4 py-4 text-center whitespace-nowrap">${getPriorityBadge(t.priority)}</td>
-                    <td class="px-6 py-4 text-center">
-                        <select class="sel-status mx-auto block rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 outline-none transition focus:border-indigo-500 focus:bg-indigo-50" data-id="${t.id}">
-                            <option value="PENDING" ${t.status === 'PENDING' ? 'selected' : ''}>진행 대기 ⌛</option>
-                            <option value="PROGRESS" ${t.status === 'PROGRESS' ? 'selected' : ''}>진행 중 ⚙️</option>
-                            <option value="COMPLETED" ${t.status === 'COMPLETED' ? 'selected' : ''}>완료됨 ⭐️</option>
-                        </select>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-center">
-                        <div class="flex items-center justify-center gap-2">
-                            <button class="btn-edit rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-indigo-600 transition" data-id="${t.id}" title="상세 편집"><svg class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg></button>
-                            <button class="btn-delete rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-rose-600 transition" data-id="${t.id}" title="삭제"><svg class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
-                        </div>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-
-            updateSelectAllState(filtered.length, renderedSelectedCount);
-        }
-
-        // 6. 데이터 조작 로직 (Firebase)
         async function handleTaskSubmit(e) {
             e.preventDefault();
             const id = document.getElementById('input-task-id').value;
             const start = document.getElementById('input-task-start').value;
             const due = document.getElementById('input-task-due').value;
 
-            // 데이터 논리 검증 (시작일 > 마감일 불가)
-            if (start && due && start > due) {
-                return showToast('시작일은 마감일보다 늦을 수 없습니다.', false);
-            }
+            if (start && due && start > due) return showToast('시작일은 마감일보다 늦을 수 없습니다.', false);
 
             const data = {
                 title: document.getElementById('input-task-title').value.trim(),
@@ -522,37 +604,24 @@
             };
 
             try {
-                if (id) {
-                    await db.collection("tasks").doc(id).update(data);
-                    showToast('업무 내용이 수정되었습니다.');
-                } else {
-                    await db.collection("tasks").add(data);
-                    showToast('새로운 업무가 추가되었습니다.');
-                }
+                if (id) { await db.collection("tasks").doc(id).update(data); showToast('수정되었습니다.'); } 
+                else { await db.collection("tasks").add(data); showToast('추가되었습니다.'); }
                 closeModal();
-            } catch(err) { showToast('저장 중 오류가 발생했습니다.', false); }
+            } catch(err) { showToast('저장 실패', false); }
         }
 
         async function updateTaskStatus(id, newStatus) {
-            try {
-                await db.collection("tasks").doc(id).update({ status: newStatus });
-                showToast(`상태 변경됨: ${getStatusKorean(newStatus)}`);
-            } catch(e) { showToast('업데이트 실패', false); }
+            try { await db.collection("tasks").doc(id).update({ status: newStatus }); showToast(`상태 변경: ${getStatusKorean(newStatus)}`); } catch(e) { showToast('업데이트 실패', false); }
         }
 
         function confirmDelete(id) {
-            const t = tasks.find(x => x.id === id);
-            if (!t) return;
+            const t = tasks.find(x => x.id === id); if (!t) return;
             document.getElementById('confirm-title').textContent = '업무 삭제 알림';
             document.getElementById('confirm-message').innerHTML = `<strong>'${escapeHTML(t.title)}'</strong> 업무를 삭제하시겠습니까?`;
-            
             confirmActionCb = async () => {
                 try {
-                    await db.collection("tasks").doc(id).delete();
-                    deletionHistory.push({ timestamp: Date.now(), items: [t] });
-                    selectedTaskIds.delete(id);
-                    closeConfirmModal();
-                    showToast('업무가 삭제되었습니다.');
+                    await db.collection("tasks").doc(id).delete(); deletionHistory.push({ timestamp: Date.now(), items: [t] });
+                    selectedTaskIds.delete(id); closeConfirmModal(); showToast('삭제되었습니다.');
                 } catch(e) { showToast('삭제 실패', false); }
             };
             document.getElementById('modal-confirm').classList.remove('hidden');
@@ -562,20 +631,12 @@
             if (selectedTaskIds.size === 0) return;
             document.getElementById('confirm-title').textContent = '선택한 업무 일괄 삭제';
             document.getElementById('confirm-message').innerHTML = `선택된 <strong>${selectedTaskIds.size}개</strong>의 업무를 삭제하시겠습니까?`;
-            
             confirmActionCb = async () => {
-                const batch = db.batch();
-                const deleted = [];
-                selectedTaskIds.forEach(id => {
-                    const task = tasks.find(t => t.id === id);
-                    if(task) { deleted.push(task); batch.delete(db.collection("tasks").doc(id)); }
-                });
+                const batch = db.batch(); const deleted = [];
+                selectedTaskIds.forEach(id => { const task = tasks.find(t => t.id === id); if(task) { deleted.push(task); batch.delete(db.collection("tasks").doc(id)); } });
                 try {
-                    await batch.commit();
-                    deletionHistory.push({ timestamp: Date.now(), items: deleted });
-                    selectedTaskIds.clear();
-                    closeConfirmModal();
-                    showToast(`${deleted.length}개의 업무가 일괄 삭제되었습니다.`);
+                    await batch.commit(); deletionHistory.push({ timestamp: Date.now(), items: deleted });
+                    selectedTaskIds.clear(); closeConfirmModal(); showToast(`${deleted.length}개 삭제됨.`);
                 } catch(e) { showToast('일괄 삭제 실패', false); }
             };
             document.getElementById('modal-confirm').classList.remove('hidden');
@@ -583,56 +644,33 @@
 
         async function undoDelete() {
             if (deletionHistory.length === 0) return;
-            const last = deletionHistory.pop();
-            const batch = db.batch();
-            last.items.forEach(t => {
-                const { id, ...data } = t;
-                batch.set(db.collection("tasks").doc(id), data);
-            });
-            try {
-                await batch.commit();
-                showToast(`${last.items.length}개의 업무가 복원되었습니다.`);
-            } catch(e) { showToast('복원 실패', false); }
+            const last = deletionHistory.pop(); const batch = db.batch();
+            last.items.forEach(t => { const { id, ...data } = t; batch.set(db.collection("tasks").doc(id), data); });
+            try { await batch.commit(); showToast(`${last.items.length}개 복원됨.`); } catch(e) { showToast('복원 실패', false); }
         }
 
-        // 7. 테이블 상호작용 (위임) 및 UI 유틸리티
         function handleTableClick(e) {
-            const editBtn = e.target.closest('.btn-edit');
-            const delBtn = e.target.closest('.btn-delete');
+            const editBtn = e.target.closest('.btn-edit'); const delBtn = e.target.closest('.btn-delete');
             if (editBtn) openTaskModal(editBtn.dataset.id);
             if (delBtn) confirmDelete(delBtn.dataset.id);
         }
 
         function handleTableChange(e) {
-            const selStatus = e.target.closest('.sel-status');
-            const cbTask = e.target.closest('.cb-task');
-            
-            if (selStatus) updateTaskStatus(selStatus.dataset.id, selStatus.value);
-            if (cbTask) {
-                cbTask.checked ? selectedTaskIds.add(cbTask.dataset.id) : selectedTaskIds.delete(cbTask.dataset.id);
-                renderTable(); // select-all 체크박스 상태 동기화를 위해 재렌더링
-                updateBatchButton();
-            }
+            const sel = e.target.closest('.sel-status'); const cb = e.target.closest('.cb-task');
+            if (sel) updateTaskStatus(sel.dataset.id, sel.value);
+            if (cb) { cb.checked ? selectedTaskIds.add(cb.dataset.id) : selectedTaskIds.delete(cb.dataset.id); renderActiveViews(); updateBatchButton(); }
         }
 
         function toggleSelectAll(e) {
             const isChecked = e.target.checked;
-            document.querySelectorAll('.cb-task').forEach(cb => {
-                isChecked ? selectedTaskIds.add(cb.dataset.id) : selectedTaskIds.delete(cb.dataset.id);
-            });
-            renderTable();
-            updateBatchButton();
+            document.querySelectorAll('.cb-task').forEach(cb => isChecked ? selectedTaskIds.add(cb.dataset.id) : selectedTaskIds.delete(cb.dataset.id));
+            renderActiveViews(); updateBatchButton();
         }
 
-        function updateSelectAllState(totalVisible, totalSelected) {
+        function updateSelectAllState(totalVis, totalSel) {
             const cbAll = document.getElementById('checkbox-select-all');
-            if (totalVisible === 0) {
-                cbAll.checked = false; cbAll.indeterminate = false; cbAll.disabled = true;
-            } else {
-                cbAll.disabled = false;
-                cbAll.checked = (totalVisible === totalSelected) && totalVisible > 0;
-                cbAll.indeterminate = totalSelected > 0 && totalSelected < totalVisible;
-            }
+            if (totalVis === 0) { cbAll.checked = false; cbAll.indeterminate = false; cbAll.disabled = true; } 
+            else { cbAll.disabled = false; cbAll.checked = (totalVis === totalSel); cbAll.indeterminate = totalSel > 0 && totalSel < totalVis; }
             updateBatchButton();
         }
 
@@ -647,34 +685,25 @@
         }
 
         function resetFilters() {
-            document.getElementById('filter-search').value = '';
-            document.getElementById('filter-status').value = 'ALL';
-            document.getElementById('filter-priority').value = 'ALL';
-            document.getElementById('filter-assignee').value = 'ALL';
-            renderTable();
+            document.getElementById('filter-search').value = ''; document.getElementById('filter-status').value = 'ALL';
+            document.getElementById('filter-priority').value = 'ALL'; document.getElementById('filter-assignee').value = 'ALL';
+            renderActiveViews();
         }
 
         function openTaskModal(id = null) {
             document.getElementById('form-task').reset();
-            const modalTitle = document.getElementById('modal-title');
-            
-            if (typeof id === 'string') {
-                const t = tasks.find(x => x.id === id);
-                if (!t) return;
-                modalTitle.textContent = '업무 상세 변경';
-                document.getElementById('input-task-id').value = t.id;
-                document.getElementById('input-task-title').value = t.title || '';
-                document.getElementById('input-task-assignee').value = t.assignee || '';
-                document.getElementById('input-task-start').value = t.startDate || '';
-                document.getElementById('input-task-due').value = t.dueDate || '';
-                document.getElementById('input-task-priority').value = t.priority || 'NORMAL';
-                document.getElementById('input-task-status').value = t.status || 'PENDING';
-                document.getElementById('input-task-notes').value = t.notes || '';
+            const title = document.getElementById('modal-title');
+            if (id) {
+                const t = tasks.find(x => x.id === id); if (!t) return;
+                title.textContent = '업무 상세 변경';
+                document.getElementById('input-task-id').value = t.id; document.getElementById('input-task-title').value = t.title || '';
+                document.getElementById('input-task-assignee').value = t.assignee || ''; document.getElementById('input-task-start').value = t.startDate || '';
+                document.getElementById('input-task-due').value = t.dueDate || ''; document.getElementById('input-task-priority').value = t.priority || 'NORMAL';
+                document.getElementById('input-task-status').value = t.status || 'PENDING'; document.getElementById('input-task-notes').value = t.notes || '';
             } else {
-                modalTitle.textContent = '새로운 업무 배정';
+                title.textContent = '새로운 업무 배정';
                 document.getElementById('input-task-id').value = '';
-                document.getElementById('input-task-start').value = getTodayStr();
-                document.getElementById('input-task-due').value = getFutureDateStr(7);
+                document.getElementById('input-task-start').value = getTodayStr(); document.getElementById('input-task-due').value = getFutureDateStr(7);
             }
             document.getElementById('modal-task').classList.remove('hidden');
         }
@@ -682,76 +711,50 @@
         function closeModal() { document.getElementById('modal-task').classList.add('hidden'); }
         function closeConfirmModal() { document.getElementById('modal-confirm').classList.add('hidden'); confirmActionCb = null; }
 
-        // 8. 가져오기 / 내보내기 로직 (엄격한 JSON 스키마 검증 포함)
         async function importFromJSON(e) {
-            const file = e.target.files[0];
-            if (!file) return;
+            const file = e.target.files[0]; if (!file) return;
             const reader = new FileReader();
             reader.onload = async (ev) => {
                 try {
-                    const imported = JSON.parse(ev.target.result);
-                    if (!Array.isArray(imported)) throw new Error("배열 형태가 아닙니다.");
-                    
-                    const batch = db.batch();
-                    const validStatus = ['PENDING', 'PROGRESS', 'COMPLETED', 'OVERDUE'];
-                    const validPri = ['HIGH', 'NORMAL', 'LOW'];
-
-                    imported.forEach(t => {
-                        // 스키마 검증
-                        if(!t.title || !t.assignee || !t.dueDate || !validStatus.includes(t.status) || !validPri.includes(t.priority)) {
-                            throw new Error("유효하지 않은 데이터 서식이 포함되어 있습니다.");
-                        }
-                        const { id, ...data } = t;
-                        batch.set(db.collection("tasks").doc(), data);
+                    const imp = JSON.parse(ev.target.result); if (!Array.isArray(imp)) throw new Error("배열 아님");
+                    const batch = db.batch(); const validStatus = ['PENDING','PROGRESS','COMPLETED','OVERDUE']; const validPri = ['HIGH','NORMAL','LOW'];
+                    imp.forEach(t => { if(!t.title||!t.assignee||!t.dueDate||!validStatus.includes(t.status)||!validPri.includes(t.priority)) throw new Error("데이터 서식 오류");
+                        const { id, ...data } = t; batch.set(db.collection("tasks").doc(), data);
                     });
-                    
-                    await batch.commit();
-                    showToast('업무 목록을 성공적으로 불러왔습니다!');
-                } catch (err) { showToast(err.message || '파일을 읽는 도중 오류가 발생했습니다.', false); }
-            };
-            reader.readAsText(file);
-            e.target.value = '';
+                    await batch.commit(); showToast('성공적으로 불러왔습니다.');
+                } catch (err) { showToast('읽기 오류 발생', false); }
+            }; reader.readAsText(file); e.target.value = '';
         }
 
         function exportToJSON() {
             const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(JSON.stringify(tasks, null, 4));
-            const link = document.createElement('a'); link.href = dataUri; link.download = `task_flow_backup_${getTodayStr()}.json`;
-            link.click(); showToast('백업 파일이 다운로드되었습니다.');
+            const link = document.createElement('a'); link.href = dataUri; link.download = `backup_${getTodayStr()}.json`; link.click();
         }
 
         function exportToCSV() {
             let csv = "\uFEFF업무명,담당자,시작일,마감일,우선순위,상태,세부메모\n";
-            tasks.forEach(t => {
-                csv += `"${(t.title||'').replace(/"/g, '""')}","${(t.assignee||'').replace(/"/g, '""')}","${t.startDate||''}","${t.dueDate||''}","${t.priority === 'HIGH' ? '높음' : t.priority === 'NORMAL' ? '보통' : '낮음'}","${getStatusKorean(t.status)}","${(t.notes||'').replace(/"/g, '""')}"\n`;
-            });
-            const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); link.download = `task_flow_export_${getTodayStr()}.csv`;
-            link.click(); showToast('CSV 파일이 정상 다운로드되었습니다.');
+            tasks.forEach(t => { csv += `"${(t.title||'').replace(/"/g, '""')}","${(t.assignee||'').replace(/"/g, '""')}","${t.startDate||''}","${t.dueDate||''}","${t.priority==='HIGH'?'높음':t.priority==='NORMAL'?'보통':'낮음'}","${getStatusKorean(t.status)}","${(t.notes||'').replace(/"/g, '""')}"\n`; });
+            const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([csv], {type: 'text/csv;charset=utf-8;'}));
+            link.download = `export_${getTodayStr()}.csv`; link.click();
         }
 
-        // 9. UI 유틸리티 헬퍼
-        function showToast(message, isSuccess = true) {
-            const toast = document.getElementById('toast');
-            document.getElementById('toast-text').textContent = message;
-            const icon = document.getElementById('toast-icon');
-            icon.innerHTML = isSuccess 
-                ? `<svg class="h-5 w-5 text-emerald-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>`
-                : `<svg class="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg>`;
-            toast.classList.remove('translate-y-10', 'opacity-0'); toast.classList.add('translate-y-0', 'opacity-100');
-            setTimeout(() => { toast.classList.remove('translate-y-0', 'opacity-100'); toast.classList.add('translate-y-10', 'opacity-0'); }, 4000);
+        function showToast(msg, isSuccess = true) {
+            const t = document.getElementById('toast'); document.getElementById('toast-text').textContent = msg;
+            document.getElementById('toast-icon').innerHTML = isSuccess ? `<svg class="h-5 w-5 text-emerald-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>` : `<svg class="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg>`;
+            t.classList.remove('translate-y-10', 'opacity-0'); t.classList.add('translate-y-0', 'opacity-100');
+            setTimeout(() => { t.classList.remove('translate-y-0', 'opacity-100'); t.classList.add('translate-y-10', 'opacity-0'); }, 4000);
         }
 
         function getAvatarStyle(name) {
-            if (!name) return AVATAR_COLORS[0];
-            let sum = 0; for(let i=0; i<name.length; i++) sum += name.charCodeAt(i);
-            return AVATAR_COLORS[sum % AVATAR_COLORS.length];
+            if (!name) return AVATAR_COLORS[0]; let sum = 0; for(let i=0; i<name.length; i++) sum += name.charCodeAt(i); return AVATAR_COLORS[sum % AVATAR_COLORS.length];
         }
 
         function getTimelineStatus(dueStr, status) {
             if (status === 'COMPLETED') return { text: '완료됨', class: 'bg-emerald-50 text-emerald-700 border-emerald-100' };
             const diff = Math.ceil((new Date(dueStr.replace(/-/g, '/')) - new Date(getTodayStr().replace(/-/g, '/'))) / 86400000);
             if (diff < 0) return { text: `기한 초과 (D+${Math.abs(diff)})`, class: 'bg-rose-50 text-rose-700 border-rose-100 font-semibold' };
-            if (diff === 0) return { text: '오늘 마감 (D-Day)', class: 'bg-amber-50 text-amber-700 border-amber-200 animate-pulse font-semibold' };
-            return { text: `${diff}일 남음 (D-${diff})`, class: 'bg-slate-100 text-slate-700 border-slate-200' };
+            if (diff === 0) return { text: '오늘 마감', class: 'bg-amber-50 text-amber-700 border-amber-200 animate-pulse font-semibold' };
+            return { text: `D-${diff}`, class: 'bg-slate-100 text-slate-700 border-slate-200' };
         }
 
         function getPriorityBadge(priority) {
@@ -760,9 +763,7 @@
             return '<span class="inline-flex rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/10">낮음</span>';
         }
 
-        function getStatusKorean(status) {
-            return { 'PENDING': '진행 대기', 'PROGRESS': '진행 중', 'COMPLETED': '완료됨', 'OVERDUE': '기한 초과' }[status] || '전체 보기';
-        }
+        function getStatusKorean(status) { return { 'PENDING': '진행 대기', 'PROGRESS': '진행 중', 'COMPLETED': '완료됨', 'OVERDUE': '기한 초과' }[status] || '전체'; }
     </script>
 </body>
 </html>
