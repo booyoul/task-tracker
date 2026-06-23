@@ -7,7 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
     
-    <!-- Firebase Compat SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
 
@@ -25,7 +24,6 @@
 </head>
 <body class="min-h-screen text-slate-800 antialiased">
 
-    <!-- 메인 컨테이너 -->
     <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         
         <header class="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
@@ -75,7 +73,6 @@
             </div>
         </header>
 
-        <!-- 대시보드 요약 (Metrics Cards) -->
         <section class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <div id="card-ALL" class="filter-card rounded-2xl border border-slate-100 bg-white p-5 shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
                 <div class="flex items-center justify-between"><span class="text-xs font-semibold text-slate-500 uppercase">전체 업무</span><span class="rounded-full bg-slate-50 p-1.5 text-slate-600"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012 2h2a2 2 0 012-2m-3 7h3m-3 4h3m-6-4h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg></span></div>
@@ -99,7 +96,6 @@
             </div>
         </section>
 
-        <!-- 필터 및 뷰 토글 -->
         <div class="mb-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
             <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div class="relative flex-1 max-w-sm">
@@ -128,7 +124,6 @@
                     <button id="btn-reset-filters" class="rounded-xl bg-slate-100 p-2 text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition" title="필터 초기화">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A9.006 9.006 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.968 8.968 0 01-15.356-2m15.356 2H15" /></svg>
                     </button>
-                    <!-- 뷰 전환 토글 -->
                     <div class="ml-2 inline-flex rounded-xl bg-slate-100 p-1">
                         <button id="btn-view-table" class="rounded-lg bg-white px-4 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition">목록</button>
                         <button id="btn-view-calendar" class="rounded-lg px-4 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition">캘린더</button>
@@ -137,7 +132,6 @@
             </div>
         </div>
 
-        <!-- 뷰 1: 데이터 테이블 -->
         <main id="view-table" class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
             <div class="overflow-x-auto">
                 <table class="w-full min-w-[900px] divide-y divide-slate-100 text-left">
@@ -165,7 +159,6 @@
             </div>
         </main>
 
-        <!-- 뷰 2: 캘린더 (작업기간 및 상태 표시) -->
         <main id="view-calendar" class="hidden rounded-2xl border border-slate-100 bg-white shadow-sm p-6">
             <div class="mb-6 flex items-center justify-between">
                 <h2 id="calendar-month-year" class="text-xl font-bold text-slate-800"></h2>
@@ -186,8 +179,7 @@
                 <div class="bg-slate-50 py-2 text-center text-xs font-semibold text-blue-500">토</div>
             </div>
             <div id="calendar-grid" class="grid grid-cols-7 gap-px bg-slate-200 border-x border-b border-slate-200 rounded-b-lg overflow-hidden">
-                <!-- 달력 셀이 동적으로 렌더링 됩니다 -->
-            </div>
+                </div>
         </main>
         
         <footer class="mt-8 text-center text-xs text-slate-400">
@@ -195,7 +187,6 @@
         </footer>
     </div>
 
-    <!-- 1. 새 업무 모달 -->
     <div id="modal-task" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
         <div class="flex min-h-screen items-end justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
             <div id="modal-task-backdrop" class="fixed inset-0 bg-slate-500 bg-opacity-40 transition-opacity"></div>
@@ -257,7 +248,6 @@
         </div>
     </div>
 
-    <!-- 2. 확인(Confirm) 모달 -->
     <div id="modal-confirm" class="fixed inset-0 z-50 hidden overflow-y-auto" role="dialog" aria-modal="true">
         <div class="flex min-h-screen items-end justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
             <div id="modal-confirm-backdrop" class="fixed inset-0 bg-slate-500 bg-opacity-40 transition-opacity"></div>
@@ -280,7 +270,6 @@
         </div>
     </div>
 
-    <!-- 3. 토스트 알림 -->
     <div id="toast" class="pointer-events-none fixed bottom-5 right-5 z-50 flex transform items-center gap-2.5 rounded-xl bg-slate-900 px-4 py-3 text-sm text-white shadow-lg transition-all duration-300 translate-y-10 opacity-0">
         <span id="toast-icon"></span><span id="toast-text"></span>
     </div>
@@ -486,6 +475,7 @@
             updateSelectAllState(filtered.length, renderedSelectedCount);
         }
 
+        // ====== 핵심 수정 부분 (간트 차트형 캘린더) ======
         function renderCalendar(filteredTasks) {
             const year = currentCalDate.getFullYear();
             const month = currentCalDate.getMonth();
@@ -496,89 +486,159 @@
             const grid = document.getElementById('calendar-grid');
             grid.innerHTML = '';
 
+            const todayStr = getTodayStr();
+
+            // 1. 태스크 레인(Lane, 슬롯) 할당을 위한 전처리 및 정렬
+            filteredTasks.forEach(t => {
+                t._start = t.startDate || t.dueDate || todayStr;
+                t._end = t.dueDate || todayStr;
+                if (t._start > t._end) t._start = t._end; // 시작일이 더 늦은 예외 처리
+            });
+
+            // 시작일 순 -> 기간이 긴 순(종료일이 늦은 순) 정렬
+            filteredTasks.sort((a, b) => {
+                if (a._start !== b._start) return a._start.localeCompare(b._start);
+                return b._end.localeCompare(a._end);
+            });
+
+            const lanes = [];
+            const taskLanes = {}; // 각 태스크 ID별 위치할 레인(층) 인덱스
+            
+            filteredTasks.forEach(t => {
+                let assigned = -1;
+                for (let i = 0; i < lanes.length; i++) {
+                    let overlap = false;
+                    for (let jt of lanes[i]) {
+                        // 두 태스크가 겹치는지 확인 (시작1 <= 끝2 && 시작2 <= 끝1)
+                        if (t._start <= jt._end && jt._start <= t._end) {
+                            overlap = true; break;
+                        }
+                    }
+                    if (!overlap) { assigned = i; lanes[i].push(t); break; }
+                }
+                if (assigned === -1) { assigned = lanes.length; lanes.push([t]); }
+                taskLanes[t.id] = assigned;
+            });
+
+            // 2. 1일 이전 빈 공백 셀 렌더링
             for (let i = 0; i < firstDay; i++) {
                 const cell = document.createElement('div');
-                cell.className = 'bg-slate-50 min-h-[120px]';
+                cell.className = 'bg-slate-50 min-h-[120px] border-r border-b border-slate-100';
                 grid.appendChild(cell);
             }
 
-            const todayStr = getTodayStr();
-
+            // 3. 실제 날짜 셀 렌더링
             for (let day = 1; day <= daysInMonth; day++) {
                 const dateStr = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
                 const isToday = dateStr === todayStr;
-                
+
+                // 달력 그리드 상 현재 셀의 위치로 요일 파악
+                const cellIndex = firstDay + day - 1;
+                const dayOfWeek = cellIndex % 7;
+                const isWeekStart = dayOfWeek === 0; // 일요일
+                const isWeekEnd = dayOfWeek === 6; // 토요일
+
                 const cell = document.createElement('div');
-                cell.className = `bg-white min-h-[120px] p-1.5 flex flex-col gap-1 transition-colors border-r border-b border-slate-100 ${isToday ? 'bg-indigo-50/30 ring-inset ring-2 ring-indigo-400' : 'hover:bg-slate-50'}`;
-                
+                cell.className = `bg-white min-h-[120px] flex flex-col transition-colors border-r border-b border-slate-100 ${isToday ? 'bg-indigo-50/20' : 'hover:bg-slate-50'}`;
+
+                // 날짜 헤더 표시 영역
                 const dayHeader = document.createElement('div');
-                dayHeader.className = `text-xs font-semibold px-1 ${isToday ? 'text-indigo-700' : 'text-slate-600'}`;
-                dayHeader.textContent = day;
+                if(isToday) {
+                    dayHeader.innerHTML = `<div class="bg-indigo-600 text-white rounded-full w-6 h-6 flex items-center justify-center font-bold">${day}</div>`;
+                    dayHeader.className = `text-xs p-1.5`;
+                } else {
+                    dayHeader.textContent = day;
+                    dayHeader.className = `text-xs font-semibold p-1.5 ${dayOfWeek === 0 ? 'text-rose-500' : dayOfWeek === 6 ? 'text-blue-500' : 'text-slate-600'}`;
+                }
                 cell.appendChild(dayHeader);
 
-                // 현재 셀 날짜(dateStr)가 업무의 시작일~마감일 사이에 포함되는 업무 필터링
-                const dayTasks = filteredTasks.filter(t => {
-                    const start = t.startDate || t.dueDate || todayStr;
-                    const due = t.dueDate || todayStr;
-                    return dateStr >= start && dateStr <= due;
-                });
-                
+                // 업무 표시 컨테이너 (스크롤 대신 유연하게 늘어나도록 설정)
                 const taskContainer = document.createElement('div');
-                taskContainer.className = "flex flex-col gap-1 overflow-y-auto max-h-[90px] calendar-task-scroll";
-                
-                dayTasks.forEach(t => {
-                    const start = t.startDate || t.dueDate || todayStr;
-                    const due = t.dueDate || todayStr;
-                    const isStart = dateStr === start;
-                    const isEnd = dateStr === due;
+                taskContainer.className = "flex flex-col flex-1 pb-1";
 
-                    const taskEl = document.createElement('div');
-                    
-                    let bgClass = 'bg-slate-100 text-slate-700 border-slate-200';
-                    let statusLabel = '대기';
-                    let icon = '⌛';
-                    
-                    if (t.status === 'COMPLETED') {
-                        bgClass = 'bg-emerald-50 text-emerald-700 border-emerald-100';
-                        statusLabel = '완료'; icon = '⭐️';
-                    } else if (t.status === 'PROGRESS') {
-                        bgClass = 'bg-blue-50 text-blue-700 border-blue-100';
-                        statusLabel = '진행'; icon = '⚙️';
-                    } else if (todayStr > due && t.status !== 'COMPLETED') {
-                        bgClass = 'bg-rose-50 text-rose-700 border-rose-100';
-                        statusLabel = '지연'; icon = '🚨';
+                // 해당 날짜에 포함된 태스크만 필터링
+                const dayTasks = filteredTasks.filter(t => dateStr >= t._start && dateStr <= t._end);
+                // 오늘 출력해야할 최대 레인(층) 계산
+                const maxLane = Math.max(...dayTasks.map(t => taskLanes[t.id]), -1);
+
+                // 0번 레인부터 최대 레인까지 순회하며 해당 층에 업무나 빈 칸을 렌더링
+                for (let i = 0; i <= maxLane; i++) {
+                    const t = dayTasks.find(t => taskLanes[t.id] === i);
+                    if (t) {
+                        const isStart = dateStr === t._start;
+                        const isEnd = dateStr === t._end;
+                        
+                        // 텍스트는 업무 시작일이거나 새로운 주의 시작(일요일)일 때만 출력
+                        const showText = isStart || isWeekStart;
+
+                        let bgClass = 'bg-slate-200 text-slate-700';
+                        let statusLabel = '대기'; let icon = '⌛';
+                        
+                        if (t.status === 'COMPLETED') {
+                            bgClass = 'bg-emerald-100 text-emerald-800'; statusLabel = '완료'; icon = '⭐️';
+                        } else if (t.status === 'PROGRESS') {
+                            bgClass = 'bg-blue-100 text-blue-800'; statusLabel = '진행'; icon = '⚙️';
+                        } else if (todayStr > t._end && t.status !== 'COMPLETED') {
+                            bgClass = 'bg-rose-100 text-rose-800'; statusLabel = '지연'; icon = '🚨';
+                        }
+
+                        // 여러 셀에 걸친 리본 형태로 만들기 위한 Shape & Margin 클래스 조정
+                        let shapeClass = 'h-[22px] flex items-center mb-1';
+                        
+                        if (isStart && isEnd) {
+                            shapeClass += ' rounded mx-1 px-1.5';
+                        } else if (isStart) {
+                            shapeClass += ' rounded-l ml-1 mr-0 pr-0 pl-1.5';
+                        } else if (isEnd) {
+                            shapeClass += ' rounded-r mr-1 ml-0 pl-0 pr-1.5';
+                        } else {
+                            shapeClass += ' mx-0 px-0 rounded-none';
+                        }
+
+                        // 중간 연결되는 일자의 경우, 그리드의 gap을 덮기 위해 왼쪽 음수 마진 적용 (-ml-[1px])
+                        if (!isStart && !isWeekStart) {
+                            shapeClass += ' -ml-[1px] relative z-10';
+                        }
+
+                        const taskEl = document.createElement('div');
+                        taskEl.className = `text-[10.5px] font-medium cursor-pointer transition-all hover:brightness-95 ${bgClass} ${shapeClass}`;
+                        taskEl.title = `[${statusLabel}] ${escapeHTML(t.title)} (${t._start} ~ ${t._end})`;
+                        taskEl.onclick = () => openTaskModal(t.id);
+
+                        if (showText) {
+                            const textContainer = document.createElement('div');
+                            textContainer.className = 'truncate w-full whitespace-nowrap z-20';
+                            if (isWeekStart && !isStart) {
+                                // 주가 바뀌어서 중간부터 이어지는 경우 투명하게 표시
+                                textContainer.innerHTML = `<span class="opacity-75 font-normal pl-1.5">(${escapeHTML(t.title)})</span>`;
+                            } else {
+                                textContainer.innerHTML = `<span>${icon}</span> ${escapeHTML(t.title)}`;
+                            }
+                            taskEl.appendChild(textContainer);
+                        }
+
+                        taskContainer.appendChild(taskEl);
+                    } else {
+                        // 해당 층에 업무가 없는 날이면 위치 유지를 위해 동일한 높이의 투명한 공백 삽입
+                        const spacer = document.createElement('div');
+                        spacer.className = 'h-[22px] mb-1';
+                        taskContainer.appendChild(spacer);
                     }
-                    
-                    // 연속된 리본 막대기 렌더링을 위한 모양 제어
-                    let shapeClass = 'rounded mx-0.5';
-                    if (start !== due) {
-                        if (isStart) shapeClass = 'rounded-l rounded-r-none border-r-0 ml-1 mr-0';
-                        else if (isEnd) shapeClass = 'rounded-r rounded-l-none border-l-0 mr-1 ml-0';
-                        else shapeClass = 'rounded-none border-x-0 mx-0';
-                    }
-                    
-                    taskEl.className = `text-[10px] font-medium truncate border px-1.5 py-1 cursor-pointer transition-all hover:opacity-80 ${bgClass} ${shapeClass}`;
-                    
-                    // 상태 아이콘 및 라벨 표시
-                    taskEl.innerHTML = `<span title="${statusLabel}">${icon}</span> <span class="font-bold opacity-80">[${statusLabel}]</span> ${escapeHTML(t.title)}`;
-                    
-                    taskEl.title = `[${statusLabel}] ${escapeHTML(t.title)} (${start} ~ ${due})`;
-                    taskEl.onclick = () => openTaskModal(t.id);
-                    taskContainer.appendChild(taskEl);
-                });
-                
+                }
                 cell.appendChild(taskContainer);
                 grid.appendChild(cell);
             }
-            
+
+            // 4. 마지막 날짜 이후 빈 공백 셀 렌더링
             const totalCells = firstDay + daysInMonth;
             const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
             for (let i = 0; i < remaining; i++) {
                 const cell = document.createElement('div');
-                cell.className = 'bg-slate-50 min-h-[120px]';
+                cell.className = 'bg-slate-50 min-h-[120px] border-r border-b border-slate-100';
                 grid.appendChild(cell);
             }
         }
+        // ===================================================
 
         function renderStats() {
             const total = tasks.length;
