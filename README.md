@@ -1,25 +1,19 @@
-# Smart Task Flow - Split Version
+# Smart Task Flow - Improved Split Version
 
-이 패키지는 기존 `code_artifact (1).html`의 하단 inline JavaScript를 3개 JS 파일로 분리한 버전입니다.
+기존 `code_artifact (1).html`을 `index.html + js/firebase.js + js/state.js + js/app.js` 구조로 분리하고, 운영 안정성을 위한 보완을 적용한 버전입니다.
 
-## 구조
+## 이번 보완 사항
 
-```text
-index.html
-js/
-  firebase.js
-  state.js
-  app.js
-```
+1. `index.html`의 로컬 JS 로딩에 `defer` 적용
+2. Firebase persistence 오류 메시지 보완
+3. Firestore `onSnapshot()` 기반 실시간 동기화 추가
+4. Tooltip 렌더링 시 사용자 입력 HTML 주입 가능성 완화
+5. 담당자 필터 option 처리 개선
+6. Firestore 저장/스냅샷 경쟁 상황에서 중복 insert 가능성 완화
+7. CSV export 후 Object URL 정리
+8. 페이지 종료 시 Firestore realtime listener 정리
+9. GitHub Pages 호환을 위한 `.nojekyll` 추가
 
-## GitHub Pages 배포 방법
+## 배포
 
-1. 기존 GitHub repository에 `index.html`과 `js/` 폴더를 그대로 업로드합니다.
-2. 반드시 `index.html`과 `js` 폴더가 같은 위치에 있어야 합니다.
-3. GitHub Pages URL로 접속하여 Console 오류가 없는지 확인합니다.
-
-## 주의
-
-- Firebase CDN script는 기존처럼 `index.html` head에 유지했습니다.
-- JS 로드 순서는 `firebase.js` → `state.js` → `app.js` 입니다. 순서를 바꾸면 전역 변수/함수 참조 오류가 날 수 있습니다.
-- 현재 Firebase API key는 원본 코드와 동일하게 유지되어 있으므로, 실제 운영 시 Firebase Security Rules를 반드시 점검하세요.
+`index.html`, `js/` 폴더, `.nojekyll`을 GitHub repository root에 업로드하세요.

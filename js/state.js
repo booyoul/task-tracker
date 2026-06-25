@@ -81,6 +81,8 @@
         let currentSubTasks = []; 
         let editingSubTaskIndex = -1; 
         let expandedTaskIds = new Set(); 
+        let unsubscribeTasks = null;
+        let unsubscribeTrackers = null;
 
         const AVATAR_COLORS = [
             'bg-indigo-100 text-indigo-700', 'bg-emerald-100 text-emerald-700', 'bg-sky-100 text-sky-700', 

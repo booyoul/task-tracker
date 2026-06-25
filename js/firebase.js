@@ -37,7 +37,15 @@
                 db = firebase.firestore();
                 auth = firebase.auth();
                 isFirebaseAvailable = true;
-                db.enablePersistence().catch(err => { console.warn("오프라인 모드 활성화 실패:", err.code); });
+                db.enablePersistence().catch(err => {
+                    if (err && err.code === 'failed-precondition') {
+                        console.warn('오프라인 persistence는 여러 탭에서 동시에 활성화할 수 없습니다. 현재 탭은 온라인 모드로 동작합니다.');
+                    } else if (err && err.code === 'unimplemented') {
+                        console.warn('현재 브라우저는 Firestore 오프라인 persistence를 지원하지 않습니다.');
+                    } else {
+                        console.warn("오프라인 모드 활성화 실패:", err && err.code ? err.code : err);
+                    }
+                });
             } catch (e) {
                 console.warn("Firebase 초기화 우회 가동.", e);
             }

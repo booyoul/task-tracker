@@ -51,7 +51,10 @@
         function bindGanttTooltip(element, title, details) {
             const tooltip = document.getElementById('gantt-tooltip');
             element.addEventListener('mouseenter', (e) => {
-                tooltip.innerHTML = `<div class="font-bold mb-1">${title}</div><div class="text-[10.5px] leading-relaxed text-slate-300">${details}</div>`;
+                const safeTitle = escapeHTML(title || '');
+                // details는 코드 내부에서 생성되는 문자열이지만, 사용자 입력이 섞일 수 있어 <br>만 허용합니다.
+                const safeDetails = String(details || '').replace(/<(?!br\s*\/?)[^>]+>/gi, '');
+                tooltip.innerHTML = `<div class="font-bold mb-1">${safeTitle}</div><div class="text-[10.5px] leading-relaxed text-slate-300">${safeDetails}</div>`;
                 tooltip.classList.remove('hidden');
             });
             element.addEventListener('mousemove', (e) => {
@@ -116,7 +119,7 @@
                 }
             }
             // 로컬 배열 및 UI 업데이트 보장
-            tasks.push({ id: newId, ...taskData });
+            if (!tasks.some(t => t.id === newId)) { tasks.push({ id: newId, ...taskData }); }
             updateUI();
         }
         
@@ -189,7 +192,7 @@
                 }
             }
             // 로컬 배열 및 UI 업데이트 보장
-            trackers.push({ id: newId, ...trackerData });
+            if (!trackers.some(t => t.id === newId)) { trackers.push({ id: newId, ...trackerData }); }
             currentTrackerId = newId;
             localStorage.setItem('flow_current_tracker', currentTrackerId);
             updateTrackerUI();
@@ -257,7 +260,7 @@
             
             select.innerHTML = '<option value="ALL">담당자: 전체</option>';
             assignees.forEach(n => {
-                const opt = document.createElement('option'); opt.value = opt.textContent = escapeHTML(n);
+                const opt = document.createElement('option'); opt.value = n; opt.textContent = n;
                 select.appendChild(opt);
             });
             if (assignees.includes(currentVal)) select.value = currentVal;
@@ -1346,8 +1349,10 @@
             let csv = "\uFEFF업무명,담당자,시작일,마감일,우선순위,상태,세부메모\n";
             const activeScope = tasks.filter(t => t.trackerId === currentTrackerId);
             activeScope.forEach(t => { csv += `"${(t.title||'').replace(/"/g, '""')}","${(t.assignee||'').replace(/"/g, '""')}","${t.startDate||''}","${t.dueDate||''}","${t.priority==='HIGH'?'높음':t.priority==='NORMAL'?'보통':'낮음'}","${getStatusKorean(t.status)}","${(t.notes||'').replace(/"/g, '""')}"\n`; });
-            const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([csv], {type: 'text/csv;charset=utf-8;'}));
+            const blobUrl = URL.createObjectURL(new Blob([csv], {type: 'text/csv;charset=utf-8;'}));
+            const link = document.createElement("a"); link.href = blobUrl;
             link.download = `export_${getTodayStr()}.csv`; link.click();
+            URL.revokeObjectURL(blobUrl);
         }
 
         // 캘린더 모드 세팅 및 토글 스위치 가시성 제어 함수
@@ -1378,36 +1383,45 @@
         }
 
         // --- (11) Global Event Listeners Initialization ---
-        async function fetchInitialData() {
-            if (!isFirebaseAvailable || !db) return;
-            try {
-                const trackersColl = getTrackersCollection();
-                const tasksColl = getTasksCollection();
+        function setupRealtimeListeners() {
+            if (!isFirebaseAvailable || !db) return false;
+            const trackersColl = getTrackersCollection();
+            const tasksColl = getTasksCollection();
+            if (!trackersColl || !tasksColl) return false;
 
-                if (trackersColl) {
-                    const trackerSnap = await trackersColl.get();
-                    if (!trackerSnap.empty) {
-                        trackers = trackerSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            if (typeof unsubscribeTrackers === 'function') unsubscribeTrackers();
+            if (typeof unsubscribeTasks === 'function') unsubscribeTasks();
+
+            unsubscribeTrackers = trackersColl.onSnapshot(snapshot => {
+                if (!snapshot.empty) {
+                    trackers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    if (!trackers.some(t => t.id === currentTrackerId)) {
+                        const savedTracker = localStorage.getItem('flow_current_tracker');
+                        currentTrackerId = trackers.some(t => t.id === savedTracker) ? savedTracker : trackers[0].id;
+                        localStorage.setItem('flow_current_tracker', currentTrackerId);
                     }
                 }
-                
-                if (tasksColl) {
-                    const taskSnap = await tasksColl.get();
-                    if (!taskSnap.empty) {
-                        tasks = taskSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    } else {
-                        tasks = getMockTasks();
-                    }
-                } else {
-                    tasks = getMockTasks();
-                }
-                
                 updateTrackerUI();
                 updateUI();
-            } catch (e) {
-                console.error("Firestore 초기 데이터 로딩 실패", e);
+            }, error => {
+                console.error('Firestore 트래커 실시간 동기화 오류', error);
+                showToast('트래커 실시간 동기화 오류가 발생했습니다.', false);
+            });
+
+            unsubscribeTasks = tasksColl.onSnapshot(snapshot => {
+                tasks = snapshot.empty ? getMockTasks() : snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                updateTrackerUI();
                 updateUI();
-            }
+            }, error => {
+                console.error('Firestore 업무 실시간 동기화 오류', error);
+                showToast('업무 실시간 동기화 오류가 발생했습니다.', false);
+            });
+            return true;
+        }
+
+        async function fetchInitialData() {
+            if (setupRealtimeListeners()) return;
+            updateUI();
         }
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -1538,5 +1552,9 @@
             document.getElementById('btn-cancel-confirm')?.addEventListener('click', closeConfirmModal);
             document.getElementById('btn-action-confirm')?.addEventListener('click', () => {
                 if (confirmActionCb) confirmActionCb();
+            });
+            window.addEventListener('beforeunload', () => {
+                if (typeof unsubscribeTasks === 'function') unsubscribeTasks();
+                if (typeof unsubscribeTrackers === 'function') unsubscribeTrackers();
             });
         });
