@@ -24,14 +24,40 @@ function getAvatarStyle(name) {
   String(name).split('').forEach(ch => sum += ch.charCodeAt(0));
   return AVATAR_COLORS[sum % AVATAR_COLORS.length];
 }
+function getDelayDays(dueStr, todayStr = getTodayStr()) {
+  if (!dueStr) return 0;
+  const diff = Math.ceil((new Date(String(dueStr).replace(/-/g, '/')) - new Date(todayStr.replace(/-/g, '/'))) / 86400000);
+  return diff < 0 ? Math.abs(diff) : 0;
+}
+function getRiskLevelByDelay(days) {
+  if (days >= 7) return 'CRITICAL';
+  if (days >= 3) return 'HIGH';
+  if (days >= 1) return 'LOW';
+  return 'NONE';
+}
+function getRiskLabel(level) {
+  return ({ CRITICAL: '긴급', HIGH: '높음', LOW: '주의', NONE: '정상' })[level] || '정상';
+}
+function getRiskClass(level) {
+  return ({
+    CRITICAL: 'bg-red-100 text-red-800 border-red-200 font-black',
+    HIGH: 'bg-rose-50 text-rose-700 border-rose-100 font-bold',
+    LOW: 'bg-amber-50 text-amber-700 border-amber-200 font-semibold',
+    NONE: 'bg-slate-100 text-slate-700 border-slate-200'
+  })[level] || 'bg-slate-100 text-slate-700 border-slate-200';
+}
 function getTimelineStatus(dueStr, status) {
-  if (status === 'COMPLETED') return { text: '완료됨', class: 'bg-emerald-50 text-emerald-700 border-emerald-100' };
+  if (normalizeStatus(status) === 'COMPLETED') return { text: '완료됨', level: 'NONE', class: 'bg-emerald-50 text-emerald-700 border-emerald-100' };
   const today = getTodayStr();
   const due = dueStr || today;
   const diff = Math.ceil((new Date(String(due).replace(/-/g, '/')) - new Date(today.replace(/-/g, '/'))) / 86400000);
-  if (diff < 0) return { text: `기한 초과 (D+${Math.abs(diff)})`, class: 'bg-rose-50 text-rose-700 border-rose-100 font-semibold' };
-  if (diff === 0) return { text: '오늘 마감', class: 'bg-amber-50 text-amber-700 border-amber-200 font-semibold' };
-  return { text: `D-${diff}`, class: 'bg-slate-100 text-slate-700 border-slate-200' };
+  if (diff < 0) {
+    const level = getRiskLevelByDelay(Math.abs(diff));
+    return { text: `기한 초과 (D+${Math.abs(diff)})`, level, class: getRiskClass(level) };
+  }
+  if (diff === 0) return { text: '오늘 마감', level: 'DUE_TODAY', class: 'bg-amber-50 text-amber-700 border-amber-200 font-semibold' };
+  if (diff <= 3) return { text: `임박 D-${diff}`, level: 'DUE_SOON', class: 'bg-orange-50 text-orange-700 border-orange-200 font-semibold' };
+  return { text: `D-${diff}`, level: 'NONE', class: 'bg-slate-100 text-slate-700 border-slate-200' };
 }
 
 function isSubTaskOverdue(st, todayStr = getTodayStr()) {
@@ -51,6 +77,111 @@ function countTaskOverdueUnits(task, todayStr = getTodayStr()) {
 }
 function getSubTaskTimelineStatus(st, todayStr = getTodayStr()) {
   return getTimelineStatus(st?.dueDate || todayStr, normalizeStatus(st?.status));
+}
+
+function getMaxDelayDays(task, todayStr = getTodayStr()) {
+  const mainDelay = isMainTaskOverdue(task, todayStr) ? getDelayDays(task.dueDate, todayStr) : 0;
+  const subDelay = (Array.isArray(task?.subTasks) ? task.subTasks : [])
+    .filter(st => isSubTaskOverdue(st, todayStr))
+    .reduce((max, st) => Math.max(max, getDelayDays(st.dueDate, todayStr)), 0);
+  return Math.max(mainDelay, subDelay);
+}
+function getTaskRiskInfo(task, todayStr = getTodayStr()) {
+  const delay = getMaxDelayDays(task, todayStr);
+  const level = getRiskLevelByDelay(delay);
+  return { delay, level, label: getRiskLabel(level), class: getRiskClass(level) };
+}
+function getEffectiveStatus(task, todayStr = getTodayStr()) {
+  const status = normalizeStatus(task?.status);
+  const subs = Array.isArray(task?.subTasks) ? task.subTasks : [];
+  if (status === 'COMPLETED') return 'COMPLETED';
+  if (isTaskOverdueEffective(task, todayStr)) return 'OVERDUE';
+  if (subs.length && subs.every(st => normalizeStatus(st.status) === 'COMPLETED')) return 'COMPLETED';
+  if (status === 'PROGRESS' || subs.some(st => ['PROGRESS', 'COMPLETED'].includes(normalizeStatus(st.status)))) return 'PROGRESS';
+  return status;
+}
+function getTaskProgress(task) {
+  const subs = Array.isArray(task?.subTasks) ? task.subTasks : [];
+  if (!subs.length) return normalizeStatus(task?.status) === 'COMPLETED' ? 100 : normalizeStatus(task?.status) === 'PROGRESS' ? 50 : 0;
+  const done = subs.filter(st => normalizeStatus(st.status) === 'COMPLETED').length;
+  return Math.round(done / subs.length * 100);
+}
+function getBottleneckSubTask(task, todayStr = getTodayStr()) {
+  const subs = (Array.isArray(task?.subTasks) ? task.subTasks : []).filter(st => normalizeStatus(st.status) !== 'COMPLETED');
+  if (!subs.length) return null;
+  return [...subs].sort((a, b) => {
+    const ad = isSubTaskOverdue(a, todayStr) ? -getDelayDays(a.dueDate, todayStr) : 0;
+    const bd = isSubTaskOverdue(b, todayStr) ? -getDelayDays(b.dueDate, todayStr) : 0;
+    if (ad !== bd) return ad - bd;
+    return String(a.dueDate || '9999-12-31').localeCompare(String(b.dueDate || '9999-12-31'));
+  })[0];
+}
+function hasDueSoonRisk(task, todayStr = getTodayStr(), days = 3) {
+  const inRange = d => !!d && String(d) >= todayStr && String(d) <= getFutureDateStr(days);
+  return normalizeStatus(task?.status) !== 'COMPLETED' && (inRange(task?.dueDate) || (Array.isArray(task?.subTasks) ? task.subTasks : []).some(st => normalizeStatus(st.status) !== 'COMPLETED' && inRange(st.dueDate)));
+}
+function getEffectiveStatusBadge(status) {
+  const s = status === 'OVERDUE' ? 'OVERDUE' : normalizeStatus(status);
+  const cls = s === 'OVERDUE' ? 'bg-rose-50 text-rose-700 border-rose-100' : s === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : s === 'PROGRESS' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-amber-50 text-amber-700 border-amber-100';
+  return `<span class="rounded-lg border px-2 py-1 text-[10px] font-bold ${cls}">운영상태: ${getStatusKorean(s)}</span>`;
+}
+function ensureAdvancedFilterOptions() {
+  const sel = document.getElementById('filter-status');
+  if (!sel || sel.dataset.advanced === 'true') return;
+  [
+    ['SUBTASK_OVERDUE', '하위 업무 기한 초과'],
+    ['DUE_SOON', '3일 내 마감 임박'],
+    ['HIGH_RISK', 'High Risk 이상'],
+    ['CRITICAL_RISK', 'Critical Risk']
+  ].forEach(([value, label]) => {
+    const opt = document.createElement('option');
+    opt.value = value;
+    opt.textContent = label;
+    sel.appendChild(opt);
+  });
+  sel.dataset.advanced = 'true';
+}
+function ensureRiskDashboardPanel() {
+  if (document.getElementById('risk-dashboard-panel')) return document.getElementById('risk-dashboard-panel');
+  const cards = document.querySelector('section.mb-6.grid');
+  if (!cards) return null;
+  const panel = document.createElement('section');
+  panel.id = 'risk-dashboard-panel';
+  panel.className = 'mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3';
+  cards.insertAdjacentElement('afterend', panel);
+  return panel;
+}
+function renderRiskDashboard(scope) {
+  const panel = ensureRiskDashboardPanel();
+  if (!panel) return;
+  const today = getTodayStr();
+  const risky = scope.filter(t => isTaskOverdueEffective(t, today)).sort((a,b) => getMaxDelayDays(b, today) - getMaxDelayDays(a, today));
+  const critical = risky.filter(t => getTaskRiskInfo(t, today).level === 'CRITICAL').length;
+  const high = risky.filter(t => getTaskRiskInfo(t, today).level === 'HIGH').length;
+  const dueSoon = scope.filter(t => hasDueSoonRisk(t, today)).length;
+  const byAssignee = {};
+  risky.forEach(t => {
+    const name = t.assignee || '미지정';
+    byAssignee[name] = (byAssignee[name] || 0) + countTaskOverdueUnits(t, today);
+  });
+  const assigneeRows = Object.entries(byAssignee).sort((a,b) => b[1] - a[1]).slice(0, 5);
+  const topRisk = risky[0];
+  const topRiskInfo = topRisk ? getTaskRiskInfo(topRisk, today) : null;
+  const bottleneck = topRisk ? getBottleneckSubTask(topRisk, today) : null;
+  panel.innerHTML = `
+    <div class="rounded-2xl border border-rose-100 bg-white p-4 shadow-sm">
+      <div class="text-xs font-bold uppercase text-slate-400">Risk Monitor</div>
+      <div class="mt-2 flex items-baseline gap-2"><span class="text-2xl font-black text-rose-600">${risky.length}</span><span class="text-xs text-slate-400">위험 업무</span></div>
+      <div class="mt-1 text-[11px] text-slate-500">Critical ${critical} · High ${high} · 3일 내 마감 ${dueSoon}</div>
+    </div>
+    <div class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+      <div class="text-xs font-bold uppercase text-slate-400">Top Bottleneck</div>
+      ${topRisk ? `<div class="mt-2 text-sm font-bold text-slate-800 truncate">${escapeHTML(topRisk.title)}</div><div class="mt-1 text-xs text-slate-500 truncate">${bottleneck ? `병목: ${escapeHTML(bottleneck.title)} · ${bottleneck.dueDate || '마감 미정'}` : '본 업무 일정 지연'} · ${topRiskInfo.label} D+${topRiskInfo.delay}</div>` : '<div class="mt-2 text-sm font-semibold text-emerald-600">현재 중대 지연 없음</div>'}
+    </div>
+    <div class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+      <div class="text-xs font-bold uppercase text-slate-400">Assignee Risk</div>
+      <div class="mt-2 space-y-1">${assigneeRows.length ? assigneeRows.map(([name, cnt]) => `<div class="flex items-center justify-between text-xs"><span class="truncate text-slate-600">${escapeHTML(name)}</span><span class="font-bold text-rose-600">${cnt}항목</span></div>`).join('') : '<div class="text-xs font-semibold text-emerald-600">담당자별 지연 없음</div>'}</div>
+    </div>`;
 }
 
 function showToast(msg, isSuccess = true) {
@@ -262,10 +393,19 @@ function getFilteredTasks() {
   const today = getTodayStr();
   return tasks.filter(t => {
     if (t.deleted === true || t.trackerId !== currentTrackerId) return false;
-    if (search && !String(t.title || '').toLowerCase().includes(search) && !String(t.assignee || '').toLowerCase().includes(search)) return false;
+    const subSearchText = (Array.isArray(t.subTasks) ? t.subTasks : []).map(st => `${st.title || ''} ${st.assignee || ''}`).join(' ').toLowerCase();
+    if (search && !String(t.title || '').toLowerCase().includes(search) && !String(t.assignee || '').toLowerCase().includes(search) && !subSearchText.includes(search)) return false;
     if (status === 'OVERDUE') {
       if (!isTaskOverdueEffective(t, today)) return false;
-    } else if (status !== 'ALL' && t.status !== status) return false;
+    } else if (status === 'SUBTASK_OVERDUE') {
+      if (countOverdueSubTasks(t, today) === 0) return false;
+    } else if (status === 'DUE_SOON') {
+      if (!hasDueSoonRisk(t, today, 3)) return false;
+    } else if (status === 'HIGH_RISK') {
+      if (!['HIGH', 'CRITICAL'].includes(getTaskRiskInfo(t, today).level)) return false;
+    } else if (status === 'CRITICAL_RISK') {
+      if (getTaskRiskInfo(t, today).level !== 'CRITICAL') return false;
+    } else if (status !== 'ALL' && getEffectiveStatus(t, today) !== status) return false;
     if (priority !== 'ALL' && t.priority !== priority) return false;
     if (assignee !== 'ALL' && t.assignee !== assignee) return false;
     if (startDate && (t.dueDate || today) < startDate) return false;
@@ -324,11 +464,12 @@ function updateTrackerUI() {
 function renderStats() {
   const scope = tasks.filter(t => t.trackerId === currentTrackerId && !t.deleted);
   const total = scope.length;
-  const pending = scope.filter(t => t.status === 'PENDING').length;
-  const progress = scope.filter(t => t.status === 'PROGRESS').length;
-  const completed = scope.filter(t => t.status === 'COMPLETED').length;
   const today = getTodayStr();
-  const overdue = scope.reduce((sum, t) => sum + countTaskOverdueUnits(t, today), 0);
+  const pending = scope.filter(t => getEffectiveStatus(t, today) === 'PENDING').length;
+  const progress = scope.filter(t => getEffectiveStatus(t, today) === 'PROGRESS').length;
+  const completed = scope.filter(t => getEffectiveStatus(t, today) === 'COMPLETED').length;
+  const overdue = scope.filter(t => isTaskOverdueEffective(t, today)).length;
+  const overdueUnits = scope.reduce((sum, t) => sum + countTaskOverdueUnits(t, today), 0);
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
   set('stat-total', total); set('stat-pending', pending); set('stat-progress', progress); set('stat-completed', completed); set('stat-overdue', overdue);
   set('stat-pending-pct', total ? Math.round(pending / total * 100) + '%' : '0%');
@@ -336,9 +477,10 @@ function renderStats() {
   set('stat-completed-pct', total ? Math.round(completed / total * 100) + '%' : '0%');
   const lbl = document.getElementById('stat-overdue-lbl');
   if (lbl) {
-    lbl.textContent = overdue ? '조속히 조치 필요' : '매우 양호';
+    lbl.textContent = overdue ? `하위 포함 ${overdueUnits}항목` : '매우 양호';
     lbl.className = `text-xs font-medium ${overdue ? 'text-rose-500 font-semibold' : 'text-emerald-500'}`;
   }
+  renderRiskDashboard(scope);
 }
 function subTaskStatusSelect(parentId, subId, status) {
   status = normalizeStatus(status);
@@ -370,17 +512,24 @@ function renderTable(filtered) {
     const doneSubs = subTasks.filter(st => st.status === 'COMPLETED').length;
     const subOverdueCount = countOverdueSubTasks(t);
     const subOverdueBadge = subOverdueCount ? ` <span class="rounded-lg bg-rose-50 px-2 py-1 text-[10px] font-bold text-rose-700 border border-rose-100">하위 기한 초과 ${subOverdueCount}</span>` : '';
+    const todayStr = getTodayStr();
+    const effectiveStatus = getEffectiveStatus(t, todayStr);
+    const progressPct = getTaskProgress(t);
+    const riskInfo = getTaskRiskInfo(t, todayStr);
+    const bottleneck = getBottleneckSubTask(t, todayStr);
     const timeline = getTimelineStatus(t.dueDate || getTodayStr(), t.status);
+    const riskBadge = riskInfo.level !== 'NONE' ? ` <span class="rounded-lg border px-2 py-1 text-[10px] font-bold ${riskInfo.class}">Risk: ${riskInfo.label} D+${riskInfo.delay}</span>` : '';
+    const bottleneckHTML = bottleneck ? `<div class="pl-6 text-[11px] text-rose-500 mt-1 font-semibold">🔥 Bottleneck: ${escapeHTML(bottleneck.title)} · ${bottleneck.dueDate || '마감 미정'}</div>` : '';
     const tr = document.createElement('tr');
     tr.className = 'hover:bg-slate-50 transition-colors group';
     tr.innerHTML = `
       <td class="px-2 py-4 text-center text-slate-400"><button type="button" class="btn-order-up block mx-auto hover:text-indigo-600" data-id="${t.id}">▲</button><button type="button" class="btn-order-down block mx-auto hover:text-indigo-600" data-id="${t.id}">▼</button></td>
       <td class="px-3 py-4 text-center"><input type="checkbox" class="cb-task rounded border-slate-300 cursor-pointer text-indigo-600 focus:ring-indigo-500" data-id="${t.id}" ${checked ? 'checked' : ''}></td>
-      <td class="px-6 py-4"><div class="flex items-center gap-2"><button type="button" class="btn-toggle-subtasks text-slate-400 hover:text-indigo-600 ${subTasks.length ? '' : 'invisible'}" data-id="${t.id}">${subTasks.length ? (isExpanded ? '▼' : '▶') : ''}</button><span class="font-bold text-slate-900">${escapeHTML(t.title)}</span>${subTasks.length ? `<span class="rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600">하위 업무 ${doneSubs}/${subTasks.length}</span>` : ''}${subOverdueBadge}</div><div class="pl-6 text-xs text-slate-400 mt-1">${escapeHTML(t.notes || '추가 지침 없음')}</div></td>
+      <td class="px-6 py-4"><div class="flex items-center gap-2"><button type="button" class="btn-toggle-subtasks text-slate-400 hover:text-indigo-600 ${subTasks.length ? '' : 'invisible'}" data-id="${t.id}">${subTasks.length ? (isExpanded ? '▼' : '▶') : ''}</button><span class="font-bold text-slate-900">${escapeHTML(t.title)}</span>${subTasks.length ? `<span class="rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600">하위 업무 ${doneSubs}/${subTasks.length}</span>` : ''}${subOverdueBadge}${getEffectiveStatusBadge(effectiveStatus)}${riskBadge}</div><div class="pl-6 text-xs text-slate-400 mt-1">${escapeHTML(t.notes || '추가 지침 없음')} · 진척 ${progressPct}%</div>${bottleneckHTML}</td>
       <td class="px-6 py-4"><div class="inline-flex items-center gap-2"><span class="inline-flex h-8 w-8 items-center justify-center rounded-full ${getAvatarStyle(t.assignee)} text-xs font-bold">${escapeHTML((t.assignee || 'U').charAt(0))}</span><span class="font-semibold">${escapeHTML(t.assignee || '미지정')}</span></div></td>
       <td class="px-6 py-4"><div class="text-xs font-semibold text-slate-600">${t.startDate ? t.startDate.substring(5) : '미정'} ~ ${(t.dueDate || '').substring(5)}</div><span class="mt-1 inline-flex rounded-lg border px-2 py-1 text-xs ${timeline.class}">${timeline.text}</span></td>
       <td class="px-4 py-4 text-center"><span class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold">${getPriorityBadge(t.priority)}</span></td>
-      <td class="px-6 py-4 text-center"><select class="sel-status rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 outline-none focus:border-indigo-500" data-id="${t.id}"><option value="PENDING" ${t.status === 'PENDING' ? 'selected' : ''}>진행 대기 ⌛</option><option value="PROGRESS" ${t.status === 'PROGRESS' ? 'selected' : ''}>진행 중 ⚙️</option><option value="COMPLETED" ${t.status === 'COMPLETED' ? 'selected' : ''}>완료됨 ⭐️</option></select></td>
+      <td class="px-6 py-4 text-center"><div class="mb-1 text-[10px] font-bold text-slate-400">${getStatusKorean(effectiveStatus)}</div><select class="sel-status rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 outline-none focus:border-indigo-500" data-id="${t.id}"><option value="PENDING" ${t.status === 'PENDING' ? 'selected' : ''}>진행 대기 ⌛</option><option value="PROGRESS" ${t.status === 'PROGRESS' ? 'selected' : ''}>진행 중 ⚙️</option><option value="COMPLETED" ${t.status === 'COMPLETED' ? 'selected' : ''}>완료됨 ⭐️</option></select></td>
       <td class="px-6 py-4 text-center"><button type="button" class="btn-edit text-slate-400 hover:text-indigo-600 px-2" data-id="${t.id}">✎</button><button type="button" class="btn-delete text-slate-400 hover:text-rose-600 px-2" data-id="${t.id}">🗑</button></td>`;
     tbody.appendChild(tr);
     if (subTasks.length && isExpanded) {
@@ -389,10 +538,10 @@ function renderTable(filtered) {
         const subAssignee = st.assignee || t.assignee || '미지정';
         const stTimeline = getSubTaskTimelineStatus(st);
         const sr = document.createElement('tr');
-        sr.className = 'bg-slate-50/70 border-l-2 border-l-indigo-500/40 hover:bg-indigo-50/30 transition-colors text-xs';
+        sr.className = isSubTaskOverdue(st) ? 'bg-rose-50/70 border-l-2 border-l-rose-500/60 hover:bg-rose-50 transition-colors text-xs' : 'bg-slate-50/70 border-l-2 border-l-indigo-500/40 hover:bg-indigo-50/30 transition-colors text-xs';
         sr.innerHTML = `
           <td colspan="2"></td>
-          <td class="px-6 py-2 text-slate-600"><div class="flex items-center gap-2 pl-8"><span class="text-slate-300">└─</span><span class="font-semibold ${status === 'COMPLETED' ? 'line-through text-slate-400' : 'text-slate-700'}">${escapeHTML(st.title)}</span><span class="rounded border border-indigo-100 bg-indigo-50 px-1 py-0.5 text-[10px] font-bold text-indigo-700">👤 ${escapeHTML(subAssignee)}</span></div></td>
+          <td class="px-6 py-2 text-slate-600"><div class="flex items-center gap-2 pl-8"><span class="text-slate-300">└─</span><span class="font-semibold ${status === 'COMPLETED' ? 'line-through text-slate-400' : isSubTaskOverdue(st) ? 'text-rose-700' : 'text-slate-700'}">${isSubTaskOverdue(st) ? '🚨 ' : ''}${escapeHTML(st.title)}</span><span class="rounded border border-indigo-100 bg-indigo-50 px-1 py-0.5 text-[10px] font-bold text-indigo-700">👤 ${escapeHTML(subAssignee)}</span></div></td>
           <td class="px-6 py-2 text-center text-slate-400">-</td>
           <td class="px-6 py-2 text-slate-500"><div>📅 ${st.startDate ? st.startDate.substring(5) : '미정'} ~ ${st.dueDate ? st.dueDate.substring(5) : '미정'}</div><span class="mt-1 inline-flex rounded-lg border px-2 py-0.5 text-[10px] ${stTimeline.class}">${stTimeline.text}</span></td>
           <td class="px-4 py-2 text-center text-slate-400">-</td>
@@ -482,7 +631,7 @@ function renderCalendar(filteredTasks) {
       startLine++;
     }
   });
-  const mainClass = item => todayStr > item.dueDate && item.status !== 'COMPLETED' ? 'bg-rose-100 text-rose-800 border border-rose-200' : item.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : item.status === 'PROGRESS' ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-slate-200 text-slate-700';
+  const mainClass = item => getEffectiveStatus(item, todayStr) === 'OVERDUE' ? 'bg-rose-100 text-rose-800 border border-rose-200 font-semibold' : getEffectiveStatus(item, todayStr) === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : getEffectiveStatus(item, todayStr) === 'PROGRESS' ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-slate-200 text-slate-700';
   const subClass = item => normalizeStatus(item.status) === 'COMPLETED' ? 'bg-emerald-50/80 text-emerald-800 border border-dashed border-emerald-300' : isSubTaskOverdue(item, todayStr) ? 'bg-rose-50/90 text-rose-800 border border-dashed border-rose-300 font-semibold' : normalizeStatus(item.status) === 'PROGRESS' ? 'bg-blue-50/80 text-blue-800 border border-dashed border-blue-300' : 'bg-slate-50 text-slate-700 border border-dashed border-slate-300';
 
   if (currentCalMode === 'DAY') {
@@ -527,7 +676,7 @@ function renderCalendar(filteredTasks) {
         if (showText) {
           const txt = document.createElement('div');
           txt.className = 'truncate w-full whitespace-nowrap z-20';
-          txt.innerHTML = item.isSub ? `${isSubTaskOverdue(item, todayStr) ? '🚨' : getStatusIcon(item.status)} ↳ 👤 ${escapeHTML(item.assignee)} | ${escapeHTML(item.title)}` : `${item.status === 'COMPLETED' ? '⭐️' : item.status === 'PROGRESS' ? '⚙️' : '⌛'} ${escapeHTML(item.title)}`;
+          txt.innerHTML = item.isSub ? `${isSubTaskOverdue(item, todayStr) ? '🚨' : getStatusIcon(item.status)} ↳ 👤 ${escapeHTML(item.assignee)} | ${escapeHTML(item.title)}` : `${getEffectiveStatus(item, todayStr) === 'OVERDUE' ? '🚨' : getEffectiveStatus(item, todayStr) === 'COMPLETED' ? '⭐️' : getEffectiveStatus(item, todayStr) === 'PROGRESS' ? '⚙️' : '⌛'} ${escapeHTML(item.title)}`;
           el.appendChild(txt);
         }
         taskContainer.appendChild(el);
@@ -574,7 +723,7 @@ function renderCalendar(filteredTasks) {
       bar.style.width = `calc(${(endMonth - startMonth + 1) / 12 * 100}% - 8px)`;
       bar.style.top = `${g.globalLineStart * rowHeight + 10}px`;
       bar.onclick = () => openTaskModal(g.id);
-      bar.innerHTML = `${g.status === 'COMPLETED' ? '⭐️' : g.status === 'PROGRESS' ? '⚙️' : '⌛'} ${escapeHTML(g.title)}`;
+      bar.innerHTML = `${getEffectiveStatus(g, todayStr) === 'OVERDUE' ? '🚨' : getEffectiveStatus(g, todayStr) === 'COMPLETED' ? '⭐️' : getEffectiveStatus(g, todayStr) === 'PROGRESS' ? '⚙️' : '⌛'} ${escapeHTML(g.title)}`;
       bindGanttTooltip(bar, g.title, `담당자: ${escapeHTML(g.assignee)}<br>기간: ${g.startDate} ~ ${g.dueDate}<br>설명: ${escapeHTML(g.notes || '없음')}`);
       overlay.appendChild(bar);
       if (isCalSubTaskVisible) {
@@ -609,7 +758,7 @@ function renderCalendar(filteredTasks) {
   const monthTasks = filteredTasks.filter(t => dateRangeOverlaps(t, monthStart, monthEnd, todayStr));
   if (!monthTasks.length) { grid.innerHTML = `<div class="text-sm text-slate-400">현재 조건 혹은 조회 기간 중 해당 월(${month + 1}월)의 업무 정보가 존재하지 않습니다.</div>`; return; }
   const cats = { OVERDUE: [], PROGRESS: [], PENDING: [], COMPLETED: [] };
-  monthTasks.forEach(t => { if (isTaskOverdueEffective(t, todayStr)) cats.OVERDUE.push(t); else cats[t.status || 'PENDING'].push(t); });
+  monthTasks.forEach(t => { const es = getEffectiveStatus(t, todayStr); if (es === 'OVERDUE') cats.OVERDUE.push(t); else cats[es || 'PENDING'].push(t); });
   const total = monthTasks.length;
   const done = cats.COMPLETED.length;
   const overdue = monthTasks.reduce((sum, t) => sum + countTaskOverdueUnits(t, todayStr), 0);
@@ -646,10 +795,11 @@ function renderCalendar(filteredTasks) {
   });
 }
 function renderActiveViews() {
+  ensureAdvancedFilterOptions();
   const filtered = getFilteredTasks();
   const fStatus = document.getElementById('filter-status')?.value || 'ALL';
   document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('ring-2', 'ring-indigo-600', 'bg-indigo-50/10'));
-  document.getElementById(`card-${fStatus}`)?.classList.add('ring-2', 'ring-indigo-600', 'bg-indigo-50/10');
+  document.getElementById(`card-${['ALL','PENDING','PROGRESS','COMPLETED','OVERDUE'].includes(fStatus) ? fStatus : 'OVERDUE'}`)?.classList.add('ring-2', 'ring-indigo-600', 'bg-indigo-50/10');
   renderTable(filtered);
   if (currentViewMode === 'CALENDAR') renderCalendar(filtered);
 }
