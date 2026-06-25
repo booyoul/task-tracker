@@ -105,17 +105,50 @@
             setTimeout(() => { t.classList.remove('translate-y-0', 'opacity-100'); t.classList.add('translate-y-10', 'opacity-0'); }, 4000);
         }
 
+        
+        function getServerTimestamp() {
+            return (typeof firebase !== 'undefined' && firebase.firestore && firebase.firestore.FieldValue)
+                ? firebase.firestore.FieldValue.serverTimestamp()
+                : new Date().toISOString();
+        }
+
+        function canWriteToFirestore() {
+            if (!isFirebaseAvailable || !db) return false;
+            if (auth && !isAuthReady) {
+                showToast('Firebase 인증 준비 중입니다. 잠시 후 다시 시도해 주세요.', false);
+                console.warn('Firestore write skipped because auth is not ready.');
+                return false;
+            }
+            return true;
+        }
+
+        function markSaving() { lastSaveState = 'saving'; }
+        function markSaved() { lastSaveState = 'saved'; }
+        function markSaveError() { lastSaveState = 'error'; }
+
         // --- (5) Database CRUD Operations ---
         async function db_addTask(taskData) {
             const coll = getTasksCollection();
             const newId = 'task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
-            const payload = { ...taskData };
-            if (!payload.trackerId) payload.trackerId = currentTrackerId;
-            if (isFirebaseAvailable && db && coll) {
+            const now = getServerTimestamp();
+            const currentTracker = trackers.find(t => t.id === currentTrackerId);
+            const payload = {
+                ...taskData,
+                trackerId: taskData.trackerId || currentTrackerId,
+                trackerName: currentTracker ? currentTracker.name : '',
+                deleted: false,
+                createdAt: now,
+                updatedAt: now
+            };
+            markSaving();
+            if (canWriteToFirestore() && coll) {
                 try {
                     await coll.doc(newId).set(payload, { merge: true });
+                    markSaved();
                 } catch (e) {
+                    markSaveError();
                     console.warn("Firestore 업무 쓰기 오류 발생, 로컬 저장 연동", e);
+                    showToast('Firebase 저장 실패: Console과 Firestore Rules를 확인해 주세요.', false);
                 }
             }
             if (!tasks.some(t => t.id === newId)) tasks.push({ id: newId, ...payload });
@@ -125,17 +158,26 @@
         
         async function db_updateTask(id, taskData) {
             const coll = getTasksCollection();
-            if (isFirebaseAvailable && db && coll) {
+            const currentTracker = trackers.find(t => t.id === (taskData.trackerId || currentTrackerId));
+            const payload = {
+                ...taskData,
+                trackerName: currentTracker ? currentTracker.name : taskData.trackerName,
+                updatedAt: getServerTimestamp()
+            };
+            markSaving();
+            if (canWriteToFirestore() && coll) {
                 try {
-                    // update()는 문서가 없으면 실패하므로 set(..., merge:true)로 문서 누락 상황도 복구합니다.
-                    await coll.doc(id).set(taskData, { merge: true });
+                    await coll.doc(id).set(payload, { merge: true });
+                    markSaved();
                 } catch (e) {
+                    markSaveError();
                     console.warn("Firestore 업무 수정 오류 발생, 로컬 저장 연동", e);
+                    showToast('Firebase 수정 실패: Console과 Firestore Rules를 확인해 주세요.', false);
                 }
             }
             const idx = tasks.findIndex(t => t.id === id);
             if (idx !== -1) {
-                tasks[idx] = { ...tasks[idx], ...taskData };
+                tasks[idx] = { ...tasks[idx], ...payload };
                 updateUI();
             }
         }
@@ -143,54 +185,61 @@
         
         async function db_deleteTask(id) {
             const coll = getTasksCollection();
-            if (isFirebaseAvailable && db && coll && !id.startsWith('local_')) {
+            const payload = { deleted: true, deletedAt: getServerTimestamp(), updatedAt: getServerTimestamp() };
+            markSaving();
+            if (canWriteToFirestore() && coll) {
                 try {
-                    await coll.doc(id).delete();
+                    await coll.doc(id).set(payload, { merge: true });
+                    markSaved();
                 } catch (e) {
-                    console.warn("Firestore 삭제 오류 발생, 로컬 제거 연동", e);
+                    markSaveError();
+                    console.warn("Firestore 소프트 삭제 오류 발생, 로컬 제거 연동", e);
+                    showToast('Firebase 삭제 반영 실패: Console과 Firestore Rules를 확인해 주세요.', false);
                 }
             }
-            // 로컬 배열 및 UI 업데이트 보장
             tasks = tasks.filter(t => t.id !== id);
             selectedTaskIds.delete(id);
             updateUI();
         }
+
         
         async function db_batchDelete(idsSet) {
             const coll = getTasksCollection();
-            if (isFirebaseAvailable && db && coll) {
+            markSaving();
+            if (canWriteToFirestore() && coll) {
                 try {
                     const batch = db.batch();
-                    let count = 0;
                     idsSet.forEach(id => {
-                        if (!id.startsWith('local_')) {
-                            batch.delete(coll.doc(id));
-                            count++;
-                        }
+                        batch.set(coll.doc(id), { deleted: true, deletedAt: getServerTimestamp(), updatedAt: getServerTimestamp() }, { merge: true });
                     });
-                    if (count > 0) {
-                        await batch.commit();
-                    }
+                    await batch.commit();
+                    markSaved();
                 } catch (e) {
-                    console.warn("Firestore 일괄 연산 실패, 로컬 반영 대체", e);
+                    markSaveError();
+                    console.warn("Firestore 일괄 소프트 삭제 실패, 로컬 반영 대체", e);
+                    showToast('Firebase 일괄 삭제 반영 실패: Console과 Firestore Rules를 확인해 주세요.', false);
                 }
             }
-            // 로컬 배열 및 UI 업데이트 보장
             tasks = tasks.filter(t => !idsSet.has(t.id));
             idsSet.clear();
             updateUI();
         }
+
         
         async function db_addTracker(trackerData) {
             const coll = getTrackersCollection();
             const newId = 'tracker_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
-            const payload = { ...trackerData };
-            if (isFirebaseAvailable && db && coll) {
+            const now = getServerTimestamp();
+            const payload = { ...trackerData, deleted: false, createdAt: now, updatedAt: now };
+            markSaving();
+            if (canWriteToFirestore() && coll) {
                 try {
-                    // doc(newId).set을 사용해 로컬 id와 Firestore doc id를 항상 일치시킵니다.
                     await coll.doc(newId).set(payload, { merge: true });
+                    markSaved();
                 } catch(e) {
+                    markSaveError();
                     console.warn("Firestore 트래커 추가 실패, 로컬 처리 진행", e);
+                    showToast('Firebase 트래커 저장 실패: Console과 Firestore Rules를 확인해 주세요.', false);
                 }
             }
             if (!trackers.some(t => t.id === newId)) trackers.push({ id: newId, ...payload });
@@ -203,21 +252,29 @@
         
         async function db_updateTracker(id, trackerData) {
             const coll = getTrackersCollection();
-            if (isFirebaseAvailable && db && coll) {
+            const payload = { ...trackerData, updatedAt: getServerTimestamp() };
+            markSaving();
+            if (canWriteToFirestore() && coll) {
                 try {
-                    // 기존 코드의 update()는 Firestore에 문서가 없으면 실패했습니다.
-                    // set(..., merge:true)는 기본 트래커처럼 아직 DB에 없는 문서도 생성/갱신합니다.
-                    await coll.doc(id).set(trackerData, { merge: true });
+                    await coll.doc(id).set(payload, { merge: true });
+                    // tracker명 변경 시 관련 task snapshot 명칭도 같이 보정합니다.
+                    const tColl = getTasksCollection();
+                    if (tColl && trackerData.name) {
+                        const snapshot = await tColl.where('trackerId', '==', id).get();
+                        const batch = db.batch();
+                        snapshot.docs.forEach(doc => batch.set(doc.ref, { trackerName: trackerData.name, updatedAt: getServerTimestamp() }, { merge: true }));
+                        if (!snapshot.empty) await batch.commit();
+                    }
+                    markSaved();
                 } catch(e) {
+                    markSaveError();
                     console.warn("Firestore 트래커 수정 실패, 로컬 처리 진행", e);
+                    showToast('Firebase 트래커 수정 실패: Console과 Firestore Rules를 확인해 주세요.', false);
                 }
             }
             const idx = trackers.findIndex(t => t.id === id);
-            if (idx !== -1) {
-                trackers[idx] = { ...trackers[idx], ...trackerData };
-            } else {
-                trackers.push({ id, ...trackerData });
-            }
+            if (idx !== -1) trackers[idx] = { ...trackers[idx], ...payload };
+            else trackers.push({ id, ...payload });
             updateTrackerUI();
             updateUI();
         }
@@ -225,26 +282,24 @@
         
         async function db_deleteTracker(id) {
             const coll = getTrackersCollection();
-            if (isFirebaseAvailable && db && coll) {
-                try {
-                    await coll.doc(id).delete();
-                } catch(e) {
-                    console.warn("Firestore 트래커 삭제 실패", e);
-                }
-            }
             const tColl = getTasksCollection();
-            if (isFirebaseAvailable && db && tColl) {
+            markSaving();
+            if (canWriteToFirestore() && coll) {
                 try {
-                    const snapshot = await tColl.where("trackerId", "==", id).get();
-                    const batch = db.batch();
-                    snapshot.docs.forEach(doc => batch.delete(doc.ref));
-                    await batch.commit();
+                    await coll.doc(id).set({ deleted: true, deletedAt: getServerTimestamp(), updatedAt: getServerTimestamp() }, { merge: true });
+                    if (tColl) {
+                        const snapshot = await tColl.where("trackerId", "==", id).get();
+                        const batch = db.batch();
+                        snapshot.docs.forEach(doc => batch.set(doc.ref, { deleted: true, deletedAt: getServerTimestamp(), updatedAt: getServerTimestamp() }, { merge: true }));
+                        if (!snapshot.empty) await batch.commit();
+                    }
+                    markSaved();
                 } catch(e) {
-                    console.warn("하위 태스크 배치 삭제 보류", e);
+                    markSaveError();
+                    console.warn("트래커 소프트 삭제 실패", e);
+                    showToast('Firebase 트래커 삭제 반영 실패: Console과 Firestore Rules를 확인해 주세요.', false);
                 }
             }
-            
-            // 로컬 배열 및 UI 업데이트 보장
             tasks = tasks.filter(t => t.trackerId !== id);
             trackers = trackers.filter(t => t.id !== id);
             if(trackers.length === 0) {
@@ -255,6 +310,7 @@
             updateTrackerUI();
             updateUI();
         }
+
 
         // --- (6) Core UI Rendering Functions ---
         function buildAssigneeDropdownFilter() {
@@ -1203,26 +1259,28 @@
             if (deletionHistory.length === 0) return;
             const last = deletionHistory.pop();
             const coll = getTasksCollection();
-
-            if (isFirebaseAvailable && db && coll) {
+            if (canWriteToFirestore() && coll) {
                 try {
                     const batch = db.batch();
-                    last.items.forEach(t => { const { id, ...data } = t; batch.set(coll.doc(id), data); });
+                    last.items.forEach(t => {
+                        const { id, ...data } = t;
+                        batch.set(coll.doc(id), { ...data, deleted: false, deletedAt: null, updatedAt: getServerTimestamp() }, { merge: true });
+                    });
                     await batch.commit();
-                    
-                    last.items.forEach(t => { tasks.push(t); }); // 로컬 반영
+                    last.items.forEach(t => { if (!tasks.some(x => x.id === t.id)) tasks.push({ ...t, deleted: false, deletedAt: null }); });
                     showToast(`${last.items.length}개 복원됨.`);
                     updateUI();
                     return;
                 } catch (e) {
                     console.warn("Firestore 실행 취소 복원 실패, 임시 메모리 반영", e);
+                    showToast('Firebase 복원 반영 실패: Console과 Firestore Rules를 확인해 주세요.', false);
                 }
             }
-            
-            last.items.forEach(t => { tasks.push(t); });
+            last.items.forEach(t => { if (!tasks.some(x => x.id === t.id)) tasks.push({ ...t, deleted: false, deletedAt: null }); });
             showToast(`${last.items.length}개 복원됨.`);
             updateUI();
         }
+
         function handleTableClick(e) {
             const editBtn = e.target.closest('.btn-edit'); 
             const delBtn = e.target.closest('.btn-delete');
@@ -1338,7 +1396,7 @@
                     } else {
                         imp.forEach(t => {
                             const newId = 'local_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
-                            tasks.push({ id: newId, trackerId: currentTrackerId, ...t });
+                            tasks.push({ id: newId, trackerId: currentTrackerId, deleted: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), ...t });
                         });
                         updateUI();
                     }
@@ -1400,7 +1458,8 @@ async function ensureDefaultTrackersInFirestore() {
                     const ref = coll.doc(t.id);
                     const snap = await ref.get();
                     if (!snap.exists) {
-                        await ref.set({ name: t.name, desc: t.desc || '' }, { merge: true });
+                        const now = getServerTimestamp();
+                        await ref.set({ name: t.name, desc: t.desc || '', deleted: false, createdAt: now, updatedAt: now }, { merge: true });
                     }
                 }
             } catch (e) {
@@ -1417,9 +1476,11 @@ async function ensureDefaultTrackersInFirestore() {
             if (typeof unsubscribeTasks === 'function') unsubscribeTasks();
 
             unsubscribeTrackers = trackersColl.onSnapshot(snapshot => {
-                if (!snapshot.empty) {
-                    trackers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    const savedTracker = localStorage.getItem('flow_current_tracker');
+                trackers = snapshot.docs
+                    .map(doc => ({ id: doc.id, ...doc.data() }))
+                    .filter(t => t.deleted !== true);
+                const savedTracker = localStorage.getItem('flow_current_tracker');
+                if (trackers.length > 0) {
                     if (savedTracker && trackers.some(t => t.id === savedTracker)) {
                         currentTrackerId = savedTracker;
                     } else if (!trackers.some(t => t.id === currentTrackerId)) {
@@ -1435,7 +1496,9 @@ async function ensureDefaultTrackersInFirestore() {
             });
 
             unsubscribeTasks = tasksColl.onSnapshot(snapshot => {
-                tasks = snapshot.empty ? getMockTasks() : snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                tasks = snapshot.docs
+                    .map(doc => ({ id: doc.id, ...doc.data() }))
+                    .filter(t => t.deleted !== true);
                 updateTrackerUI();
                 updateUI();
             }, error => {
@@ -1465,11 +1528,16 @@ async function ensureDefaultTrackersInFirestore() {
                 initAuth().then(() => {
                     auth.onAuthStateChanged(user => {
                         if (user) {
+                            isAuthReady = true;
                             fetchInitialData();
+                        } else {
+                            isAuthReady = false;
                         }
                     });
                 }).catch(e => {
+                    isAuthReady = false;
                     console.error("Auth initialization failed", e);
+                    showToast('Firebase 인증 실패: Authentication 설정을 확인해 주세요.', false);
                     updateUI(); // 오프라인 모드로 폴백
                 });
             } else {
