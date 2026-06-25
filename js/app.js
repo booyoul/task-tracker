@@ -1876,3 +1876,74 @@ async function ensureDefaultTrackersInFirestore() {
                 if (typeof unsubscribeTrackers === 'function') unsubscribeTrackers();
             });
         });
+
+/* --------------------------------------------------------------------------
+ * Smart Task Flow Patch: Sub-task status editing in Task Detail Modal
+ * Date: 2026-06-25
+ * Apply: Paste this block at the VERY END of the existing app.js, or load it
+ *        after app.js as a separate script.
+ * -------------------------------------------------------------------------- */
+(function applySubTaskStatusModalPatch() {
+    function getSubTaskStatusMeta(status) {
+        if (status === 'COMPLETED') {
+            return { label: '✓ 완료', className: 'text-emerald-600', textClass: 'line-through opacity-50' };
+        }
+        if (status === 'PROGRESS') {
+            return { label: '⚙️ 진행 중', className: 'text-blue-600', textClass: '' };
+        }
+        return { label: '⌛ 대기', className: 'text-amber-500', textClass: '' };
+    }
+
+    window.updateSubTaskStatusInModal = function(index, status) {
+        if (!Array.isArray(currentSubTasks) || !currentSubTasks[index]) return;
+        currentSubTasks[index].status = status || 'PENDING';
+        renderModalSubTasks();
+    };
+
+    renderModalSubTasks = function() {
+        const container = document.getElementById('subtask-list-container');
+        if (!container) return;
+        container.innerHTML = '';
+
+        if (!Array.isArray(currentSubTasks) || currentSubTasks.length === 0) {
+            container.innerHTML = '<li class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-400">등록된 하위 과제가 없습니다.</li>';
+            return;
+        }
+
+        currentSubTasks.forEach((st, idx) => {
+            const normalizedStatus = st.status || 'PENDING';
+            const meta = getSubTaskStatusMeta(normalizedStatus);
+            const startText = st.startDate ? st.startDate.substring(5) : '미정';
+            const dueText = st.dueDate ? st.dueDate.substring(5) : '미정';
+
+            const li = document.createElement('li');
+            li.className = 'flex flex-col gap-2 rounded-xl border border-slate-200/60 bg-slate-50 p-2 text-xs transition-colors hover:bg-slate-100/50 sm:flex-row sm:items-center sm:justify-between';
+            li.innerHTML = `
+                <div class="flex min-w-0 flex-1 items-center gap-2">
+                    <span class="shrink-0 font-bold ${meta.className}">${meta.label}</span>
+                    <span class="min-w-0 truncate font-medium text-slate-700 ${meta.textClass}">
+                        ${escapeHTML(st.title)}
+                        <span class="ml-1 text-[10px] font-semibold text-slate-400">📅 ${startText} ~ ${dueText}</span>
+                        <span class="ml-1 rounded border border-indigo-100 bg-indigo-50 px-1 py-0.2 text-[9px] font-bold text-indigo-700">👤 ${escapeHTML(st.assignee || '미지정')}</span>
+                    </span>
+                </div>
+                <div class="flex shrink-0 items-center justify-end gap-1.5">
+                    <select
+                        class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 outline-none transition focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100"
+                        title="하위 과제 상태 변경"
+                        onchange="updateSubTaskStatusInModal(${idx}, this.value)">
+                        <option value="PENDING" ${normalizedStatus === 'PENDING' ? 'selected' : ''}>진행 대기</option>
+                        <option value="PROGRESS" ${normalizedStatus === 'PROGRESS' ? 'selected' : ''}>진행 중</option>
+                        <option value="COMPLETED" ${normalizedStatus === 'COMPLETED' ? 'selected' : ''}>완료</option>
+                    </select>
+                    <button type="button" class="px-1 font-bold text-indigo-600 hover:text-indigo-800" onclick="editSubTaskInModal(${idx})">수정</button>
+                    <span class="text-slate-300">|</span>
+                    <button type="button" class="px-1 font-semibold text-rose-500 hover:text-rose-700" onclick="removeSubTaskFromModal(${idx})">삭제</button>
+                </div>
+            `;
+            container.appendChild(li);
+        });
+    };
+
+    console.info('Smart Task Flow sub-task status modal patch v20260625 loaded');
+})();
