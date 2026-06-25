@@ -33,6 +33,26 @@ function getTimelineStatus(dueStr, status) {
   if (diff === 0) return { text: '오늘 마감', class: 'bg-amber-50 text-amber-700 border-amber-200 font-semibold' };
   return { text: `D-${diff}`, class: 'bg-slate-100 text-slate-700 border-slate-200' };
 }
+
+function isSubTaskOverdue(st, todayStr = getTodayStr()) {
+  return !!st && normalizeStatus(st.status) !== 'COMPLETED' && !!st.dueDate && String(st.dueDate) < todayStr;
+}
+function countOverdueSubTasks(task, todayStr = getTodayStr()) {
+  return (Array.isArray(task?.subTasks) ? task.subTasks : []).filter(st => isSubTaskOverdue(st, todayStr)).length;
+}
+function isMainTaskOverdue(task, todayStr = getTodayStr()) {
+  return !!task && normalizeStatus(task.status) !== 'COMPLETED' && !!task.dueDate && String(task.dueDate) < todayStr;
+}
+function isTaskOverdueEffective(task, todayStr = getTodayStr()) {
+  return isMainTaskOverdue(task, todayStr) || countOverdueSubTasks(task, todayStr) > 0;
+}
+function countTaskOverdueUnits(task, todayStr = getTodayStr()) {
+  return (isMainTaskOverdue(task, todayStr) ? 1 : 0) + countOverdueSubTasks(task, todayStr);
+}
+function getSubTaskTimelineStatus(st, todayStr = getTodayStr()) {
+  return getTimelineStatus(st?.dueDate || todayStr, normalizeStatus(st?.status));
+}
+
 function showToast(msg, isSuccess = true) {
   const t = document.getElementById('toast');
   const txt = document.getElementById('toast-text');
@@ -244,7 +264,7 @@ function getFilteredTasks() {
     if (t.deleted === true || t.trackerId !== currentTrackerId) return false;
     if (search && !String(t.title || '').toLowerCase().includes(search) && !String(t.assignee || '').toLowerCase().includes(search)) return false;
     if (status === 'OVERDUE') {
-      if (t.status === 'COMPLETED' || (t.dueDate || today) >= today) return false;
+      if (!isTaskOverdueEffective(t, today)) return false;
     } else if (status !== 'ALL' && t.status !== status) return false;
     if (priority !== 'ALL' && t.priority !== priority) return false;
     if (assignee !== 'ALL' && t.assignee !== assignee) return false;
@@ -307,7 +327,8 @@ function renderStats() {
   const pending = scope.filter(t => t.status === 'PENDING').length;
   const progress = scope.filter(t => t.status === 'PROGRESS').length;
   const completed = scope.filter(t => t.status === 'COMPLETED').length;
-  const overdue = scope.filter(t => t.status !== 'COMPLETED' && (t.dueDate || '') < getTodayStr()).length;
+  const today = getTodayStr();
+  const overdue = scope.reduce((sum, t) => sum + countTaskOverdueUnits(t, today), 0);
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
   set('stat-total', total); set('stat-pending', pending); set('stat-progress', progress); set('stat-completed', completed); set('stat-overdue', overdue);
   set('stat-pending-pct', total ? Math.round(pending / total * 100) + '%' : '0%');
@@ -347,13 +368,15 @@ function renderTable(filtered) {
     const checked = selectedTaskIds.has(t.id);
     if (checked) selectedCount++;
     const doneSubs = subTasks.filter(st => st.status === 'COMPLETED').length;
+    const subOverdueCount = countOverdueSubTasks(t);
+    const subOverdueBadge = subOverdueCount ? ` <span class="rounded-lg bg-rose-50 px-2 py-1 text-[10px] font-bold text-rose-700 border border-rose-100">하위 기한 초과 ${subOverdueCount}</span>` : '';
     const timeline = getTimelineStatus(t.dueDate || getTodayStr(), t.status);
     const tr = document.createElement('tr');
     tr.className = 'hover:bg-slate-50 transition-colors group';
     tr.innerHTML = `
       <td class="px-2 py-4 text-center text-slate-400"><button type="button" class="btn-order-up block mx-auto hover:text-indigo-600" data-id="${t.id}">▲</button><button type="button" class="btn-order-down block mx-auto hover:text-indigo-600" data-id="${t.id}">▼</button></td>
       <td class="px-3 py-4 text-center"><input type="checkbox" class="cb-task rounded border-slate-300 cursor-pointer text-indigo-600 focus:ring-indigo-500" data-id="${t.id}" ${checked ? 'checked' : ''}></td>
-      <td class="px-6 py-4"><div class="flex items-center gap-2"><button type="button" class="btn-toggle-subtasks text-slate-400 hover:text-indigo-600 ${subTasks.length ? '' : 'invisible'}" data-id="${t.id}">${subTasks.length ? (isExpanded ? '▼' : '▶') : ''}</button><span class="font-bold text-slate-900">${escapeHTML(t.title)}</span>${subTasks.length ? `<span class="rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600">하위 업무 ${doneSubs}/${subTasks.length}</span>` : ''}</div><div class="pl-6 text-xs text-slate-400 mt-1">${escapeHTML(t.notes || '추가 지침 없음')}</div></td>
+      <td class="px-6 py-4"><div class="flex items-center gap-2"><button type="button" class="btn-toggle-subtasks text-slate-400 hover:text-indigo-600 ${subTasks.length ? '' : 'invisible'}" data-id="${t.id}">${subTasks.length ? (isExpanded ? '▼' : '▶') : ''}</button><span class="font-bold text-slate-900">${escapeHTML(t.title)}</span>${subTasks.length ? `<span class="rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600">하위 업무 ${doneSubs}/${subTasks.length}</span>` : ''}${subOverdueBadge}</div><div class="pl-6 text-xs text-slate-400 mt-1">${escapeHTML(t.notes || '추가 지침 없음')}</div></td>
       <td class="px-6 py-4"><div class="inline-flex items-center gap-2"><span class="inline-flex h-8 w-8 items-center justify-center rounded-full ${getAvatarStyle(t.assignee)} text-xs font-bold">${escapeHTML((t.assignee || 'U').charAt(0))}</span><span class="font-semibold">${escapeHTML(t.assignee || '미지정')}</span></div></td>
       <td class="px-6 py-4"><div class="text-xs font-semibold text-slate-600">${t.startDate ? t.startDate.substring(5) : '미정'} ~ ${(t.dueDate || '').substring(5)}</div><span class="mt-1 inline-flex rounded-lg border px-2 py-1 text-xs ${timeline.class}">${timeline.text}</span></td>
       <td class="px-4 py-4 text-center"><span class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold">${getPriorityBadge(t.priority)}</span></td>
@@ -364,13 +387,14 @@ function renderTable(filtered) {
       subTasks.forEach(st => {
         const status = normalizeStatus(st.status);
         const subAssignee = st.assignee || t.assignee || '미지정';
+        const stTimeline = getSubTaskTimelineStatus(st);
         const sr = document.createElement('tr');
         sr.className = 'bg-slate-50/70 border-l-2 border-l-indigo-500/40 hover:bg-indigo-50/30 transition-colors text-xs';
         sr.innerHTML = `
           <td colspan="2"></td>
           <td class="px-6 py-2 text-slate-600"><div class="flex items-center gap-2 pl-8"><span class="text-slate-300">└─</span><span class="font-semibold ${status === 'COMPLETED' ? 'line-through text-slate-400' : 'text-slate-700'}">${escapeHTML(st.title)}</span><span class="rounded border border-indigo-100 bg-indigo-50 px-1 py-0.5 text-[10px] font-bold text-indigo-700">👤 ${escapeHTML(subAssignee)}</span></div></td>
           <td class="px-6 py-2 text-center text-slate-400">-</td>
-          <td class="px-6 py-2 text-slate-500">📅 ${st.startDate ? st.startDate.substring(5) : '미정'} ~ ${st.dueDate ? st.dueDate.substring(5) : '미정'}</td>
+          <td class="px-6 py-2 text-slate-500"><div>📅 ${st.startDate ? st.startDate.substring(5) : '미정'} ~ ${st.dueDate ? st.dueDate.substring(5) : '미정'}</div><span class="mt-1 inline-flex rounded-lg border px-2 py-0.5 text-[10px] ${stTimeline.class}">${stTimeline.text}</span></td>
           <td class="px-4 py-2 text-center text-slate-400">-</td>
           <td class="px-6 py-2 text-center">${subTaskStatusSelect(t.id, st.id, status)}</td>
           <td class="px-6 py-2 text-center text-slate-300">-</td>`;
@@ -395,7 +419,8 @@ function buildMonthlySubTaskHTML(task, monthStart, monthEnd, todayStr) {
   let html = '<div class="mt-2 space-y-1">';
   visibleSubTasks.forEach(st => {
     const status = normalizeStatus(st.status);
-    html += `<div class="truncate text-[10px] ${status === 'COMPLETED' ? 'text-slate-400 line-through' : status === 'PROGRESS' ? 'text-blue-600' : 'text-slate-600'}">${getStatusIcon(status)} ${escapeHTML(st.title)} <span class="text-slate-400">${st.dueDate ? st.dueDate.substring(5) : ''}</span></div>`;
+    const overdue = isSubTaskOverdue(st, todayStr);
+    html += `<div class="truncate text-[10px] ${status === 'COMPLETED' ? 'text-slate-400 line-through' : overdue ? 'text-rose-700 font-semibold' : status === 'PROGRESS' ? 'text-blue-600' : 'text-slate-600'}">${overdue ? '🚨' : getStatusIcon(status)} ${escapeHTML(st.title)} <span class="${overdue ? 'text-rose-500' : 'text-slate-400'}">${st.dueDate ? st.dueDate.substring(5) : ''}</span></div>`;
   });
   const hidden = allSubTasks.length - visibleSubTasks.length;
   if (hidden > 0) html += `<div class="text-[10px] text-slate-400">외 ${hidden}건 숨김</div>`;
@@ -458,7 +483,7 @@ function renderCalendar(filteredTasks) {
     }
   });
   const mainClass = item => todayStr > item.dueDate && item.status !== 'COMPLETED' ? 'bg-rose-100 text-rose-800 border border-rose-200' : item.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : item.status === 'PROGRESS' ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-slate-200 text-slate-700';
-  const subClass = status => status === 'COMPLETED' ? 'bg-emerald-50/80 text-emerald-800 border border-dashed border-emerald-300' : status === 'PROGRESS' ? 'bg-blue-50/80 text-blue-800 border border-dashed border-blue-300' : 'bg-slate-50 text-slate-700 border border-dashed border-slate-300';
+  const subClass = item => normalizeStatus(item.status) === 'COMPLETED' ? 'bg-emerald-50/80 text-emerald-800 border border-dashed border-emerald-300' : isSubTaskOverdue(item, todayStr) ? 'bg-rose-50/90 text-rose-800 border border-dashed border-rose-300 font-semibold' : normalizeStatus(item.status) === 'PROGRESS' ? 'bg-blue-50/80 text-blue-800 border border-dashed border-blue-300' : 'bg-slate-50 text-slate-700 border border-dashed border-slate-300';
 
   if (currentCalMode === 'DAY') {
     weekdayHeader?.classList.remove('hidden');
@@ -496,13 +521,13 @@ function renderCalendar(filteredTasks) {
         else shape += ' mx-0 px-0 rounded-none';
         if (!isStart && !isWeekStart) shape += ' -ml-[1px] relative z-10';
         const el = document.createElement('div');
-        el.className = `text-[10px] font-semibold cursor-pointer transition-all hover:scale-[1.02] ${item.isSub ? subClass(item.status) : mainClass(item)} ${shape}`;
+        el.className = `text-[10px] font-semibold cursor-pointer transition-all hover:scale-[1.02] ${item.isSub ? subClass(item) : mainClass(item)} ${shape}`;
         el.onclick = () => openTaskModal(item.parentId);
         bindGanttTooltip(el, item.title, item.isSub ? `[하위업무] 상위: ${escapeHTML(item.parentTitle)}<br>담당자: ${escapeHTML(item.assignee)}<br>기간: ${item.start} ~ ${item.end}<br>상태: ${getStatusKorean(item.status)}` : `[본업무] 담당자: ${escapeHTML(item.assignee)}<br>기간: ${item.start} ~ ${item.end}<br>메모: ${escapeHTML(item.notes || '없음')}`);
         if (showText) {
           const txt = document.createElement('div');
           txt.className = 'truncate w-full whitespace-nowrap z-20';
-          txt.innerHTML = item.isSub ? `${getStatusIcon(item.status)} ↳ 👤 ${escapeHTML(item.assignee)} | ${escapeHTML(item.title)}` : `${item.status === 'COMPLETED' ? '⭐️' : item.status === 'PROGRESS' ? '⚙️' : '⌛'} ${escapeHTML(item.title)}`;
+          txt.innerHTML = item.isSub ? `${isSubTaskOverdue(item, todayStr) ? '🚨' : getStatusIcon(item.status)} ↳ 👤 ${escapeHTML(item.assignee)} | ${escapeHTML(item.title)}` : `${item.status === 'COMPLETED' ? '⭐️' : item.status === 'PROGRESS' ? '⚙️' : '⌛'} ${escapeHTML(item.title)}`;
           el.appendChild(txt);
         }
         taskContainer.appendChild(el);
@@ -560,12 +585,12 @@ function renderCalendar(filteredTasks) {
           const sm = stStart.getFullYear() < year ? 0 : stStart.getMonth();
           const em = stEnd.getFullYear() > year ? 11 : stEnd.getMonth();
           const sb = document.createElement('div');
-          sb.className = `absolute h-5 rounded-lg shadow-sm text-[9.5px] font-bold flex items-center px-1.5 cursor-pointer transition-all hover:scale-[1.01] pointer-events-auto truncate ${subClass(st.status)}`;
+          sb.className = `absolute h-5 rounded-lg shadow-sm text-[9.5px] font-bold flex items-center px-1.5 cursor-pointer transition-all hover:scale-[1.01] pointer-events-auto truncate ${subClass(st)}`;
           sb.style.left = `calc(${sm / 12 * 100}% + 4px)`;
           sb.style.width = `calc(${(em - sm + 1) / 12 * 100}% - 8px)`;
           sb.style.top = `${(g.globalLineStart + 1 + idx) * rowHeight + 10}px`;
           sb.onclick = () => openTaskModal(g.id);
-          sb.innerHTML = `${getStatusIcon(st.status)} ↳ 👤 ${escapeHTML(st.assignee)} | ${escapeHTML(st.title)}`;
+          sb.innerHTML = `${isSubTaskOverdue(st, todayStr) ? '🚨' : getStatusIcon(st.status)} ↳ 👤 ${escapeHTML(st.assignee)} | ${escapeHTML(st.title)}`;
           bindGanttTooltip(sb, st.title, `상위 업무: ${escapeHTML(g.title)}<br>담당자: ${escapeHTML(st.assignee)}<br>기간: ${st.startDate} ~ ${st.dueDate}<br>상태: ${getStatusKorean(st.status)}`);
           overlay.appendChild(sb);
         });
@@ -584,15 +609,15 @@ function renderCalendar(filteredTasks) {
   const monthTasks = filteredTasks.filter(t => dateRangeOverlaps(t, monthStart, monthEnd, todayStr));
   if (!monthTasks.length) { grid.innerHTML = `<div class="text-sm text-slate-400">현재 조건 혹은 조회 기간 중 해당 월(${month + 1}월)의 업무 정보가 존재하지 않습니다.</div>`; return; }
   const cats = { OVERDUE: [], PROGRESS: [], PENDING: [], COMPLETED: [] };
-  monthTasks.forEach(t => { if (t.status !== 'COMPLETED' && (t.dueDate || '') < todayStr) cats.OVERDUE.push(t); else cats[t.status || 'PENDING'].push(t); });
+  monthTasks.forEach(t => { if (isTaskOverdueEffective(t, todayStr)) cats.OVERDUE.push(t); else cats[t.status || 'PENDING'].push(t); });
   const total = monthTasks.length;
   const done = cats.COMPLETED.length;
-  const overdue = cats.OVERDUE.length;
+  const overdue = monthTasks.reduce((sum, t) => sum + countTaskOverdueUnits(t, todayStr), 0);
   const subTotal = monthTasks.reduce((sum, t) => sum + ((t.subTasks || []).length), 0);
   const subDone = monthTasks.reduce((sum, t) => sum + ((t.subTasks || []).filter(st => st.status === 'COMPLETED').length), 0);
   const panel = document.createElement('div');
   panel.className = 'grid grid-cols-2 md:grid-cols-4 gap-3';
-  panel.innerHTML = `<div class="bg-white rounded-xl p-3 border"><div class="text-xs text-slate-400">월간 업무</div><div class="text-xl font-bold">${total}</div><div class="text-[10px] text-slate-400">진행 ${cats.PROGRESS.length} · 대기 ${cats.PENDING.length}</div></div><div class="bg-white rounded-xl p-3 border"><div class="text-xs text-slate-400">완료율</div><div class="text-xl font-bold">${Math.round(done / total * 100)}%</div><div class="text-[10px] text-slate-400">완료 ${done}/${total}</div></div><div class="bg-white rounded-xl p-3 border"><div class="text-xs text-slate-400">지연율</div><div class="text-xl font-bold text-rose-600">${Math.round(overdue / total * 100)}%</div><div class="text-[10px] text-slate-400">지연 ${overdue}/${total}</div></div><div class="bg-white rounded-xl p-3 border"><div class="text-xs text-slate-400">하위 업무 완료</div><div class="text-xl font-bold">${subDone}/${subTotal}</div></div>`;
+  panel.innerHTML = `<div class="bg-white rounded-xl p-3 border"><div class="text-xs text-slate-400">월간 업무</div><div class="text-xl font-bold">${total}</div><div class="text-[10px] text-slate-400">진행 ${cats.PROGRESS.length} · 대기 ${cats.PENDING.length}</div></div><div class="bg-white rounded-xl p-3 border"><div class="text-xs text-slate-400">완료율</div><div class="text-xl font-bold">${Math.round(done / total * 100)}%</div><div class="text-[10px] text-slate-400">완료 ${done}/${total}</div></div><div class="bg-white rounded-xl p-3 border"><div class="text-xs text-slate-400">지연율</div><div class="text-xl font-bold text-rose-600">${Math.round(overdue / Math.max(total + subTotal, 1) * 100)}%</div><div class="text-[10px] text-slate-400">지연 ${overdue}/${total + subTotal}</div></div><div class="bg-white rounded-xl p-3 border"><div class="text-xs text-slate-400">하위 업무 완료</div><div class="text-xl font-bold">${subDone}/${subTotal}</div></div>`;
   grid.appendChild(panel);
   [
     { key: 'OVERDUE', label: '🚨 일정 초과 및 지연 상태', style: 'bg-rose-50/75 border-rose-100 text-rose-800' },
@@ -608,7 +633,8 @@ function renderCalendar(filteredTasks) {
     cards.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5';
     cats[cat.key].forEach(t => {
       const { allSubTasks, visibleSubTasks } = getMonthlySubTasks(t, monthStart, monthEnd, todayStr);
-      const badge = allSubTasks.length ? `<span class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-600">하위 ${visibleSubTasks.length}/${allSubTasks.length}</span>` : '';
+      const subOverdueCount = countOverdueSubTasks(t, todayStr);
+      const badge = allSubTasks.length ? `<span class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-600">하위 ${visibleSubTasks.length}/${allSubTasks.length}</span>${subOverdueCount ? ` <span class="rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-rose-700 border border-rose-100">하위 초과 ${subOverdueCount}</span>` : ''}` : '';
       const card = document.createElement('div');
       card.className = 'bg-white rounded-xl p-3 border border-slate-200/60 shadow-sm cursor-pointer transition hover:border-indigo-400 hover:shadow-md';
       card.onclick = () => openTaskModal(t.id);
@@ -668,9 +694,10 @@ function renderModalSubTasks() {
   }
   currentSubTasks.forEach((st, idx) => {
     const status = normalizeStatus(st.status);
+    const overdue = isSubTaskOverdue(st);
     const li = document.createElement('li');
     li.className = 'flex flex-col gap-2 rounded-xl border border-slate-200/60 bg-slate-50 p-2 text-xs hover:bg-slate-100/50 sm:flex-row sm:items-center sm:justify-between';
-    li.innerHTML = `<div class="flex min-w-0 flex-1 items-center gap-2"><span class="shrink-0 font-bold ${status === 'COMPLETED' ? 'text-emerald-600' : status === 'PROGRESS' ? 'text-blue-600' : 'text-amber-500'}">${getStatusIcon(status)} ${getStatusKorean(status).replace('됨', '')}</span><span class="min-w-0 truncate font-medium text-slate-700 ${status === 'COMPLETED' ? 'line-through opacity-50' : ''}">${escapeHTML(st.title)} <span class="text-[10px] text-slate-400 font-semibold">📅 ${st.startDate ? st.startDate.substring(5) : '미정'} ~ ${st.dueDate ? st.dueDate.substring(5) : '미정'}</span> <span class="bg-indigo-50 text-indigo-700 border border-indigo-100 px-1 py-0.2 rounded text-[9px] font-bold">👤 ${escapeHTML(st.assignee || '미지정')}</span></span></div><div class="flex shrink-0 items-center justify-end gap-1.5"><select class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 outline-none focus:border-indigo-500" onchange="updateSubTaskStatusInModal(${idx}, this.value)"><option value="PENDING" ${status === 'PENDING' ? 'selected' : ''}>진행 대기</option><option value="PROGRESS" ${status === 'PROGRESS' ? 'selected' : ''}>진행 중</option><option value="COMPLETED" ${status === 'COMPLETED' ? 'selected' : ''}>완료</option></select><button type="button" class="px-1 font-bold text-indigo-600 hover:text-indigo-800" onclick="editSubTaskInModal(${idx})">수정</button><span class="text-slate-300">|</span><button type="button" class="px-1 font-semibold text-rose-500 hover:text-rose-700" onclick="removeSubTaskFromModal(${idx})">삭제</button></div>`;
+    li.innerHTML = `<div class="flex min-w-0 flex-1 items-center gap-2"><span class="shrink-0 font-bold ${status === 'COMPLETED' ? 'text-emerald-600' : overdue ? 'text-rose-600' : status === 'PROGRESS' ? 'text-blue-600' : 'text-amber-500'}">${overdue ? '🚨 기한 초과' : getStatusIcon(status) + ' ' + getStatusKorean(status).replace('됨', '')}</span><span class="min-w-0 truncate font-medium text-slate-700 ${status === 'COMPLETED' ? 'line-through opacity-50' : ''}">${escapeHTML(st.title)} <span class="text-[10px] text-slate-400 font-semibold">📅 ${st.startDate ? st.startDate.substring(5) : '미정'} ~ ${st.dueDate ? st.dueDate.substring(5) : '미정'}</span> <span class="bg-indigo-50 text-indigo-700 border border-indigo-100 px-1 py-0.2 rounded text-[9px] font-bold">👤 ${escapeHTML(st.assignee || '미지정')}</span></span></div><div class="flex shrink-0 items-center justify-end gap-1.5"><select class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 outline-none focus:border-indigo-500" onchange="updateSubTaskStatusInModal(${idx}, this.value)"><option value="PENDING" ${status === 'PENDING' ? 'selected' : ''}>진행 대기</option><option value="PROGRESS" ${status === 'PROGRESS' ? 'selected' : ''}>진행 중</option><option value="COMPLETED" ${status === 'COMPLETED' ? 'selected' : ''}>완료</option></select><button type="button" class="px-1 font-bold text-indigo-600 hover:text-indigo-800" onclick="editSubTaskInModal(${idx})">수정</button><span class="text-slate-300">|</span><button type="button" class="px-1 font-semibold text-rose-500 hover:text-rose-700" onclick="removeSubTaskFromModal(${idx})">삭제</button></div>`;
     container.appendChild(li);
   });
 }
