@@ -1,7 +1,7 @@
 // --- (2) Global State Variables ---
         let trackers = [
-            { id: "tracker-1", name: "기본 업무 트래커", desc: "실시간 업무 배정, 기한 관리 및 진척도 모니터링 시스템" },
-            { id: "tracker-2", name: "🚀 글로벌 프로젝트 2.0", desc: "해외 비즈니스 로드맵 및 다국어 서비스 빌드 스페이스" }
+            { id: "tracker-1", name: "기본 업무 트래커", desc: "실시간 업무 배정, 기한 관리 및 진척도 모니터링 시스템", order: 1 },
+            { id: "tracker-2", name: "🚀 글로벌 프로젝트 2.0", desc: "해외 비즈니스 로드맵 및 다국어 서비스 빌드 스페이스", order: 2 }
         ];
         let currentTrackerId = "tracker-1";
 
@@ -84,7 +84,8 @@
         let unsubscribeTasks = null;
         let unsubscribeTrackers = null;
         let isAuthReady = false;
-        let lastSaveState = 'idle'; 
+        let lastSaveState = 'idle';
+        let draggedTrackerId = null; 
 
         const AVATAR_COLORS = [
             'bg-indigo-100 text-indigo-700', 'bg-emerald-100 text-emerald-700', 'bg-sky-100 text-sky-700', 

@@ -126,30 +126,71 @@
         function markSaved() { lastSaveState = 'saved'; }
         function markSaveError() { lastSaveState = 'error'; }
 
+        function sortTrackersByOrder(list) {
+            return [...list].sort((a, b) => {
+                const ao = typeof a.order === 'number' ? a.order : 999999;
+                const bo = typeof b.order === 'number' ? b.order : 999999;
+                if (ao !== bo) return ao - bo;
+                return (a.name || '').localeCompare(b.name || '');
+            });
+        }
+
+        async function saveTrackerOrder() {
+            trackers = sortTrackersByOrder(trackers).map((t, i) => ({ ...t, order: i + 1, updatedAt: getServerTimestamp() }));
+            updateTrackerUI();
+            const coll = getTrackersCollection();
+            markSaving();
+            if (canWriteToFirestore() && coll) {
+                try {
+                    const batch = db.batch();
+                    trackers.forEach((t, i) => {
+                        batch.set(coll.doc(t.id), { order: i + 1, updatedAt: getServerTimestamp() }, { merge: true });
+                    });
+                    await batch.commit();
+                    markSaved();
+                    showToast('트래커 순서가 저장되었습니다.');
+                } catch (e) {
+                    markSaveError();
+                    console.warn('트래커 순서 저장 실패', e);
+                    showToast('트래커 순서 저장 실패: Console과 Firestore Rules를 확인해 주세요.', false);
+                }
+            }
+        }
+
+        async function moveTrackerOrder(id, direction) {
+            trackers = sortTrackersByOrder(trackers);
+            const idx = trackers.findIndex(t => t.id === id);
+            if (idx === -1) return;
+            const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+            if (targetIdx < 0 || targetIdx >= trackers.length) return;
+            const moved = trackers.splice(idx, 1)[0];
+            trackers.splice(targetIdx, 0, moved);
+            await saveTrackerOrder();
+        }
+
+        async function reorderTrackerByDrop(sourceId, targetId) {
+            if (!sourceId || !targetId || sourceId === targetId) return;
+            trackers = sortTrackersByOrder(trackers);
+            const sourceIdx = trackers.findIndex(t => t.id === sourceId);
+            const targetIdx = trackers.findIndex(t => t.id === targetId);
+            if (sourceIdx === -1 || targetIdx === -1) return;
+            const moved = trackers.splice(sourceIdx, 1)[0];
+            trackers.splice(targetIdx, 0, moved);
+            draggedTrackerId = null;
+            await saveTrackerOrder();
+        }
+
         // --- (5) Database CRUD Operations ---
         async function db_addTask(taskData) {
             const coll = getTasksCollection();
             const newId = 'task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
             const now = getServerTimestamp();
             const currentTracker = trackers.find(t => t.id === currentTrackerId);
-            const payload = {
-                ...taskData,
-                trackerId: taskData.trackerId || currentTrackerId,
-                trackerName: currentTracker ? currentTracker.name : '',
-                deleted: false,
-                createdAt: now,
-                updatedAt: now
-            };
+            const payload = { ...taskData, trackerId: taskData.trackerId || currentTrackerId, trackerName: currentTracker ? currentTracker.name : '', deleted: false, createdAt: now, updatedAt: now };
             markSaving();
             if (canWriteToFirestore() && coll) {
-                try {
-                    await coll.doc(newId).set(payload, { merge: true });
-                    markSaved();
-                } catch (e) {
-                    markSaveError();
-                    console.warn("Firestore 업무 쓰기 오류 발생, 로컬 저장 연동", e);
-                    showToast('Firebase 저장 실패: Console과 Firestore Rules를 확인해 주세요.', false);
-                }
+                try { await coll.doc(newId).set(payload, { merge: true }); markSaved(); }
+                catch (e) { markSaveError(); console.warn("Firestore 업무 쓰기 오류 발생, 로컬 저장 연동", e); showToast('Firebase 저장 실패: Console과 Firestore Rules를 확인해 주세요.', false); }
             }
             if (!tasks.some(t => t.id === newId)) tasks.push({ id: newId, ...payload });
             updateUI();
@@ -159,27 +200,14 @@
         async function db_updateTask(id, taskData) {
             const coll = getTasksCollection();
             const currentTracker = trackers.find(t => t.id === (taskData.trackerId || currentTrackerId));
-            const payload = {
-                ...taskData,
-                trackerName: currentTracker ? currentTracker.name : taskData.trackerName,
-                updatedAt: getServerTimestamp()
-            };
+            const payload = { ...taskData, trackerName: currentTracker ? currentTracker.name : taskData.trackerName, updatedAt: getServerTimestamp() };
             markSaving();
             if (canWriteToFirestore() && coll) {
-                try {
-                    await coll.doc(id).set(payload, { merge: true });
-                    markSaved();
-                } catch (e) {
-                    markSaveError();
-                    console.warn("Firestore 업무 수정 오류 발생, 로컬 저장 연동", e);
-                    showToast('Firebase 수정 실패: Console과 Firestore Rules를 확인해 주세요.', false);
-                }
+                try { await coll.doc(id).set(payload, { merge: true }); markSaved(); }
+                catch (e) { markSaveError(); console.warn("Firestore 업무 수정 오류 발생, 로컬 저장 연동", e); showToast('Firebase 수정 실패: Console과 Firestore Rules를 확인해 주세요.', false); }
             }
             const idx = tasks.findIndex(t => t.id === id);
-            if (idx !== -1) {
-                tasks[idx] = { ...tasks[idx], ...payload };
-                updateUI();
-            }
+            if (idx !== -1) { tasks[idx] = { ...tasks[idx], ...payload }; updateUI(); }
         }
 
         
@@ -188,18 +216,10 @@
             const payload = { deleted: true, deletedAt: getServerTimestamp(), updatedAt: getServerTimestamp() };
             markSaving();
             if (canWriteToFirestore() && coll) {
-                try {
-                    await coll.doc(id).set(payload, { merge: true });
-                    markSaved();
-                } catch (e) {
-                    markSaveError();
-                    console.warn("Firestore 소프트 삭제 오류 발생, 로컬 제거 연동", e);
-                    showToast('Firebase 삭제 반영 실패: Console과 Firestore Rules를 확인해 주세요.', false);
-                }
+                try { await coll.doc(id).set(payload, { merge: true }); markSaved(); }
+                catch (e) { markSaveError(); console.warn("Firestore 소프트 삭제 오류 발생, 로컬 제거 연동", e); showToast('Firebase 삭제 반영 실패: Console과 Firestore Rules를 확인해 주세요.', false); }
             }
-            tasks = tasks.filter(t => t.id !== id);
-            selectedTaskIds.delete(id);
-            updateUI();
+            tasks = tasks.filter(t => t.id !== id); selectedTaskIds.delete(id); updateUI();
         }
 
         
@@ -209,20 +229,11 @@
             if (canWriteToFirestore() && coll) {
                 try {
                     const batch = db.batch();
-                    idsSet.forEach(id => {
-                        batch.set(coll.doc(id), { deleted: true, deletedAt: getServerTimestamp(), updatedAt: getServerTimestamp() }, { merge: true });
-                    });
-                    await batch.commit();
-                    markSaved();
-                } catch (e) {
-                    markSaveError();
-                    console.warn("Firestore 일괄 소프트 삭제 실패, 로컬 반영 대체", e);
-                    showToast('Firebase 일괄 삭제 반영 실패: Console과 Firestore Rules를 확인해 주세요.', false);
-                }
+                    idsSet.forEach(id => batch.set(coll.doc(id), { deleted: true, deletedAt: getServerTimestamp(), updatedAt: getServerTimestamp() }, { merge: true }));
+                    await batch.commit(); markSaved();
+                } catch (e) { markSaveError(); console.warn("Firestore 일괄 소프트 삭제 실패, 로컬 반영 대체", e); showToast('Firebase 일괄 삭제 반영 실패: Console과 Firestore Rules를 확인해 주세요.', false); }
             }
-            tasks = tasks.filter(t => !idsSet.has(t.id));
-            idsSet.clear();
-            updateUI();
+            tasks = tasks.filter(t => !idsSet.has(t.id)); idsSet.clear(); updateUI();
         }
 
         
@@ -230,34 +241,26 @@
             const coll = getTrackersCollection();
             const newId = 'tracker_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
             const now = getServerTimestamp();
-            const payload = { ...trackerData, deleted: false, createdAt: now, updatedAt: now };
+            const nextOrder = trackers.length > 0 ? Math.max(...trackers.map(t => typeof t.order === 'number' ? t.order : 0)) + 1 : 1;
+            const payload = { ...trackerData, order: nextOrder, deleted: false, createdAt: now, updatedAt: now };
             markSaving();
             if (canWriteToFirestore() && coll) {
-                try {
-                    await coll.doc(newId).set(payload, { merge: true });
-                    markSaved();
-                } catch(e) {
-                    markSaveError();
-                    console.warn("Firestore 트래커 추가 실패, 로컬 처리 진행", e);
-                    showToast('Firebase 트래커 저장 실패: Console과 Firestore Rules를 확인해 주세요.', false);
-                }
+                try { await coll.doc(newId).set(payload, { merge: true }); markSaved(); }
+                catch(e) { markSaveError(); console.warn("Firestore 트래커 추가 실패, 로컬 처리 진행", e); showToast('Firebase 트래커 저장 실패: Console과 Firestore Rules를 확인해 주세요.', false); }
             }
             if (!trackers.some(t => t.id === newId)) trackers.push({ id: newId, ...payload });
-            currentTrackerId = newId;
-            localStorage.setItem('flow_current_tracker', currentTrackerId);
-            updateTrackerUI();
-            updateUI();
+            currentTrackerId = newId; localStorage.setItem('flow_current_tracker', currentTrackerId); updateTrackerUI(); updateUI();
         }
 
         
         async function db_updateTracker(id, trackerData) {
             const coll = getTrackersCollection();
-            const payload = { ...trackerData, updatedAt: getServerTimestamp() };
+            const existing = trackers.find(t => t.id === id);
+            const payload = { ...trackerData, order: existing && typeof existing.order === 'number' ? existing.order : trackerData.order, updatedAt: getServerTimestamp() };
             markSaving();
             if (canWriteToFirestore() && coll) {
                 try {
                     await coll.doc(id).set(payload, { merge: true });
-                    // tracker명 변경 시 관련 task snapshot 명칭도 같이 보정합니다.
                     const tColl = getTasksCollection();
                     if (tColl && trackerData.name) {
                         const snapshot = await tColl.where('trackerId', '==', id).get();
@@ -266,24 +269,17 @@
                         if (!snapshot.empty) await batch.commit();
                     }
                     markSaved();
-                } catch(e) {
-                    markSaveError();
-                    console.warn("Firestore 트래커 수정 실패, 로컬 처리 진행", e);
-                    showToast('Firebase 트래커 수정 실패: Console과 Firestore Rules를 확인해 주세요.', false);
-                }
+                } catch(e) { markSaveError(); console.warn("Firestore 트래커 수정 실패, 로컬 처리 진행", e); showToast('Firebase 트래커 수정 실패: Console과 Firestore Rules를 확인해 주세요.', false); }
             }
             const idx = trackers.findIndex(t => t.id === id);
             if (idx !== -1) trackers[idx] = { ...trackers[idx], ...payload };
             else trackers.push({ id, ...payload });
-            updateTrackerUI();
-            updateUI();
+            updateTrackerUI(); updateUI();
         }
 
         
         async function db_deleteTracker(id) {
-            const coll = getTrackersCollection();
-            const tColl = getTasksCollection();
-            markSaving();
+            const coll = getTrackersCollection(); const tColl = getTasksCollection(); markSaving();
             if (canWriteToFirestore() && coll) {
                 try {
                     await coll.doc(id).set({ deleted: true, deletedAt: getServerTimestamp(), updatedAt: getServerTimestamp() }, { merge: true });
@@ -294,21 +290,12 @@
                         if (!snapshot.empty) await batch.commit();
                     }
                     markSaved();
-                } catch(e) {
-                    markSaveError();
-                    console.warn("트래커 소프트 삭제 실패", e);
-                    showToast('Firebase 트래커 삭제 반영 실패: Console과 Firestore Rules를 확인해 주세요.', false);
-                }
+                } catch(e) { markSaveError(); console.warn("트래커 소프트 삭제 실패", e); showToast('Firebase 트래커 삭제 반영 실패: Console과 Firestore Rules를 확인해 주세요.', false); }
             }
-            tasks = tasks.filter(t => t.trackerId !== id);
-            trackers = trackers.filter(t => t.id !== id);
-            if(trackers.length === 0) {
-                trackers.push({ id: "tracker-default", name: "기본 업무 트래커", desc: "기본 설정된 초기 공간입니다." });
-            }
-            currentTrackerId = trackers[0].id;
-            localStorage.setItem('flow_current_tracker', currentTrackerId);
-            updateTrackerUI();
-            updateUI();
+            tasks = tasks.filter(t => t.trackerId !== id); trackers = trackers.filter(t => t.id !== id);
+            trackers = sortTrackersByOrder(trackers).map((t, i) => ({ ...t, order: i + 1 }));
+            if(trackers.length === 0) trackers.push({ id: "tracker-default", name: "기본 업무 트래커", desc: "기본 설정된 초기 공간입니다.", order: 1 });
+            currentTrackerId = trackers[0].id; localStorage.setItem('flow_current_tracker', currentTrackerId); updateTrackerUI(); updateUI();
         }
 
 
@@ -331,23 +318,31 @@
             const listContainer = document.getElementById('tracker-list-items');
             if(!listContainer) return;
             listContainer.innerHTML = '';
-            
+            trackers = sortTrackersByOrder(trackers).map((t, i) => ({ ...t, order: typeof t.order === 'number' ? t.order : i + 1 }));
             const currentObj = trackers.find(t => t.id === currentTrackerId) || trackers[0];
             if (currentObj) {
                 currentTrackerId = currentObj.id;
                 document.getElementById('current-tracker-name').textContent = currentObj.name;
                 document.getElementById('current-tracker-desc').textContent = currentObj.desc || '실시간 업무 기한 관리 및 진척도 모니터링 시스템';
             }
-
-            trackers.forEach(t => {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = `w-full text-left flex flex-col rounded-xl px-3 py-2 text-xs transition ${t.id === currentTrackerId ? 'bg-indigo-50 text-indigo-700 font-bold' : 'hover:bg-slate-50 text-slate-700 font-medium'}`;
-                btn.innerHTML = `
-                    <span class="text-sm font-bold truncate">${escapeHTML(t.name)}</span>
-                    <span class="text-[10px] text-slate-400 font-medium truncate mt-0.5">${escapeHTML(t.desc || '상세 설명 없음')}</span>
+            trackers.forEach((t, idx) => {
+                const row = document.createElement('div');
+                row.className = `tracker-item group flex items-stretch gap-1 rounded-xl transition ${t.id === currentTrackerId ? 'bg-indigo-50 ring-1 ring-indigo-100' : 'hover:bg-slate-50'}`;
+                row.setAttribute('draggable', 'true');
+                row.dataset.id = t.id;
+                row.title = '드래그해서 트래커 순서를 변경할 수 있습니다.';
+                row.innerHTML = `
+                    <div class="flex items-center pl-2 text-slate-300 group-hover:text-slate-500 cursor-grab active:cursor-grabbing select-none" aria-label="drag handle">⋮⋮</div>
+                    <button type="button" class="tracker-select flex-1 text-left flex flex-col rounded-xl px-2 py-2 text-xs transition ${t.id === currentTrackerId ? 'text-indigo-700 font-bold' : 'text-slate-700 font-medium'}">
+                        <span class="text-sm font-bold truncate">${escapeHTML(t.name)}</span>
+                        <span class="text-[10px] text-slate-400 font-medium truncate mt-0.5">${escapeHTML(t.desc || '상세 설명 없음')}</span>
+                    </button>
+                    <div class="flex flex-col justify-center pr-1 opacity-70 group-hover:opacity-100">
+                        <button type="button" class="btn-tracker-up h-5 w-6 rounded-md text-[10px] text-slate-400 hover:bg-white hover:text-indigo-600 disabled:opacity-25" ${idx === 0 ? 'disabled' : ''} title="위로 이동">▲</button>
+                        <button type="button" class="btn-tracker-down h-5 w-6 rounded-md text-[10px] text-slate-400 hover:bg-white hover:text-indigo-600 disabled:opacity-25" ${idx === trackers.length - 1 ? 'disabled' : ''} title="아래로 이동">▼</button>
+                    </div>
                 `;
-                btn.addEventListener('click', () => {
+                row.querySelector('.tracker-select').addEventListener('click', () => {
                     currentTrackerId = t.id;
                     localStorage.setItem('flow_current_tracker', currentTrackerId);
                     document.getElementById('tracker-dropdown-menu').classList.add('hidden');
@@ -355,9 +350,33 @@
                     updateUI();
                     showToast(`트래커 전환: ${t.name}`);
                 });
-                listContainer.appendChild(btn);
+                row.querySelector('.btn-tracker-up')?.addEventListener('click', async (e) => { e.stopPropagation(); await moveTrackerOrder(t.id, 'up'); });
+                row.querySelector('.btn-tracker-down')?.addEventListener('click', async (e) => { e.stopPropagation(); await moveTrackerOrder(t.id, 'down'); });
+                row.addEventListener('dragstart', (e) => {
+                    draggedTrackerId = t.id;
+                    row.classList.add('opacity-50');
+                    e.dataTransfer.effectAllowed = 'move';
+                    try { e.dataTransfer.setData('text/plain', t.id); } catch (_) {}
+                });
+                row.addEventListener('dragend', () => {
+                    draggedTrackerId = null;
+                    row.classList.remove('opacity-50', 'ring-2', 'ring-indigo-300');
+                });
+                row.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    if (draggedTrackerId && draggedTrackerId !== t.id) row.classList.add('ring-2', 'ring-indigo-300');
+                });
+                row.addEventListener('dragleave', () => row.classList.remove('ring-2', 'ring-indigo-300'));
+                row.addEventListener('drop', async (e) => {
+                    e.preventDefault();
+                    row.classList.remove('ring-2', 'ring-indigo-300');
+                    const sourceId = draggedTrackerId || e.dataTransfer.getData('text/plain');
+                    await reorderTrackerByDrop(sourceId, t.id);
+                });
+                listContainer.appendChild(row);
             });
         }
+
         function renderStats() {
             const scopeTasks = tasks.filter(t => t.trackerId === currentTrackerId);
 
@@ -1396,7 +1415,7 @@
                     } else {
                         imp.forEach(t => {
                             const newId = 'local_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
-                            tasks.push({ id: newId, trackerId: currentTrackerId, deleted: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), ...t });
+                            tasks.push({ id: newId, trackerId: currentTrackerId, ...t });
                         });
                         updateUI();
                     }
@@ -1453,13 +1472,17 @@ async function ensureDefaultTrackersInFirestore() {
             const coll = getTrackersCollection();
             if (!coll) return;
             try {
-                for (const t of trackers) {
+                for (let i = 0; i < trackers.length; i++) {
+                    const t = trackers[i];
                     if (!t || !t.id) continue;
                     const ref = coll.doc(t.id);
                     const snap = await ref.get();
+                    const seedOrder = typeof t.order === 'number' ? t.order : i + 1;
                     if (!snap.exists) {
                         const now = getServerTimestamp();
-                        await ref.set({ name: t.name, desc: t.desc || '', deleted: false, createdAt: now, updatedAt: now }, { merge: true });
+                        await ref.set({ name: t.name, desc: t.desc || '', order: seedOrder, deleted: false, createdAt: now, updatedAt: now }, { merge: true });
+                    } else if (typeof snap.data().order !== 'number') {
+                        await ref.set({ order: seedOrder, updatedAt: getServerTimestamp() }, { merge: true });
                     }
                 }
             } catch (e) {
@@ -1476,14 +1499,13 @@ async function ensureDefaultTrackersInFirestore() {
             if (typeof unsubscribeTasks === 'function') unsubscribeTasks();
 
             unsubscribeTrackers = trackersColl.onSnapshot(snapshot => {
-                trackers = snapshot.docs
+                trackers = sortTrackersByOrder(snapshot.docs
                     .map(doc => ({ id: doc.id, ...doc.data() }))
-                    .filter(t => t.deleted !== true);
+                    .filter(t => t.deleted !== true));
                 const savedTracker = localStorage.getItem('flow_current_tracker');
                 if (trackers.length > 0) {
-                    if (savedTracker && trackers.some(t => t.id === savedTracker)) {
-                        currentTrackerId = savedTracker;
-                    } else if (!trackers.some(t => t.id === currentTrackerId)) {
+                    if (savedTracker && trackers.some(t => t.id === savedTracker)) currentTrackerId = savedTracker;
+                    else if (!trackers.some(t => t.id === currentTrackerId)) {
                         currentTrackerId = trackers[0].id;
                         localStorage.setItem('flow_current_tracker', currentTrackerId);
                     }
