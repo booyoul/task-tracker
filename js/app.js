@@ -1,4 +1,4 @@
-console.info('Smart Task Flow app.js v20260625-ux2 loaded');
+console.info('Smart Task Flow app.js v20260625-monthly-kpi loaded');
 // --- (3) Pure Helper Functions ---
         function getStatusKorean(status) { return { 'PENDING': '진행 대기', 'PROGRESS': '진행 중', 'COMPLETED': '완료됨', 'OVERDUE': '기한 초과' }[status] || '전체'; }
         function getPriorityBadge(priority) {
@@ -609,6 +609,61 @@ console.info('Smart Task Flow app.js v20260625-ux2 loaded');
             });
             updateSelectAllState(filtered.length, renderedSelectedCount);
         }
+
+        function getTaskDateRangeForMonthSummary(item, fallbackDate) {
+            const startStr = item.startDate || item.dueDate || fallbackDate;
+            const endStr = item.dueDate || item.startDate || fallbackDate;
+            const start = new Date(String(startStr).replace(/-/g, '/'));
+            const end = new Date(String(endStr).replace(/-/g, '/'));
+            return { start, end };
+        }
+
+        function isRangeOverlappingMonth(item, monthStart, monthEnd, fallbackDate) {
+            const { start, end } = getTaskDateRangeForMonthSummary(item, fallbackDate);
+            if (isNaN(start.getTime()) || isNaN(end.getTime())) return false;
+            return start <= monthEnd && end >= monthStart;
+        }
+
+        function getMonthlySubTasks(task, monthStart, monthEnd, todayStr) {
+            const allSubTasks = Array.isArray(task.subTasks) ? task.subTasks : [];
+            const visibleSubTasks = allSubTasks.filter(st => isRangeOverlappingMonth(st, monthStart, monthEnd, todayStr));
+            return { allSubTasks, visibleSubTasks };
+        }
+
+        function buildMonthlySubTaskHTML(task, monthStart, monthEnd, todayStr) {
+            const { allSubTasks, visibleSubTasks } = getMonthlySubTasks(task, monthStart, monthEnd, todayStr);
+            if (allSubTasks.length === 0 || visibleSubTasks.length === 0) return '';
+
+            let html = '<div class="mt-2.5 pt-2.5 border-t border-slate-100/80 space-y-1.5">';
+            visibleSubTasks.forEach(st => {
+                const stIcon = st.status === 'COMPLETED' ? '✅' : '⌛';
+                const stColor = st.status === 'COMPLETED' ? 'text-slate-400 line-through' : 'text-slate-600';
+                html += `
+                    <div class="text-[10px] flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-1.5 truncate ${stColor}">
+                            <span>${stIcon}</span>
+                            <span class="truncate">${escapeHTML(st.title)}</span>
+                        </div>
+                        <span class="shrink-0 font-medium text-[9px] bg-slate-50 px-1.5 py-0.5 rounded text-slate-400 border border-slate-200">
+                            ${st.dueDate ? st.dueDate.substring(5) : ''}
+                        </span>
+                    </div>
+                `;
+            });
+
+            const hiddenCount = allSubTasks.length - visibleSubTasks.length;
+            if (hiddenCount > 0) {
+                html += `
+                    <div class="text-[10px] text-slate-400 bg-slate-50 border border-slate-100 rounded-lg px-2 py-1">
+                        외 ${hiddenCount}건 숨김 (해당 월 외)
+                    </div>
+                `;
+            }
+
+            html += '</div>';
+            return html;
+        }
+
         function renderCalendar(filteredTasks) {
             const year = currentCalDate.getFullYear();
             const month = currentCalDate.getMonth();
@@ -993,11 +1048,7 @@ console.info('Smart Task Flow app.js v20260625-ux2 loaded');
                 const monthStart = new Date(year, month, 1);
                 const monthEnd = new Date(year, month + 1, 0, 23, 59, 59);
 
-                const currentMonthTasks = filteredTasks.filter(t => {
-                    const startVal = new Date(t.startDate || t.dueDate || todayStr);
-                    const endVal = new Date(t.dueDate || todayStr);
-                    return startVal <= monthEnd && endVal >= monthStart;
-                });
+                const currentMonthTasks = filteredTasks.filter(t => isRangeOverlappingMonth(t, monthStart, monthEnd, todayStr));
 
                 if (currentMonthTasks.length === 0) {
                     grid.innerHTML = `
@@ -1016,6 +1067,44 @@ console.info('Smart Task Flow app.js v20260625-ux2 loaded');
                         groups[t.status].push(t);
                     }
                 });
+
+                const monthlyTotal = currentMonthTasks.length;
+                const monthlyCompleted = groups.COMPLETED.length;
+                const monthlyOverdue = groups.OVERDUE.length;
+                const monthlyProgress = groups.PROGRESS.length;
+                const monthlyPending = groups.PENDING.length;
+                const monthlyCompletionRate = monthlyTotal > 0 ? Math.round((monthlyCompleted / monthlyTotal) * 100) : 0;
+                const monthlyDelayRate = monthlyTotal > 0 ? Math.round((monthlyOverdue / monthlyTotal) * 100) : 0;
+                const monthlySubTotal = currentMonthTasks.reduce((sum, t) => sum + (Array.isArray(t.subTasks) ? t.subTasks.length : 0), 0);
+                const monthlySubVisible = currentMonthTasks.reduce((sum, t) => {
+                    return sum + getMonthlySubTasks(t, monthStart, monthEnd, todayStr).visibleSubTasks.length;
+                }, 0);
+
+                const kpiPanel = document.createElement('div');
+                kpiPanel.className = 'grid grid-cols-2 md:grid-cols-4 gap-3';
+                kpiPanel.innerHTML = `
+                    <div class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                        <div class="text-[11px] font-bold text-slate-400 uppercase">월간 업무</div>
+                        <div class="mt-1 text-2xl font-black text-slate-900">${monthlyTotal}</div>
+                        <div class="text-[10px] text-slate-400">진행 ${monthlyProgress} · 대기 ${monthlyPending}</div>
+                    </div>
+                    <div class="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4 shadow-sm">
+                        <div class="text-[11px] font-bold text-emerald-600 uppercase">완료율</div>
+                        <div class="mt-1 text-2xl font-black text-emerald-800">${monthlyCompletionRate}%</div>
+                        <div class="text-[10px] text-emerald-600">완료 ${monthlyCompleted}/${monthlyTotal}</div>
+                    </div>
+                    <div class="rounded-2xl border border-rose-100 bg-rose-50/70 p-4 shadow-sm">
+                        <div class="text-[11px] font-bold text-rose-600 uppercase">지연율</div>
+                        <div class="mt-1 text-2xl font-black text-rose-800">${monthlyDelayRate}%</div>
+                        <div class="text-[10px] text-rose-600">지연 ${monthlyOverdue}/${monthlyTotal}</div>
+                    </div>
+                    <div class="rounded-2xl border border-indigo-100 bg-indigo-50/70 p-4 shadow-sm">
+                        <div class="text-[11px] font-bold text-indigo-600 uppercase">해당 월 하위 업무</div>
+                        <div class="mt-1 text-2xl font-black text-indigo-800">${monthlySubVisible}/${monthlySubTotal}</div>
+                        <div class="text-[10px] text-indigo-600">월 범위와 겹치는 항목만 표시</div>
+                    </div>
+                `;
+                grid.appendChild(kpiPanel);
 
                 const categories = [
                     { key: 'OVERDUE', label: '🚨 일정 초과 및 지연 상태', style: 'bg-rose-50/75 border-rose-100 text-rose-800', list: groups.OVERDUE },
@@ -1040,64 +1129,16 @@ console.info('Smart Task Flow app.js v20260625-ux2 loaded');
                     subGrid.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5';
 
                     cat.list.forEach(t => {
-                        const subCount = t.subTasks ? t.subTasks.length : 0;
-                        const subDone = t.subTasks ? t.subTasks.filter(st => st.status === 'COMPLETED').length : 0;
+                        const { allSubTasks, visibleSubTasks } = getMonthlySubTasks(t, monthStart, monthEnd, todayStr);
+                        const subCount = allSubTasks.length;
+                        const subVisible = visibleSubTasks.length;
+                        const subDoneVisible = visibleSubTasks.filter(st => st.status === 'COMPLETED').length;
                         const subBadgeMarkup = subCount > 0 ? 
-                            `<span class="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-100 px-1.5 py-0.5 rounded font-bold">하위 ${subDone}/${subCount}</span>` : '';
-
-                        // 월별 요약에서 하위 업무 목록 표시 기능 추가
-                        let subTasksHtml = '';
-                        // 월별 요약에서 하위 업무 목록 표시 기능 추가
-let subTasksHtml = '';
-if (t.subTasks && t.subTasks.length > 0) {
-    const monthStart = new Date(year, month, 1);
-    const monthEnd = new Date(year, month + 1, 0, 23, 59, 59);
-
-    const validSubTasks = t.subTasks.filter(st => {
-        const stStart = new Date((st.startDate || st.dueDate || todayStr).replace(/-/g, '/'));
-        const stEnd = new Date((st.dueDate || st.startDate || todayStr).replace(/-/g, '/'));
-        return stStart <= monthEnd && stEnd >= monthStart;
-    });
-
-    const totalSub = t.subTasks.length;
-    const visibleSub = validSubTasks.length;
-
-    if (visibleSub > 0) {
-        subTasksHtml = '
-<div class="mt-2 border-t pt-2 space-y-1">';
-        validSubTasks.forEach(st => {
-            const stIcon = st.status === 'COMPLETED' ? '✅' : '⌛';
-            const stColor = st.status === 'COMPLETED' ? 'text-slate-400 line-through' : 'text-slate-600';
-            subTasksHtml += `
-<div class="${stColor} text-xs">${stIcon} ${escapeHTML(st.title)} ${st.dueDate ? st.dueDate.substring(5) : ''}</div>`;
-        });
-        if (visibleSub < totalSub) {
-            subTasksHtml += `
-<div class="text-[10px] text-slate-400">외 ${totalSub-visibleSub}건 숨김 (해당 월 외)</div>`;
-        }
-        subTasksHtml += '
-</div>';
-    }
-}
-
-                            subTasksHtml = '<div class="mt-2.5 pt-2.5 border-t border-slate-100/80 space-y-1.5">';
-                            t.subTasks.forEach(st => {
-                                const stIcon = st.status === 'COMPLETED' ? '✅' : '⌛';
-                                const stColor = st.status === 'COMPLETED' ? 'text-slate-400 line-through' : 'text-slate-600';
-                                subTasksHtml += `
-                                    <div class="text-[10px] flex items-center justify-between gap-2">
-                                        <div class="flex items-center gap-1.5 truncate ${stColor}">
-                                            <span>${stIcon}</span>
-                                            <span class="truncate">${escapeHTML(st.title)}</span>
-                                        </div>
-                                        <span class="shrink-0 font-medium text-[9px] bg-slate-50 px-1.5 py-0.5 rounded text-slate-400 border border-slate-200">
-                                            ${st.dueDate ? st.dueDate.substring(5) : ''}
-                                        </span>
-                                    </div>
-                                `;
-                            });
-                            subTasksHtml += '</div>';
-                        }
+                            `<span class="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-100 px-1.5 py-0.5 rounded font-bold">하위 ${subVisible}/${subCount}</span>` : '';
+                        const subProgressMarkup = subVisible > 0 ?
+                            `<span class="text-[10px] text-slate-400">월내 하위 완료 ${subDoneVisible}/${subVisible}</span>` :
+                            (subCount > 0 ? `<span class="text-[10px] text-slate-400">해당 월 하위 업무 없음</span>` : '');
+                        const subTasksHtml = buildMonthlySubTaskHTML(t, monthStart, monthEnd, todayStr);
 
                         const box = document.createElement('div');
                         box.className = 'bg-white rounded-xl p-3 border border-slate-200/60 shadow-sm cursor-pointer transition hover:border-indigo-400 hover:shadow-md flex flex-col justify-between h-full';
@@ -1109,9 +1150,10 @@ if (t.subTasks && t.subTasks.length > 0) {
                                     ${subBadgeMarkup}
                                 </div>
                                 <div class="mt-2 flex items-center justify-between text-[11px] text-slate-400 font-medium">
-                                    <span class="flex items-center gap-1">🗓️ ${t.startDate ? t.startDate.substring(5) : '미정'} ~ ${t.dueDate.substring(5)}</span>
+                                    <span class="flex items-center gap-1">🗓️ ${t.startDate ? t.startDate.substring(5) : '미정'} ~ ${(t.dueDate || '').substring(5)}</span>
                                     <span class="font-bold bg-slate-50 text-slate-600 px-1.5 py-0.5 border rounded">${escapeHTML(t.assignee)}</span>
                                 </div>
+                                <div class="mt-1 flex justify-end">${subProgressMarkup}</div>
                             </div>
                             ${subTasksHtml}
                         `;
