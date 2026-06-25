@@ -7,8 +7,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
     
-    <!-- Firebase Compat SDK (네트워크 환경 및 프레임워크 환경에 완벽 대응 가능한 하이브리드 가드레일) -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js" onerror="console.warn('Firebase App SDK 로드 실패 - 오프라인 가상 메모리 데이터 저장소로 자동 우회 구동됩니다.')"></script>
+    <!-- Firebase Compat SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js" onerror="console.warn('Firebase App SDK 로드 실패')"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js" onerror="console.warn('Firebase Firestore SDK 로드 실패')"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js" onerror="console.warn('Firebase Auth SDK 로드 실패')"></script>
 
@@ -196,7 +196,7 @@
         <!-- 뷰 2: 캘린더 -->
         <main id="view-calendar" class="hidden overflow-hidden transition-all duration-300 rounded-2xl border border-slate-100 bg-white shadow-sm p-6">
             <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div class="flex items-center gap-4">
+                <div class="flex items-center gap-4 flex-wrap">
                     <h2 id="calendar-month-year" class="text-xl font-bold text-slate-800"></h2>
                     
                     <!-- 캘린더 일별 / 월별 / 월별 요약 3단 토글 스위치 -->
@@ -205,9 +205,15 @@
                         <button id="btn-cal-mode-month" class="rounded-lg px-3.5 py-1.5 text-slate-500 hover:text-slate-800 transition">월별 보기</button>
                         <button id="btn-cal-mode-summary" class="rounded-lg px-3.5 py-1.5 text-slate-500 hover:text-slate-800 transition">월별 요약</button>
                     </div>
+
+                    <!-- 하위 업무 표시 제어 토글 (일별, 월별 보기에서 활성화) -->
+                    <label id="toggle-subtask-cal-wrapper" class="inline-flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-500 hover:text-slate-700 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-200 transition">
+                        <input type="checkbox" id="cb-show-subtasks-cal" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer w-3.5 h-3.5" checked>
+                        하위 업무 포함
+                    </label>
                 </div>
                 
-                <div class="flex gap-1 bg-slate-100 p-1 rounded-xl">
+                <div class="flex gap-1 bg-slate-100 p-1 rounded-xl shrink-0">
                     <button id="btn-prev-month" class="rounded-lg px-3 py-1.5 text-sm font-semibold text-slate-600 hover:bg-white hover:shadow-sm transition">&lt;</button>
                     <button id="btn-today-month" class="rounded-lg px-4 py-1.5 text-sm font-semibold text-slate-600 hover:bg-white hover:shadow-sm transition">오늘</button>
                     <button id="btn-next-month" class="rounded-lg px-3 py-1.5 text-sm font-semibold text-slate-600 hover:bg-white hover:shadow-sm transition">&gt;</button>
@@ -541,6 +547,7 @@
         let currentViewMode = 'TABLE'; 
         let currentCalDate = new Date(); 
         let currentCalMode = 'DAY'; 
+        let isCalSubTaskVisible = true; // 캘린더에서 하위 업무 표시 토글 상태
         let currentSubTasks = []; 
         let editingSubTaskIndex = -1; 
         let expandedTaskIds = new Set(); 
@@ -618,22 +625,33 @@
         // --- (추가됨) 순서 이동 함수 ---
         function moveTaskOrder(id, direction) {
             const scopeTasks = tasks.filter(t => t.trackerId === currentTrackerId);
-            scopeTasks.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+            // 정렬 전 order 값이 없는 항목에 대한 안전 처리
+            scopeTasks.forEach((t, i) => { if (typeof t.order !== 'number') t.order = i + 1; });
+            scopeTasks.sort((a, b) => a.order - b.order);
             
             const idx = scopeTasks.findIndex(t => t.id === id);
             if (idx === -1) return;
 
-            if (direction === 'up' && idx > 0) {
-                const temp = scopeTasks[idx].order || idx;
-                scopeTasks[idx].order = scopeTasks[idx-1].order || (idx - 1);
-                scopeTasks[idx-1].order = temp;
-            } else if (direction === 'down' && idx < scopeTasks.length - 1) {
-                const temp = scopeTasks[idx].order || idx;
-                scopeTasks[idx].order = scopeTasks[idx+1].order || (idx + 1);
-                scopeTasks[idx+1].order = temp;
+            let targetIdx = -1;
+            if (direction === 'up' && idx > 0) targetIdx = idx - 1;
+            else if (direction === 'down' && idx < scopeTasks.length - 1) targetIdx = idx + 1;
+
+            if (targetIdx !== -1) {
+                const currentTask = scopeTasks[idx];
+                const targetTask = scopeTasks[targetIdx];
+
+                // order 값 서로 스왑
+                const tempOrder = currentTask.order;
+                currentTask.order = targetTask.order;
+                targetTask.order = tempOrder;
+
+                // UI 1차 즉시 반영
+                updateUI();
+
+                // Firestore 실시간 데이터베이스 동기화
+                db_updateTask(currentTask.id, { order: currentTask.order });
+                db_updateTask(targetTask.id, { order: targetTask.order });
             }
-            // 임시 메모리에서만 정렬 변경하므로 firebase 연동시엔 별도 업데이트가 필요합니다.
-            updateUI();
         }
 
         // --- (4) Toast & UI Utilities ---
@@ -646,49 +664,53 @@
 
         // --- (5) Database CRUD Operations ---
         async function db_addTask(taskData) {
+            let newId = 'local_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
             const coll = getTasksCollection();
             if (isFirebaseAvailable && db && coll) {
                 try {
-                    await coll.add(taskData);
-                    return;
+                    const docRef = await coll.add(taskData);
+                    newId = docRef.id; // DB에서 생성된 실제 ID 사용
                 } catch (e) {
                     console.warn("Firestore 쓰기 오류 발생, 로컬 저장 연동", e);
                 }
             }
-            const newId = 'local_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+            // 로컬 배열 및 UI 업데이트 보장
             tasks.push({ id: newId, ...taskData });
             updateUI();
         }
+        
         async function db_updateTask(id, taskData) {
             const coll = getTasksCollection();
             if (isFirebaseAvailable && db && coll && !id.startsWith('local_')) {
                 try {
                     await coll.doc(id).update(taskData);
-                    return;
                 } catch (e) {
                     console.warn("Firestore 수정 오류 발생, 로컬 저장 연동", e);
                 }
             }
+            // 로컬 배열 및 UI 업데이트 보장
             const idx = tasks.findIndex(t => t.id === id);
             if (idx !== -1) {
                 tasks[idx] = { ...tasks[idx], ...taskData };
                 updateUI();
             }
         }
+        
         async function db_deleteTask(id) {
             const coll = getTasksCollection();
             if (isFirebaseAvailable && db && coll && !id.startsWith('local_')) {
                 try {
                     await coll.doc(id).delete();
-                    return;
                 } catch (e) {
                     console.warn("Firestore 삭제 오류 발생, 로컬 제거 연동", e);
                 }
             }
+            // 로컬 배열 및 UI 업데이트 보장
             tasks = tasks.filter(t => t.id !== id);
             selectedTaskIds.delete(id);
             updateUI();
         }
+        
         async function db_batchDelete(idsSet) {
             const coll = getTasksCollection();
             if (isFirebaseAvailable && db && coll) {
@@ -703,43 +725,46 @@
                     });
                     if (count > 0) {
                         await batch.commit();
-                        return;
                     }
                 } catch (e) {
                     console.warn("Firestore 일괄 연산 실패, 로컬 반영 대체", e);
                 }
             }
+            // 로컬 배열 및 UI 업데이트 보장
             tasks = tasks.filter(t => !idsSet.has(t.id));
             idsSet.clear();
             updateUI();
         }
+        
         async function db_addTracker(trackerData) {
             const coll = getTrackersCollection();
-            const newId = 'tracker_' + Date.now();
+            let newId = 'tracker_' + Date.now();
             if (isFirebaseAvailable && db && coll) {
                 try {
-                    await coll.doc(newId).set(trackerData);
-                    return;
+                    const docRef = await coll.add(trackerData);
+                    newId = docRef.id;
                 } catch(e) {
                     console.warn("Firestore 트래커 추가 실패, 로컬 처리 진행", e);
                 }
             }
+            // 로컬 배열 및 UI 업데이트 보장
             trackers.push({ id: newId, ...trackerData });
             currentTrackerId = newId;
             localStorage.setItem('flow_current_tracker', currentTrackerId);
             updateTrackerUI();
             updateUI();
         }
+        
         async function db_updateTracker(id, trackerData) {
             const coll = getTrackersCollection();
             if (isFirebaseAvailable && db && coll && !id.startsWith('tracker_')) {
                 try {
                     await coll.doc(id).update(trackerData);
-                    return;
                 } catch(e) {
                     console.warn("Firestore 트래커 수정 실패, 로컬 처리 진행", e);
                 }
             }
+            // 로컬 배열 및 UI 업데이트 보장
             const idx = trackers.findIndex(t => t.id === id);
             if (idx !== -1) {
                 trackers[idx] = { ...trackers[idx], ...trackerData };
@@ -747,6 +772,7 @@
                 updateUI();
             }
         }
+        
         async function db_deleteTracker(id) {
             const coll = getTrackersCollection();
             if (isFirebaseAvailable && db && coll && !id.startsWith('tracker_')) {
@@ -757,7 +783,7 @@
                 }
             }
             const tColl = getTasksCollection();
-            if (isFirebaseAvailable && db && tColl) {
+            if (isFirebaseAvailable && db && tColl && !id.startsWith('tracker_')) {
                 try {
                     const snapshot = await tColl.where("trackerId", "==", id).get();
                     const batch = db.batch();
@@ -768,6 +794,7 @@
                 }
             }
             
+            // 로컬 배열 및 UI 업데이트 보장
             tasks = tasks.filter(t => t.trackerId !== id);
             trackers = trackers.filter(t => t.id !== id);
             if(trackers.length === 0) {
@@ -1023,7 +1050,8 @@
 
             const globalLines = []; 
             const assignGroupLine = (g) => {
-                const totalLinesRequired = 1 + g.subTasks.length; 
+                // 토글 스위치 상태에 따라 캘린더 차지 라인 수 결정
+                const totalLinesRequired = isCalSubTaskVisible ? 1 + g.subTasks.length : 1; 
                 let targetStartLine = 0;
 
                 while (true) {
@@ -1108,22 +1136,25 @@
                                 notes: g.notes
                             });
                         }
-                        g.subTasks.forEach((st, idx) => {
-                            if (dateStr >= st.startDate && dateStr <= st.dueDate) {
-                                itemsInDay.push({
-                                    id: st.id,
-                                    title: st.title,
-                                    isSub: true,
-                                    status: st.status,
-                                    lane: g.globalLineStart + 1 + idx,
-                                    start: st.startDate,
-                                    end: st.dueDate,
-                                    parentId: g.id,
-                                    parentTitle: g.title,
-                                    assignee: st.assignee
-                                });
-                            }
-                        });
+                        // 하위 업무 토글 상태에 따라 추가
+                        if (isCalSubTaskVisible) {
+                            g.subTasks.forEach((st, idx) => {
+                                if (dateStr >= st.startDate && dateStr <= st.dueDate) {
+                                    itemsInDay.push({
+                                        id: st.id,
+                                        title: st.title,
+                                        isSub: true,
+                                        status: st.status,
+                                        lane: g.globalLineStart + 1 + idx,
+                                        start: st.startDate,
+                                        end: st.dueDate,
+                                        parentId: g.id,
+                                        parentTitle: g.title,
+                                        assignee: st.assignee
+                                    });
+                                }
+                            });
+                        }
                     });
 
                     const maxLaneInDay = Math.max(...itemsInDay.map(x => x.lane), -1);
@@ -1292,38 +1323,40 @@
                     
                     overlayContainer.appendChild(mainBar);
 
-                    // 2) 소속 하위 업무 드로잉 (상위 바로 하위 레인에 견고히 순서대로 동행)
-                    g.subTasks.forEach((st, idx) => {
-                        const stStartStr = st.startDate || todayStr;
-                        const stEndStr = st.dueDate || todayStr;
-                        const stStartD = new Date(stStartStr.replace(/-/g, '/'));
-                        const stEndD = new Date(stEndStr.replace(/-/g, '/'));
-                        const stStartM = stStartD.getFullYear() < year ? 0 : stStartD.getMonth();
-                        const stEndM = stEndD.getFullYear() > year ? 11 : stEndD.getMonth();
+                    // 2) 소속 하위 업무 드로잉
+                    if (isCalSubTaskVisible) {
+                        g.subTasks.forEach((st, idx) => {
+                            const stStartStr = st.startDate || todayStr;
+                            const stEndStr = st.dueDate || todayStr;
+                            const stStartD = new Date(stStartStr.replace(/-/g, '/'));
+                            const stEndD = new Date(stEndStr.replace(/-/g, '/'));
+                            const stStartM = stStartD.getFullYear() < year ? 0 : stStartD.getMonth();
+                            const stEndM = stEndD.getFullYear() > year ? 11 : stEndD.getMonth();
 
-                        const subLeftPct = (stStartM / 12) * 100;
-                        const subWidthPct = ((stEndM - stStartM + 1) / 12) * 100;
-                        const subTopPx = (g.globalLineStart + 1 + idx) * lineRowHeight + 10;
+                            const subLeftPct = (stStartM / 12) * 100;
+                            const subWidthPct = ((stEndM - stStartM + 1) / 12) * 100;
+                            const subTopPx = (g.globalLineStart + 1 + idx) * lineRowHeight + 10;
 
-                        const subBar = document.createElement('div');
-                        
-                        const subBgClass = st.status === 'COMPLETED'
-                            ? 'bg-emerald-50/80 text-emerald-800 border border-dashed border-emerald-300'
-                            : 'bg-slate-50 text-slate-700 border border-dashed border-slate-300';
-                        const subIcon = st.status === 'COMPLETED' ? '✅' : '⬜';
+                            const subBar = document.createElement('div');
+                            
+                            const subBgClass = st.status === 'COMPLETED'
+                                ? 'bg-emerald-50/80 text-emerald-800 border border-dashed border-emerald-300'
+                                : 'bg-slate-50 text-slate-700 border border-dashed border-slate-300';
+                            const subIcon = st.status === 'COMPLETED' ? '✅' : '⬜';
 
-                        subBar.className = `absolute h-5 rounded-lg shadow-sm text-[9.5px] font-bold flex items-center px-1.5 cursor-pointer transition-all hover:scale-[1.01] pointer-events-auto truncate ${subBgClass}`;
-                        subBar.style.left = `calc(${subLeftPct}% + 4px)`;
-                        subBar.style.width = `calc(${subWidthPct}% - 8px)`;
-                        subBar.style.top = `${subTopPx}px`;
-                        subBar.onclick = () => openTaskModal(g.id);
-                        subBar.innerHTML = `<span>${subIcon}</span> <span class="text-slate-400 font-normal">↳ 👤 ${escapeHTML(st.assignee)} |</span> <span class="ml-0.5 truncate">${escapeHTML(st.title)}</span>`;
-                        
-                        const subDetails = `상위 업무: ${escapeHTML(g.title)}<br>담당자: ${escapeHTML(st.assignee)}<br>기간: ${st.startDate} ~ ${st.dueDate}<br>진척 상태: ${st.status === 'COMPLETED' ? '완료' : '대기'}`;
-                        bindGanttTooltip(subBar, st.title, subDetails);
+                            subBar.className = `absolute h-5 rounded-lg shadow-sm text-[9.5px] font-bold flex items-center px-1.5 cursor-pointer transition-all hover:scale-[1.01] pointer-events-auto truncate ${subBgClass}`;
+                            subBar.style.left = `calc(${subLeftPct}% + 4px)`;
+                            subBar.style.width = `calc(${subWidthPct}% - 8px)`;
+                            subBar.style.top = `${subTopPx}px`;
+                            subBar.onclick = () => openTaskModal(g.id);
+                            subBar.innerHTML = `<span>${subIcon}</span> <span class="text-slate-400 font-normal">↳ 👤 ${escapeHTML(st.assignee)} |</span> <span class="ml-0.5 truncate">${escapeHTML(st.title)}</span>`;
+                            
+                            const subDetails = `상위 업무: ${escapeHTML(g.title)}<br>담당자: ${escapeHTML(st.assignee)}<br>기간: ${st.startDate} ~ ${st.dueDate}<br>진척 상태: ${st.status === 'COMPLETED' ? '완료' : '대기'}`;
+                            bindGanttTooltip(subBar, st.title, subDetails);
 
-                        overlayContainer.appendChild(subBar);
-                    });
+                            overlayContainer.appendChild(subBar);
+                        });
+                    }
                 });
 
                 bodyContainer.appendChild(overlayContainer);
@@ -1390,18 +1423,43 @@
                         const subBadgeMarkup = subCount > 0 ? 
                             `<span class="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-100 px-1.5 py-0.5 rounded font-bold">하위 ${subDone}/${subCount}</span>` : '';
 
+                        // 월별 요약에서 하위 업무 목록 표시 기능 추가
+                        let subTasksHtml = '';
+                        if (t.subTasks && t.subTasks.length > 0) {
+                            subTasksHtml = '<div class="mt-2.5 pt-2.5 border-t border-slate-100/80 space-y-1.5">';
+                            t.subTasks.forEach(st => {
+                                const stIcon = st.status === 'COMPLETED' ? '✅' : '⌛';
+                                const stColor = st.status === 'COMPLETED' ? 'text-slate-400 line-through' : 'text-slate-600';
+                                subTasksHtml += `
+                                    <div class="text-[10px] flex items-center justify-between gap-2">
+                                        <div class="flex items-center gap-1.5 truncate ${stColor}">
+                                            <span>${stIcon}</span>
+                                            <span class="truncate">${escapeHTML(st.title)}</span>
+                                        </div>
+                                        <span class="shrink-0 font-medium text-[9px] bg-slate-50 px-1.5 py-0.5 rounded text-slate-400 border border-slate-200">
+                                            ${st.dueDate ? st.dueDate.substring(5) : ''}
+                                        </span>
+                                    </div>
+                                `;
+                            });
+                            subTasksHtml += '</div>';
+                        }
+
                         const box = document.createElement('div');
-                        box.className = 'bg-white rounded-xl p-3 border border-slate-200/60 shadow-sm cursor-pointer transition hover:border-indigo-400 hover:shadow-md';
+                        box.className = 'bg-white rounded-xl p-3 border border-slate-200/60 shadow-sm cursor-pointer transition hover:border-indigo-400 hover:shadow-md flex flex-col justify-between h-full';
                         box.onclick = () => openTaskModal(t.id);
                         box.innerHTML = `
-                            <div class="flex items-start justify-between gap-2">
-                                <h4 class="text-xs font-bold text-slate-800 line-clamp-1 flex-1">${escapeHTML(t.title)}</h4>
-                                ${subBadgeMarkup}
+                            <div>
+                                <div class="flex items-start justify-between gap-2">
+                                    <h4 class="text-xs font-bold text-slate-800 line-clamp-1 flex-1">${escapeHTML(t.title)}</h4>
+                                    ${subBadgeMarkup}
+                                </div>
+                                <div class="mt-2 flex items-center justify-between text-[11px] text-slate-400 font-medium">
+                                    <span class="flex items-center gap-1">🗓️ ${t.startDate ? t.startDate.substring(5) : '미정'} ~ ${t.dueDate.substring(5)}</span>
+                                    <span class="font-bold bg-slate-50 text-slate-600 px-1.5 py-0.5 border rounded">${escapeHTML(t.assignee)}</span>
+                                </div>
                             </div>
-                            <div class="mt-2.5 flex items-center justify-between text-[11px] text-slate-400 font-medium">
-                                <span class="flex items-center gap-1">🗓️ ${t.startDate ? t.startDate.substring(5) : '미정'} ~ ${t.dueDate.substring(5)}</span>
-                                <span class="font-bold bg-slate-50 text-slate-600 px-1.5 py-0.5 border rounded">${escapeHTML(t.assignee)}</span>
-                            </div>
+                            ${subTasksHtml}
                         `;
                         subGrid.appendChild(box);
                     });
@@ -1457,7 +1515,7 @@
 
                 const btn = document.getElementById('btn-add-subtask');
                 btn.textContent = '추가';
-                btn.className = 'rounded-lg bg-slate-800 px-4 py-1.5 text-xs font-bold text-white hover:bg-slate-700 transition shrink-0';
+                btn.className = 'rounded-lg bg-slate-800 px-4 py-1.5 text-xs font-bold text-white hover:bg-slate-700 transition shrink-0 ml-auto';
             } else {
                 const stObj = {
                     id: 'sub_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
@@ -1518,14 +1576,14 @@
 
             const btn = document.getElementById('btn-add-subtask');
             btn.textContent = '수정 완료';
-            btn.className = 'rounded-lg bg-indigo-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-indigo-700 transition shrink-0';
+            btn.className = 'rounded-lg bg-indigo-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-indigo-700 transition shrink-0 ml-auto';
         };
         window.removeSubTaskFromModal = function(index) {
             if (editingSubTaskIndex === index) {
                 editingSubTaskIndex = -1;
                 const btn = document.getElementById('btn-add-subtask');
                 btn.textContent = '추가';
-                btn.className = 'rounded-lg bg-slate-800 px-4 py-1.5 text-xs font-bold text-white hover:bg-slate-700 transition shrink-0';
+                btn.className = 'rounded-lg bg-slate-800 px-4 py-1.5 text-xs font-bold text-white hover:bg-slate-700 transition shrink-0 ml-auto';
             }
             currentSubTasks.splice(index, 1);
             renderModalSubTasks();
@@ -1542,7 +1600,7 @@
             
             const btn = document.getElementById('btn-add-subtask');
             btn.textContent = '추가';
-            btn.className = 'rounded-lg bg-slate-800 px-4 py-1.5 text-xs font-bold text-white hover:bg-slate-700 transition shrink-0';
+            btn.className = 'rounded-lg bg-slate-800 px-4 py-1.5 text-xs font-bold text-white hover:bg-slate-700 transition shrink-0 ml-auto';
 
             const title = document.getElementById('modal-title');
             if (id) {
@@ -1564,7 +1622,7 @@
                 document.getElementById('input-task-id').value = '';
                 document.getElementById('input-task-start').value = getTodayStr(); 
                 document.getElementById('input-task-due').value = getFutureDateStr(7);
-                document.getElementById('input-subtask-assignee').placeholder = `담당자 (기본: 본 업무 담당자)`;
+                document.getElementById('input-subtask-assignee').placeholder = `담당자 (선택)`;
                 currentSubTasks = [];
             }
             renderModalSubTasks();
@@ -1701,7 +1759,10 @@
                     const batch = db.batch();
                     last.items.forEach(t => { const { id, ...data } = t; batch.set(coll.doc(id), data); });
                     await batch.commit();
+                    
+                    last.items.forEach(t => { tasks.push(t); }); // 로컬 반영
                     showToast(`${last.items.length}개 복원됨.`);
+                    updateUI();
                     return;
                 } catch (e) {
                     console.warn("Firestore 실행 취소 복원 실패, 임시 메모리 반영", e);
@@ -1823,6 +1884,7 @@
                             batch.set(coll.doc(), { ...data, trackerId: currentTrackerId }); 
                         });
                         await batch.commit(); 
+                        fetchInitialData(); // DB 저장 후 최신 데이터 리로드
                     } else {
                         imp.forEach(t => {
                             const newId = 'local_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
@@ -1847,6 +1909,7 @@
             link.download = `export_${getTodayStr()}.csv`; link.click();
         }
 
+        // 캘린더 모드 세팅 및 토글 스위치 가시성 제어 함수
         function setCalMode(mode) {
             currentCalMode = mode;
             ['day', 'month', 'summary'].forEach(m => {
@@ -1858,6 +1921,18 @@
                     btn.className = 'rounded-lg px-3.5 py-1.5 text-slate-500 hover:text-slate-800 transition';
                 }
             });
+            
+            // 토글 버튼 가시성 업데이트 (월별, 일별 보기에서만 보임)
+            const toggleWrapper = document.getElementById('toggle-subtask-cal-wrapper');
+            if (toggleWrapper) {
+                if (mode === 'DAY' || mode === 'MONTH') {
+                    toggleWrapper.classList.remove('hidden');
+                    toggleWrapper.classList.add('inline-flex');
+                } else {
+                    toggleWrapper.classList.add('hidden');
+                    toggleWrapper.classList.remove('inline-flex');
+                }
+            }
             renderActiveViews();
         }
 
@@ -1993,6 +2068,11 @@
             document.getElementById('btn-cal-mode-month')?.addEventListener('click', () => setCalMode('MONTH'));
             document.getElementById('btn-cal-mode-summary')?.addEventListener('click', () => setCalMode('SUMMARY'));
             
+            document.getElementById('cb-show-subtasks-cal')?.addEventListener('change', (e) => {
+                isCalSubTaskVisible = e.target.checked;
+                renderActiveViews();
+            });
+
             document.getElementById('btn-prev-month')?.addEventListener('click', () => {
                 currentCalDate.setMonth(currentCalDate.getMonth() - 1); renderActiveViews();
             });
