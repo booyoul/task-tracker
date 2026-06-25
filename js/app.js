@@ -126,6 +126,20 @@
         function markSaved() { lastSaveState = 'saved'; }
         function markSaveError() { lastSaveState = 'error'; }
 
+        let pendingTrackerOrderSignature = null;
+        let isTrackerOrderSaving = false;
+
+        function getTrackerOrderSignature(list) {
+            return (list || []).map(t => t && t.id).filter(Boolean).join('|');
+        }
+
+        function normalizeTrackerOrder(list) {
+            return (list || []).map((t, i) => ({
+                ...t,
+                order: i + 1
+            }));
+        }
+
         function sortTrackersByOrder(list) {
             return [...list].sort((a, b) => {
                 const ao = typeof a.order === 'number' ? a.order : 999999;
@@ -136,7 +150,12 @@
         }
 
         async function saveTrackerOrder() {
-            trackers = sortTrackersByOrder(trackers).map((t, i) => ({ ...t, order: i + 1, updatedAt: getServerTimestamp() }));
+            // 중요: 여기서는 다시 sortTrackersByOrder()를 호출하지 않습니다.
+            // Drag & Drop 또는 ▲/▼ 버튼으로 이미 결정된 배열 순서를 그대로 order 값으로 확정합니다.
+            trackers = normalizeTrackerOrder(trackers).map(t => ({ ...t, updatedAt: getServerTimestamp() }));
+            pendingTrackerOrderSignature = getTrackerOrderSignature(trackers);
+            isTrackerOrderSaving = true;
+
             updateTrackerUI();
             const coll = getTrackersCollection();
             markSaving();
@@ -150,10 +169,15 @@
                     markSaved();
                     showToast('트래커 순서가 저장되었습니다.');
                 } catch (e) {
+                    pendingTrackerOrderSignature = null;
+                    isTrackerOrderSaving = false;
                     markSaveError();
                     console.warn('트래커 순서 저장 실패', e);
                     showToast('트래커 순서 저장 실패: Console과 Firestore Rules를 확인해 주세요.', false);
                 }
+            } else {
+                pendingTrackerOrderSignature = null;
+                isTrackerOrderSaving = false;
             }
         }
 
@@ -165,18 +189,31 @@
             if (targetIdx < 0 || targetIdx >= trackers.length) return;
             const moved = trackers.splice(idx, 1)[0];
             trackers.splice(targetIdx, 0, moved);
+            trackers = normalizeTrackerOrder(trackers);
+            updateTrackerUI();
             await saveTrackerOrder();
         }
 
-        async function reorderTrackerByDrop(sourceId, targetId) {
+        async function reorderTrackerByDrop(sourceId, targetId, dropPosition = 'before') {
             if (!sourceId || !targetId || sourceId === targetId) return;
+
             trackers = sortTrackersByOrder(trackers);
             const sourceIdx = trackers.findIndex(t => t.id === sourceId);
-            const targetIdx = trackers.findIndex(t => t.id === targetId);
-            if (sourceIdx === -1 || targetIdx === -1) return;
+            if (sourceIdx === -1) return;
+
             const moved = trackers.splice(sourceIdx, 1)[0];
+            let targetIdx = trackers.findIndex(t => t.id === targetId);
+            if (targetIdx === -1) return;
+            if (dropPosition === 'after') targetIdx += 1;
+
             trackers.splice(targetIdx, 0, moved);
+            trackers = normalizeTrackerOrder(trackers);
             draggedTrackerId = null;
+
+            // UI를 먼저 확정해서 사용자가 드롭한 결과가 즉시 보이도록 합니다.
+            updateTrackerUI();
+
+            // 그 다음 Firestore에 같은 순서를 저장합니다.
             await saveTrackerOrder();
         }
 
@@ -360,18 +397,25 @@
                 });
                 row.addEventListener('dragend', () => {
                     draggedTrackerId = null;
-                    row.classList.remove('opacity-50', 'ring-2', 'ring-indigo-300');
+                    row.classList.remove('opacity-50', 'ring-2', 'ring-indigo-300', 'border-t-2', 'border-b-2', 'border-indigo-400');
                 });
                 row.addEventListener('dragover', (e) => {
                     e.preventDefault();
-                    if (draggedTrackerId && draggedTrackerId !== t.id) row.classList.add('ring-2', 'ring-indigo-300');
+                    if (!draggedTrackerId || draggedTrackerId === t.id) return;
+
+                    const rect = row.getBoundingClientRect();
+                    const isAfter = e.clientY > rect.top + rect.height / 2;
+                    row.classList.remove('ring-2', 'ring-indigo-300', 'border-t-2', 'border-b-2', 'border-indigo-400');
+                    row.classList.add(isAfter ? 'border-b-2' : 'border-t-2', 'border-indigo-400');
                 });
-                row.addEventListener('dragleave', () => row.classList.remove('ring-2', 'ring-indigo-300'));
+                row.addEventListener('dragleave', () => row.classList.remove('ring-2', 'ring-indigo-300', 'border-t-2', 'border-b-2', 'border-indigo-400'));
                 row.addEventListener('drop', async (e) => {
                     e.preventDefault();
-                    row.classList.remove('ring-2', 'ring-indigo-300');
+                    row.classList.remove('ring-2', 'ring-indigo-300', 'border-t-2', 'border-b-2', 'border-indigo-400');
                     const sourceId = draggedTrackerId || e.dataTransfer.getData('text/plain');
-                    await reorderTrackerByDrop(sourceId, t.id);
+                    const rect = row.getBoundingClientRect();
+                    const dropPosition = e.clientY > rect.top + rect.height / 2 ? 'after' : 'before';
+                    await reorderTrackerByDrop(sourceId, t.id, dropPosition);
                 });
                 listContainer.appendChild(row);
             });
@@ -1499,9 +1543,23 @@ async function ensureDefaultTrackersInFirestore() {
             if (typeof unsubscribeTasks === 'function') unsubscribeTasks();
 
             unsubscribeTrackers = trackersColl.onSnapshot(snapshot => {
-                trackers = sortTrackersByOrder(snapshot.docs
+                const incomingTrackers = sortTrackersByOrder(snapshot.docs
                     .map(doc => ({ id: doc.id, ...doc.data() }))
                     .filter(t => t.deleted !== true));
+                const incomingSignature = getTrackerOrderSignature(incomingTrackers);
+
+                // Drag & Drop 저장 직후 Firestore의 이전 스냅샷이 늦게 도착하면
+                // 방금 사용자가 확정한 로컬 순서를 덮어쓰지 않도록 무시합니다.
+                if (isTrackerOrderSaving && pendingTrackerOrderSignature && incomingSignature !== pendingTrackerOrderSignature) {
+                    return;
+                }
+
+                if (pendingTrackerOrderSignature && incomingSignature === pendingTrackerOrderSignature) {
+                    pendingTrackerOrderSignature = null;
+                    isTrackerOrderSaving = false;
+                }
+
+                trackers = incomingTrackers;
                 const savedTracker = localStorage.getItem('flow_current_tracker');
                 if (trackers.length > 0) {
                     if (savedTracker && trackers.some(t => t.id === savedTracker)) currentTrackerId = savedTracker;
