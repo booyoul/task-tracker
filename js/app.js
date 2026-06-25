@@ -1,3 +1,4 @@
+console.info('Smart Task Flow app.js v20260625-ux2 loaded');
 // --- (3) Pure Helper Functions ---
         function getStatusKorean(status) { return { 'PENDING': '진행 대기', 'PROGRESS': '진행 중', 'COMPLETED': '완료됨', 'OVERDUE': '기한 초과' }[status] || '전체'; }
         function getPriorityBadge(priority) {
@@ -128,6 +129,8 @@
 
         let pendingTrackerOrderSignature = null;
         let isTrackerOrderSaving = false;
+        let draggedTrackerElement = null;
+        let trackerDragOrderChanged = false;
 
         function getTrackerOrderSignature(list) {
             return (list || []).map(t => t && t.id).filter(Boolean).join('|');
@@ -214,6 +217,32 @@
             updateTrackerUI();
 
             // 그 다음 Firestore에 같은 순서를 저장합니다.
+            await saveTrackerOrder();
+        }
+
+
+        async function saveTrackerOrderFromDom() {
+            const listContainer = document.getElementById('tracker-list-items');
+            if (!listContainer) return;
+
+            const orderedIds = Array.from(listContainer.querySelectorAll('.tracker-item'))
+                .map(el => el.dataset.id)
+                .filter(Boolean);
+
+            if (orderedIds.length === 0) return;
+
+            const trackerMap = new Map(trackers.map(t => [t.id, t]));
+            const orderedTrackers = orderedIds
+                .map(id => trackerMap.get(id))
+                .filter(Boolean);
+
+            // DOM에 없었던 항목은 뒤에 보존합니다. 외부 동기화와 충돌 가능성을 줄이기 위한 안전장치입니다.
+            trackers.forEach(t => {
+                if (t && t.id && !orderedIds.includes(t.id)) orderedTrackers.push(t);
+            });
+
+            trackers = normalizeTrackerOrder(orderedTrackers);
+            updateTrackerUI();
             await saveTrackerOrder();
         }
 
@@ -364,7 +393,7 @@
             }
             trackers.forEach((t, idx) => {
                 const row = document.createElement('div');
-                row.className = `tracker-item group flex items-stretch gap-1 rounded-xl transition ${t.id === currentTrackerId ? 'bg-indigo-50 ring-1 ring-indigo-100' : 'hover:bg-slate-50'}`;
+                row.className = `tracker-item group flex items-stretch gap-1 rounded-xl transition-all duration-150 ease-out ${t.id === currentTrackerId ? 'bg-indigo-50 ring-1 ring-indigo-100' : 'hover:bg-slate-50'}`;
                 row.setAttribute('draggable', 'true');
                 row.dataset.id = t.id;
                 row.title = '드래그해서 트래커 순서를 변경할 수 있습니다.';
@@ -391,31 +420,55 @@
                 row.querySelector('.btn-tracker-down')?.addEventListener('click', async (e) => { e.stopPropagation(); await moveTrackerOrder(t.id, 'down'); });
                 row.addEventListener('dragstart', (e) => {
                     draggedTrackerId = t.id;
-                    row.classList.add('opacity-50');
+                    draggedTrackerElement = row;
+                    trackerDragOrderChanged = false;
+
+                    row.classList.add('opacity-50', 'scale-[0.98]', 'shadow-lg');
                     e.dataTransfer.effectAllowed = 'move';
                     try { e.dataTransfer.setData('text/plain', t.id); } catch (_) {}
                 });
-                row.addEventListener('dragend', () => {
+                row.addEventListener('dragend', async () => {
+                    if (draggedTrackerElement) {
+                        draggedTrackerElement.classList.remove('opacity-50', 'scale-[0.98]', 'shadow-lg');
+                    }
+                    document.querySelectorAll('.tracker-item').forEach(el => {
+                        el.classList.remove('ring-2', 'ring-indigo-300', 'border-t-2', 'border-b-2', 'border-indigo-400', 'bg-indigo-50/60');
+                    });
+
+                    const shouldSave = trackerDragOrderChanged;
                     draggedTrackerId = null;
-                    row.classList.remove('opacity-50', 'ring-2', 'ring-indigo-300', 'border-t-2', 'border-b-2', 'border-indigo-400');
+                    draggedTrackerElement = null;
+                    trackerDragOrderChanged = false;
+
+                    if (shouldSave) await saveTrackerOrderFromDom();
                 });
                 row.addEventListener('dragover', (e) => {
                     e.preventDefault();
-                    if (!draggedTrackerId || draggedTrackerId === t.id) return;
+                    if (!draggedTrackerId || draggedTrackerId === t.id || !draggedTrackerElement) return;
+
+                    const listContainer = document.getElementById('tracker-list-items');
+                    if (!listContainer) return;
 
                     const rect = row.getBoundingClientRect();
                     const isAfter = e.clientY > rect.top + rect.height / 2;
-                    row.classList.remove('ring-2', 'ring-indigo-300', 'border-t-2', 'border-b-2', 'border-indigo-400');
-                    row.classList.add(isAfter ? 'border-b-2' : 'border-t-2', 'border-indigo-400');
+                    const nextPosition = isAfter ? row.nextSibling : row;
+
+                    if (nextPosition !== draggedTrackerElement) {
+                        listContainer.insertBefore(draggedTrackerElement, nextPosition);
+                        trackerDragOrderChanged = true;
+                    }
+
+                    document.querySelectorAll('.tracker-item').forEach(el => {
+                        el.classList.remove('ring-2', 'ring-indigo-300', 'border-t-2', 'border-b-2', 'border-indigo-400', 'bg-indigo-50/60');
+                    });
+                    row.classList.add('bg-indigo-50/60');
                 });
-                row.addEventListener('dragleave', () => row.classList.remove('ring-2', 'ring-indigo-300', 'border-t-2', 'border-b-2', 'border-indigo-400'));
                 row.addEventListener('drop', async (e) => {
                     e.preventDefault();
-                    row.classList.remove('ring-2', 'ring-indigo-300', 'border-t-2', 'border-b-2', 'border-indigo-400');
-                    const sourceId = draggedTrackerId || e.dataTransfer.getData('text/plain');
-                    const rect = row.getBoundingClientRect();
-                    const dropPosition = e.clientY > rect.top + rect.height / 2 ? 'after' : 'before';
-                    await reorderTrackerByDrop(sourceId, t.id, dropPosition);
+                    if (trackerDragOrderChanged) {
+                        await saveTrackerOrderFromDom();
+                        trackerDragOrderChanged = false;
+                    }
                 });
                 listContainer.appendChild(row);
             });
