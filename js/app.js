@@ -1207,6 +1207,8 @@ console.info('Smart Task Flow app.js v20260625-monthly-kpi loaded');
                 currentSubTasks[editingSubTaskIndex].assignee = finalAssignee;
                 currentSubTasks[editingSubTaskIndex].startDate = startVal || getTodayStr();
                 currentSubTasks[editingSubTaskIndex].dueDate = dueVal || getTodayStr();
+                // 상태는 상세 창의 하위 업무 상태 드롭다운에서 별도로 관리합니다.
+                currentSubTasks[editingSubTaskIndex].status = currentSubTasks[editingSubTaskIndex].status || 'PENDING';
                 editingSubTaskIndex = -1;
 
                 const btn = document.getElementById('btn-add-subtask');
@@ -1236,21 +1238,29 @@ console.info('Smart Task Flow app.js v20260625-monthly-kpi loaded');
             
             currentSubTasks.forEach((st, idx) => {
                 const li = document.createElement('li');
-                li.className = 'flex items-center justify-between bg-slate-50 border border-slate-200/60 rounded-xl p-2 text-xs hover:bg-slate-100/50 transition-colors';
+                const normalizedStatus = st.status || 'PENDING';
+                li.className = 'flex flex-col gap-2 bg-slate-50 border border-slate-200/60 rounded-xl p-2 text-xs hover:bg-slate-100/50 transition-colors sm:flex-row sm:items-center sm:justify-between';
                 const startText = st.startDate ? st.startDate.substring(5) : '미정';
                 const dueText = st.dueDate ? st.dueDate.substring(5) : '미정';
+                const statusLabel = normalizedStatus === 'COMPLETED' ? '✓ 완료' : (normalizedStatus === 'PROGRESS' ? '⚙️ 진행 중' : '⌛ 대기');
+                const statusColor = normalizedStatus === 'COMPLETED' ? 'text-emerald-600' : (normalizedStatus === 'PROGRESS' ? 'text-blue-600' : 'text-amber-500');
                 li.innerHTML = `
-                    <div class="flex items-center gap-2 max-w-[70%]">
-                        <span class="font-bold shrink-0 ${st.status === 'COMPLETED' ? 'text-emerald-600' : 'text-amber-500'}">
-                            ${st.status === 'COMPLETED' ? '✓ 완료' : '⌛ 대기'}
+                    <div class="flex items-center gap-2 min-w-0 flex-1">
+                        <span class="font-bold shrink-0 ${statusColor}">
+                            ${statusLabel}
                         </span>
-                        <span class="text-slate-700 font-medium truncate ${st.status === 'COMPLETED' ? 'line-through opacity-50' : ''}">
+                        <span class="text-slate-700 font-medium truncate ${normalizedStatus === 'COMPLETED' ? 'line-through opacity-50' : ''}">
                             ${escapeHTML(st.title)} 
                             <span class="text-[10px] text-slate-400 font-semibold">📅 ${startText} ~ ${dueText}</span>
                             <span class="bg-indigo-50 text-indigo-700 border border-indigo-100 px-1 py-0.2 rounded text-[9px] font-bold">👤 ${escapeHTML(st.assignee || '미지정')}</span>
                         </span>
                     </div>
-                    <div class="flex items-center gap-1.5">
+                    <div class="flex items-center justify-end gap-1.5 shrink-0">
+                        <select class="sel-modal-subtask-status rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100" onchange="updateSubTaskStatusInModal(${idx}, this.value)">
+                            <option value="PENDING" ${normalizedStatus === 'PENDING' ? 'selected' : ''}>진행 대기</option>
+                            <option value="PROGRESS" ${normalizedStatus === 'PROGRESS' ? 'selected' : ''}>진행 중</option>
+                            <option value="COMPLETED" ${normalizedStatus === 'COMPLETED' ? 'selected' : ''}>완료</option>
+                        </select>
                         <button type="button" class="text-indigo-600 hover:text-indigo-800 font-bold px-1" onclick="editSubTaskInModal(${idx})">수정</button>
                         <span class="text-slate-300">|</span>
                         <button type="button" class="text-rose-500 hover:text-rose-700 font-semibold px-1" onclick="removeSubTaskFromModal(${idx})">삭제</button>
@@ -1273,6 +1283,12 @@ console.info('Smart Task Flow app.js v20260625-monthly-kpi loaded');
             const btn = document.getElementById('btn-add-subtask');
             btn.textContent = '수정 완료';
             btn.className = 'rounded-lg bg-indigo-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-indigo-700 transition shrink-0 ml-auto';
+        };
+        window.updateSubTaskStatusInModal = function(index, status) {
+            const st = currentSubTasks[index];
+            if (!st) return;
+            st.status = status || 'PENDING';
+            renderModalSubTasks();
         };
         window.removeSubTaskFromModal = function(index) {
             if (editingSubTaskIndex === index) {
