@@ -1,19 +1,15 @@
-# Smart Task Flow - Improved Split Version
+# Smart Task Flow - Tracker Sync Fixed
 
-기존 `code_artifact (1).html`을 `index.html + js/firebase.js + js/state.js + js/app.js` 구조로 분리하고, 운영 안정성을 위한 보완을 적용한 버전입니다.
+이 버전은 tracker 정보가 다른 브라우저에 동기화되지 않던 문제를 수정한 버전입니다.
 
-## 이번 보완 사항
+## 핵심 수정
 
-1. `index.html`의 로컬 JS 로딩에 `defer` 적용
-2. Firebase persistence 오류 메시지 보완
-3. Firestore `onSnapshot()` 기반 실시간 동기화 추가
-4. Tooltip 렌더링 시 사용자 입력 HTML 주입 가능성 완화
-5. 담당자 필터 option 처리 개선
-6. Firestore 저장/스냅샷 경쟁 상황에서 중복 insert 가능성 완화
-7. CSV export 후 Object URL 정리
-8. 페이지 종료 시 Firestore realtime listener 정리
-9. GitHub Pages 호환을 위한 `.nojekyll` 추가
+1. 기본 tracker를 Firestore `trackers` collection에 자동 보정/생성합니다.
+2. tracker 수정 시 `update()` 대신 `set(data, { merge: true })`를 사용합니다.
+3. 신규 tracker는 `coll.doc(newId).set(...)` 방식으로 로컬 id와 Firestore document id를 일치시킵니다.
+4. tracker 삭제 시 `tracker_` id도 Firestore에서 삭제되도록 수정했습니다.
+5. tasks / trackers 모두 `onSnapshot()` 기반으로 실시간 반영됩니다.
 
 ## 배포
 
-`index.html`, `js/` 폴더, `.nojekyll`을 GitHub repository root에 업로드하세요.
+`index.html`, `js/`, `.nojekyll`을 GitHub repository root에 업로드하세요.

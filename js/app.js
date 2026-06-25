@@ -52,7 +52,6 @@
             const tooltip = document.getElementById('gantt-tooltip');
             element.addEventListener('mouseenter', (e) => {
                 const safeTitle = escapeHTML(title || '');
-                // details는 코드 내부에서 생성되는 문자열이지만, 사용자 입력이 섞일 수 있어 <br>만 허용합니다.
                 const safeDetails = String(details || '').replace(/<(?!br\s*\/?)[^>]+>/gi, '');
                 tooltip.innerHTML = `<div class="font-bold mb-1">${safeTitle}</div><div class="text-[10.5px] leading-relaxed text-slate-300">${safeDetails}</div>`;
                 tooltip.classList.remove('hidden');
@@ -108,37 +107,39 @@
 
         // --- (5) Database CRUD Operations ---
         async function db_addTask(taskData) {
-            let newId = 'local_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
             const coll = getTasksCollection();
+            const newId = 'task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+            const payload = { ...taskData };
+            if (!payload.trackerId) payload.trackerId = currentTrackerId;
             if (isFirebaseAvailable && db && coll) {
                 try {
-                    const docRef = await coll.add(taskData);
-                    newId = docRef.id; // DB에서 생성된 실제 ID 사용
+                    await coll.doc(newId).set(payload, { merge: true });
                 } catch (e) {
-                    console.warn("Firestore 쓰기 오류 발생, 로컬 저장 연동", e);
+                    console.warn("Firestore 업무 쓰기 오류 발생, 로컬 저장 연동", e);
                 }
             }
-            // 로컬 배열 및 UI 업데이트 보장
-            if (!tasks.some(t => t.id === newId)) { tasks.push({ id: newId, ...taskData }); }
+            if (!tasks.some(t => t.id === newId)) tasks.push({ id: newId, ...payload });
             updateUI();
         }
+
         
         async function db_updateTask(id, taskData) {
             const coll = getTasksCollection();
-            if (isFirebaseAvailable && db && coll && !id.startsWith('local_')) {
+            if (isFirebaseAvailable && db && coll) {
                 try {
-                    await coll.doc(id).update(taskData);
+                    // update()는 문서가 없으면 실패하므로 set(..., merge:true)로 문서 누락 상황도 복구합니다.
+                    await coll.doc(id).set(taskData, { merge: true });
                 } catch (e) {
-                    console.warn("Firestore 수정 오류 발생, 로컬 저장 연동", e);
+                    console.warn("Firestore 업무 수정 오류 발생, 로컬 저장 연동", e);
                 }
             }
-            // 로컬 배열 및 UI 업데이트 보장
             const idx = tasks.findIndex(t => t.id === id);
             if (idx !== -1) {
                 tasks[idx] = { ...tasks[idx], ...taskData };
                 updateUI();
             }
         }
+
         
         async function db_deleteTask(id) {
             const coll = getTasksCollection();
@@ -182,44 +183,49 @@
         
         async function db_addTracker(trackerData) {
             const coll = getTrackersCollection();
-            let newId = 'tracker_' + Date.now();
+            const newId = 'tracker_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+            const payload = { ...trackerData };
             if (isFirebaseAvailable && db && coll) {
                 try {
-                    const docRef = await coll.add(trackerData);
-                    newId = docRef.id;
+                    // doc(newId).set을 사용해 로컬 id와 Firestore doc id를 항상 일치시킵니다.
+                    await coll.doc(newId).set(payload, { merge: true });
                 } catch(e) {
                     console.warn("Firestore 트래커 추가 실패, 로컬 처리 진행", e);
                 }
             }
-            // 로컬 배열 및 UI 업데이트 보장
-            if (!trackers.some(t => t.id === newId)) { trackers.push({ id: newId, ...trackerData }); }
+            if (!trackers.some(t => t.id === newId)) trackers.push({ id: newId, ...payload });
             currentTrackerId = newId;
             localStorage.setItem('flow_current_tracker', currentTrackerId);
             updateTrackerUI();
             updateUI();
         }
+
         
         async function db_updateTracker(id, trackerData) {
             const coll = getTrackersCollection();
-            if (isFirebaseAvailable && db && coll && !id.startsWith('tracker_')) {
+            if (isFirebaseAvailable && db && coll) {
                 try {
-                    await coll.doc(id).update(trackerData);
+                    // 기존 코드의 update()는 Firestore에 문서가 없으면 실패했습니다.
+                    // set(..., merge:true)는 기본 트래커처럼 아직 DB에 없는 문서도 생성/갱신합니다.
+                    await coll.doc(id).set(trackerData, { merge: true });
                 } catch(e) {
                     console.warn("Firestore 트래커 수정 실패, 로컬 처리 진행", e);
                 }
             }
-            // 로컬 배열 및 UI 업데이트 보장
             const idx = trackers.findIndex(t => t.id === id);
             if (idx !== -1) {
                 trackers[idx] = { ...trackers[idx], ...trackerData };
-                updateTrackerUI();
-                updateUI();
+            } else {
+                trackers.push({ id, ...trackerData });
             }
+            updateTrackerUI();
+            updateUI();
         }
+
         
         async function db_deleteTracker(id) {
             const coll = getTrackersCollection();
-            if (isFirebaseAvailable && db && coll && !id.startsWith('tracker_')) {
+            if (isFirebaseAvailable && db && coll) {
                 try {
                     await coll.doc(id).delete();
                 } catch(e) {
@@ -227,7 +233,7 @@
                 }
             }
             const tColl = getTasksCollection();
-            if (isFirebaseAvailable && db && tColl && !id.startsWith('tracker_')) {
+            if (isFirebaseAvailable && db && tColl) {
                 try {
                     const snapshot = await tColl.where("trackerId", "==", id).get();
                     const batch = db.batch();
@@ -1383,21 +1389,41 @@
         }
 
         // --- (11) Global Event Listeners Initialization ---
+        
+async function ensureDefaultTrackersInFirestore() {
+            if (!isFirebaseAvailable || !db) return;
+            const coll = getTrackersCollection();
+            if (!coll) return;
+            try {
+                for (const t of trackers) {
+                    if (!t || !t.id) continue;
+                    const ref = coll.doc(t.id);
+                    const snap = await ref.get();
+                    if (!snap.exists) {
+                        await ref.set({ name: t.name, desc: t.desc || '' }, { merge: true });
+                    }
+                }
+            } catch (e) {
+                console.warn('기본 트래커 Firestore 보정 실패', e);
+            }
+        }
+
         function setupRealtimeListeners() {
             if (!isFirebaseAvailable || !db) return false;
             const trackersColl = getTrackersCollection();
             const tasksColl = getTasksCollection();
             if (!trackersColl || !tasksColl) return false;
-
             if (typeof unsubscribeTrackers === 'function') unsubscribeTrackers();
             if (typeof unsubscribeTasks === 'function') unsubscribeTasks();
 
             unsubscribeTrackers = trackersColl.onSnapshot(snapshot => {
                 if (!snapshot.empty) {
                     trackers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    if (!trackers.some(t => t.id === currentTrackerId)) {
-                        const savedTracker = localStorage.getItem('flow_current_tracker');
-                        currentTrackerId = trackers.some(t => t.id === savedTracker) ? savedTracker : trackers[0].id;
+                    const savedTracker = localStorage.getItem('flow_current_tracker');
+                    if (savedTracker && trackers.some(t => t.id === savedTracker)) {
+                        currentTrackerId = savedTracker;
+                    } else if (!trackers.some(t => t.id === currentTrackerId)) {
+                        currentTrackerId = trackers[0].id;
                         localStorage.setItem('flow_current_tracker', currentTrackerId);
                     }
                 }
@@ -1420,6 +1446,7 @@
         }
 
         async function fetchInitialData() {
+            await ensureDefaultTrackersInFirestore();
             if (setupRealtimeListeners()) return;
             updateUI();
         }
