@@ -1047,7 +1047,39 @@ console.info('Smart Task Flow app.js v20260625-ux2 loaded');
 
                         // 월별 요약에서 하위 업무 목록 표시 기능 추가
                         let subTasksHtml = '';
-                        if (t.subTasks && t.subTasks.length > 0) {
+                        // 월별 요약에서 하위 업무 목록 표시 기능 추가
+let subTasksHtml = '';
+if (t.subTasks && t.subTasks.length > 0) {
+    const monthStart = new Date(year, month, 1);
+    const monthEnd = new Date(year, month + 1, 0, 23, 59, 59);
+
+    const validSubTasks = t.subTasks.filter(st => {
+        const stStart = new Date((st.startDate || st.dueDate || todayStr).replace(/-/g, '/'));
+        const stEnd = new Date((st.dueDate || st.startDate || todayStr).replace(/-/g, '/'));
+        return stStart <= monthEnd && stEnd >= monthStart;
+    });
+
+    const totalSub = t.subTasks.length;
+    const visibleSub = validSubTasks.length;
+
+    if (visibleSub > 0) {
+        subTasksHtml = '
+<div class="mt-2 border-t pt-2 space-y-1">';
+        validSubTasks.forEach(st => {
+            const stIcon = st.status === 'COMPLETED' ? '✅' : '⌛';
+            const stColor = st.status === 'COMPLETED' ? 'text-slate-400 line-through' : 'text-slate-600';
+            subTasksHtml += `
+<div class="${stColor} text-xs">${stIcon} ${escapeHTML(st.title)} ${st.dueDate ? st.dueDate.substring(5) : ''}</div>`;
+        });
+        if (visibleSub < totalSub) {
+            subTasksHtml += `
+<div class="text-[10px] text-slate-400">외 ${totalSub-visibleSub}건 숨김 (해당 월 외)</div>`;
+        }
+        subTasksHtml += '
+</div>';
+    }
+}
+
                             subTasksHtml = '<div class="mt-2.5 pt-2.5 border-t border-slate-100/80 space-y-1.5">';
                             t.subTasks.forEach(st => {
                                 const stIcon = st.status === 'COMPLETED' ? '✅' : '⌛';
