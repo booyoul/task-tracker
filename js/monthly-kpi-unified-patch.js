@@ -2,33 +2,42 @@
 (function () {
     const originalRenderCalendar = renderCalendar;
 
-    function getDateRange(item, fallbackDate) {
-        const startStr = item.startDate || item.dueDate || fallbackDate;
-        const endStr = item.dueDate || item.startDate || fallbackDate;
-        const start = new Date(String(startStr).replace(/-/g, '/'));
-        const end = new Date(String(endStr).replace(/-/g, '/'));
+    // Parent task는 월과 겹치면 월별 요약에 포함합니다.
+    // Sub-task는 fallback 없이 실제 startDate 또는 dueDate가 해당 월에 있는 경우만 포함합니다.
+    function parseDateOnly(dateStr) {
+        if (!dateStr) return null;
+        const d = new Date(String(dateStr).replace(/-/g, '/'));
+        return isNaN(d.getTime()) ? null : d;
+    }
+
+    function getParentTaskDateRange(item, fallbackDate) {
+        const start = parseDateOnly(item.startDate || item.dueDate || fallbackDate);
+        const end = parseDateOnly(item.dueDate || item.startDate || fallbackDate);
         return { start, end };
     }
 
     function isDateInMonth(dateValue, monthStart, monthEnd) {
-        return !isNaN(dateValue.getTime()) && dateValue >= monthStart && dateValue <= monthEnd;
+        return dateValue && dateValue >= monthStart && dateValue <= monthEnd;
     }
 
     function isTaskOverlappingMonth(item, monthStart, monthEnd, fallbackDate) {
-        const { start, end } = getDateRange(item, fallbackDate);
-        if (isNaN(start.getTime()) || isNaN(end.getTime())) return false;
+        const { start, end } = getParentTaskDateRange(item, fallbackDate);
+        if (!start || !end) return false;
         return start <= monthEnd && end >= monthStart;
     }
 
-    function isSubTaskInMonth(item, monthStart, monthEnd, fallbackDate) {
-        const { start, end } = getDateRange(item, fallbackDate);
-        return isDateInMonth(start, monthStart, monthEnd) || isDateInMonth(end, monthStart, monthEnd);
+    function isSubTaskInMonth(item, monthStart, monthEnd) {
+        const start = parseDateOnly(item.startDate);
+        const end = parseDateOnly(item.dueDate);
+        const isStartInMonth = isDateInMonth(start, monthStart, monthEnd);
+        const isEndInMonth = isDateInMonth(end, monthStart, monthEnd);
+        return isStartInMonth || isEndInMonth;
     }
 
-    function getMonthlySubTaskSummary(task, monthStart, monthEnd, todayStr) {
+    function getMonthlySubTaskSummary(task, monthStart, monthEnd) {
         const allSubTasks = Array.isArray(task.subTasks) ? task.subTasks : [];
-        const inMonthSubTasks = allSubTasks.filter(st => isSubTaskInMonth(st, monthStart, monthEnd, todayStr));
-        const outsideMonthSubTasks = allSubTasks.filter(st => !isSubTaskInMonth(st, monthStart, monthEnd, todayStr));
+        const inMonthSubTasks = allSubTasks.filter(st => isSubTaskInMonth(st, monthStart, monthEnd));
+        const outsideMonthSubTasks = allSubTasks.filter(st => !isSubTaskInMonth(st, monthStart, monthEnd));
         const completedInMonth = inMonthSubTasks.filter(st => st.status === 'COMPLETED').length;
         return {
             allSubTasks,
@@ -41,8 +50,8 @@
         };
     }
 
-    function buildMonthlySubTaskHTML(task, monthStart, monthEnd, todayStr) {
-        const summary = getMonthlySubTaskSummary(task, monthStart, monthEnd, todayStr);
+    function buildMonthlySubTaskHTML(task, monthStart, monthEnd) {
+        const summary = getMonthlySubTaskSummary(task, monthStart, monthEnd);
         if (summary.totalAll === 0) return '';
 
         let html = '<div class="mt-2.5 pt-2.5 border-t border-slate-100/80 space-y-1.5">';
@@ -109,9 +118,9 @@
         const monthlyPending = groups.PENDING.length;
         const monthlyCompletionRate = monthlyTotal > 0 ? Math.round((monthlyCompleted / monthlyTotal) * 100) : 0;
         const monthlyDelayRate = monthlyTotal > 0 ? Math.round((monthlyOverdue / monthlyTotal) * 100) : 0;
-        const monthlySubTotal = currentMonthTasks.reduce((sum, t) => sum + getMonthlySubTaskSummary(t, monthStart, monthEnd, todayStr).totalInMonth, 0);
-        const monthlySubCompleted = currentMonthTasks.reduce((sum, t) => sum + getMonthlySubTaskSummary(t, monthStart, monthEnd, todayStr).completedInMonth, 0);
-        const monthlySubHidden = currentMonthTasks.reduce((sum, t) => sum + getMonthlySubTaskSummary(t, monthStart, monthEnd, todayStr).hiddenOutsideMonth, 0);
+        const monthlySubTotal = currentMonthTasks.reduce((sum, t) => sum + getMonthlySubTaskSummary(t, monthStart, monthEnd).totalInMonth, 0);
+        const monthlySubCompleted = currentMonthTasks.reduce((sum, t) => sum + getMonthlySubTaskSummary(t, monthStart, monthEnd).completedInMonth, 0);
+        const monthlySubHidden = currentMonthTasks.reduce((sum, t) => sum + getMonthlySubTaskSummary(t, monthStart, monthEnd).hiddenOutsideMonth, 0);
 
         const kpiPanel = document.createElement('div');
         kpiPanel.className = 'grid grid-cols-2 md:grid-cols-4 gap-3';
@@ -139,14 +148,14 @@
             subGrid.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5';
 
             cat.list.forEach(t => {
-                const subSummary = getMonthlySubTaskSummary(t, monthStart, monthEnd, todayStr);
+                const subSummary = getMonthlySubTaskSummary(t, monthStart, monthEnd);
                 const subBadgeMarkup = subSummary.totalInMonth > 0
                     ? `<span class="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-100 px-1.5 py-0.5 rounded font-bold">하위 ${subSummary.totalInMonth}건</span>`
                     : (subSummary.totalAll > 0 ? `<span class="text-[10px] bg-slate-50 text-slate-500 border border-slate-100 px-1.5 py-0.5 rounded font-bold">하위 0건</span>` : '');
                 const subProgressMarkup = subSummary.totalInMonth > 0
                     ? `<span class="text-[10px] text-slate-400">월내 하위 완료 ${subSummary.completedInMonth}/${subSummary.totalInMonth}</span>`
                     : (subSummary.totalAll > 0 ? `<span class="text-[10px] text-slate-400">해당 월 하위 업무 없음</span>` : '');
-                const subTasksHtml = buildMonthlySubTaskHTML(t, monthStart, monthEnd, todayStr);
+                const subTasksHtml = buildMonthlySubTaskHTML(t, monthStart, monthEnd);
 
                 const box = document.createElement('div');
                 box.className = 'bg-white rounded-xl p-3 border border-slate-200/60 shadow-sm cursor-pointer transition hover:border-indigo-400 hover:shadow-md flex flex-col justify-between h-full';
@@ -177,5 +186,5 @@
         return originalRenderCalendar(filteredTasks);
     };
 
-    console.info('Smart Task Flow monthly KPI unified patch v20260625-unified-patch loaded');
+    console.info('Smart Task Flow monthly KPI unified patch v20260625-unified-patch-v2 loaded');
 })();
