@@ -1,4 +1,5 @@
-console.info('Smart Task Flow bootstrap-service.js v20260626-phase11-mobile-redesign loaded');
+
+console.info('Smart Task Flow bootstrap-service.js v20260626-phase12-13-hotfix loaded');
 async function initializeAuthAndData() {
   if (isFirebaseAvailable && auth) {
     const initAuth = async () => {
@@ -18,10 +19,7 @@ function restoreCurrentTrackerSelection() {
 }
 function initializeApplicationEvents() {
   if (typeof window.initEventBindings === 'function') window.initEventBindings();
-  else console.warn('initEventBindings is not available. Check event-bindings.js script order.');
+  else console.warn('initEventBindings missing; UI loaded without extra event binding.');
 }
 async function bootstrapApp() { await initializeAuthAndData(); restoreCurrentTrackerSelection(); initializeApplicationEvents(); }
 window.bootstrapApp = bootstrapApp;
-window.initializeAuthAndData = initializeAuthAndData;
-window.restoreCurrentTrackerSelection = restoreCurrentTrackerSelection;
-window.initializeApplicationEvents = initializeApplicationEvents;
