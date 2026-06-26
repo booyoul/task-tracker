@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow app.js v20260626-subtask-continuous-bar loaded');
+console.info('Smart Task Flow app.js v20260626-day-gantt-polish loaded');
 // --- UX optimization globals: must be declared before helper functions ---
 var focusState = window.focusState || { riskOnly: false, mineOnly: false, highOnly: false };
 window.focusState = focusState;
@@ -1028,69 +1028,103 @@ function renderCalendar(filteredTasks) {
 
   if (currentCalMode === 'DAY') {
     weekdayHeader?.classList.remove('hidden');
-    grid.className = 'compact-day-grid grid grid-cols-7 auto-rows-min gap-px bg-slate-200 border border-slate-200 rounded-b-lg overflow-hidden relative z-10';
+    grid.className = 'relative bg-white border border-slate-200 rounded-b-lg overflow-hidden';
     grid.innerHTML = '';
+
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    for (let i = 0; i < firstDay; i++) { const c = document.createElement('div'); c.className = 'bg-slate-50 min-h-[44px] border-r border-b border-slate-100'; grid.appendChild(c); }
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      const cellIndex = firstDay + day - 1;
-      const dayOfWeek = cellIndex % 7;
-      const isWeekStart = dayOfWeek === 0;
-      const cell = document.createElement('div');
-      cell.className = `bg-white min-h-[44px] flex flex-col transition-colors border-r border-b border-slate-100 ${dateStr === todayStr ? 'bg-indigo-50/20' : 'hover:bg-slate-50'}`;
-      cell.innerHTML = `<div class="p-1.5"><span class="inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${dateStr === todayStr ? 'bg-indigo-600 text-white shadow-sm' : dayOfWeek === 0 ? 'text-rose-500' : dayOfWeek === 6 ? 'text-blue-500' : 'text-slate-600'}">${day}</span></div>`;
-      const taskContainer = document.createElement('div');
-      // Compact stacking: no horizontal padding so weekly bar segments visually connect across days.
-      taskContainer.className = 'flex flex-col gap-0 px-0 pb-1';
-      const items = [];
-      groups.forEach(g => {
-        if (dateStr >= g.startDate && dateStr <= g.dueDate) items.push({ id: g.id, title: g.title, isSub: false, status: g.status, lane: g.globalLineStart, start: g.startDate, end: g.dueDate, parentId: g.id, assignee: g.assignee, notes: g.notes, dueDate: g.dueDate });
-        const daySubTasks = g.monthSubTasks || [];
-        if (isCalSubTaskVisible) daySubTasks.forEach((st, idx) => { if (dateStr >= st.startDate && dateStr <= st.dueDate) items.push({ ...st, isSub: true, lane: g.globalLineStart + 1 + idx, start: st.startDate, end: st.dueDate, parentId: g.id, parentTitle: g.title }); });
-      });
-      for (let lane = 0; lane < totalCalLanes; lane++) {
-        const item = items.find(x => x.lane === lane);
-        if (!item) { addInvisibleCalendarSpacer(taskContainer); continue; }
-        const isStart = dateStr === item.start;
-        const isEnd = dateStr === item.end;
-        const isWeekEnd = dayOfWeek === 6;
-        const showText = shouldShowCalendarText(item, dateStr, isWeekStart, day);
-        const el = document.createElement('div');
-        // Weekly continuous bar: render every active day so task flow continues across the week.
-        // Text appears only on start/end/Sunday/1st/today; continuation days keep color but no label.
-        // Continuous bar rendering: sub-task segments must not have per-day left margin,
-        // otherwise a dated sub task looks broken at each day boundary.
-        // Use full-width segments for both main and sub tasks; distinguish sub tasks with dashed border/text.
-        let shape = `calendar-bar-segment min-h-[17px] w-[calc(100%+2px)] flex items-center shadow-sm ${item.isSub ? 'border-dashed' : ''}`;
-        if (isStart || isWeekStart || forceTextOnFirstDay(day)) shape += ' rounded-l pl-1 pr-0 -mr-[1px]';
-        else shape += ' rounded-none px-0 -mx-[1px]';
-        if (isEnd || isWeekEnd) shape += ' rounded-r pr-1 -ml-[1px]';
-        const elClassStatus = item.isSub ? subClass(item) : mainClass(item);
-        el.className = `calendar-task-chip text-[10px] leading-tight font-semibold cursor-pointer transition-all hover:scale-[1.02] ${elClassStatus} ${shape}`;
-        el.onclick = () => openTaskModal(item.parentId);
-        bindGanttTooltip(el, item.title, item.isSub ? `[하위업무] 상위: ${escapeHTML(item.parentTitle)}<br>담당자: ${escapeHTML(item.assignee)}<br>기간: ${item.start} ~ ${item.end}<br>상태: ${getStatusKorean(item.status)}` : `[본업무] 담당자: ${escapeHTML(item.assignee)}<br>기간: ${item.start} ~ ${item.end}<br>메모: ${escapeHTML(item.notes || '없음')}`);
-        if (showText) {
-          const txt = document.createElement('div');
-          txt.className = `truncate w-full whitespace-nowrap z-20 px-0.5 ${item.isSub ? 'pl-2' : ''}`;
-          const marker = isStart && isEnd ? '' : isStart ? '▶ ' : isEnd ? '■ ' : '';
-          txt.innerHTML = item.isSub
-            ? `${marker}${isSubTaskOverdue(item, todayStr) ? '🚨' : getStatusIcon(item.status)} ↳ 👤 ${escapeHTML(item.assignee)} | ${escapeHTML(item.title)}`
-            : `${marker}${getEffectiveStatus(item, todayStr) === 'OVERDUE' ? '🚨' : getEffectiveStatus(item, todayStr) === 'COMPLETED' ? '⭐️' : getEffectiveStatus(item, todayStr) === 'PROGRESS' ? '⚙️' : '⌛'} ${escapeHTML(item.title)}`;
-          el.appendChild(txt);
-        }
-        taskContainer.appendChild(el);
-      }
-      cell.appendChild(taskContainer);
-      grid.appendChild(cell);
-    }
+    const lastDayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
     const totalCells = firstDay + daysInMonth;
     const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
-    for (let i = 0; i < remaining; i++) { const c = document.createElement('div'); c.className = 'bg-slate-50 min-h-[44px] border-r border-b border-slate-100'; grid.appendChild(c); }
+    const fullCells = totalCells + remaining;
+    const weekCount = Math.ceil(fullCells / 7);
+
+    // DAY view is now rendered like a mini Gantt chart for each week.
+    // Cells are just the calendar plate; bars are drawn in an absolute overlay so main/sub tasks
+    // become smooth, unbroken rounded lines instead of separate per-day chips.
+    const laneHeight = 22;
+    const rowDateHeight = 34;
+    const rowHeight = rowDateHeight + Math.max(totalCalLanes, 1) * laneHeight + 14;
+
+    const plate = document.createElement('div');
+    plate.className = 'grid grid-cols-7 gap-px bg-slate-200 relative z-0';
+    for (let cellIndex = 0; cellIndex < fullCells; cellIndex++) {
+      const day = cellIndex - firstDay + 1;
+      const dayOfWeek = cellIndex % 7;
+      const dateStr = day >= 1 && day <= daysInMonth ? `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}` : '';
+      const cell = document.createElement('div');
+      cell.className = `${dateStr ? 'bg-white hover:bg-slate-50' : 'bg-slate-50'} transition-colors border-r border-b border-slate-100`;
+      cell.style.height = `${rowHeight}px`;
+      cell.innerHTML = dateStr
+        ? `<div class="p-1.5"><span class="inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${dateStr === todayStr ? 'bg-indigo-600 text-white shadow-sm' : dayOfWeek === 0 ? 'text-rose-500' : dayOfWeek === 6 ? 'text-blue-500' : 'text-slate-600'}">${day}</span></div>`
+        : '';
+      plate.appendChild(cell);
+    }
+    grid.appendChild(plate);
+
+    const overlay = document.createElement('div');
+    overlay.className = 'absolute inset-0 z-10 pointer-events-none';
+
+    const clampDateStr = (value, min, max) => String(value || min) < min ? min : String(value || min) > max ? max : String(value || min);
+    const dayNumber = dateStr => Number(String(dateStr).slice(8, 10));
+    const barLabel = item => item.isSub
+      ? `${isSubTaskOverdue(item, todayStr) ? '🚨' : getStatusIcon(item.status)} ↳ 👤 ${escapeHTML(item.assignee)} | ${escapeHTML(item.title)}`
+      : `${getEffectiveStatus(item, todayStr) === 'OVERDUE' ? '🚨' : getEffectiveStatus(item, todayStr) === 'COMPLETED' ? '⭐️' : getEffectiveStatus(item, todayStr) === 'PROGRESS' ? '⚙️' : '⌛'} ${escapeHTML(item.title)}`;
+
+    const drawWeekFragment = item => {
+      const displayStart = clampDateStr(item.start, `${year}-${String(month + 1).padStart(2, '0')}-01`, lastDayStr);
+      const displayEnd = clampDateStr(item.end, `${year}-${String(month + 1).padStart(2, '0')}-01`, lastDayStr);
+      const startDay = dayNumber(displayStart);
+      const endDay = dayNumber(displayEnd);
+      if (!startDay || !endDay || startDay > daysInMonth || endDay < 1 || startDay > endDay) return;
+
+      for (let week = 0; week < weekCount; week++) {
+        const weekCellStart = week * 7;
+        const weekCellEnd = weekCellStart + 6;
+        const weekStartDay = Math.max(1, weekCellStart - firstDay + 1);
+        const weekEndDay = Math.min(daysInMonth, weekCellEnd - firstDay + 1);
+        const segStartDay = Math.max(startDay, weekStartDay);
+        const segEndDay = Math.min(endDay, weekEndDay);
+        if (segStartDay > segEndDay) continue;
+
+        const startCol = (firstDay + segStartDay - 1) % 7;
+        const endCol = (firstDay + segEndDay - 1) % 7;
+        const isRealStart = segStartDay === startDay;
+        const isRealEnd = segEndDay === endDay;
+        const showText = isRealStart || week > 0 || segStartDay === 1 || `${year}-${String(month + 1).padStart(2, '0')}-${String(segStartDay).padStart(2, '0')}` === todayStr;
+
+        const bar = document.createElement('div');
+        const elClassStatus = item.isSub ? subClass(item) : mainClass(item);
+        bar.className = `absolute h-5 rounded-lg shadow-sm text-[10px] leading-none font-semibold flex items-center cursor-pointer transition-all hover:scale-[1.01] pointer-events-auto truncate ${item.isSub ? 'border-dashed' : ''} ${elClassStatus}`;
+        bar.style.left = `calc(${startCol / 7 * 100}% + ${isRealStart ? 4 : 1}px)`;
+        bar.style.width = `calc(${(endCol - startCol + 1) / 7 * 100}% - ${isRealStart && isRealEnd ? 8 : 2}px)`;
+        bar.style.top = `${week * rowHeight + rowDateHeight + item.lane * laneHeight}px`;
+        bar.style.paddingLeft = item.isSub ? '10px' : '8px';
+        bar.style.paddingRight = '8px';
+        bar.onclick = () => openTaskModal(item.parentId);
+        bindGanttTooltip(bar, item.title, item.isSub
+          ? `[하위업무] 상위: ${escapeHTML(item.parentTitle)}<br>담당자: ${escapeHTML(item.assignee)}<br>기간: ${item.start} ~ ${item.end}<br>상태: ${getStatusKorean(item.status)}`
+          : `[본업무] 담당자: ${escapeHTML(item.assignee)}<br>기간: ${item.start} ~ ${item.end}<br>메모: ${escapeHTML(item.notes || '없음')}`);
+        if (showText) bar.innerHTML = `<span class="truncate">${barLabel(item)}</span>`;
+        overlay.appendChild(bar);
+      }
+    };
+
+    groups.forEach(g => {
+      if (g.startDate <= lastDayStr && g.dueDate >= `${year}-${String(month + 1).padStart(2, '0')}-01`) {
+        drawWeekFragment({ id: g.id, title: g.title, isSub: false, status: g.status, lane: g.globalLineStart, start: g.startDate, end: g.dueDate, parentId: g.id, assignee: g.assignee, notes: g.notes, dueDate: g.dueDate });
+      }
+      if (isCalSubTaskVisible) {
+        const daySubTasks = g.monthSubTasks || [];
+        daySubTasks.forEach((st, idx) => {
+          drawWeekFragment({ ...st, isSub: true, lane: g.globalLineStart + 1 + idx, start: st.startDate, end: st.dueDate, parentId: g.id, parentTitle: g.title });
+        });
+      }
+    });
+
+    grid.appendChild(overlay);
     return;
   }
-
   if (currentCalMode === 'MONTH') {
     weekdayHeader?.classList.add('hidden');
     grid.className = 'relative bg-white border border-slate-200 rounded-xl overflow-hidden';
