@@ -162,15 +162,17 @@ function ensureAdvancedFilterOptions() {
   });
   sel.dataset.advanced = 'true';
 }
-function ensureRiskDashboardPanel() {
-  if (document.getElementById('risk-dashboard-panel')) return document.getElementById('risk-dashboard-panel');
-  const cards = document.querySelector('section.mb-6.grid');
-  if (!cards) return null;
-  const panel = document.createElement('section');
-  panel.id = 'risk-dashboard-panel';
-  panel.className = 'mb-3';
-  cards.insertAdjacentElement('afterend', panel);
-  return panel;
+function ensureRiskDashboardPanel() {  
+  const existing = document.getElementById('risk-dashboard-panel');  
+  if (existing) return existing;  
+  // Robust anchor: the KPI section class changed from mb-6 to mb-3, so do not rely on a fixed class selector.  
+  const cards = document.getElementById('card-ALL')?.parentElement || document.getElementById('kpi-dashboard-section') || document.querySelector('section.grid:has(.filter-card)') || document.querySelector('.filter-card')?.parentElement;  
+  if (!cards) return null;  
+  const panel = document.createElement('section');  
+  panel.id = 'risk-dashboard-panel';  
+  panel.className = 'mb-3';  
+  cards.insertAdjacentElement('afterend', panel);  
+  return panel;  
 }
 
 function applyCompactDashboardStyles() {
@@ -209,7 +211,7 @@ function ensureDashboardCompactControls() {
       <button type="button" id="btn-toggle-dashboard" class="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-600 hover:bg-white">KPI 접기</button>
     </div>`;
   section.insertAdjacentElement('beforebegin', controls);
-  document.getElementById('btn-toggle-risk-panel')?.addEventListener('click', toggleRiskPanelCompact);
+  document.getElementById('btn-toggle-risk-panel')?.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); toggleRiskPanelCompact(); });
   document.getElementById('btn-toggle-dashboard')?.addEventListener('click', toggleDashboardCompact);
   updateDashboardCompactControls();
 }
@@ -1530,7 +1532,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('input-import-json')?.addEventListener('change', importFromJSON);
   document.getElementById('btn-tracker-dropdown')?.addEventListener('click', e => { e.stopPropagation(); document.getElementById('tracker-dropdown-menu')?.classList.toggle('hidden'); });
   document.addEventListener('click', e => { if (!e.target.closest('#tracker-dropdown-container')) document.getElementById('tracker-dropdown-menu')?.classList.add('hidden'); });
-  document.addEventListener('click', e => { if (e.target.closest('#btn-toggle-risk-panel')) { e.preventDefault(); toggleRiskPanelCompact(); } });
+  // Risk panel button has its own listener. Do not delegate here, otherwise one click toggles twice.
   document.getElementById('btn-create-tracker-open')?.addEventListener('click', () => openTrackerModal());
   document.getElementById('btn-edit-tracker-open')?.addEventListener('click', () => openTrackerModal(currentTrackerId));
   document.querySelectorAll('.filter-card').forEach(card => card.addEventListener('click', () => { const status = card.getAttribute('data-status'); const el = document.getElementById('filter-status'); if (el) el.value = status; renderActiveViews(); }));
