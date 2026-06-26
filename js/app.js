@@ -1,10 +1,15 @@
 
-console.info('Smart Task Flow app.js v20260626-ux-fix2 loaded');
+console.info('Smart Task Flow app.js v20260626-compact-dashboard loaded');
 // --- UX optimization globals: must be declared before helper functions ---
 var focusState = window.focusState || { riskOnly: false, mineOnly: false, highOnly: false };
 window.focusState = focusState;
 var UX_STORAGE_KEYS = window.UX_STORAGE_KEYS || { myAssignee: 'flow_my_assignee_name' };
 window.UX_STORAGE_KEYS = UX_STORAGE_KEYS;
+var isDashboardCollapsed = window.isDashboardCollapsed || false;
+window.isDashboardCollapsed = isDashboardCollapsed;
+var isRiskPanelCollapsed = window.isRiskPanelCollapsed;
+if (typeof isRiskPanelCollapsed !== 'boolean') isRiskPanelCollapsed = true;
+window.isRiskPanelCollapsed = isRiskPanelCollapsed;
 function safeLocalStorageGet(key, fallback = '') {
   try { return window.localStorage ? (localStorage.getItem(key) || fallback) : fallback; }
   catch (e) { console.warn('localStorage read blocked', e); return fallback; }
@@ -161,10 +166,70 @@ function ensureRiskDashboardPanel() {
   if (!cards) return null;
   const panel = document.createElement('section');
   panel.id = 'risk-dashboard-panel';
-  panel.className = 'mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3';
+  panel.className = 'mb-3';
   cards.insertAdjacentElement('afterend', panel);
   return panel;
 }
+
+function applyCompactDashboardStyles() {
+  const section = document.getElementById('card-ALL')?.parentElement;
+  if (!section) return;
+  section.id = section.id || 'kpi-dashboard-section';
+  section.className = isDashboardCollapsed
+    ? 'hidden'
+    : 'mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5';
+  document.querySelectorAll('.filter-card').forEach(card => {
+    const active = card.classList.contains('ring-2');
+    card.className = `filter-card rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-sm cursor-pointer transition-all duration-150 hover:bg-slate-50 ${active ? 'ring-2 ring-indigo-600 bg-indigo-50/10' : ''}`;
+    const label = card.querySelector('.text-xs.font-semibold');
+    if (label) label.className = 'text-[10px] font-bold text-slate-500 uppercase tracking-tight';
+    const value = card.querySelector('[id^="stat-"]:not([id$="pct"]):not([id$="lbl"])');
+    if (value) value.className = value.id === 'stat-overdue' ? 'text-lg font-black text-rose-600' : 'text-lg font-black text-slate-900';
+    card.querySelectorAll('svg').forEach(svg => { svg.classList.remove('h-5','w-5'); svg.classList.add('h-4','w-4'); });
+    const numberRow = card.querySelector('.mt-2.flex');
+    if (numberRow) numberRow.className = 'mt-1 flex items-baseline gap-1.5';
+  });
+}
+function ensureDashboardCompactControls() {
+  if (document.getElementById('dashboard-compact-controls')) return;
+  const section = document.getElementById('card-ALL')?.parentElement;
+  if (!section) return;
+  const controls = document.createElement('div');
+  controls.id = 'dashboard-compact-controls';
+  controls.className = 'mb-2 flex items-center justify-between rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-sm';
+  controls.innerHTML = `
+    <div class="flex items-center gap-2">
+      <span class="text-xs font-black text-slate-700">Dashboard</span>
+      <span class="text-[10px] text-slate-400">Compact view</span>
+    </div>
+    <div class="flex items-center gap-1.5">
+      <button type="button" id="btn-toggle-risk-panel" class="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-600 hover:bg-white">Risk 펼치기</button>
+      <button type="button" id="btn-toggle-dashboard" class="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-600 hover:bg-white">KPI 접기</button>
+    </div>`;
+  section.insertAdjacentElement('beforebegin', controls);
+  document.getElementById('btn-toggle-risk-panel')?.addEventListener('click', toggleRiskPanelCompact);
+  document.getElementById('btn-toggle-dashboard')?.addEventListener('click', toggleDashboardCompact);
+  updateDashboardCompactControls();
+}
+function updateDashboardCompactControls() {
+  const riskBtn = document.getElementById('btn-toggle-risk-panel');
+  const dashBtn = document.getElementById('btn-toggle-dashboard');
+  if (riskBtn) riskBtn.textContent = isRiskPanelCollapsed ? 'Risk 펼치기' : 'Risk 접기';
+  if (dashBtn) dashBtn.textContent = isDashboardCollapsed ? 'KPI 펼치기' : 'KPI 접기';
+}
+function toggleRiskPanelCompact() {
+  isRiskPanelCollapsed = !isRiskPanelCollapsed;
+  window.isRiskPanelCollapsed = isRiskPanelCollapsed;
+  updateDashboardCompactControls();
+  renderStats();
+}
+function toggleDashboardCompact() {
+  isDashboardCollapsed = !isDashboardCollapsed;
+  window.isDashboardCollapsed = isDashboardCollapsed;
+  applyCompactDashboardStyles();
+  updateDashboardCompactControls();
+}
+
 function renderRiskDashboard(scope) {
   const panel = ensureRiskDashboardPanel();
   if (!panel) return;
@@ -178,23 +243,43 @@ function renderRiskDashboard(scope) {
     const name = t.assignee || '미지정';
     byAssignee[name] = (byAssignee[name] || 0) + countTaskOverdueUnits(t, today);
   });
-  const assigneeRows = Object.entries(byAssignee).sort((a,b) => b[1] - a[1]).slice(0, 5);
+  const assigneeRows = Object.entries(byAssignee).sort((a,b) => b[1] - a[1]).slice(0, 3);
   const topRisk = risky[0];
   const topRiskInfo = topRisk ? getTaskRiskInfo(topRisk, today) : null;
   const bottleneck = topRisk ? getBottleneckSubTask(topRisk, today) : null;
+  const topSummary = topRisk ? `${escapeHTML(topRisk.title)} · ${topRiskInfo.label} D+${topRiskInfo.delay}` : '현재 중대 지연 없음';
+  const bottleneckSummary = bottleneck ? `병목: ${escapeHTML(bottleneck.title)} · ${bottleneck.dueDate || '마감 미정'}` : '병목 없음';
+  if (isRiskPanelCollapsed) {
+    panel.className = 'mb-3';
+    panel.innerHTML = `
+      <div class="rounded-xl border border-rose-100 bg-white px-3 py-2 shadow-sm">
+        <div class="flex flex-col gap-1 lg:flex-row lg:items-center lg:justify-between">
+          <div class="flex flex-wrap items-center gap-2 text-xs">
+            <span class="font-black text-slate-700">Risk</span>
+            <span class="rounded-lg bg-rose-50 px-2 py-0.5 font-black text-rose-600">${risky.length}</span>
+            <span class="text-slate-400">Critical ${critical}</span>
+            <span class="text-slate-400">High ${high}</span>
+            <span class="text-slate-400">3일 내 ${dueSoon}</span>
+          </div>
+          <div class="min-w-0 truncate text-[11px] font-semibold text-slate-500">Top: ${topSummary}${topRisk ? ` / ${bottleneckSummary}` : ''}</div>
+        </div>
+      </div>`;
+    return;
+  }
+  panel.className = 'mb-3 grid grid-cols-1 gap-2 lg:grid-cols-3';
   panel.innerHTML = `
-    <div class="rounded-2xl border border-rose-100 bg-white p-4 shadow-sm">
-      <div class="text-xs font-bold uppercase text-slate-400">Risk Monitor</div>
-      <div class="mt-2 flex items-baseline gap-2"><span class="text-2xl font-black text-rose-600">${risky.length}</span><span class="text-xs text-slate-400">위험 업무</span></div>
-      <div class="mt-1 text-[11px] text-slate-500">Critical ${critical} · High ${high} · 3일 내 마감 ${dueSoon}</div>
+    <div class="rounded-xl border border-rose-100 bg-white px-3 py-2 shadow-sm">
+      <div class="text-[10px] font-bold uppercase text-slate-400">Risk Monitor</div>
+      <div class="mt-1 flex items-baseline gap-2"><span class="text-xl font-black text-rose-600">${risky.length}</span><span class="text-[11px] text-slate-400">위험 업무</span></div>
+      <div class="text-[10px] text-slate-500">Critical ${critical} · High ${high} · 3일 내 마감 ${dueSoon}</div>
     </div>
-    <div class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-      <div class="text-xs font-bold uppercase text-slate-400">Top Bottleneck</div>
-      ${topRisk ? `<div class="mt-2 text-sm font-bold text-slate-800 truncate">${escapeHTML(topRisk.title)}</div><div class="mt-1 text-xs text-slate-500 truncate">${bottleneck ? `병목: ${escapeHTML(bottleneck.title)} · ${bottleneck.dueDate || '마감 미정'}` : '본 업무 일정 지연'} · ${topRiskInfo.label} D+${topRiskInfo.delay}</div>` : '<div class="mt-2 text-sm font-semibold text-emerald-600">현재 중대 지연 없음</div>'}
+    <div class="rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-sm">
+      <div class="text-[10px] font-bold uppercase text-slate-400">Top Bottleneck</div>
+      ${topRisk ? `<div class="mt-1 truncate text-xs font-bold text-slate-800">${escapeHTML(topRisk.title)}</div><div class="truncate text-[11px] text-slate-500">${bottleneckSummary} · ${topRiskInfo.label} D+${topRiskInfo.delay}</div>` : '<div class="mt-1 text-xs font-semibold text-emerald-600">현재 중대 지연 없음</div>'}
     </div>
-    <div class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-      <div class="text-xs font-bold uppercase text-slate-400">Assignee Risk</div>
-      <div class="mt-2 space-y-1">${assigneeRows.length ? assigneeRows.map(([name, cnt]) => `<div class="flex items-center justify-between text-xs"><span class="truncate text-slate-600">${escapeHTML(name)}</span><span class="font-bold text-rose-600">${cnt}항목</span></div>`).join('') : '<div class="text-xs font-semibold text-emerald-600">담당자별 지연 없음</div>'}</div>
+    <div class="rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-sm">
+      <div class="text-[10px] font-bold uppercase text-slate-400">Assignee Risk</div>
+      <div class="mt-1 space-y-0.5">${assigneeRows.length ? assigneeRows.map(([name, cnt]) => `<div class="flex items-center justify-between text-[11px]"><span class="truncate text-slate-600">${escapeHTML(name)}</span><span class="font-bold text-rose-600">${cnt}항목</span></div>`).join('') : '<div class="text-xs font-semibold text-emerald-600">담당자별 지연 없음</div>'}</div>
     </div>`;
 }
 
@@ -641,7 +726,10 @@ function renderStats() {
     lbl.textContent = overdue ? `하위 포함 ${overdueUnits}항목` : '매우 양호';
     lbl.className = `text-xs font-medium ${overdue ? 'text-rose-500 font-semibold' : 'text-emerald-500'}`;
   }
+  ensureDashboardCompactControls();
+  applyCompactDashboardStyles();
   renderRiskDashboard(scope);
+  updateDashboardCompactControls();
 }
 function subTaskStatusSelect(parentId, subId, status) {
   status = normalizeStatus(status);
@@ -977,6 +1065,7 @@ function renderActiveViews() {
   const fStatus = document.getElementById('filter-status')?.value || 'ALL';
   document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('ring-2', 'ring-indigo-600', 'bg-indigo-50/10'));
   document.getElementById(`card-${['ALL','PENDING','PROGRESS','COMPLETED','OVERDUE'].includes(fStatus) ? fStatus : 'OVERDUE'}`)?.classList.add('ring-2', 'ring-indigo-600', 'bg-indigo-50/10');
+  applyCompactDashboardStyles();
   renderTable(filtered);
   if (currentViewMode === 'CALENDAR') renderCalendar(filtered);
 }
