@@ -1,36 +1,28 @@
-console.info('Smart Task Flow event-bindings.js v20260626-phase8-safe loaded');
+console.info('Smart Task Flow event-bindings.js v20260626-phase9-app-slim loaded');
 
 function initEventBindings() {
   if (window.__eventBindingsInitialized) return;
   window.__eventBindingsInitialized = true;
-  bindTaskEvents();
-  bindFilterEvents();
-  bindModalEvents();
+
+  bindHeaderActionEvents();
   bindTrackerEvents();
-  bindSelectionEvents();
+  bindFilterEvents();
+  bindSelectionAndListEvents();
+  bindViewAndCalendarEvents();
+  bindModalAndConfirmEvents();
+  bindWindowLifecycleEvents();
 }
 
-function bindTaskEvents() {
-  const table = document.getElementById('task-table-body');
-  const cards = document.getElementById('task-card-container');
-  table?.addEventListener('click', handleTableClick);
-  table?.addEventListener('change', handleTableChange);
-  cards?.addEventListener('click', handleTableClick);
-  cards?.addEventListener('change', handleTableChange);
-}
-
-function bindFilterEvents() {
-  ['filter-search', 'filter-start-date', 'filter-end-date'].forEach(id => document.getElementById(id)?.addEventListener('input', renderActiveViews));
-  ['filter-status', 'filter-priority', 'filter-assignee'].forEach(id => document.getElementById(id)?.addEventListener('change', renderActiveViews));
-  document.getElementById('btn-reset-filters')?.addEventListener('click', resetFilters);
-}
-
-function bindModalEvents() {
+function bindHeaderActionEvents() {
   document.getElementById('btn-add-task')?.addEventListener('click', () => window.openTaskModal?.());
-  document.getElementById('btn-close-task-modal')?.addEventListener('click', () => window.closeModal?.());
-  document.getElementById('btn-cancel-task')?.addEventListener('click', () => window.closeModal?.());
-  document.getElementById('form-task')?.addEventListener('submit', e => window.handleTaskSubmit?.(e));
-  document.getElementById('btn-add-subtask')?.addEventListener('click', () => window.addSubTaskToModalList?.());
+  document.getElementById('btn-export-csv')?.addEventListener('click', exportToCSV);
+  document.getElementById('btn-export-excel')?.addEventListener('click', exportToExcel);
+  document.getElementById('btn-export-powerbi')?.addEventListener('click', exportPowerBIJSON);
+  document.getElementById('btn-export-json')?.addEventListener('click', exportToJSON);
+  document.getElementById('btn-undo')?.addEventListener('click', undoDelete);
+  document.getElementById('btn-batch-delete')?.addEventListener('click', confirmBatchDelete);
+  document.getElementById('btn-import-trigger')?.addEventListener('click', () => document.getElementById('input-import-json')?.click());
+  document.getElementById('input-import-json')?.addEventListener('change', importFromJSON);
 }
 
 function bindTrackerEvents() {
@@ -38,15 +30,96 @@ function bindTrackerEvents() {
     e.stopPropagation();
     document.getElementById('tracker-dropdown-menu')?.classList.toggle('hidden');
   });
+
   document.addEventListener('click', e => {
-    if (!e.target.closest('#tracker-dropdown-container')) document.getElementById('tracker-dropdown-menu')?.classList.add('hidden');
+    if (!e.target.closest('#tracker-dropdown-container')) {
+      document.getElementById('tracker-dropdown-menu')?.classList.add('hidden');
+    }
   });
+
   document.getElementById('btn-create-tracker-open')?.addEventListener('click', () => window.openTrackerModal?.());
   document.getElementById('btn-edit-tracker-open')?.addEventListener('click', () => window.openTrackerModal?.(currentTrackerId));
 }
 
-function bindSelectionEvents() {
+function bindFilterEvents() {
+  document.querySelectorAll('.filter-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const status = card.getAttribute('data-status');
+      const el = document.getElementById('filter-status');
+      if (el) el.value = status;
+      renderActiveViews();
+    });
+  });
+
+  ['filter-search', 'filter-start-date', 'filter-end-date'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', renderActiveViews);
+  });
+
+  ['filter-status', 'filter-priority', 'filter-assignee'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', renderActiveViews);
+  });
+
+  document.getElementById('btn-reset-filters')?.addEventListener('click', resetFilters);
+}
+
+function bindSelectionAndListEvents() {
   document.getElementById('checkbox-select-all')?.addEventListener('change', toggleSelectAll);
+
+  document.getElementById('task-table-body')?.addEventListener('click', handleTableClick);
+  document.getElementById('task-table-body')?.addEventListener('change', handleTableChange);
+  document.getElementById('task-card-container')?.addEventListener('click', handleTableClick);
+  document.getElementById('task-card-container')?.addEventListener('change', handleTableChange);
+
+  document.getElementById('task-table-body')?.addEventListener('focusout', e => {
+    const el = e.target.closest('.inline-edit-title');
+    if (el) updateTaskTitleInline(el.dataset.id, el.textContent);
+  });
+  document.getElementById('task-table-body')?.addEventListener('keydown', handleInlineEditKeydown);
+}
+
+function bindViewAndCalendarEvents() {
+  document.getElementById('btn-view-table')?.addEventListener('click', () => switchView('TABLE'));
+  document.getElementById('btn-view-calendar')?.addEventListener('click', () => switchView('CALENDAR'));
+  document.getElementById('btn-cal-mode-day')?.addEventListener('click', () => setCalMode('DAY'));
+  document.getElementById('btn-cal-mode-month')?.addEventListener('click', () => setCalMode('MONTH'));
+  document.getElementById('btn-cal-mode-summary')?.addEventListener('click', () => setCalMode('SUMMARY'));
+  document.getElementById('btn-prev-month')?.addEventListener('click', () => {
+    currentCalDate.setMonth(currentCalDate.getMonth() - 1);
+    renderActiveViews();
+  });
+  document.getElementById('btn-today-month')?.addEventListener('click', () => {
+    currentCalDate = new Date();
+    renderActiveViews();
+  });
+  document.getElementById('btn-next-month')?.addEventListener('click', () => {
+    currentCalDate.setMonth(currentCalDate.getMonth() + 1);
+    renderActiveViews();
+  });
+}
+
+function bindModalAndConfirmEvents() {
+  document.getElementById('btn-close-task-modal')?.addEventListener('click', () => window.closeModal?.());
+  document.getElementById('btn-cancel-task')?.addEventListener('click', () => window.closeModal?.());
+  document.getElementById('form-task')?.addEventListener('submit', e => window.handleTaskSubmit?.(e));
+  document.getElementById('btn-add-subtask')?.addEventListener('click', () => window.addSubTaskToModalList?.());
+
+  document.getElementById('btn-close-tracker-modal')?.addEventListener('click', () => window.closeTrackerModal?.());
+  document.getElementById('btn-cancel-tracker')?.addEventListener('click', () => window.closeTrackerModal?.());
+  document.getElementById('form-tracker')?.addEventListener('submit', e => window.handleTrackerSubmit?.(e));
+  document.getElementById('btn-delete-tracker')?.addEventListener('click', handleDeleteTrackerClick);
+
+  document.getElementById('btn-cancel-confirm')?.addEventListener('click', () => window.closeConfirmModal?.());
+  document.getElementById('btn-action-confirm')?.addEventListener('click', () => {
+    if (confirmActionCb) confirmActionCb();
+  });
+}
+
+function bindWindowLifecycleEvents() {
+  window.addEventListener('resize', () => setViewVisibility(currentViewMode === 'CALENDAR' ? 'CALENDAR' : 'TABLE'));
+  window.addEventListener('beforeunload', () => {
+    if (typeof unsubscribeTasks === 'function') unsubscribeTasks();
+    if (typeof unsubscribeTrackers === 'function') unsubscribeTrackers();
+  });
 }
 
 window.initEventBindings = initEventBindings;

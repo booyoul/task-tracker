@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow app.js v20260626-module-split-phase6-modal-controller loaded');
+console.info('Smart Task Flow app.js v20260626-phase9-app-slim loaded');
 // --- UX optimization globals: must be declared before helper functions ---
 var focusState = window.focusState || { riskOnly: false, mineOnly: false, highOnly: false };
 window.focusState = focusState;
@@ -1080,63 +1080,32 @@ function ensureUXToolbar() {
   updateFocusButtons();
   updateBulkActionBar();
 }
-
 document.addEventListener('DOMContentLoaded', () => {
   if (isFirebaseAvailable && auth) {
     const initAuth = async () => {
       if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await auth.signInWithCustomToken(__initial_auth_token);
       else await auth.signInAnonymously();
     };
-    initAuth().then(() => auth.onAuthStateChanged(user => { isAuthReady = !!user; if (user) fetchInitialData(); })).catch(e => { console.error('Auth initialization failed', e); updateUI(); });
-  } else updateUI();
+    initAuth()
+      .then(() => auth.onAuthStateChanged(user => {
+        isAuthReady = !!user;
+        if (user) fetchInitialData();
+      }))
+      .catch(e => {
+        console.error('Auth initialization failed', e);
+        updateUI();
+      });
+  } else {
+    updateUI();
+  }
 
   const saved = localStorage.getItem('flow_current_tracker');
   if (saved && trackers.some(t => t.id === saved)) currentTrackerId = saved;
   updateTrackerUI();
 
-  document.getElementById('btn-add-task')?.addEventListener('click', () => openTaskModal());
-  document.getElementById('btn-export-csv')?.addEventListener('click', exportToCSV);
-  document.getElementById('btn-export-excel')?.addEventListener('click', exportToExcel);
-  document.getElementById('btn-export-powerbi')?.addEventListener('click', exportPowerBIJSON);
-  document.getElementById('btn-export-json')?.addEventListener('click', exportToJSON);
-  document.getElementById('btn-undo')?.addEventListener('click', undoDelete);
-  document.getElementById('btn-batch-delete')?.addEventListener('click', confirmBatchDelete);
-  document.getElementById('btn-import-trigger')?.addEventListener('click', () => document.getElementById('input-import-json')?.click());
-  document.getElementById('input-import-json')?.addEventListener('change', importFromJSON);
-  document.getElementById('btn-tracker-dropdown')?.addEventListener('click', e => { e.stopPropagation(); document.getElementById('tracker-dropdown-menu')?.classList.toggle('hidden'); });
-  document.addEventListener('click', e => { if (!e.target.closest('#tracker-dropdown-container')) document.getElementById('tracker-dropdown-menu')?.classList.add('hidden'); });
-  // Risk panel button has its own listener. Do not delegate here, otherwise one click toggles twice.
-  document.getElementById('btn-create-tracker-open')?.addEventListener('click', () => openTrackerModal());
-  document.getElementById('btn-edit-tracker-open')?.addEventListener('click', () => openTrackerModal(currentTrackerId));
-  document.querySelectorAll('.filter-card').forEach(card => card.addEventListener('click', () => { const status = card.getAttribute('data-status'); const el = document.getElementById('filter-status'); if (el) el.value = status; renderActiveViews(); }));
-  ['filter-search', 'filter-start-date', 'filter-end-date'].forEach(id => document.getElementById(id)?.addEventListener('input', renderActiveViews));
-  ['filter-status', 'filter-priority', 'filter-assignee'].forEach(id => document.getElementById(id)?.addEventListener('change', renderActiveViews));
-  document.getElementById('btn-reset-filters')?.addEventListener('click', resetFilters);
-  document.getElementById('checkbox-select-all')?.addEventListener('change', toggleSelectAll);
-  document.getElementById('task-table-body')?.addEventListener('click', handleTableClick);
-  document.getElementById('task-table-body')?.addEventListener('change', handleTableChange);
-  document.getElementById('task-card-container')?.addEventListener('click', handleTableClick);
-  document.getElementById('task-card-container')?.addEventListener('change', handleTableChange);
-  document.getElementById('task-table-body')?.addEventListener('focusout', e => { const el = e.target.closest('.inline-edit-title'); if (el) updateTaskTitleInline(el.dataset.id, el.textContent); });
-  document.getElementById('task-table-body')?.addEventListener('keydown', handleInlineEditKeydown);
-  document.getElementById('btn-view-table')?.addEventListener('click', () => switchView('TABLE'));
-  document.getElementById('btn-view-calendar')?.addEventListener('click', () => switchView('CALENDAR'));
-  document.getElementById('btn-cal-mode-day')?.addEventListener('click', () => setCalMode('DAY'));
-  document.getElementById('btn-cal-mode-month')?.addEventListener('click', () => setCalMode('MONTH'));
-  document.getElementById('btn-cal-mode-summary')?.addEventListener('click', () => setCalMode('SUMMARY'));
-  document.getElementById('btn-prev-month')?.addEventListener('click', () => { currentCalDate.setMonth(currentCalDate.getMonth() - 1); renderActiveViews(); });
-  document.getElementById('btn-today-month')?.addEventListener('click', () => { currentCalDate = new Date(); renderActiveViews(); });
-  document.getElementById('btn-next-month')?.addEventListener('click', () => { currentCalDate.setMonth(currentCalDate.getMonth() + 1); renderActiveViews(); });
-  document.getElementById('btn-close-task-modal')?.addEventListener('click', closeModal);
-  document.getElementById('btn-cancel-task')?.addEventListener('click', closeModal);
-  document.getElementById('form-task')?.addEventListener('submit', handleTaskSubmit);
-  document.getElementById('btn-add-subtask')?.addEventListener('click', addSubTaskToModalList);
-  document.getElementById('btn-close-tracker-modal')?.addEventListener('click', closeTrackerModal);
-  document.getElementById('btn-cancel-tracker')?.addEventListener('click', closeTrackerModal);
-  document.getElementById('form-tracker')?.addEventListener('submit', handleTrackerSubmit);
-  document.getElementById('btn-delete-tracker')?.addEventListener('click', handleDeleteTrackerClick);
-  document.getElementById('btn-cancel-confirm')?.addEventListener('click', closeConfirmModal);
-  document.getElementById('btn-action-confirm')?.addEventListener('click', () => { if (confirmActionCb) confirmActionCb(); });
-  window.addEventListener('resize', () => setViewVisibility(currentViewMode === 'CALENDAR' ? 'CALENDAR' : 'TABLE'));
-  window.addEventListener('beforeunload', () => { if (typeof unsubscribeTasks === 'function') unsubscribeTasks(); if (typeof unsubscribeTrackers === 'function') unsubscribeTrackers(); });
+  if (typeof window.initEventBindings === 'function') {
+    window.initEventBindings();
+  } else {
+    console.warn('initEventBindings is not available. Check event-bindings.js script order.');
+  }
 });
