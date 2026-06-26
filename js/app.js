@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow app.js v20260626-compact-dashboard loaded');
+console.info('Smart Task Flow app.js v20260626-assignee-multiselect-riskfix loaded');
 // --- UX optimization globals: must be declared before helper functions ---
 var focusState = window.focusState || { riskOnly: false, mineOnly: false, highOnly: false };
 window.focusState = focusState;
@@ -10,6 +10,8 @@ window.isDashboardCollapsed = isDashboardCollapsed;
 var isRiskPanelCollapsed = window.isRiskPanelCollapsed;
 if (typeof isRiskPanelCollapsed !== 'boolean') isRiskPanelCollapsed = true;
 window.isRiskPanelCollapsed = isRiskPanelCollapsed;
+var selectedAssigneeFilters = window.selectedAssigneeFilters || new Set();
+window.selectedAssigneeFilters = selectedAssigneeFilters;
 function safeLocalStorageGet(key, fallback = '') {
   try { return window.localStorage ? (localStorage.getItem(key) || fallback) : fallback; }
   catch (e) { console.warn('localStorage read blocked', e); return fallback; }
@@ -218,19 +220,21 @@ function updateDashboardCompactControls() {
   if (dashBtn) dashBtn.textContent = isDashboardCollapsed ? 'KPI 펼치기' : 'KPI 접기';
 }
 function toggleRiskPanelCompact() {
-  isRiskPanelCollapsed = !isRiskPanelCollapsed;
-  window.isRiskPanelCollapsed = isRiskPanelCollapsed;
+  window.isRiskPanelCollapsed = !window.isRiskPanelCollapsed;
+  isRiskPanelCollapsed = window.isRiskPanelCollapsed;
   updateDashboardCompactControls();
-  renderStats();
+  renderActiveViews();
 }
 function toggleDashboardCompact() {
-  isDashboardCollapsed = !isDashboardCollapsed;
-  window.isDashboardCollapsed = isDashboardCollapsed;
+  window.isDashboardCollapsed = !window.isDashboardCollapsed;
+  isDashboardCollapsed = window.isDashboardCollapsed;
   applyCompactDashboardStyles();
   updateDashboardCompactControls();
+  renderActiveViews();
 }
 
 function renderRiskDashboard(scope) {
+  isRiskPanelCollapsed = window.isRiskPanelCollapsed === true;
   const panel = ensureRiskDashboardPanel();
   if (!panel) return;
   const today = getTodayStr();
@@ -309,6 +313,47 @@ function isMineTask(task) {
   };
   return match(task?.assignee) || (Array.isArray(task?.subTasks) ? task.subTasks : []).some(st => match(st.assignee));
 }
+
+function getTrackerAssignees() {
+  const set = new Set();
+  tasks.filter(t => t.trackerId === currentTrackerId && !t.deleted).forEach(t => {
+    if (t.assignee) set.add(t.assignee);
+    (Array.isArray(t.subTasks) ? t.subTasks : []).forEach(st => { if (st.assignee) set.add(st.assignee); });
+  });
+  return Array.from(set).sort((a, b) => String(a).localeCompare(String(b)));
+}
+function isAssigneeFilterMatched(task) {
+  if (!selectedAssigneeFilters || selectedAssigneeFilters.size === 0) return true;
+  const match = name => !!name && selectedAssigneeFilters.has(String(name));
+  return match(task?.assignee) || (Array.isArray(task?.subTasks) ? task.subTasks : []).some(st => match(st.assignee));
+}
+function updateAssigneeMultiSelect() {
+  const sel = document.getElementById('focus-assignee-select');
+  const summary = document.getElementById('assignee-filter-summary');
+  if (!sel) return;
+  const current = new Set(Array.from(selectedAssigneeFilters || []));
+  const names = getTrackerAssignees();
+  sel.innerHTML = '';
+  names.forEach(name => {
+    const opt = document.createElement('option'); opt.value = name; opt.textContent = name; opt.selected = current.has(name); sel.appendChild(opt);
+  });
+  selectedAssigneeFilters = new Set(Array.from(sel.selectedOptions).map(o => o.value));
+  window.selectedAssigneeFilters = selectedAssigneeFilters;
+  if (summary) summary.textContent = selectedAssigneeFilters.size ? `${selectedAssigneeFilters.size}명 선택됨` : '전체 담당자';
+}
+function handleAssigneeMultiSelectChange(e) {
+  selectedAssigneeFilters = new Set(Array.from(e.target.selectedOptions).map(o => o.value));
+  window.selectedAssigneeFilters = selectedAssigneeFilters;
+  const summary = document.getElementById('assignee-filter-summary');
+  if (summary) summary.textContent = selectedAssigneeFilters.size ? `${selectedAssigneeFilters.size}명 선택됨` : '전체 담당자';
+  renderActiveViews();
+}
+function clearAssigneeMultiSelect() {
+  selectedAssigneeFilters.clear(); window.selectedAssigneeFilters = selectedAssigneeFilters;
+  const sel = document.getElementById('focus-assignee-select'); if (sel) Array.from(sel.options).forEach(o => o.selected = false);
+  updateAssigneeMultiSelect(); renderActiveViews();
+}
+
 function ensureUXToolbar() {
   if (document.getElementById('ux-toolbar')) return;
   const filterBox = document.getElementById('btn-reset-filters')?.closest('.mb-4');
@@ -317,12 +362,15 @@ function ensureUXToolbar() {
   bar.id = 'ux-toolbar';
   bar.className = 'mt-4 flex flex-col gap-3 border-t border-slate-100 pt-4';
   bar.innerHTML = `
-    <div class="flex flex-wrap items-center gap-2">
+    <div class="flex flex-wrap items-center gap-3">
       <span class="text-[11px] font-bold uppercase tracking-wide text-slate-400">Focus Mode</span>
       <button type="button" id="btn-focus-risk" class="ux-focus-btn rounded-xl border px-3 py-1.5 text-xs font-bold transition">🚨 Risk Only</button>
-      <button type="button" id="btn-focus-mine" class="ux-focus-btn rounded-xl border px-3 py-1.5 text-xs font-bold transition">👤 My Tasks</button>
       <button type="button" id="btn-focus-high" class="ux-focus-btn rounded-xl border px-3 py-1.5 text-xs font-bold transition">🔥 High Priority</button>
-      <button type="button" id="btn-set-my-assignee" class="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-50 transition">담당자명 설정</button>
+      <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2 py-1.5">
+        <div class="flex flex-col leading-tight"><span class="text-[10px] font-bold text-slate-400">담당자 필터</span><span id="assignee-filter-summary" class="text-[10px] font-semibold text-indigo-600">전체 담당자</span></div>
+        <select id="focus-assignee-select" multiple size="3" class="min-w-[150px] rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-600 outline-none focus:border-indigo-500"></select>
+        <button type="button" id="btn-clear-assignee-filter" class="rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500 hover:bg-slate-200">해제</button>
+      </div>
     </div>
     <div id="bulk-action-bar" class="hidden flex-wrap items-center gap-2 rounded-xl border border-indigo-100 bg-indigo-50/60 p-2">
       <span id="bulk-selected-count" class="text-xs font-bold text-indigo-700">0개 선택됨</span>
@@ -333,9 +381,9 @@ function ensureUXToolbar() {
     </div>`;
   filterBox.appendChild(bar);
   document.getElementById('btn-focus-risk')?.addEventListener('click', () => toggleFocusMode('riskOnly'));
-  document.getElementById('btn-focus-mine')?.addEventListener('click', () => toggleFocusMode('mineOnly'));
   document.getElementById('btn-focus-high')?.addEventListener('click', () => toggleFocusMode('highOnly'));
-  document.getElementById('btn-set-my-assignee')?.addEventListener('click', setMyAssigneeName);
+  document.getElementById('focus-assignee-select')?.addEventListener('change', handleAssigneeMultiSelectChange);
+  document.getElementById('btn-clear-assignee-filter')?.addEventListener('click', clearAssigneeMultiSelect);
   document.getElementById('bulk-change-status')?.addEventListener('click', bulkChangeStatus);
   document.getElementById('bulk-change-assignee')?.addEventListener('click', bulkChangeAssignee);
   document.getElementById('bulk-change-due')?.addEventListener('click', bulkChangeDueDate);
@@ -350,13 +398,10 @@ function getFocusButtonClass(isOn) {
 }
 function updateFocusButtons() {
   const risk = document.getElementById('btn-focus-risk');
-  const mine = document.getElementById('btn-focus-mine');
   const high = document.getElementById('btn-focus-high');
   if (risk) risk.className = getFocusButtonClass(focusState.riskOnly);
-  if (mine) mine.className = getFocusButtonClass(focusState.mineOnly);
   if (high) high.className = getFocusButtonClass(focusState.highOnly);
-  const setBtn = document.getElementById('btn-set-my-assignee');
-  if (setBtn) setBtn.textContent = getMyAssigneeName() ? `담당자명: ${getMyAssigneeName()}` : '담당자명 설정';
+  updateAssigneeMultiSelect();
 }
 function toggleFocusMode(key) {
   if (key === 'mineOnly' && !focusState.mineOnly && !safeLocalStorageGet(UX_STORAGE_KEYS.myAssignee, '')) {
@@ -654,6 +699,7 @@ function getFilteredTasks() {
     if (focusState.riskOnly && !isTaskOverdueEffective(t, today)) return false;
     if (focusState.mineOnly && !isMineTask(t)) return false;
     if (focusState.highOnly && t.priority !== 'HIGH') return false;
+    if (!isAssigneeFilterMatched(t)) return false;
     if (startDate && (t.dueDate || today) < startDate) return false;
     if (endDate && (t.startDate || today) > endDate) return false;
     return true;
@@ -1060,6 +1106,7 @@ function renderActiveViews() {
   if (typeof focusState === 'undefined') window.focusState = focusState = { riskOnly: false, mineOnly: false, highOnly: false };
   if (typeof UX_STORAGE_KEYS === 'undefined') window.UX_STORAGE_KEYS = UX_STORAGE_KEYS = { myAssignee: 'flow_my_assignee_name' };
   updateFocusButtons();
+  updateAssigneeMultiSelect();
   updateBulkActionBar();
   const filtered = getFilteredTasks();
   const fStatus = document.getElementById('filter-status')?.value || 'ALL';
