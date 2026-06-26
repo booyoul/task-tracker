@@ -1268,17 +1268,23 @@ function setViewVisibility(mode) {
   const table = document.getElementById('view-table');
   const mobile = document.getElementById('view-mobile');
   const calendar = document.getElementById('view-calendar');
+  const isMobile = window.matchMedia ? window.matchMedia('(max-width: 1023px)').matches : window.innerWidth < 1024;
 
-  // Important: view-table has responsive class "hidden lg:block".
-  // On desktop, lg:block can override hidden, so use inline display for hard separation.
+  // Hard reset: prevent Tailwind responsive classes (e.g., lg:block) from overriding visibility.
+  if (table) { table.classList.add('hidden'); table.style.display = 'none'; }
+  if (mobile) { mobile.classList.add('hidden'); mobile.style.display = 'none'; }
+  if (calendar) { calendar.classList.add('hidden'); calendar.style.display = 'none'; }
+
   if (mode === 'CALENDAR') {
-    if (table) { table.classList.add('hidden'); table.style.display = 'none'; }
-    if (mobile) { mobile.classList.add('hidden'); mobile.style.display = 'none'; }
     if (calendar) { calendar.classList.remove('hidden'); calendar.style.display = ''; }
-  } else {
-    if (calendar) { calendar.classList.add('hidden'); calendar.style.display = 'none'; }
-    if (table) { table.classList.remove('hidden'); table.style.display = ''; }
+    return;
+  }
+
+  // TABLE/LIST mode: desktop gets table, mobile gets card. Never show both.
+  if (isMobile) {
     if (mobile) { mobile.classList.remove('hidden'); mobile.style.display = ''; }
+  } else {
+    if (table) { table.classList.remove('hidden'); table.style.display = ''; }
   }
 }
 function updateViewToggleButtons(mode) {
@@ -1837,5 +1843,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-delete-tracker')?.addEventListener('click', handleDeleteTrackerClick);
   document.getElementById('btn-cancel-confirm')?.addEventListener('click', closeConfirmModal);
   document.getElementById('btn-action-confirm')?.addEventListener('click', () => { if (confirmActionCb) confirmActionCb(); });
+  window.addEventListener('resize', () => setViewVisibility(currentViewMode === 'CALENDAR' ? 'CALENDAR' : 'TABLE'));
   window.addEventListener('beforeunload', () => { if (typeof unsubscribeTasks === 'function') unsubscribeTasks(); if (typeof unsubscribeTrackers === 'function') unsubscribeTrackers(); });
 });
