@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow app.js v20260626-assignee-multiselect-riskfix loaded');
+console.info('Smart Task Flow app.js v20260626-assignee-modal-tableux loaded');
 // --- UX optimization globals: must be declared before helper functions ---
 var focusState = window.focusState || { riskOnly: false, mineOnly: false, highOnly: false };
 window.focusState = focusState;
@@ -327,32 +327,90 @@ function isAssigneeFilterMatched(task) {
   const match = name => !!name && selectedAssigneeFilters.has(String(name));
   return match(task?.assignee) || (Array.isArray(task?.subTasks) ? task.subTasks : []).some(st => match(st.assignee));
 }
-function updateAssigneeMultiSelect() {
-  const sel = document.getElementById('focus-assignee-select');
-  const summary = document.getElementById('assignee-filter-summary');
-  if (!sel) return;
-  const current = new Set(Array.from(selectedAssigneeFilters || []));
-  const names = getTrackerAssignees();
-  sel.innerHTML = '';
-  names.forEach(name => {
-    const opt = document.createElement('option'); opt.value = name; opt.textContent = name; opt.selected = current.has(name); sel.appendChild(opt);
-  });
-  selectedAssigneeFilters = new Set(Array.from(sel.selectedOptions).map(o => o.value));
-  window.selectedAssigneeFilters = selectedAssigneeFilters;
-  if (summary) summary.textContent = selectedAssigneeFilters.size ? `${selectedAssigneeFilters.size}명 선택됨` : '전체 담당자';
+
+function getSelectedAssigneeLabel() {
+  const names = Array.from(selectedAssigneeFilters || []);
+  if (!names.length) return '👤 담당자: 전체';
+  if (names.length <= 2) return `👤 담당자: ${names.join(', ')}`;
+  return `👤 담당자: ${names.slice(0, 2).join(', ')} +${names.length - 2}`;
 }
-function handleAssigneeMultiSelectChange(e) {
-  selectedAssigneeFilters = new Set(Array.from(e.target.selectedOptions).map(o => o.value));
+function updateAssigneeButton() {
+  const btn = document.getElementById('btn-open-assignee-modal');
+  if (btn) btn.textContent = getSelectedAssigneeLabel();
+}
+function ensureAssigneeModal() {
+  if (document.getElementById('assignee-filter-modal')) return;
+  const modal = document.createElement('div');
+  modal.id = 'assignee-filter-modal';
+  modal.className = 'hidden fixed inset-0 z-[80] items-center justify-center bg-slate-900/40 px-4';
+  modal.innerHTML = `
+    <div class="w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-100 overflow-hidden">
+      <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+        <div>
+          <div class="text-sm font-black text-slate-800">담당자 선택</div>
+          <div class="text-[11px] text-slate-400">현재 트래커의 본 업무/하위 업무 담당자 기준</div>
+        </div>
+        <button type="button" id="btn-close-assignee-modal" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">✕</button>
+      </div>
+      <div class="px-5 py-4">
+        <div class="mb-3 flex items-center justify-between gap-2">
+          <button type="button" id="btn-assignee-select-all" class="rounded-lg bg-slate-100 px-2.5 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-200">전체 선택</button>
+          <button type="button" id="btn-assignee-clear-modal" class="rounded-lg bg-slate-100 px-2.5 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-200">선택 해제</button>
+        </div>
+        <div id="assignee-modal-list" class="max-h-72 space-y-1 overflow-y-auto pr-1"></div>
+      </div>
+      <div class="flex justify-end gap-2 border-t border-slate-100 bg-slate-50 px-5 py-3">
+        <button type="button" id="btn-cancel-assignee-modal" class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50">취소</button>
+        <button type="button" id="btn-apply-assignee-modal" class="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700">적용</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  document.getElementById('btn-close-assignee-modal')?.addEventListener('click', closeAssigneeModal);
+  document.getElementById('btn-cancel-assignee-modal')?.addEventListener('click', closeAssigneeModal);
+  document.getElementById('btn-apply-assignee-modal')?.addEventListener('click', applyAssigneeModalSelection);
+  document.getElementById('btn-assignee-select-all')?.addEventListener('click', () => document.querySelectorAll('#assignee-modal-list input[type="checkbox"]').forEach(cb => cb.checked = true));
+  document.getElementById('btn-assignee-clear-modal')?.addEventListener('click', () => document.querySelectorAll('#assignee-modal-list input[type="checkbox"]').forEach(cb => cb.checked = false));
+  modal.addEventListener('click', e => { if (e.target === modal) closeAssigneeModal(); });
+}
+function renderAssigneeModalList() {
+  ensureAssigneeModal();
+  const list = document.getElementById('assignee-modal-list');
+  if (!list) return;
+  const names = getTrackerAssignees();
+  if (!names.length) {
+    list.innerHTML = '<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center text-xs text-slate-400">현재 트래커에 등록된 담당자가 없습니다.</div>';
+    return;
+  }
+  list.innerHTML = names.map(name => `
+    <label class="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-slate-100 px-3 py-2 text-sm hover:bg-indigo-50/50">
+      <span class="min-w-0 truncate font-semibold text-slate-700">${escapeHTML(name)}</span>
+      <input type="checkbox" class="assignee-modal-checkbox rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" value="${escapeHTML(name)}" ${selectedAssigneeFilters.has(name) ? 'checked' : ''}>
+    </label>`).join('');
+}
+function openAssigneeModal() {
+  renderAssigneeModalList();
+  const modal = document.getElementById('assignee-filter-modal');
+  if (modal) { modal.classList.remove('hidden'); modal.classList.add('flex'); }
+}
+function closeAssigneeModal() {
+  const modal = document.getElementById('assignee-filter-modal');
+  if (modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
+}
+function applyAssigneeModalSelection() {
+  selectedAssigneeFilters = new Set(Array.from(document.querySelectorAll('#assignee-modal-list .assignee-modal-checkbox:checked')).map(cb => cb.value));
   window.selectedAssigneeFilters = selectedAssigneeFilters;
-  const summary = document.getElementById('assignee-filter-summary');
-  if (summary) summary.textContent = selectedAssigneeFilters.size ? `${selectedAssigneeFilters.size}명 선택됨` : '전체 담당자';
+  updateAssigneeButton();
+  closeAssigneeModal();
   renderActiveViews();
 }
 function clearAssigneeMultiSelect() {
-  selectedAssigneeFilters.clear(); window.selectedAssigneeFilters = selectedAssigneeFilters;
-  const sel = document.getElementById('focus-assignee-select'); if (sel) Array.from(sel.options).forEach(o => o.selected = false);
-  updateAssigneeMultiSelect(); renderActiveViews();
+  selectedAssigneeFilters.clear();
+  window.selectedAssigneeFilters = selectedAssigneeFilters;
+  updateAssigneeButton();
+  renderActiveViews();
 }
+function updateAssigneeMultiSelect() { updateAssigneeButton(); }
+function handleAssigneeMultiSelectChange() { updateAssigneeButton(); renderActiveViews(); }
 
 function ensureUXToolbar() {
   if (document.getElementById('ux-toolbar')) return;
@@ -362,15 +420,12 @@ function ensureUXToolbar() {
   bar.id = 'ux-toolbar';
   bar.className = 'mt-4 flex flex-col gap-3 border-t border-slate-100 pt-4';
   bar.innerHTML = `
-    <div class="flex flex-wrap items-center gap-3">
+    <div class="flex flex-wrap items-center gap-2">
       <span class="text-[11px] font-bold uppercase tracking-wide text-slate-400">Focus Mode</span>
       <button type="button" id="btn-focus-risk" class="ux-focus-btn rounded-xl border px-3 py-1.5 text-xs font-bold transition">🚨 Risk Only</button>
       <button type="button" id="btn-focus-high" class="ux-focus-btn rounded-xl border px-3 py-1.5 text-xs font-bold transition">🔥 High Priority</button>
-      <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2 py-1.5">
-        <div class="flex flex-col leading-tight"><span class="text-[10px] font-bold text-slate-400">담당자 필터</span><span id="assignee-filter-summary" class="text-[10px] font-semibold text-indigo-600">전체 담당자</span></div>
-        <select id="focus-assignee-select" multiple size="3" class="min-w-[150px] rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-600 outline-none focus:border-indigo-500"></select>
-        <button type="button" id="btn-clear-assignee-filter" class="rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500 hover:bg-slate-200">해제</button>
-      </div>
+      <button type="button" id="btn-open-assignee-modal" class="rounded-xl border border-indigo-100 bg-white px-3 py-1.5 text-xs font-bold text-indigo-700 shadow-sm hover:bg-indigo-50 transition">👤 담당자: 전체</button>
+      <button type="button" id="btn-clear-assignee-filter" class="rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[11px] font-bold text-slate-500 hover:bg-white transition">담당자 해제</button>
     </div>
     <div id="bulk-action-bar" class="hidden flex-wrap items-center gap-2 rounded-xl border border-indigo-100 bg-indigo-50/60 p-2">
       <span id="bulk-selected-count" class="text-xs font-bold text-indigo-700">0개 선택됨</span>
@@ -382,7 +437,7 @@ function ensureUXToolbar() {
   filterBox.appendChild(bar);
   document.getElementById('btn-focus-risk')?.addEventListener('click', () => toggleFocusMode('riskOnly'));
   document.getElementById('btn-focus-high')?.addEventListener('click', () => toggleFocusMode('highOnly'));
-  document.getElementById('focus-assignee-select')?.addEventListener('change', handleAssigneeMultiSelectChange);
+  document.getElementById('btn-open-assignee-modal')?.addEventListener('click', openAssigneeModal);
   document.getElementById('btn-clear-assignee-filter')?.addEventListener('click', clearAssigneeMultiSelect);
   document.getElementById('bulk-change-status')?.addEventListener('click', bulkChangeStatus);
   document.getElementById('bulk-change-assignee')?.addEventListener('click', bulkChangeAssignee);
@@ -831,12 +886,12 @@ function renderTable(filtered) {
     tr.innerHTML = `
       <td class="px-2 py-4 text-center text-slate-400"><button type="button" class="btn-order-up block mx-auto hover:text-indigo-600" data-id="${t.id}">▲</button><button type="button" class="btn-order-down block mx-auto hover:text-indigo-600" data-id="${t.id}">▼</button></td>
       <td class="px-3 py-4 text-center"><input type="checkbox" class="cb-task rounded border-slate-300 cursor-pointer text-indigo-600 focus:ring-indigo-500" data-id="${t.id}" ${checked ? 'checked' : ''}></td>
-      <td class="px-6 py-4"><div class="flex items-center gap-2"><button type="button" class="btn-toggle-subtasks text-slate-400 hover:text-indigo-600 ${subTasks.length ? '' : 'invisible'}" data-id="${t.id}">${subTasks.length ? (isExpanded ? '▼' : '▶') : ''}</button><span class="inline-edit-title font-bold text-slate-900 rounded px-1 -mx-1 hover:bg-indigo-50 focus:bg-white focus:ring-2 focus:ring-indigo-100 outline-none" contenteditable="true" spellcheck="false" data-id="${t.id}" title="클릭해서 업무명을 바로 수정">${escapeHTML(t.title)}</span>${subTasks.length ? `<span class="rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600">하위 업무 ${doneSubs}/${subTasks.length}</span>` : ''}${subOverdueBadge}${getEffectiveStatusBadge(effectiveStatus)}${riskBadge}</div><div class="pl-6 text-xs text-slate-400 mt-1">${escapeHTML(t.notes || '추가 지침 없음')} · 진척 ${progressPct}%</div>${bottleneckHTML}</td>
-      <td class="px-6 py-4"><div class="inline-flex items-center gap-2"><span class="inline-flex h-8 w-8 items-center justify-center rounded-full ${getAvatarStyle(t.assignee)} text-xs font-bold">${escapeHTML((t.assignee || 'U').charAt(0))}</span><span class="font-semibold">${escapeHTML(t.assignee || '미지정')}</span></div></td>
-      <td class="px-6 py-4"><div class="text-xs font-semibold text-slate-600">${t.startDate ? t.startDate.substring(5) : '미정'} ~ ${(t.dueDate || '').substring(5)}</div><span class="mt-1 inline-flex rounded-lg border px-2 py-1 text-xs ${timeline.class}">${timeline.text}</span></td>
-      <td class="px-4 py-4 text-center"><span class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold">${getPriorityBadge(t.priority)}</span></td>
-      <td class="px-6 py-4 text-center"><div class="mb-1 text-[10px] font-bold text-slate-400">${getStatusKorean(effectiveStatus)}</div><select class="sel-status rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 outline-none focus:border-indigo-500" data-id="${t.id}"><option value="PENDING" ${t.status === 'PENDING' ? 'selected' : ''}>진행 대기 ⌛</option><option value="PROGRESS" ${t.status === 'PROGRESS' ? 'selected' : ''}>진행 중 ⚙️</option><option value="COMPLETED" ${t.status === 'COMPLETED' ? 'selected' : ''}>완료됨 ⭐️</option></select></td>
-      <td class="px-6 py-4 text-center"><button type="button" class="btn-edit text-slate-400 hover:text-indigo-600 px-2" data-id="${t.id}">✎</button><button type="button" class="btn-delete text-slate-400 hover:text-rose-600 px-2" data-id="${t.id}">🗑</button></td>`;
+      <td class="px-4 py-4 align-top"><div class="flex items-start gap-2"><button type="button" class="btn-toggle-subtasks mt-1 shrink-0 text-slate-400 hover:text-indigo-600 ${subTasks.length ? '' : 'invisible'}" data-id="${t.id}">${subTasks.length ? (isExpanded ? '▼' : '▶') : ''}</button><div class="min-w-0 flex-1"><div class="flex items-center gap-2"><span class="inline-edit-title block min-w-0 max-w-full rounded px-1 -mx-1 text-base font-black leading-snug text-slate-900 hover:bg-indigo-50 focus:bg-white focus:ring-2 focus:ring-indigo-100 outline-none" contenteditable="true" spellcheck="false" data-id="${t.id}" title="클릭해서 업무명을 바로 수정">${escapeHTML(t.title)}</span></div><div class="mt-2 flex flex-col items-start gap-1">${subTasks.length ? `<span class="rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600">하위 업무 ${doneSubs}/${subTasks.length}</span>` : ''}${subOverdueBadge}${getEffectiveStatusBadge(effectiveStatus)}${riskBadge}</div><div class="mt-1 text-xs text-slate-400">${escapeHTML(t.notes || '추가 지침 없음')} · 진척 ${progressPct}%</div>${bottleneckHTML}</div></div></td>
+      <td class="px-3 py-4 align-top"><div class="inline-flex items-center gap-1.5"><span class="inline-flex h-7 w-7 items-center justify-center rounded-full ${getAvatarStyle(t.assignee)} text-xs font-bold">${escapeHTML((t.assignee || 'U').charAt(0))}</span><span class="font-semibold">${escapeHTML(t.assignee || '미지정')}</span></div></td>
+      <td class="px-3 py-4 align-top"><div class="text-xs font-semibold text-slate-600">${t.startDate ? t.startDate.substring(5) : '미정'} ~ ${(t.dueDate || '').substring(5)}</div><span class="mt-1 inline-flex rounded-lg border px-2 py-1 text-xs ${timeline.class}">${timeline.text}</span></td>
+      <td class="px-2 py-4 text-center align-top"><span class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold">${getPriorityBadge(t.priority)}</span></td>
+      <td class="px-3 py-4 text-center align-top"><div class="mb-1 text-[10px] font-bold text-slate-400">${getStatusKorean(effectiveStatus)}</div><select class="sel-status rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 outline-none focus:border-indigo-500" data-id="${t.id}"><option value="PENDING" ${t.status === 'PENDING' ? 'selected' : ''}>진행 대기 ⌛</option><option value="PROGRESS" ${t.status === 'PROGRESS' ? 'selected' : ''}>진행 중 ⚙️</option><option value="COMPLETED" ${t.status === 'COMPLETED' ? 'selected' : ''}>완료됨 ⭐️</option></select></td>
+      <td class="px-2 py-4 text-center align-top"><button type="button" class="btn-edit text-slate-400 hover:text-indigo-600 px-2" data-id="${t.id}">✎</button><button type="button" class="btn-delete text-slate-400 hover:text-rose-600 px-2" data-id="${t.id}">🗑</button></td>`;
     tbody.appendChild(tr);
     if (subTasks.length && isExpanded) {
       subTasks.forEach(st => {
@@ -847,12 +902,12 @@ function renderTable(filtered) {
         sr.className = isSubTaskOverdue(st) ? 'bg-rose-50/70 border-l-2 border-l-rose-500/60 hover:bg-rose-50 transition-colors text-xs' : 'bg-slate-50/70 border-l-2 border-l-indigo-500/40 hover:bg-indigo-50/30 transition-colors text-xs';
         sr.innerHTML = `
           <td colspan="2"></td>
-          <td class="px-6 py-2 text-slate-600"><div class="flex items-center gap-2 pl-8"><span class="text-slate-300">└─</span><span class="font-semibold ${status === 'COMPLETED' ? 'line-through text-slate-400' : isSubTaskOverdue(st) ? 'text-rose-700' : 'text-slate-700'}">${isSubTaskOverdue(st) ? '🚨 ' : ''}${escapeHTML(st.title)}</span><span class="rounded border border-indigo-100 bg-indigo-50 px-1 py-0.5 text-[10px] font-bold text-indigo-700">👤 ${escapeHTML(subAssignee)}</span></div></td>
-          <td class="px-6 py-2 text-center text-slate-400">-</td>
-          <td class="px-6 py-2 text-slate-500"><div>📅 ${st.startDate ? st.startDate.substring(5) : '미정'} ~ ${st.dueDate ? st.dueDate.substring(5) : '미정'}</div><span class="mt-1 inline-flex rounded-lg border px-2 py-0.5 text-[10px] ${stTimeline.class}">${stTimeline.text}</span></td>
+          <td class="px-4 py-2 text-slate-600"><div class="flex items-center gap-2 pl-8"><span class="text-slate-300">└─</span><span class="font-semibold ${status === 'COMPLETED' ? 'line-through text-slate-400' : isSubTaskOverdue(st) ? 'text-rose-700' : 'text-slate-700'}">${isSubTaskOverdue(st) ? '🚨 ' : ''}${escapeHTML(st.title)}</span><span class="rounded border border-indigo-100 bg-indigo-50 px-1 py-0.5 text-[10px] font-bold text-indigo-700">👤 ${escapeHTML(subAssignee)}</span></div></td>
+          <td class="px-3 py-2 text-center text-slate-400">-</td>
+          <td class="px-3 py-2 text-slate-500"><div>📅 ${st.startDate ? st.startDate.substring(5) : '미정'} ~ ${st.dueDate ? st.dueDate.substring(5) : '미정'}</div><span class="mt-1 inline-flex rounded-lg border px-2 py-0.5 text-[10px] ${stTimeline.class}">${stTimeline.text}</span></td>
           <td class="px-4 py-2 text-center text-slate-400">-</td>
-          <td class="px-6 py-2 text-center">${subTaskStatusSelect(t.id, st.id, status)}</td>
-          <td class="px-6 py-2 text-center text-slate-300">-</td>`;
+          <td class="px-3 py-2 text-center">${subTaskStatusSelect(t.id, st.id, status)}</td>
+          <td class="px-2 py-2 text-center text-slate-300">-</td>`;
         tbody.appendChild(sr);
       });
     }
