@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow app.js v20260626-day-gantt-polish loaded');
+console.info('Smart Task Flow app.js v20260626-day-gantt-polish-v2-subtask-range loaded');
 // --- UX optimization globals: must be declared before helper functions ---
 var focusState = window.focusState || { riskOnly: false, mineOnly: false, highOnly: false };
 window.focusState = focusState;
@@ -1031,6 +1031,7 @@ function renderCalendar(filteredTasks) {
     grid.className = 'relative bg-white border border-slate-200 rounded-b-lg overflow-hidden';
     grid.innerHTML = '';
 
+    const monthFirstStr = `${year}-${String(month + 1).padStart(2, '0')}-01`;
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const lastDayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
@@ -1039,9 +1040,9 @@ function renderCalendar(filteredTasks) {
     const fullCells = totalCells + remaining;
     const weekCount = Math.ceil(fullCells / 7);
 
-    // DAY view is now rendered like a mini Gantt chart for each week.
-    // Cells are just the calendar plate; bars are drawn in an absolute overlay so main/sub tasks
-    // become smooth, unbroken rounded lines instead of separate per-day chips.
+    // DAY view uses a weekly mini-Gantt overlay.
+    // Important: bars are drawn from the real start/end dates, clipped only by the visible month.
+    // This makes sub tasks such as "6월 Review" run continuously from 7/1 to 7/3.
     const laneHeight = 22;
     const rowDateHeight = 34;
     const rowHeight = rowDateHeight + Math.max(totalCalLanes, 1) * laneHeight + 14;
@@ -1065,15 +1066,28 @@ function renderCalendar(filteredTasks) {
     const overlay = document.createElement('div');
     overlay.className = 'absolute inset-0 z-10 pointer-events-none';
 
-    const clampDateStr = (value, min, max) => String(value || min) < min ? min : String(value || min) > max ? max : String(value || min);
+    const clampDateStr = (value, min, max) => {
+      const v = String(value || min);
+      if (v < min) return min;
+      if (v > max) return max;
+      return v;
+    };
     const dayNumber = dateStr => Number(String(dateStr).slice(8, 10));
     const barLabel = item => item.isSub
       ? `${isSubTaskOverdue(item, todayStr) ? '🚨' : getStatusIcon(item.status)} ↳ 👤 ${escapeHTML(item.assignee)} | ${escapeHTML(item.title)}`
       : `${getEffectiveStatus(item, todayStr) === 'OVERDUE' ? '🚨' : getEffectiveStatus(item, todayStr) === 'COMPLETED' ? '⭐️' : getEffectiveStatus(item, todayStr) === 'PROGRESS' ? '⚙️' : '⌛'} ${escapeHTML(item.title)}`;
+    const polishedSubClass = item => normalizeStatus(item.status) === 'COMPLETED'
+      ? 'bg-emerald-100/90 text-emerald-800 border border-emerald-200'
+      : isSubTaskOverdue(item, todayStr)
+        ? 'bg-rose-100/90 text-rose-800 border border-rose-200 font-semibold'
+        : normalizeStatus(item.status) === 'PROGRESS'
+          ? 'bg-sky-100/90 text-sky-800 border border-sky-200'
+          : 'bg-indigo-50/95 text-indigo-800 border border-indigo-200';
 
     const drawWeekFragment = item => {
-      const displayStart = clampDateStr(item.start, `${year}-${String(month + 1).padStart(2, '0')}-01`, lastDayStr);
-      const displayEnd = clampDateStr(item.end, `${year}-${String(month + 1).padStart(2, '0')}-01`, lastDayStr);
+      // Clip to the selected month, but preserve the actual task range inside the month.
+      const displayStart = clampDateStr(item.start, monthFirstStr, lastDayStr);
+      const displayEnd = clampDateStr(item.end, monthFirstStr, lastDayStr);
       const startDay = dayNumber(displayStart);
       const endDay = dayNumber(displayEnd);
       if (!startDay || !endDay || startDay > daysInMonth || endDay < 1 || startDay > endDay) return;
@@ -1089,15 +1103,22 @@ function renderCalendar(filteredTasks) {
 
         const startCol = (firstDay + segStartDay - 1) % 7;
         const endCol = (firstDay + segEndDay - 1) % 7;
+        const startsAtWeekStart = segStartDay === weekStartDay;
+        const endsAtWeekEnd = segEndDay === weekEndDay;
         const isRealStart = segStartDay === startDay;
         const isRealEnd = segEndDay === endDay;
-        const showText = isRealStart || week > 0 || segStartDay === 1 || `${year}-${String(month + 1).padStart(2, '0')}-${String(segStartDay).padStart(2, '0')}` === todayStr;
+        const showText = isRealStart || startsAtWeekStart || segStartDay === 1 || `${year}-${String(month + 1).padStart(2, '0')}-${String(segStartDay).padStart(2, '0')}` === todayStr;
 
         const bar = document.createElement('div');
-        const elClassStatus = item.isSub ? subClass(item) : mainClass(item);
-        bar.className = `absolute h-5 rounded-lg shadow-sm text-[10px] leading-none font-semibold flex items-center cursor-pointer transition-all hover:scale-[1.01] pointer-events-auto truncate ${item.isSub ? 'border-dashed' : ''} ${elClassStatus}`;
-        bar.style.left = `calc(${startCol / 7 * 100}% + ${isRealStart ? 4 : 1}px)`;
-        bar.style.width = `calc(${(endCol - startCol + 1) / 7 * 100}% - ${isRealStart && isRealEnd ? 8 : 2}px)`;
+        const elClassStatus = item.isSub ? polishedSubClass(item) : mainClass(item);
+        bar.className = `absolute h-5 shadow-sm text-[10px] leading-none font-semibold flex items-center cursor-pointer transition-all hover:scale-[1.01] pointer-events-auto truncate ${elClassStatus}`;
+        bar.classList.add(isRealStart || startsAtWeekStart ? 'rounded-l-lg' : 'rounded-l-sm');
+        bar.classList.add(isRealEnd || endsAtWeekEnd ? 'rounded-r-lg' : 'rounded-r-sm');
+        // Use exact day-cell fractions. Start/end padding only trims the outer edge; middle fragments touch cell borders.
+        const leftPad = (isRealStart || startsAtWeekStart) ? 4 : 0;
+        const rightPad = (isRealEnd || endsAtWeekEnd) ? 4 : 0;
+        bar.style.left = `calc(${startCol / 7 * 100}% + ${leftPad}px)`;
+        bar.style.width = `calc(${(endCol - startCol + 1) / 7 * 100}% - ${leftPad + rightPad}px)`;
         bar.style.top = `${week * rowHeight + rowDateHeight + item.lane * laneHeight}px`;
         bar.style.paddingLeft = item.isSub ? '10px' : '8px';
         bar.style.paddingRight = '8px';
@@ -1111,13 +1132,16 @@ function renderCalendar(filteredTasks) {
     };
 
     groups.forEach(g => {
-      if (g.startDate <= lastDayStr && g.dueDate >= `${year}-${String(month + 1).padStart(2, '0')}-01`) {
+      // Main task bar
+      if (g.startDate <= lastDayStr && g.dueDate >= monthFirstStr) {
         drawWeekFragment({ id: g.id, title: g.title, isSub: false, status: g.status, lane: g.globalLineStart, start: g.startDate, end: g.dueDate, parentId: g.id, assignee: g.assignee, notes: g.notes, dueDate: g.dueDate });
       }
+      // Stable sub-task lane within the current month. Do not calculate by visible day; calculate once per month.
       if (isCalSubTaskVisible) {
         const daySubTasks = g.monthSubTasks || [];
+        const subLaneMap = new Map(daySubTasks.map((st, idx) => [st.id || `${st.title}-${idx}`, g.globalLineStart + 1 + idx]));
         daySubTasks.forEach((st, idx) => {
-          drawWeekFragment({ ...st, isSub: true, lane: g.globalLineStart + 1 + idx, start: st.startDate, end: st.dueDate, parentId: g.id, parentTitle: g.title });
+          drawWeekFragment({ ...st, isSub: true, lane: subLaneMap.get(st.id || `${st.title}-${idx}`), start: st.startDate, end: st.dueDate, parentId: g.id, parentTitle: g.title });
         });
       }
     });
