@@ -1,4 +1,4 @@
-console.info('Smart Task Flow date-risk-utils.js v20260626-module-split-phase4a-calendar-utils loaded');
+console.info('Smart Task Flow date-risk-utils.js v20260626-module-split-phase4b-day-renderer loaded');
 function getStatusKorean(status) { return ({ PENDING: '진행 대기', PROGRESS: '진행 중', COMPLETED: '완료됨', OVERDUE: '기한 초과' })[status] || '전체'; }
 function getPriorityBadge(priority) { if (priority === 'HIGH') return '높음'; if (priority === 'NORMAL') return '보통'; return '낮음'; }
 function getStatusIcon(status) { if (status === 'COMPLETED') return '✅'; if (status === 'PROGRESS') return '⚙️'; return '⌛'; }
