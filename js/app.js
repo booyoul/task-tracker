@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow app.js v20260626-bd-dashboard-allinone loaded');
+console.info('Smart Task Flow app.js v20260626-module-split-phase1 loaded');
 // --- UX optimization globals: must be declared before helper functions ---
 var focusState = window.focusState || { riskOnly: false, mineOnly: false, highOnly: false };
 window.focusState = focusState;
@@ -740,7 +740,7 @@ async function db_addTask(taskData) {
   const coll = getTasksCollection();
   const id = 'task_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
   const tracker = trackers.find(t => t.id === currentTrackerId);
-  const payload = { ...taskData, trackerId: taskData.trackerId || currentTrackerId, trackerName: tracker ? tracker.name : '', deleted: false, createdAt: getServerTimestamp(), updatedAt: getServerTimestamp() };
+  const payload = normalizeTaskForSchema({ ...taskData, trackerId: taskData.trackerId || currentTrackerId, trackerName: tracker ? tracker.name : '', deleted: false, createdAt: getServerTimestamp(), updatedAt: getServerTimestamp() });
   markSaving();
   if (canWriteToFirestore() && coll) {
     try { await coll.doc(id).set(payload, { merge: true }); markSaved(); }
@@ -752,7 +752,8 @@ async function db_addTask(taskData) {
 async function db_updateTask(id, taskData) {
   const coll = getTasksCollection();
   const tracker = trackers.find(t => t.id === (taskData.trackerId || currentTrackerId));
-  const payload = { ...taskData, trackerName: tracker ? tracker.name : taskData.trackerName, updatedAt: getServerTimestamp() };
+  const originalTask = tasks.find(t => t.id === id) || {};
+  const payload = normalizeTaskForSchema({ ...originalTask, ...taskData, trackerName: tracker ? tracker.name : taskData.trackerName, updatedAt: getServerTimestamp() });
   markSaving();
   if (canWriteToFirestore() && coll) {
     try { await coll.doc(id).set(payload, { merge: true }); markSaved(); }
@@ -1773,6 +1774,8 @@ async function handleTaskSubmit(e) {
     notes: document.getElementById('input-task-notes').value.trim(),
     subTasks: currentSubTasks.map(st => ({ ...st, status: normalizeStatus(st.status) }))
   };
+  const validationMessage = validateTaskPayload(data);
+  if (validationMessage) return showToast(validationMessage, false);
   if (!id) data.order = order;
   if (id) { await db_updateTask(id, data); showToast('수정되었습니다.'); }
   else { await db_addTask(data); showToast('추가되었습니다.'); }
@@ -1866,29 +1869,7 @@ function handleDeleteTrackerClick() {
   confirmActionCb = async () => { await db_deleteTracker(id); closeConfirmModal(); showToast('트래커 및 소속 데이터가 제거되었습니다.'); };
   document.getElementById('modal-confirm')?.classList.remove('hidden');
 }
-function exportToJSON() {
-  const data = tasks.filter(t => t.trackerId === currentTrackerId);
-  const a = document.createElement('a');
-  a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(data, null, 4));
-  a.download = `backup_${getTodayStr()}.json`;
-  a.click();
-}
-function exportToCSV() {
-  const rows = [['rowType','parentTask','title','industry','taskType','assignee','startDate','dueDate','priority','status','progressPct','notes']];
-  tasks.filter(t => t.trackerId === currentTrackerId && !t.deleted).forEach(t => {
-    rows.push(['TASK','', t.title || '', t.industry || 'AUTO', t.taskType || 'GENERAL', t.assignee || '', t.startDate || '', t.dueDate || '', getPriorityBadge(t.priority), getStatusKorean(t.status), getTaskProgress(t), t.notes || '']);
-    (Array.isArray(t.subTasks) ? t.subTasks : []).forEach(st => {
-      rows.push(['SUBTASK', t.title || '', st.title || '', t.industry || 'AUTO', t.taskType || 'GENERAL', st.assignee || t.assignee || '', st.startDate || '', st.dueDate || '', '', getStatusKorean(normalizeStatus(st.status)), '', '']);
-    });
-  });
-  const csv = '\uFEFF' + rows.map(row => row.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
-  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `bd_task_export_${getTodayStr()}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
+// Export helpers moved to js/export-service.js
 async function importFromJSON(e) {
   const file = e.target.files && e.target.files[0];
   if (!file) return;
@@ -1943,9 +1924,10 @@ function setupRealtimeListeners() {
     updateUI();
   }, err => { console.error('트래커 동기화 오류', err); showToast('트래커 실시간 동기화 오류', false); });
   unsubscribeTasks = taskColl.onSnapshot(snapshot => {
-    tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(t => t.deleted !== true);
+    tasks = snapshot.docs.map(doc => normalizeTaskForSchema({ id: doc.id, ...doc.data() })).filter(t => t.deleted !== true);
     updateTrackerUI();
     updateUI();
+    migrateExistingTasksToCurrentSchema(tasks);
   }, err => { console.error('업무 동기화 오류', err); showToast('업무 실시간 동기화 오류', false); });
   return true;
 }
@@ -1977,6 +1959,8 @@ function relocateHeaderActionsToToolbar() {
   if (!actionHost) return;
   const items = [
     ['btn-export-csv', 'CSV'],
+    ['btn-export-excel', 'Excel'],
+    ['btn-export-powerbi', 'Power BI'],
     ['btn-export-json', '백업'],
     ['btn-import-trigger', '가져오기'],
     ['btn-add-task', '+ 새 업무']
@@ -1990,7 +1974,7 @@ function relocateHeaderActionsToToolbar() {
     actionHost.appendChild(el);
   });
   const originalToolbar = document.querySelector('header .flex.flex-wrap.items-center.gap-2');
-  if (originalToolbar && !Array.from(originalToolbar.children).some(ch => ch.id && ['btn-export-csv','btn-export-json','btn-import-trigger','btn-add-task','btn-undo','btn-batch-delete'].includes(ch.id))) {
+  if (originalToolbar && !Array.from(originalToolbar.children).some(ch => ch.id && ['btn-export-csv','btn-export-excel','btn-export-powerbi','btn-export-json','btn-import-trigger','btn-add-task','btn-undo','btn-batch-delete'].includes(ch.id))) {
     originalToolbar.classList.add('hidden');
   }
 }
@@ -2107,6 +2091,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('btn-add-task')?.addEventListener('click', () => openTaskModal());
   document.getElementById('btn-export-csv')?.addEventListener('click', exportToCSV);
+  document.getElementById('btn-export-excel')?.addEventListener('click', exportToExcel);
+  document.getElementById('btn-export-powerbi')?.addEventListener('click', exportPowerBIJSON);
   document.getElementById('btn-export-json')?.addEventListener('click', exportToJSON);
   document.getElementById('btn-undo')?.addEventListener('click', undoDelete);
   document.getElementById('btn-batch-delete')?.addEventListener('click', confirmBatchDelete);

@@ -107,6 +107,16 @@
                     CSV
                 </button>
 
+                <button id="btn-export-excel" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition">
+                    <span class="text-emerald-600 font-black">XLS</span>
+                    Excel
+                </button>
+
+                <button id="btn-export-powerbi" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition">
+                    <span class="text-yellow-600 font-black">BI</span>
+                    Power BI
+                </button>
+
                 <button id="btn-export-json" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition">
                     <svg class="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
                     백업
@@ -449,7 +459,9 @@
     <!-- 스크립트 비즈니스 로직 연동 시작 -->
         <script defer src="./js/firebase.js?v=20260625-unified-patch-v2"></script>
     <script defer src="./js/state.js?v=20260625-unified-patch-v2"></script>
-    <script defer src="./js/app.js?v=20260626-bd-dashboard-allinone"></script>
+    <script defer src="./js/schema-service.js?v=20260626-module-split-phase1"></script>
+    <script defer src="./js/app.js?v=20260626-module-split-phase1"></script>
+    <script defer src="./js/export-service.js?v=20260626-module-split-phase1"></script>
     <script defer src="./js/monthly-kpi-unified-patch.js?v=20260625-unified-patch-v2"></script>
     <script defer src="./js/monthly-kpi-unified-patch.js?v=20260625-unified-patch"></script>
 </body>
