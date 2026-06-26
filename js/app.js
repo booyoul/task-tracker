@@ -1081,31 +1081,10 @@ function ensureUXToolbar() {
   updateBulkActionBar();
 }
 document.addEventListener('DOMContentLoaded', () => {
-  if (isFirebaseAvailable && auth) {
-    const initAuth = async () => {
-      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await auth.signInWithCustomToken(__initial_auth_token);
-      else await auth.signInAnonymously();
-    };
-    initAuth()
-      .then(() => auth.onAuthStateChanged(user => {
-        isAuthReady = !!user;
-        if (user) fetchInitialData();
-      }))
-      .catch(e => {
-        console.error('Auth initialization failed', e);
-        updateUI();
-      });
+  if (typeof window.bootstrapApp === 'function') {
+    window.bootstrapApp();
   } else {
-    updateUI();
-  }
-
-  const saved = localStorage.getItem('flow_current_tracker');
-  if (saved && trackers.some(t => t.id === saved)) currentTrackerId = saved;
-  updateTrackerUI();
-
-  if (typeof window.initEventBindings === 'function') {
-    window.initEventBindings();
-  } else {
-    console.warn('initEventBindings is not available. Check event-bindings.js script order.');
+    console.error('bootstrapApp is not available. Check bootstrap-service.js script order.');
+    if (typeof updateUI === 'function') updateUI();
   }
 });

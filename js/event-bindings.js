@@ -1,4 +1,4 @@
-console.info('Smart Task Flow event-bindings.js v20260626-phase9-app-slim loaded');
+console.info('Smart Task Flow event-bindings.js v20260626-phase10-bootstrap loaded');
 
 function initEventBindings() {
   if (window.__eventBindingsInitialized) return;
@@ -10,6 +10,7 @@ function initEventBindings() {
   bindSelectionAndListEvents();
   bindViewAndCalendarEvents();
   bindModalAndConfirmEvents();
+  bindToolbarDynamicEvents();
   bindWindowLifecycleEvents();
 }
 
@@ -32,9 +33,7 @@ function bindTrackerEvents() {
   });
 
   document.addEventListener('click', e => {
-    if (!e.target.closest('#tracker-dropdown-container')) {
-      document.getElementById('tracker-dropdown-menu')?.classList.add('hidden');
-    }
+    if (!e.target.closest('#tracker-dropdown-container')) document.getElementById('tracker-dropdown-menu')?.classList.add('hidden');
   });
 
   document.getElementById('btn-create-tracker-open')?.addEventListener('click', () => window.openTrackerModal?.());
@@ -51,20 +50,13 @@ function bindFilterEvents() {
     });
   });
 
-  ['filter-search', 'filter-start-date', 'filter-end-date'].forEach(id => {
-    document.getElementById(id)?.addEventListener('input', renderActiveViews);
-  });
-
-  ['filter-status', 'filter-priority', 'filter-assignee'].forEach(id => {
-    document.getElementById(id)?.addEventListener('change', renderActiveViews);
-  });
-
+  ['filter-search', 'filter-start-date', 'filter-end-date'].forEach(id => document.getElementById(id)?.addEventListener('input', renderActiveViews));
+  ['filter-status', 'filter-priority', 'filter-assignee'].forEach(id => document.getElementById(id)?.addEventListener('change', renderActiveViews));
   document.getElementById('btn-reset-filters')?.addEventListener('click', resetFilters);
 }
 
 function bindSelectionAndListEvents() {
   document.getElementById('checkbox-select-all')?.addEventListener('change', toggleSelectAll);
-
   document.getElementById('task-table-body')?.addEventListener('click', handleTableClick);
   document.getElementById('task-table-body')?.addEventListener('change', handleTableChange);
   document.getElementById('task-card-container')?.addEventListener('click', handleTableClick);
@@ -83,18 +75,9 @@ function bindViewAndCalendarEvents() {
   document.getElementById('btn-cal-mode-day')?.addEventListener('click', () => setCalMode('DAY'));
   document.getElementById('btn-cal-mode-month')?.addEventListener('click', () => setCalMode('MONTH'));
   document.getElementById('btn-cal-mode-summary')?.addEventListener('click', () => setCalMode('SUMMARY'));
-  document.getElementById('btn-prev-month')?.addEventListener('click', () => {
-    currentCalDate.setMonth(currentCalDate.getMonth() - 1);
-    renderActiveViews();
-  });
-  document.getElementById('btn-today-month')?.addEventListener('click', () => {
-    currentCalDate = new Date();
-    renderActiveViews();
-  });
-  document.getElementById('btn-next-month')?.addEventListener('click', () => {
-    currentCalDate.setMonth(currentCalDate.getMonth() + 1);
-    renderActiveViews();
-  });
+  document.getElementById('btn-prev-month')?.addEventListener('click', () => { currentCalDate.setMonth(currentCalDate.getMonth() - 1); renderActiveViews(); });
+  document.getElementById('btn-today-month')?.addEventListener('click', () => { currentCalDate = new Date(); renderActiveViews(); });
+  document.getElementById('btn-next-month')?.addEventListener('click', () => { currentCalDate.setMonth(currentCalDate.getMonth() + 1); renderActiveViews(); });
 }
 
 function bindModalAndConfirmEvents() {
@@ -109,8 +92,22 @@ function bindModalAndConfirmEvents() {
   document.getElementById('btn-delete-tracker')?.addEventListener('click', handleDeleteTrackerClick);
 
   document.getElementById('btn-cancel-confirm')?.addEventListener('click', () => window.closeConfirmModal?.());
-  document.getElementById('btn-action-confirm')?.addEventListener('click', () => {
-    if (confirmActionCb) confirmActionCb();
+  document.getElementById('btn-action-confirm')?.addEventListener('click', () => { if (confirmActionCb) confirmActionCb(); });
+}
+
+function bindToolbarDynamicEvents() {
+  // These controls are created dynamically by ensureUXToolbar(), so event delegation is safer than direct binding.
+  document.addEventListener('click', e => {
+    const target = e.target.closest('button');
+    if (!target) return;
+    if (target.id === 'btn-focus-risk') toggleFocusMode('riskOnly');
+    else if (target.id === 'btn-focus-high') toggleFocusMode('highOnly');
+    else if (target.id === 'btn-open-assignee-modal') openAssigneeModal();
+    else if (target.id === 'btn-clear-assignee-filter') clearAssigneeMultiSelect();
+    else if (target.id === 'bulk-change-status') bulkChangeStatus();
+    else if (target.id === 'bulk-change-assignee') bulkChangeAssignee();
+    else if (target.id === 'bulk-change-due') bulkChangeDueDate();
+    else if (target.id === 'bulk-clear-selection') clearSelection();
   });
 }
 
