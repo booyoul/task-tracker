@@ -1263,6 +1263,41 @@ function renderMobileCards(filtered) {
   });
 }
 
+
+function setViewVisibility(mode) {
+  const table = document.getElementById('view-table');
+  const mobile = document.getElementById('view-mobile');
+  const calendar = document.getElementById('view-calendar');
+
+  // Important: view-table has responsive class "hidden lg:block".
+  // On desktop, lg:block can override hidden, so use inline display for hard separation.
+  if (mode === 'CALENDAR') {
+    if (table) { table.classList.add('hidden'); table.style.display = 'none'; }
+    if (mobile) { mobile.classList.add('hidden'); mobile.style.display = 'none'; }
+    if (calendar) { calendar.classList.remove('hidden'); calendar.style.display = ''; }
+  } else {
+    if (calendar) { calendar.classList.add('hidden'); calendar.style.display = 'none'; }
+    if (table) { table.classList.remove('hidden'); table.style.display = ''; }
+    if (mobile) { mobile.classList.remove('hidden'); mobile.style.display = ''; }
+  }
+}
+function updateViewToggleButtons(mode) {
+  const tableBtn = document.getElementById('btn-view-table');
+  const calBtn = document.getElementById('btn-view-calendar');
+  if (tableBtn) tableBtn.className = mode === 'CALENDAR'
+    ? 'rounded-lg px-4 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition'
+    : 'rounded-lg bg-white px-4 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition';
+  if (calBtn) calBtn.className = mode === 'CALENDAR'
+    ? 'rounded-lg bg-white px-4 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition'
+    : 'rounded-lg px-4 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition';
+}
+function switchView(mode) {
+  currentViewMode = mode === 'CALENDAR' ? 'CALENDAR' : 'TABLE';
+  updateViewToggleButtons(currentViewMode);
+  setViewVisibility(currentViewMode);
+  renderActiveViews();
+}
+
 function renderActiveViews() {
   ensureAdvancedFilterOptions();
   ensureUXToolbar();
@@ -1276,9 +1311,14 @@ function renderActiveViews() {
   document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('ring-2', 'ring-indigo-600', 'bg-indigo-50/10'));
   document.getElementById(`card-${['ALL','PENDING','PROGRESS','COMPLETED','OVERDUE'].includes(fStatus) ? fStatus : 'OVERDUE'}`)?.classList.add('ring-2', 'ring-indigo-600', 'bg-indigo-50/10');
   applyCompactDashboardStyles();
+  setViewVisibility(currentViewMode === 'CALENDAR' ? 'CALENDAR' : 'TABLE');
+  updateViewToggleButtons(currentViewMode === 'CALENDAR' ? 'CALENDAR' : 'TABLE');
+  if (currentViewMode === 'CALENDAR') {
+    renderCalendar(filtered);
+    return;
+  }
   renderTable(filtered);
   renderMobileCards(filtered);
-  if (currentViewMode === 'CALENDAR') renderCalendar(filtered);
 }
 function updateUI() { renderStats(); buildAssigneeDropdownFilter(); renderActiveViews(); updateUndoButton(); }
 
@@ -1777,8 +1817,8 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('task-card-container')?.addEventListener('change', handleTableChange);
   document.getElementById('task-table-body')?.addEventListener('focusout', e => { const el = e.target.closest('.inline-edit-title'); if (el) updateTaskTitleInline(el.dataset.id, el.textContent); });
   document.getElementById('task-table-body')?.addEventListener('keydown', handleInlineEditKeydown);
-  document.getElementById('btn-view-table')?.addEventListener('click', () => { currentViewMode = 'TABLE'; document.getElementById('btn-view-table').className = 'rounded-lg bg-white px-4 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition'; document.getElementById('btn-view-calendar').className = 'rounded-lg px-4 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition'; document.getElementById('view-table')?.classList.remove('hidden'); document.getElementById('view-mobile')?.classList.remove('hidden'); document.getElementById('view-calendar')?.classList.add('hidden'); renderActiveViews(); });
-  document.getElementById('btn-view-calendar')?.addEventListener('click', () => { currentViewMode = 'CALENDAR'; document.getElementById('btn-view-calendar').className = 'rounded-lg bg-white px-4 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition'; document.getElementById('btn-view-table').className = 'rounded-lg px-4 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition'; document.getElementById('view-table')?.classList.add('hidden'); document.getElementById('view-mobile')?.classList.add('hidden'); document.getElementById('view-calendar')?.classList.remove('hidden'); renderActiveViews(); });
+  document.getElementById('btn-view-table')?.addEventListener('click', () => switchView('TABLE'));
+  document.getElementById('btn-view-calendar')?.addEventListener('click', () => switchView('CALENDAR'));
   document.getElementById('btn-cal-mode-day')?.addEventListener('click', () => setCalMode('DAY'));
   document.getElementById('btn-cal-mode-month')?.addEventListener('click', () => setCalMode('MONTH'));
   document.getElementById('btn-cal-mode-summary')?.addEventListener('click', () => setCalMode('SUMMARY'));
