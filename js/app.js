@@ -1,5 +1,19 @@
 
-console.info('Smart Task Flow app.js v20260625-stable-full-3status loaded');
+console.info('Smart Task Flow app.js v20260626-ux-fix2 loaded');
+// --- UX optimization globals: must be declared before helper functions ---
+var focusState = window.focusState || { riskOnly: false, mineOnly: false, highOnly: false };
+window.focusState = focusState;
+var UX_STORAGE_KEYS = window.UX_STORAGE_KEYS || { myAssignee: 'flow_my_assignee_name' };
+window.UX_STORAGE_KEYS = UX_STORAGE_KEYS;
+function safeLocalStorageGet(key, fallback = '') {
+  try { return window.localStorage ? (localStorage.getItem(key) || fallback) : fallback; }
+  catch (e) { console.warn('localStorage read blocked', e); return fallback; }
+}
+function safeLocalStorageSet(key, value) {
+  try { if (window.localStorage) localStorage.setItem(key, value); return true; }
+  catch (e) { console.warn('localStorage write blocked', e); return false; }
+}
+
 // This app.js intentionally relies on state.js for global state, getTodayStr(), getFutureDateStr(), escapeHTML(), and AVATAR_COLORS.
 
 function getStatusKorean(status) {
@@ -188,23 +202,25 @@ function normalizeAssigneeName(name) {
   return String(name || '').toLowerCase().replace(/\s*\([^)]*\)\s*/g, '').trim();
 }
 function getMyAssigneeName() {
-  return localStorage.getItem(UX_STORAGE_KEYS.myAssignee) || 'Booyoul Oh';
+  return safeLocalStorageGet(UX_STORAGE_KEYS.myAssignee, window.__flowMyAssigneeFallback || '');
 }
 function setMyAssigneeName() {
   const current = getMyAssigneeName();
-  const name = prompt('나의 Task 필터에 사용할 담당자명을 입력하세요. 예: Booyoul Oh 또는 오부열', current);
+  const name = prompt('나의 Task 필터에 사용할 담당자명을 입력하세요. 예: Booyoul Oh 또는 오부열', current || '');
   if (name && name.trim()) {
-    localStorage.setItem(UX_STORAGE_KEYS.myAssignee, name.trim());
+    window.__flowMyAssigneeFallback = name.trim();
+    safeLocalStorageSet(UX_STORAGE_KEYS.myAssignee, name.trim());
     showToast(`나의 담당자명 설정: ${name.trim()}`);
+    updateFocusButtons();
     renderActiveViews();
   }
 }
 function isMineTask(task) {
   const mine = normalizeAssigneeName(getMyAssigneeName());
-  if (!mine) return false;
+  if (!mine) return true; // 담당자명이 없으면 전체를 유지해서 빈 화면이 되지 않도록 함
   const match = name => {
     const n = normalizeAssigneeName(name);
-    return n === mine || n.includes(mine) || mine.includes(n);
+    return !!n && (n === mine || n.includes(mine) || mine.includes(n));
   };
   return match(task?.assignee) || (Array.isArray(task?.subTasks) ? task.subTasks : []).some(st => match(st.assignee));
 }
@@ -254,10 +270,21 @@ function updateFocusButtons() {
   if (risk) risk.className = getFocusButtonClass(focusState.riskOnly);
   if (mine) mine.className = getFocusButtonClass(focusState.mineOnly);
   if (high) high.className = getFocusButtonClass(focusState.highOnly);
+  const setBtn = document.getElementById('btn-set-my-assignee');
+  if (setBtn) setBtn.textContent = getMyAssigneeName() ? `담당자명: ${getMyAssigneeName()}` : '담당자명 설정';
 }
 function toggleFocusMode(key) {
+  if (key === 'mineOnly' && !focusState.mineOnly && !safeLocalStorageGet(UX_STORAGE_KEYS.myAssignee, '')) {
+    setMyAssigneeName();
+    if (!safeLocalStorageGet(UX_STORAGE_KEYS.myAssignee, window.__flowMyAssigneeFallback || '')) {
+      focusState.mineOnly = false;
+      updateFocusButtons();
+      showToast('담당자명이 설정되지 않아 My Tasks 필터를 적용하지 않았습니다.', false);
+      renderActiveViews();
+      return;
+    }
+  }
   focusState[key] = !focusState[key];
-  if (key === 'mineOnly' && focusState.mineOnly && !localStorage.getItem(UX_STORAGE_KEYS.myAssignee)) setMyAssigneeName();
   updateFocusButtons();
   renderActiveViews();
 }
@@ -942,6 +969,8 @@ function renderCalendar(filteredTasks) {
 function renderActiveViews() {
   ensureAdvancedFilterOptions();
   ensureUXToolbar();
+  if (typeof focusState === 'undefined') window.focusState = focusState = { riskOnly: false, mineOnly: false, highOnly: false };
+  if (typeof UX_STORAGE_KEYS === 'undefined') window.UX_STORAGE_KEYS = UX_STORAGE_KEYS = { myAssignee: 'flow_my_assignee_name' };
   updateFocusButtons();
   updateBulkActionBar();
   const filtered = getFilteredTasks();
