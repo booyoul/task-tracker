@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow app.js v20260626-clean-detail-riskfix loaded');
+console.info('Smart Task Flow app.js v20260626-subtask-continuous-bar loaded');
 // --- UX optimization globals: must be declared before helper functions ---
 var focusState = window.focusState || { riskOnly: false, mineOnly: false, highOnly: false };
 window.focusState = focusState;
@@ -1060,7 +1060,10 @@ function renderCalendar(filteredTasks) {
         const el = document.createElement('div');
         // Weekly continuous bar: render every active day so task flow continues across the week.
         // Text appears only on start/end/Sunday/1st/today; continuation days keep color but no label.
-        let shape = `calendar-bar-segment min-h-[17px] w-[calc(100%+2px)] flex items-center shadow-sm ${item.isSub ? 'ml-1 border-dashed' : ''}`;
+        // Continuous bar rendering: sub-task segments must not have per-day left margin,
+        // otherwise a dated sub task looks broken at each day boundary.
+        // Use full-width segments for both main and sub tasks; distinguish sub tasks with dashed border/text.
+        let shape = `calendar-bar-segment min-h-[17px] w-[calc(100%+2px)] flex items-center shadow-sm ${item.isSub ? 'border-dashed' : ''}`;
         if (isStart || isWeekStart || forceTextOnFirstDay(day)) shape += ' rounded-l pl-1 pr-0 -mr-[1px]';
         else shape += ' rounded-none px-0 -mx-[1px]';
         if (isEnd || isWeekEnd) shape += ' rounded-r pr-1 -ml-[1px]';
@@ -1070,7 +1073,7 @@ function renderCalendar(filteredTasks) {
         bindGanttTooltip(el, item.title, item.isSub ? `[하위업무] 상위: ${escapeHTML(item.parentTitle)}<br>담당자: ${escapeHTML(item.assignee)}<br>기간: ${item.start} ~ ${item.end}<br>상태: ${getStatusKorean(item.status)}` : `[본업무] 담당자: ${escapeHTML(item.assignee)}<br>기간: ${item.start} ~ ${item.end}<br>메모: ${escapeHTML(item.notes || '없음')}`);
         if (showText) {
           const txt = document.createElement('div');
-          txt.className = 'truncate w-full whitespace-nowrap z-20 px-0.5';
+          txt.className = `truncate w-full whitespace-nowrap z-20 px-0.5 ${item.isSub ? 'pl-2' : ''}`;
           const marker = isStart && isEnd ? '' : isStart ? '▶ ' : isEnd ? '■ ' : '';
           txt.innerHTML = item.isSub
             ? `${marker}${isSubTaskOverdue(item, todayStr) ? '🚨' : getStatusIcon(item.status)} ↳ 👤 ${escapeHTML(item.assignee)} | ${escapeHTML(item.title)}`
