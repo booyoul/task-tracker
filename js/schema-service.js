@@ -1,34 +1,8 @@
-console.info('Smart Task Flow schema-service.js v20260626-module-split-phase2-utils loaded');
+console.info('Smart Task Flow schema-service.js v20260626-module-split-phase3-task-service loaded');
 const CURRENT_TASK_SCHEMA_VERSION = 2;
 let schemaMigrationInProgress = false;
-function normalizeSubTaskForSchema(st = {}, parent = {}) {
-  const start = st.startDate || st.dueDate || parent.dueDate || getTodayStr();
-  const due = st.dueDate || st.startDate || parent.dueDate || start;
-  return { id: st.id || 'sub_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7), title: String(st.title || '').trim() || '하위 업무', assignee: st.assignee || parent.assignee || '미지정', startDate: start > due ? due : start, dueDate: due, status: normalizeStatus(st.status), industry: parent.industry || st.industry || 'AUTO', taskType: parent.taskType || st.taskType || 'GENERAL' };
-}
-function normalizeTaskForSchema(task = {}) {
-  const start = task.startDate || task.dueDate || getTodayStr();
-  const due = task.dueDate || task.startDate || start;
-  const normalized = { ...task, title: String(task.title || '').trim() || '업무', assignee: task.assignee || '미지정', startDate: start > due ? due : start, dueDate: due, priority: ['HIGH','NORMAL','LOW'].includes(task.priority) ? task.priority : 'NORMAL', status: normalizeStatus(task.status), industry: task.industry || 'AUTO', taskType: task.taskType || 'GENERAL', notes: task.notes || '', deleted: task.deleted === true ? true : false, schemaVersion: CURRENT_TASK_SCHEMA_VERSION };
-  normalized.subTasks = (Array.isArray(task.subTasks) ? task.subTasks : []).map(st => normalizeSubTaskForSchema(st, normalized));
-  return normalized;
-}
+function normalizeSubTaskForSchema(st = {}, parent = {}) { const start = st.startDate || st.dueDate || parent.dueDate || getTodayStr(); const due = st.dueDate || st.startDate || parent.dueDate || start; return { id: st.id || 'sub_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7), title: String(st.title || '').trim() || '하위 업무', assignee: st.assignee || parent.assignee || '미지정', startDate: start > due ? due : start, dueDate: due, status: normalizeStatus(st.status), industry: parent.industry || st.industry || 'AUTO', taskType: parent.taskType || st.taskType || 'GENERAL' }; }
+function normalizeTaskForSchema(task = {}) { const start = task.startDate || task.dueDate || getTodayStr(); const due = task.dueDate || task.startDate || start; const normalized = { ...task, title: String(task.title || '').trim() || '업무', assignee: task.assignee || '미지정', startDate: start > due ? due : start, dueDate: due, priority: ['HIGH','NORMAL','LOW'].includes(task.priority) ? task.priority : 'NORMAL', status: normalizeStatus(task.status), industry: task.industry || 'AUTO', taskType: task.taskType || 'GENERAL', notes: task.notes || '', deleted: task.deleted === true ? true : false, schemaVersion: CURRENT_TASK_SCHEMA_VERSION }; normalized.subTasks = (Array.isArray(task.subTasks) ? task.subTasks : []).map(st => normalizeSubTaskForSchema(st, normalized)); return normalized; }
 function taskNeedsSchemaMigration(task = {}) { return task.schemaVersion !== CURRENT_TASK_SCHEMA_VERSION || !task.industry || !task.taskType || !Array.isArray(task.subTasks) || (task.subTasks || []).some(st => !st.id || !st.status || !st.startDate || !st.dueDate); }
-async function migrateExistingTasksToCurrentSchema(scopeTasks = tasks) {
-  if (schemaMigrationInProgress || !isFirebaseAvailable || !db) return;
-  const coll = getTasksCollection(); if (!coll) return;
-  const candidates = (scopeTasks || []).filter(t => t && t.id && t.deleted !== true && taskNeedsSchemaMigration(t));
-  if (!candidates.length) return;
-  schemaMigrationInProgress = true;
-  try { const batch = db.batch(); candidates.forEach(t => batch.set(coll.doc(t.id), normalizeTaskForSchema(t), { merge: true })); await batch.commit(); markSaved(); console.info(`Schema migration applied to ${candidates.length} task(s).`); }
-  catch (e) { markSaveError(); console.warn('Schema migration failed', e); }
-  finally { schemaMigrationInProgress = false; }
-}
-function validateTaskPayload(data) {
-  if (!data.title || !String(data.title).trim()) return '업무명은 필수입니다.';
-  if (!data.assignee || !String(data.assignee).trim()) return '담당자는 필수입니다.';
-  if (data.startDate && data.dueDate && data.startDate > data.dueDate) return '시작일은 마감일보다 늦을 수 없습니다.';
-  const invalidSub = (Array.isArray(data.subTasks) ? data.subTasks : []).find(st => st.startDate && st.dueDate && st.startDate > st.dueDate);
-  if (invalidSub) return `하위 업무 '${invalidSub.title || ''}'의 시작일이 마감일보다 늦습니다.`;
-  return '';
-}
+async function migrateExistingTasksToCurrentSchema(scopeTasks = tasks) { if (schemaMigrationInProgress || !isFirebaseAvailable || !db) return; const coll = getTasksCollection(); if (!coll) return; const candidates = (scopeTasks || []).filter(t => t && t.id && t.deleted !== true && taskNeedsSchemaMigration(t)); if (!candidates.length) return; schemaMigrationInProgress = true; try { const batch = db.batch(); candidates.forEach(t => batch.set(coll.doc(t.id), normalizeTaskForSchema(t), { merge: true })); await batch.commit(); markSaved(); console.info(`Schema migration applied to ${candidates.length} task(s).`); } catch (e) { markSaveError(); console.warn('Schema migration failed', e); } finally { schemaMigrationInProgress = false; } }
+function validateTaskPayload(data) { if (!data.title || !String(data.title).trim()) return '업무명은 필수입니다.'; if (!data.assignee || !String(data.assignee).trim()) return '담당자는 필수입니다.'; if (data.startDate && data.dueDate && data.startDate > data.dueDate) return '시작일은 마감일보다 늦을 수 없습니다.'; const invalidSub = (Array.isArray(data.subTasks) ? data.subTasks : []).find(st => st.startDate && st.dueDate && st.startDate > st.dueDate); if (invalidSub) return `하위 업무 '${invalidSub.title || ''}'의 시작일이 마감일보다 늦습니다.`; return ''; }
