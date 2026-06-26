@@ -1011,6 +1011,10 @@ function renderCalendar(filteredTasks) {
       startLine++;
     }
   });
+  const totalCalLanes = lines.length;
+  const forceTextOnFirstDay = day => day === 1;
+  const shouldShowCalendarText = (item, dateStr, isWeekStart, day) => dateStr === item.start || dateStr === item.end || isWeekStart || forceTextOnFirstDay(day) || dateStr === todayStr;
+  const addInvisibleCalendarSpacer = container => { const sp = document.createElement('div'); sp.className = 'calendar-lane-spacer min-h-[18px] invisible'; container.appendChild(sp); };
   const mainClass = item => getEffectiveStatus(item, todayStr) === 'OVERDUE' ? 'bg-rose-100 text-rose-800 border border-rose-200 font-semibold' : getEffectiveStatus(item, todayStr) === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : getEffectiveStatus(item, todayStr) === 'PROGRESS' ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-slate-200 text-slate-700';
   const subClass = item => normalizeStatus(item.status) === 'COMPLETED' ? 'bg-emerald-50/80 text-emerald-800 border border-dashed border-emerald-300' : isSubTaskOverdue(item, todayStr) ? 'bg-rose-50/90 text-rose-800 border border-dashed border-rose-300 font-semibold' : normalizeStatus(item.status) === 'PROGRESS' ? 'bg-blue-50/80 text-blue-800 border border-dashed border-blue-300' : 'bg-slate-50 text-slate-700 border border-dashed border-slate-300';
 
@@ -1036,29 +1040,35 @@ function renderCalendar(filteredTasks) {
         if (dateStr >= g.startDate && dateStr <= g.dueDate) items.push({ id: g.id, title: g.title, isSub: false, status: g.status, lane: g.globalLineStart, start: g.startDate, end: g.dueDate, parentId: g.id, assignee: g.assignee, notes: g.notes, dueDate: g.dueDate });
         if (isCalSubTaskVisible) g.subTasks.forEach((st, idx) => { if (dateStr >= st.startDate && dateStr <= st.dueDate) items.push({ ...st, isSub: true, lane: g.globalLineStart + 1 + idx, start: st.startDate, end: st.dueDate, parentId: g.id, parentTitle: g.title }); });
       });
-      const visibleItems = items.sort((a, b) => a.lane - b.lane || String(a.title || '').localeCompare(String(b.title || '')));
-      visibleItems.forEach(item => {
+      for (let lane = 0; lane < totalCalLanes; lane++) {
+        const item = items.find(x => x.lane === lane);
+        if (!item) { addInvisibleCalendarSpacer(taskContainer); continue; }
         const isStart = dateStr === item.start;
         const isEnd = dateStr === item.end;
-        const showText = isStart || isWeekStart;
-        let shape = 'min-h-[18px] flex items-center shadow-sm';
-        if (isStart && isEnd) shape += ' rounded px-1.5';
-        else if (isStart) shape += ' rounded-l pr-0 pl-1.5';
-        else if (isEnd) shape += ' rounded-r pl-0 pr-1.5';
-        else shape += ' rounded-none px-0';
-        if (!isStart && !isWeekStart) shape += ' -ml-[1px] relative z-10';
+        const isWeekEnd = dayOfWeek === 6;
+        const showText = shouldShowCalendarText(item, dateStr, isWeekStart, day);
         const el = document.createElement('div');
-        el.className = `text-[10px] leading-tight font-semibold cursor-pointer transition-all hover:scale-[1.02] ${item.isSub ? subClass(item) : mainClass(item)} ${shape}`;
+        // Weekly continuous bar: render every active day so task flow continues across the week.
+        // Text appears only on start/end/Sunday/1st/today; continuation days keep color but no label.
+        let shape = `calendar-bar-segment min-h-[18px] flex items-center shadow-sm ${item.isSub ? 'ml-2 border-dashed' : ''}`;
+        if (isStart || isWeekStart || forceTextOnFirstDay(day)) shape += ' rounded-l pl-1.5 pr-0';
+        else shape += ' rounded-none px-0 -ml-[1px]';
+        if (isEnd || isWeekEnd) shape += ' rounded-r pr-1.5';
+        const elClassStatus = item.isSub ? subClass(item) : mainClass(item);
+        el.className = `calendar-task-chip text-[10px] leading-tight font-semibold cursor-pointer transition-all hover:scale-[1.02] ${elClassStatus} ${shape}`;
         el.onclick = () => openTaskModal(item.parentId);
         bindGanttTooltip(el, item.title, item.isSub ? `[하위업무] 상위: ${escapeHTML(item.parentTitle)}<br>담당자: ${escapeHTML(item.assignee)}<br>기간: ${item.start} ~ ${item.end}<br>상태: ${getStatusKorean(item.status)}` : `[본업무] 담당자: ${escapeHTML(item.assignee)}<br>기간: ${item.start} ~ ${item.end}<br>메모: ${escapeHTML(item.notes || '없음')}`);
         if (showText) {
           const txt = document.createElement('div');
-          txt.className = 'truncate w-full whitespace-nowrap z-20';
-          txt.innerHTML = item.isSub ? `${isSubTaskOverdue(item, todayStr) ? '🚨' : getStatusIcon(item.status)} ↳ 👤 ${escapeHTML(item.assignee)} | ${escapeHTML(item.title)}` : `${getEffectiveStatus(item, todayStr) === 'OVERDUE' ? '🚨' : getEffectiveStatus(item, todayStr) === 'COMPLETED' ? '⭐️' : getEffectiveStatus(item, todayStr) === 'PROGRESS' ? '⚙️' : '⌛'} ${escapeHTML(item.title)}`;
+          txt.className = 'truncate w-full whitespace-nowrap z-20 px-1';
+          const marker = isStart && isEnd ? '' : isStart ? '▶ ' : isEnd ? '■ ' : '';
+          txt.innerHTML = item.isSub
+            ? `${marker}${isSubTaskOverdue(item, todayStr) ? '🚨' : getStatusIcon(item.status)} ↳ 👤 ${escapeHTML(item.assignee)} | ${escapeHTML(item.title)}`
+            : `${marker}${getEffectiveStatus(item, todayStr) === 'OVERDUE' ? '🚨' : getEffectiveStatus(item, todayStr) === 'COMPLETED' ? '⭐️' : getEffectiveStatus(item, todayStr) === 'PROGRESS' ? '⚙️' : '⌛'} ${escapeHTML(item.title)}`;
           el.appendChild(txt);
         }
         taskContainer.appendChild(el);
-      });
+      }
       cell.appendChild(taskContainer);
       grid.appendChild(cell);
     }
