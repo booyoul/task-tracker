@@ -149,3 +149,15 @@ async function handleTaskSubmit(e) {
   closeModal();
 }
 
+// === Phase 8 fix: expose modal/controller functions for non-module script files ===
+// app.js and event-bindings.js call these handlers from the global scope.
+// Keeping explicit window exports prevents ReferenceError after file splitting.
+window.openTaskModal = openTaskModal;
+window.closeModal = closeModal;
+window.closeConfirmModal = closeConfirmModal;
+window.openTrackerModal = openTrackerModal;
+window.closeTrackerModal = closeTrackerModal;
+window.handleTrackerSubmit = handleTrackerSubmit;
+window.handleTaskSubmit = handleTaskSubmit;
+window.addSubTaskToModalList = addSubTaskToModalList;
+
