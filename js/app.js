@@ -184,6 +184,137 @@ function renderRiskDashboard(scope) {
     </div>`;
 }
 
+function normalizeAssigneeName(name) {
+  return String(name || '').toLowerCase().replace(/\s*\([^)]*\)\s*/g, '').trim();
+}
+function getMyAssigneeName() {
+  return localStorage.getItem(UX_STORAGE_KEYS.myAssignee) || 'Booyoul Oh';
+}
+function setMyAssigneeName() {
+  const current = getMyAssigneeName();
+  const name = prompt('나의 Task 필터에 사용할 담당자명을 입력하세요. 예: Booyoul Oh 또는 오부열', current);
+  if (name && name.trim()) {
+    localStorage.setItem(UX_STORAGE_KEYS.myAssignee, name.trim());
+    showToast(`나의 담당자명 설정: ${name.trim()}`);
+    renderActiveViews();
+  }
+}
+function isMineTask(task) {
+  const mine = normalizeAssigneeName(getMyAssigneeName());
+  if (!mine) return false;
+  const match = name => {
+    const n = normalizeAssigneeName(name);
+    return n === mine || n.includes(mine) || mine.includes(n);
+  };
+  return match(task?.assignee) || (Array.isArray(task?.subTasks) ? task.subTasks : []).some(st => match(st.assignee));
+}
+function ensureUXToolbar() {
+  if (document.getElementById('ux-toolbar')) return;
+  const filterBox = document.getElementById('btn-reset-filters')?.closest('.mb-4');
+  if (!filterBox) return;
+  const bar = document.createElement('div');
+  bar.id = 'ux-toolbar';
+  bar.className = 'mt-4 flex flex-col gap-3 border-t border-slate-100 pt-4';
+  bar.innerHTML = `
+    <div class="flex flex-wrap items-center gap-2">
+      <span class="text-[11px] font-bold uppercase tracking-wide text-slate-400">Focus Mode</span>
+      <button type="button" id="btn-focus-risk" class="ux-focus-btn rounded-xl border px-3 py-1.5 text-xs font-bold transition">🚨 Risk Only</button>
+      <button type="button" id="btn-focus-mine" class="ux-focus-btn rounded-xl border px-3 py-1.5 text-xs font-bold transition">👤 My Tasks</button>
+      <button type="button" id="btn-focus-high" class="ux-focus-btn rounded-xl border px-3 py-1.5 text-xs font-bold transition">🔥 High Priority</button>
+      <button type="button" id="btn-set-my-assignee" class="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-50 transition">담당자명 설정</button>
+    </div>
+    <div id="bulk-action-bar" class="hidden flex-wrap items-center gap-2 rounded-xl border border-indigo-100 bg-indigo-50/60 p-2">
+      <span id="bulk-selected-count" class="text-xs font-bold text-indigo-700">0개 선택됨</span>
+      <button type="button" id="bulk-change-status" class="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50">상태 변경</button>
+      <button type="button" id="bulk-change-assignee" class="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50">담당자 변경</button>
+      <button type="button" id="bulk-change-due" class="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50">마감일 변경</button>
+      <button type="button" id="bulk-clear-selection" class="rounded-lg px-3 py-1.5 text-xs font-bold text-slate-500 hover:bg-white">선택 해제</button>
+    </div>`;
+  filterBox.appendChild(bar);
+  document.getElementById('btn-focus-risk')?.addEventListener('click', () => toggleFocusMode('riskOnly'));
+  document.getElementById('btn-focus-mine')?.addEventListener('click', () => toggleFocusMode('mineOnly'));
+  document.getElementById('btn-focus-high')?.addEventListener('click', () => toggleFocusMode('highOnly'));
+  document.getElementById('btn-set-my-assignee')?.addEventListener('click', setMyAssigneeName);
+  document.getElementById('bulk-change-status')?.addEventListener('click', bulkChangeStatus);
+  document.getElementById('bulk-change-assignee')?.addEventListener('click', bulkChangeAssignee);
+  document.getElementById('bulk-change-due')?.addEventListener('click', bulkChangeDueDate);
+  document.getElementById('bulk-clear-selection')?.addEventListener('click', clearSelection);
+  updateFocusButtons();
+  updateBulkActionBar();
+}
+function getFocusButtonClass(isOn) {
+  return isOn
+    ? 'ux-focus-btn rounded-xl border border-indigo-200 bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition'
+    : 'ux-focus-btn rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition';
+}
+function updateFocusButtons() {
+  const risk = document.getElementById('btn-focus-risk');
+  const mine = document.getElementById('btn-focus-mine');
+  const high = document.getElementById('btn-focus-high');
+  if (risk) risk.className = getFocusButtonClass(focusState.riskOnly);
+  if (mine) mine.className = getFocusButtonClass(focusState.mineOnly);
+  if (high) high.className = getFocusButtonClass(focusState.highOnly);
+}
+function toggleFocusMode(key) {
+  focusState[key] = !focusState[key];
+  if (key === 'mineOnly' && focusState.mineOnly && !localStorage.getItem(UX_STORAGE_KEYS.myAssignee)) setMyAssigneeName();
+  updateFocusButtons();
+  renderActiveViews();
+}
+function updateBulkActionBar() {
+  const bar = document.getElementById('bulk-action-bar');
+  const count = document.getElementById('bulk-selected-count');
+  if (!bar || !count) return;
+  count.textContent = `${selectedTaskIds.size}개 선택됨`;
+  selectedTaskIds.size ? bar.classList.remove('hidden') : bar.classList.add('hidden');
+}
+function clearSelection() {
+  selectedTaskIds.clear();
+  renderActiveViews();
+  updateBulkActionBar();
+}
+async function bulkUpdateSelected(payloadBuilder, successMessage) {
+  const ids = Array.from(selectedTaskIds || []);
+  if (!ids.length) return showToast('선택된 업무가 없습니다.', false);
+  for (const id of ids) {
+    const payload = typeof payloadBuilder === 'function' ? payloadBuilder(id) : payloadBuilder;
+    await db_updateTask(id, payload);
+  }
+  showToast(successMessage || `${ids.length}개 업무가 일괄 수정되었습니다.`);
+  clearSelection();
+}
+async function bulkChangeStatus() {
+  const raw = prompt('변경할 상태를 입력하세요: PENDING, PROGRESS, COMPLETED', 'PROGRESS');
+  if (!raw) return;
+  const status = raw.trim().toUpperCase();
+  if (!['PENDING', 'PROGRESS', 'COMPLETED'].includes(status)) return showToast('상태값은 PENDING, PROGRESS, COMPLETED 중 하나여야 합니다.', false);
+  await bulkUpdateSelected({ status }, `선택 업무 상태가 ${getStatusKorean(status)}로 변경되었습니다.`);
+}
+async function bulkChangeAssignee() {
+  const assignee = prompt('변경할 담당자명을 입력하세요.', '');
+  if (!assignee || !assignee.trim()) return;
+  await bulkUpdateSelected({ assignee: assignee.trim() }, `선택 업무 담당자가 ${assignee.trim()}로 변경되었습니다.`);
+}
+async function bulkChangeDueDate() {
+  const dueDate = prompt('변경할 마감일을 입력하세요. 예: 2026-07-31', getTodayStr());
+  if (!dueDate) return;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dueDate.trim())) return showToast('마감일 형식은 YYYY-MM-DD 이어야 합니다.', false);
+  await bulkUpdateSelected({ dueDate: dueDate.trim() }, `선택 업무 마감일이 ${dueDate.trim()}로 변경되었습니다.`);
+}
+async function updateTaskTitleInline(id, title) {
+  const newTitle = String(title || '').trim();
+  const task = tasks.find(t => t.id === id);
+  if (!task || !newTitle || newTitle === task.title) return;
+  await db_updateTask(id, { title: newTitle });
+  showToast('업무명이 빠르게 수정되었습니다.');
+}
+function handleInlineEditKeydown(e) {
+  const el = e.target.closest('.inline-edit-title');
+  if (!el) return;
+  if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
+  if (e.key === 'Escape') { e.preventDefault(); const t = tasks.find(x => x.id === el.dataset.id); if (t) el.textContent = t.title || ''; el.blur(); }
+}
+
 function showToast(msg, isSuccess = true) {
   const t = document.getElementById('toast');
   const txt = document.getElementById('toast-text');
@@ -408,6 +539,9 @@ function getFilteredTasks() {
     } else if (status !== 'ALL' && getEffectiveStatus(t, today) !== status) return false;
     if (priority !== 'ALL' && t.priority !== priority) return false;
     if (assignee !== 'ALL' && t.assignee !== assignee) return false;
+    if (focusState.riskOnly && !isTaskOverdueEffective(t, today)) return false;
+    if (focusState.mineOnly && !isMineTask(t)) return false;
+    if (focusState.highOnly && t.priority !== 'HIGH') return false;
     if (startDate && (t.dueDate || today) < startDate) return false;
     if (endDate && (t.startDate || today) > endDate) return false;
     return true;
@@ -502,15 +636,25 @@ function renderTable(filtered) {
     return;
   }
   emptyState?.classList.replace('flex', 'hidden');
-  filtered.sort((a, b) => (a.order ?? 999) - (b.order ?? 999) || String(a.dueDate || '').localeCompare(String(b.dueDate || '')));
+  filtered.sort((a, b) => {
+    const todayStr = getTodayStr();
+    const ar = getMaxDelayDays(a, todayStr);
+    const br = getMaxDelayDays(b, todayStr);
+    if (ar !== br) return br - ar;
+    const ae = getEffectiveStatus(a, todayStr) === 'OVERDUE' ? 1 : 0;
+    const be = getEffectiveStatus(b, todayStr) === 'OVERDUE' ? 1 : 0;
+    if (ae !== be) return be - ae;
+    return (a.order ?? 999) - (b.order ?? 999) || String(a.dueDate || '').localeCompare(String(b.dueDate || ''));
+  });
   let selectedCount = 0;
   filtered.forEach(t => {
     const subTasks = Array.isArray(t.subTasks) ? t.subTasks : [];
-    const isExpanded = expandedTaskIds.has(t.id);
+    let isExpanded = expandedTaskIds.has(t.id);
     const checked = selectedTaskIds.has(t.id);
     if (checked) selectedCount++;
     const doneSubs = subTasks.filter(st => st.status === 'COMPLETED').length;
     const subOverdueCount = countOverdueSubTasks(t);
+    if (subOverdueCount > 0) isExpanded = true;
     const subOverdueBadge = subOverdueCount ? ` <span class="rounded-lg bg-rose-50 px-2 py-1 text-[10px] font-bold text-rose-700 border border-rose-100">하위 기한 초과 ${subOverdueCount}</span>` : '';
     const todayStr = getTodayStr();
     const effectiveStatus = getEffectiveStatus(t, todayStr);
@@ -521,11 +665,12 @@ function renderTable(filtered) {
     const riskBadge = riskInfo.level !== 'NONE' ? ` <span class="rounded-lg border px-2 py-1 text-[10px] font-bold ${riskInfo.class}">Risk: ${riskInfo.label} D+${riskInfo.delay}</span>` : '';
     const bottleneckHTML = bottleneck ? `<div class="pl-6 text-[11px] text-rose-500 mt-1 font-semibold">🔥 Bottleneck: ${escapeHTML(bottleneck.title)} · ${bottleneck.dueDate || '마감 미정'}</div>` : '';
     const tr = document.createElement('tr');
-    tr.className = 'hover:bg-slate-50 transition-colors group';
+    tr.className = ['transition-colors group', ['HIGH', 'CRITICAL'].includes(riskInfo.level) ? 'bg-rose-50/70 border-l-4 border-l-rose-500 hover:bg-rose-50' : effectiveStatus === 'OVERDUE' ? 'bg-amber-50/50 border-l-4 border-l-amber-400 hover:bg-amber-50' : 'hover:bg-slate-50'].join(' ');
+    tr.title = `Risk: ${riskInfo.label}${riskInfo.delay ? ' D+' + riskInfo.delay : ''} | 운영상태: ${getStatusKorean(effectiveStatus)} | 진척: ${progressPct}%${bottleneck ? ' | Bottleneck: ' + bottleneck.title : ''}`;
     tr.innerHTML = `
       <td class="px-2 py-4 text-center text-slate-400"><button type="button" class="btn-order-up block mx-auto hover:text-indigo-600" data-id="${t.id}">▲</button><button type="button" class="btn-order-down block mx-auto hover:text-indigo-600" data-id="${t.id}">▼</button></td>
       <td class="px-3 py-4 text-center"><input type="checkbox" class="cb-task rounded border-slate-300 cursor-pointer text-indigo-600 focus:ring-indigo-500" data-id="${t.id}" ${checked ? 'checked' : ''}></td>
-      <td class="px-6 py-4"><div class="flex items-center gap-2"><button type="button" class="btn-toggle-subtasks text-slate-400 hover:text-indigo-600 ${subTasks.length ? '' : 'invisible'}" data-id="${t.id}">${subTasks.length ? (isExpanded ? '▼' : '▶') : ''}</button><span class="font-bold text-slate-900">${escapeHTML(t.title)}</span>${subTasks.length ? `<span class="rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600">하위 업무 ${doneSubs}/${subTasks.length}</span>` : ''}${subOverdueBadge}${getEffectiveStatusBadge(effectiveStatus)}${riskBadge}</div><div class="pl-6 text-xs text-slate-400 mt-1">${escapeHTML(t.notes || '추가 지침 없음')} · 진척 ${progressPct}%</div>${bottleneckHTML}</td>
+      <td class="px-6 py-4"><div class="flex items-center gap-2"><button type="button" class="btn-toggle-subtasks text-slate-400 hover:text-indigo-600 ${subTasks.length ? '' : 'invisible'}" data-id="${t.id}">${subTasks.length ? (isExpanded ? '▼' : '▶') : ''}</button><span class="inline-edit-title font-bold text-slate-900 rounded px-1 -mx-1 hover:bg-indigo-50 focus:bg-white focus:ring-2 focus:ring-indigo-100 outline-none" contenteditable="true" spellcheck="false" data-id="${t.id}" title="클릭해서 업무명을 바로 수정">${escapeHTML(t.title)}</span>${subTasks.length ? `<span class="rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600">하위 업무 ${doneSubs}/${subTasks.length}</span>` : ''}${subOverdueBadge}${getEffectiveStatusBadge(effectiveStatus)}${riskBadge}</div><div class="pl-6 text-xs text-slate-400 mt-1">${escapeHTML(t.notes || '추가 지침 없음')} · 진척 ${progressPct}%</div>${bottleneckHTML}</td>
       <td class="px-6 py-4"><div class="inline-flex items-center gap-2"><span class="inline-flex h-8 w-8 items-center justify-center rounded-full ${getAvatarStyle(t.assignee)} text-xs font-bold">${escapeHTML((t.assignee || 'U').charAt(0))}</span><span class="font-semibold">${escapeHTML(t.assignee || '미지정')}</span></div></td>
       <td class="px-6 py-4"><div class="text-xs font-semibold text-slate-600">${t.startDate ? t.startDate.substring(5) : '미정'} ~ ${(t.dueDate || '').substring(5)}</div><span class="mt-1 inline-flex rounded-lg border px-2 py-1 text-xs ${timeline.class}">${timeline.text}</span></td>
       <td class="px-4 py-4 text-center"><span class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold">${getPriorityBadge(t.priority)}</span></td>
@@ -796,6 +941,9 @@ function renderCalendar(filteredTasks) {
 }
 function renderActiveViews() {
   ensureAdvancedFilterOptions();
+  ensureUXToolbar();
+  updateFocusButtons();
+  updateBulkActionBar();
   const filtered = getFilteredTasks();
   const fStatus = document.getElementById('filter-status')?.value || 'ALL';
   document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('ring-2', 'ring-indigo-600', 'bg-indigo-50/10'));
@@ -1021,7 +1169,7 @@ function updateSelectAllState(totalVisible, totalSelected) {
   cb.indeterminate = totalSelected > 0 && totalSelected < totalVisible;
   updateBatchButton();
 }
-function updateBatchButton() { const btn = document.getElementById('btn-batch-delete'); if (btn) selectedTaskIds.size ? btn.classList.remove('hidden') : btn.classList.add('hidden'); }
+function updateBatchButton() { const btn = document.getElementById('btn-batch-delete'); if (btn) selectedTaskIds.size ? btn.classList.remove('hidden') : btn.classList.add('hidden'); updateBulkActionBar(); }
 function updateUndoButton() { const btn = document.getElementById('btn-undo'); if (btn) deletionHistory.length ? btn.classList.remove('hidden') : btn.classList.add('hidden'); }
 function resetFilters() {
   ['filter-search', 'filter-start-date', 'filter-end-date'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
@@ -1154,6 +1302,8 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('checkbox-select-all')?.addEventListener('change', toggleSelectAll);
   document.getElementById('task-table-body')?.addEventListener('click', handleTableClick);
   document.getElementById('task-table-body')?.addEventListener('change', handleTableChange);
+  document.getElementById('task-table-body')?.addEventListener('focusout', e => { const el = e.target.closest('.inline-edit-title'); if (el) updateTaskTitleInline(el.dataset.id, el.textContent); });
+  document.getElementById('task-table-body')?.addEventListener('keydown', handleInlineEditKeydown);
   document.getElementById('btn-view-table')?.addEventListener('click', () => { currentViewMode = 'TABLE'; document.getElementById('btn-view-table').className = 'rounded-lg bg-white px-4 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition'; document.getElementById('btn-view-calendar').className = 'rounded-lg px-4 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition'; document.getElementById('view-table')?.classList.remove('hidden'); document.getElementById('view-calendar')?.classList.add('hidden'); renderActiveViews(); });
   document.getElementById('btn-view-calendar')?.addEventListener('click', () => { currentViewMode = 'CALENDAR'; document.getElementById('btn-view-calendar').className = 'rounded-lg bg-white px-4 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition'; document.getElementById('btn-view-table').className = 'rounded-lg px-4 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition'; document.getElementById('view-table')?.classList.add('hidden'); document.getElementById('view-calendar')?.classList.remove('hidden'); renderActiveViews(); });
   document.getElementById('btn-cal-mode-day')?.addEventListener('click', () => setCalMode('DAY'));
