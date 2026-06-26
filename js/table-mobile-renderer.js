@@ -394,3 +394,19 @@ function renderMobileCards(filtered) {
 function setViewVisibility(mode){const table=document.getElementById('view-table');const mobile=document.getElementById('view-mobile');const calendar=document.getElementById('view-calendar');const kanban=document.getElementById('view-kanban');const isMobile=window.matchMedia?window.matchMedia('(max-width: 1023px)').matches:window.innerWidth<1024;[table,mobile,calendar,kanban].forEach(el=>{if(el){el.classList.add('hidden');el.style.display='none';}});if(mode==='CALENDAR'){if(calendar){calendar.classList.remove('hidden');calendar.style.display='';}return;}if(mode==='KANBAN'){if(kanban){kanban.classList.remove('hidden');kanban.style.display='';}return;}if(isMobile){if(mobile){mobile.classList.remove('hidden');mobile.style.display='';}}else{if(table){table.classList.remove('hidden');table.style.display='';}}}
 function updateViewToggleButtons(mode){[['btn-view-table','TABLE'],['btn-view-calendar','CALENDAR'],['btn-view-kanban','KANBAN']].forEach(([id,key])=>{const btn=document.getElementById(id);if(!btn)return;btn.className=mode===key?'rounded-lg bg-white px-4 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition':'rounded-lg px-4 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition';});}
 function switchView(mode){currentViewMode=mode==='CALENDAR'?'CALENDAR':mode==='KANBAN'?'KANBAN':'TABLE';updateViewToggleButtons(currentViewMode);setViewVisibility(currentViewMode);renderActiveViews();}
+
+// === Final Stable View Routing Override: TABLE / CALENDAR / KANBAN ===
+function setViewVisibility(mode){
+  const table=document.getElementById('view-table');
+  const mobile=document.getElementById('view-mobile');
+  const calendar=document.getElementById('view-calendar');
+  const kanban=document.getElementById('view-kanban');
+  const isMobile=window.matchMedia?window.matchMedia('(max-width: 1023px)').matches:window.innerWidth<1024;
+  [table,mobile,calendar,kanban].forEach(el=>{if(el){el.classList.add('hidden');el.style.display='none';}});
+  if(mode==='CALENDAR'){if(calendar){calendar.classList.remove('hidden');calendar.style.display='';}return;}
+  if(mode==='KANBAN'){if(kanban){kanban.classList.remove('hidden');kanban.style.display='';}return;}
+  if(isMobile){if(mobile){mobile.classList.remove('hidden');mobile.style.display='';}}
+  else{if(table){table.classList.remove('hidden');table.style.display='';}}
+}
+function updateViewToggleButtons(mode){[['btn-view-table','TABLE'],['btn-view-calendar','CALENDAR'],['btn-view-kanban','KANBAN']].forEach(([id,key])=>{const btn=document.getElementById(id);if(!btn)return;btn.className=mode===key?'rounded-lg bg-white px-4 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition':'rounded-lg px-4 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition';});}
+function switchView(mode){currentViewMode=mode==='CALENDAR'?'CALENDAR':mode==='KANBAN'?'KANBAN':'TABLE';updateViewToggleButtons(currentViewMode);setViewVisibility(currentViewMode);renderActiveViews();}
