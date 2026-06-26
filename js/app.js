@@ -1016,41 +1016,39 @@ function renderCalendar(filteredTasks) {
 
   if (currentCalMode === 'DAY') {
     weekdayHeader?.classList.remove('hidden');
-    grid.className = 'grid grid-cols-7 gap-px bg-slate-200 border border-slate-200 rounded-b-lg overflow-hidden relative z-10';
+    grid.className = 'compact-day-grid grid grid-cols-7 auto-rows-min gap-px bg-slate-200 border border-slate-200 rounded-b-lg overflow-hidden relative z-10';
     grid.innerHTML = '';
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    for (let i = 0; i < firstDay; i++) { const c = document.createElement('div'); c.className = 'bg-slate-50 min-h-[130px] border-r border-b border-slate-100'; grid.appendChild(c); }
+    for (let i = 0; i < firstDay; i++) { const c = document.createElement('div'); c.className = 'bg-slate-50 min-h-[44px] border-r border-b border-slate-100'; grid.appendChild(c); }
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const cellIndex = firstDay + day - 1;
       const dayOfWeek = cellIndex % 7;
       const isWeekStart = dayOfWeek === 0;
       const cell = document.createElement('div');
-      cell.className = `bg-white min-h-[130px] flex flex-col transition-colors border-r border-b border-slate-100 ${dateStr === todayStr ? 'bg-indigo-50/20' : 'hover:bg-slate-50'}`;
+      cell.className = `bg-white min-h-[44px] flex flex-col transition-colors border-r border-b border-slate-100 ${dateStr === todayStr ? 'bg-indigo-50/20' : 'hover:bg-slate-50'}`;
       cell.innerHTML = `<div class="p-1.5"><span class="inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${dateStr === todayStr ? 'bg-indigo-600 text-white shadow-sm' : dayOfWeek === 0 ? 'text-rose-500' : dayOfWeek === 6 ? 'text-blue-500' : 'text-slate-600'}">${day}</span></div>`;
       const taskContainer = document.createElement('div');
-      taskContainer.className = 'flex flex-col flex-1 pb-1';
+      taskContainer.className = 'flex flex-col gap-0.5 px-1 pb-1';
       const items = [];
       groups.forEach(g => {
         if (dateStr >= g.startDate && dateStr <= g.dueDate) items.push({ id: g.id, title: g.title, isSub: false, status: g.status, lane: g.globalLineStart, start: g.startDate, end: g.dueDate, parentId: g.id, assignee: g.assignee, notes: g.notes, dueDate: g.dueDate });
         if (isCalSubTaskVisible) g.subTasks.forEach((st, idx) => { if (dateStr >= st.startDate && dateStr <= st.dueDate) items.push({ ...st, isSub: true, lane: g.globalLineStart + 1 + idx, start: st.startDate, end: st.dueDate, parentId: g.id, parentTitle: g.title }); });
       });
-      const maxLane = Math.max(...items.map(x => x.lane), -1);
-      for (let lane = 0; lane <= maxLane; lane++) {
-        const item = items.find(x => x.lane === lane);
-        if (!item) { const sp = document.createElement('div'); sp.className = 'h-[22px] mb-1'; taskContainer.appendChild(sp); continue; }
+      const visibleItems = items.sort((a, b) => a.lane - b.lane || String(a.title || '').localeCompare(String(b.title || '')));
+      visibleItems.forEach(item => {
         const isStart = dateStr === item.start;
         const isEnd = dateStr === item.end;
         const showText = isStart || isWeekStart;
-        let shape = 'h-[22px] flex items-center mb-1 shadow-sm';
-        if (isStart && isEnd) shape += ' rounded mx-1 px-1.5';
-        else if (isStart) shape += ' rounded-l ml-1 mr-0 pr-0 pl-1.5';
-        else if (isEnd) shape += ' rounded-r mr-1 ml-0 pl-0 pr-1.5';
-        else shape += ' mx-0 px-0 rounded-none';
+        let shape = 'min-h-[18px] flex items-center shadow-sm';
+        if (isStart && isEnd) shape += ' rounded px-1.5';
+        else if (isStart) shape += ' rounded-l pr-0 pl-1.5';
+        else if (isEnd) shape += ' rounded-r pl-0 pr-1.5';
+        else shape += ' rounded-none px-0';
         if (!isStart && !isWeekStart) shape += ' -ml-[1px] relative z-10';
         const el = document.createElement('div');
-        el.className = `text-[10px] font-semibold cursor-pointer transition-all hover:scale-[1.02] ${item.isSub ? subClass(item) : mainClass(item)} ${shape}`;
+        el.className = `text-[10px] leading-tight font-semibold cursor-pointer transition-all hover:scale-[1.02] ${item.isSub ? subClass(item) : mainClass(item)} ${shape}`;
         el.onclick = () => openTaskModal(item.parentId);
         bindGanttTooltip(el, item.title, item.isSub ? `[하위업무] 상위: ${escapeHTML(item.parentTitle)}<br>담당자: ${escapeHTML(item.assignee)}<br>기간: ${item.start} ~ ${item.end}<br>상태: ${getStatusKorean(item.status)}` : `[본업무] 담당자: ${escapeHTML(item.assignee)}<br>기간: ${item.start} ~ ${item.end}<br>메모: ${escapeHTML(item.notes || '없음')}`);
         if (showText) {
@@ -1060,13 +1058,13 @@ function renderCalendar(filteredTasks) {
           el.appendChild(txt);
         }
         taskContainer.appendChild(el);
-      }
+      });
       cell.appendChild(taskContainer);
       grid.appendChild(cell);
     }
     const totalCells = firstDay + daysInMonth;
     const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
-    for (let i = 0; i < remaining; i++) { const c = document.createElement('div'); c.className = 'bg-slate-50 min-h-[130px] border-r border-b border-slate-100'; grid.appendChild(c); }
+    for (let i = 0; i < remaining; i++) { const c = document.createElement('div'); c.className = 'bg-slate-50 min-h-[44px] border-r border-b border-slate-100'; grid.appendChild(c); }
     return;
   }
 
