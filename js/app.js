@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow app.js v20260626-day-gantt-polish-v2-subtask-range loaded');
+console.info('Smart Task Flow app.js v20260626-calendar-ux-plus-final loaded');
 // --- UX optimization globals: must be declared before helper functions ---
 var focusState = window.focusState || { riskOnly: false, mineOnly: false, highOnly: false };
 window.focusState = focusState;
@@ -12,6 +12,8 @@ if (typeof isRiskPanelCollapsed !== 'boolean') isRiskPanelCollapsed = true;
 window.isRiskPanelCollapsed = isRiskPanelCollapsed;
 var selectedAssigneeFilters = window.selectedAssigneeFilters || new Set();
 window.selectedAssigneeFilters = selectedAssigneeFilters;
+var calendarUxState = window.calendarUxState || { subtasksExpanded: true, criticalOnly: false, colorByIndustry: false };
+window.calendarUxState = calendarUxState;
 function safeLocalStorageGet(key, fallback = '') {
   try { return window.localStorage ? (localStorage.getItem(key) || fallback) : fallback; }
   catch (e) { console.warn('localStorage read blocked', e); return fallback; }
@@ -19,6 +21,102 @@ function safeLocalStorageGet(key, fallback = '') {
 function safeLocalStorageSet(key, value) {
   try { if (window.localStorage) localStorage.setItem(key, value); return true; }
   catch (e) { console.warn('localStorage write blocked', e); return false; }
+}
+
+const CALENDAR_UX_STORAGE_KEY = 'flow_calendar_ux_state';
+function loadCalendarUxState() {
+  try {
+    const raw = safeLocalStorageGet(CALENDAR_UX_STORAGE_KEY, '');
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    calendarUxState = { ...calendarUxState, ...parsed };
+    window.calendarUxState = calendarUxState;
+  } catch (e) { console.warn('calendar UX state load failed', e); }
+}
+function saveCalendarUxState() {
+  try { safeLocalStorageSet(CALENDAR_UX_STORAGE_KEY, JSON.stringify(calendarUxState)); }
+  catch (e) { console.warn('calendar UX state save failed', e); }
+}
+function getCalendarUxButtonClass(active) {
+  return active
+    ? 'rounded-xl border border-indigo-200 bg-indigo-600 px-2.5 py-1.5 text-[11px] font-black text-white shadow-sm transition hover:bg-indigo-700'
+    : 'rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-600 shadow-sm transition hover:bg-slate-50';
+}
+function updateCalendarUxButtons() {
+  const subBtn = document.getElementById('btn-cal-ux-subtasks');
+  const riskBtn = document.getElementById('btn-cal-ux-risk');
+  const industryBtn = document.getElementById('btn-cal-ux-industry');
+  if (subBtn) {
+    subBtn.textContent = calendarUxState.subtasksExpanded ? '하위 펼침' : '하위 접힘';
+    subBtn.className = getCalendarUxButtonClass(calendarUxState.subtasksExpanded);
+  }
+  if (riskBtn) {
+    riskBtn.textContent = calendarUxState.criticalOnly ? 'Risk 강조 ON' : 'Risk 강조';
+    riskBtn.className = getCalendarUxButtonClass(calendarUxState.criticalOnly);
+  }
+  if (industryBtn) {
+    industryBtn.textContent = calendarUxState.colorByIndustry ? '산업 색상 ON' : '산업 색상';
+    industryBtn.className = getCalendarUxButtonClass(calendarUxState.colorByIndustry);
+  }
+}
+function ensureCalendarUxControls() {
+  loadCalendarUxState();
+  if (document.getElementById('calendar-ux-controls')) { updateCalendarUxButtons(); return; }
+  const anchor = document.getElementById('toggle-subtask-cal-wrapper') || document.getElementById('btn-cal-mode-summary')?.parentElement;
+  if (!anchor) return;
+  const controls = document.createElement('div');
+  controls.id = 'calendar-ux-controls';
+  controls.className = 'inline-flex flex-wrap items-center gap-1.5 rounded-xl border border-slate-100 bg-white px-2 py-1 shadow-sm';
+  controls.innerHTML = `
+    <button type="button" id="btn-cal-ux-subtasks"></button>
+    <button type="button" id="btn-cal-ux-risk"></button>
+    <button type="button" id="btn-cal-ux-industry"></button>`;
+  anchor.insertAdjacentElement('afterend', controls);
+  document.getElementById('btn-cal-ux-subtasks')?.addEventListener('click', e => {
+    e.preventDefault(); e.stopPropagation();
+    calendarUxState.subtasksExpanded = !calendarUxState.subtasksExpanded;
+    window.calendarUxState = calendarUxState;
+    saveCalendarUxState(); updateCalendarUxButtons(); renderActiveViews();
+  });
+  document.getElementById('btn-cal-ux-risk')?.addEventListener('click', e => {
+    e.preventDefault(); e.stopPropagation();
+    calendarUxState.criticalOnly = !calendarUxState.criticalOnly;
+    window.calendarUxState = calendarUxState;
+    saveCalendarUxState(); updateCalendarUxButtons(); renderActiveViews();
+  });
+  document.getElementById('btn-cal-ux-industry')?.addEventListener('click', e => {
+    e.preventDefault(); e.stopPropagation();
+    calendarUxState.colorByIndustry = !calendarUxState.colorByIndustry;
+    window.calendarUxState = calendarUxState;
+    saveCalendarUxState(); updateCalendarUxButtons(); renderActiveViews();
+  });
+  updateCalendarUxButtons();
+}
+function detectIndustryKey(item) {
+  const s = `${item?.title || ''} ${item?.notes || ''} ${item?.parentTitle || ''}`.toLowerCase();
+  if (/pharma|bio|healthcare|제약|바이오|헬스케어/.test(s)) return 'PHARMA';
+  if (/f&b|food|beverage|식품|음료/.test(s)) return 'FNB';
+  if (/semi|semiconductor|반도체/.test(s)) return 'SEMI';
+  if (/display|디스플레이/.test(s)) return 'DISPLAY';
+  if (/oil|gas|o&g|정유|가스/.test(s)) return 'OILGAS';
+  if (/chemical|petrochemical|화학|석유화학/.test(s)) return 'CHEM';
+  if (/ship|marine|조선|선박/.test(s)) return 'SHIP';
+  if (/building|commercial|빌딩|건물/.test(s)) return 'BUILDING';
+  return 'GENERAL';
+}
+function getIndustryBarClass(item, isSub = false) {
+  const map = {
+    PHARMA: isSub ? 'bg-violet-50 text-violet-800 border border-violet-200' : 'bg-violet-100 text-violet-900 border border-violet-200',
+    FNB: isSub ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-emerald-100 text-emerald-900 border border-emerald-200',
+    SEMI: isSub ? 'bg-sky-50 text-sky-800 border border-sky-200' : 'bg-sky-100 text-sky-900 border border-sky-200',
+    DISPLAY: isSub ? 'bg-cyan-50 text-cyan-800 border border-cyan-200' : 'bg-cyan-100 text-cyan-900 border border-cyan-200',
+    OILGAS: isSub ? 'bg-orange-50 text-orange-800 border border-orange-200' : 'bg-orange-100 text-orange-900 border border-orange-200',
+    CHEM: isSub ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-amber-100 text-amber-900 border border-amber-200',
+    SHIP: isSub ? 'bg-blue-50 text-blue-800 border border-blue-200' : 'bg-blue-100 text-blue-900 border border-blue-200',
+    BUILDING: isSub ? 'bg-slate-50 text-slate-700 border border-slate-200' : 'bg-slate-200 text-slate-800 border border-slate-300',
+    GENERAL: isSub ? 'bg-indigo-50 text-indigo-800 border border-indigo-200' : 'bg-indigo-100 text-indigo-900 border border-indigo-200'
+  };
+  return map[detectIndustryKey(item)] || map.GENERAL;
 }
 
 // This app.js intentionally relies on state.js for global state, getTodayStr(), getFutureDateStr(), escapeHTML(), and AVATAR_COLORS.
@@ -976,6 +1074,10 @@ function renderCalendar(filteredTasks) {
   const monthStartDate = new Date(year, month, 1);
   const monthEndDate = new Date(year, month + 1, 0, 23, 59, 59);
   if (!grid) return;
+  ensureCalendarUxControls();
+  const showSubTaskBars = isCalSubTaskVisible && calendarUxState.subtasksExpanded;
+  const highlightRiskOnly = calendarUxState.criticalOnly;
+  const useIndustryColor = calendarUxState.colorByIndustry;
   if (titleEl) titleEl.textContent = currentCalMode === 'MONTH' ? `${year}년 전체 Gantt 타임라인` : `${year}년 ${month + 1}월`;
 
   const groups = filteredTasks.map(t => {
@@ -1003,7 +1105,7 @@ function renderCalendar(filteredTasks) {
   const lines = [];
   groups.forEach(g => {
     const layoutSubTasks = currentCalMode === 'MONTH' ? g.subTasks : (g.monthSubTasks || []);
-    const need = isCalSubTaskVisible ? 1 + layoutSubTasks.length : 1;
+    const need = showSubTaskBars ? 1 + layoutSubTasks.length : 1;
     let startLine = 0;
     while (true) {
       let overlap = false;
@@ -1023,8 +1125,26 @@ function renderCalendar(filteredTasks) {
   const forceTextOnFirstDay = day => day === 1;
   const shouldShowCalendarText = (item, dateStr, isWeekStart, day) => dateStr === item.start || dateStr === item.end || isWeekStart || forceTextOnFirstDay(day) || dateStr === todayStr;
   const addInvisibleCalendarSpacer = container => { const sp = document.createElement('div'); sp.className = 'calendar-lane-spacer min-h-[17px] invisible'; container.appendChild(sp); };
-  const mainClass = item => getEffectiveStatus(item, todayStr) === 'OVERDUE' ? 'bg-rose-100 text-rose-800 border border-rose-200 font-semibold' : getEffectiveStatus(item, todayStr) === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : getEffectiveStatus(item, todayStr) === 'PROGRESS' ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-slate-200 text-slate-700';
-  const subClass = item => normalizeStatus(item.status) === 'COMPLETED' ? 'bg-emerald-50/80 text-emerald-800 border border-dashed border-emerald-300' : isSubTaskOverdue(item, todayStr) ? 'bg-rose-50/90 text-rose-800 border border-dashed border-rose-300 font-semibold' : normalizeStatus(item.status) === 'PROGRESS' ? 'bg-blue-50/80 text-blue-800 border border-dashed border-blue-300' : 'bg-slate-50 text-slate-700 border border-dashed border-slate-300';
+  const isCalendarCriticalItem = item => item?.isSub
+    ? isSubTaskOverdue(item, todayStr) || (normalizeStatus(item.status) !== 'COMPLETED' && !!item.dueDate && item.dueDate <= getFutureDateStr(3))
+    : getEffectiveStatus(item, todayStr) === 'OVERDUE' || item.priority === 'HIGH' || hasDueSoonRisk(item, todayStr, 3);
+  const dimIfNotCritical = item => highlightRiskOnly && !isCalendarCriticalItem(item) ? ' opacity-25 grayscale' : '';
+  const mainClass = item => {
+    const effective = getEffectiveStatus(item, todayStr);
+    if (effective === 'OVERDUE') return 'bg-rose-100 text-rose-800 border border-rose-200 font-semibold';
+    if (effective === 'COMPLETED') return 'bg-emerald-100 text-emerald-800 border border-emerald-200';
+    if (useIndustryColor) return getIndustryBarClass(item, false);
+    if (effective === 'PROGRESS') return 'bg-blue-100 text-blue-800 border border-blue-200';
+    return 'bg-slate-200 text-slate-700';
+  };
+  const subClass = item => {
+    const status = normalizeStatus(item.status);
+    if (status === 'COMPLETED') return 'bg-emerald-50/80 text-emerald-800 border border-dashed border-emerald-300';
+    if (isSubTaskOverdue(item, todayStr)) return 'bg-rose-50/90 text-rose-800 border border-dashed border-rose-300 font-semibold';
+    if (useIndustryColor) return getIndustryBarClass(item, true);
+    if (status === 'PROGRESS') return 'bg-blue-50/80 text-blue-800 border border-dashed border-blue-300';
+    return 'bg-slate-50 text-slate-700 border border-dashed border-slate-300';
+  };
 
   if (currentCalMode === 'DAY') {
     weekdayHeader?.classList.remove('hidden');
@@ -1075,14 +1195,16 @@ function renderCalendar(filteredTasks) {
     const dayNumber = dateStr => Number(String(dateStr).slice(8, 10));
     const barLabel = item => item.isSub
       ? `${isSubTaskOverdue(item, todayStr) ? '🚨' : getStatusIcon(item.status)} ↳ 👤 ${escapeHTML(item.assignee)} | ${escapeHTML(item.title)}`
-      : `${getEffectiveStatus(item, todayStr) === 'OVERDUE' ? '🚨' : getEffectiveStatus(item, todayStr) === 'COMPLETED' ? '⭐️' : getEffectiveStatus(item, todayStr) === 'PROGRESS' ? '⚙️' : '⌛'} ${escapeHTML(item.title)}`;
+      : `${getEffectiveStatus(item, todayStr) === 'OVERDUE' ? '🚨' : getEffectiveStatus(item, todayStr) === 'COMPLETED' ? '⭐️' : getEffectiveStatus(item, todayStr) === 'PROGRESS' ? '⚙️' : '⌛'} ${escapeHTML(item.title)}${item.subCount && !showSubTaskBars ? ` · 하위 ${item.subCount}` : ''}`;
     const polishedSubClass = item => normalizeStatus(item.status) === 'COMPLETED'
       ? 'bg-emerald-100/90 text-emerald-800 border border-emerald-200'
       : isSubTaskOverdue(item, todayStr)
         ? 'bg-rose-100/90 text-rose-800 border border-rose-200 font-semibold'
-        : normalizeStatus(item.status) === 'PROGRESS'
-          ? 'bg-sky-100/90 text-sky-800 border border-sky-200'
-          : 'bg-indigo-50/95 text-indigo-800 border border-indigo-200';
+        : useIndustryColor
+          ? getIndustryBarClass(item, true)
+          : normalizeStatus(item.status) === 'PROGRESS'
+            ? 'bg-sky-100/90 text-sky-800 border border-sky-200'
+            : 'bg-indigo-50/95 text-indigo-800 border border-indigo-200';
 
     const drawWeekFragment = item => {
       // Clip to the selected month, but preserve the actual task range inside the month.
@@ -1111,7 +1233,7 @@ function renderCalendar(filteredTasks) {
 
         const bar = document.createElement('div');
         const elClassStatus = item.isSub ? polishedSubClass(item) : mainClass(item);
-        bar.className = `absolute h-5 shadow-sm text-[10px] leading-none font-semibold flex items-center cursor-pointer transition-all hover:scale-[1.01] pointer-events-auto truncate ${elClassStatus}`;
+        bar.className = `absolute h-5 shadow-sm text-[10px] leading-none font-semibold flex items-center cursor-pointer transition-all hover:scale-[1.01] pointer-events-auto truncate ${elClassStatus}${dimIfNotCritical(item)}`;
         bar.classList.add(isRealStart || startsAtWeekStart ? 'rounded-l-lg' : 'rounded-l-sm');
         bar.classList.add(isRealEnd || endsAtWeekEnd ? 'rounded-r-lg' : 'rounded-r-sm');
         // Use exact day-cell fractions. Start/end padding only trims the outer edge; middle fragments touch cell borders.
@@ -1134,10 +1256,10 @@ function renderCalendar(filteredTasks) {
     groups.forEach(g => {
       // Main task bar
       if (g.startDate <= lastDayStr && g.dueDate >= monthFirstStr) {
-        drawWeekFragment({ id: g.id, title: g.title, isSub: false, status: g.status, lane: g.globalLineStart, start: g.startDate, end: g.dueDate, parentId: g.id, assignee: g.assignee, notes: g.notes, dueDate: g.dueDate });
+        drawWeekFragment({ id: g.id, title: g.title, isSub: false, status: g.status, priority: g.priority, lane: g.globalLineStart, start: g.startDate, end: g.dueDate, parentId: g.id, assignee: g.assignee, notes: g.notes, dueDate: g.dueDate, subCount: (g.monthSubTasks || []).length });
       }
       // Stable sub-task lane within the current month. Do not calculate by visible day; calculate once per month.
-      if (isCalSubTaskVisible) {
+      if (showSubTaskBars) {
         const daySubTasks = g.monthSubTasks || [];
         const subLaneMap = new Map(daySubTasks.map((st, idx) => [st.id || `${st.title}-${idx}`, g.globalLineStart + 1 + idx]));
         daySubTasks.forEach((st, idx) => {
@@ -1177,7 +1299,7 @@ function renderCalendar(filteredTasks) {
       const startMonth = taskStart.getFullYear() < year ? 0 : taskStart.getMonth();
       const endMonth = taskEnd.getFullYear() > year ? 11 : taskEnd.getMonth();
       const bar = document.createElement('div');
-      bar.className = `absolute h-5 rounded-lg shadow-sm text-[10.5px] font-bold flex items-center px-2 cursor-pointer transition-all hover:scale-[1.01] pointer-events-auto truncate z-10 ${mainClass(g)}`;
+      bar.className = `absolute h-5 rounded-lg shadow-sm text-[10.5px] font-bold flex items-center px-2 cursor-pointer transition-all hover:scale-[1.01] pointer-events-auto truncate z-10 ${mainClass(g)}${dimIfNotCritical(g)}`;
       bar.style.left = `calc(${startMonth / 12 * 100}% + 4px)`;
       bar.style.width = `calc(${(endMonth - startMonth + 1) / 12 * 100}% - 8px)`;
       bar.style.top = `${g.globalLineStart * rowHeight + 10}px`;
@@ -1185,7 +1307,7 @@ function renderCalendar(filteredTasks) {
       bar.innerHTML = `${getEffectiveStatus(g, todayStr) === 'OVERDUE' ? '🚨' : getEffectiveStatus(g, todayStr) === 'COMPLETED' ? '⭐️' : getEffectiveStatus(g, todayStr) === 'PROGRESS' ? '⚙️' : '⌛'} ${escapeHTML(g.title)}`;
       bindGanttTooltip(bar, g.title, `담당자: ${escapeHTML(g.assignee)}<br>기간: ${g.startDate} ~ ${g.dueDate}<br>설명: ${escapeHTML(g.notes || '없음')}`);
       overlay.appendChild(bar);
-      if (isCalSubTaskVisible) {
+      if (showSubTaskBars) {
         g.subTasks.forEach((st, idx) => {
           const stStart = new Date(st.startDate.replace(/-/g, '/'));
           const stEnd = new Date(st.dueDate.replace(/-/g, '/'));
@@ -1193,7 +1315,7 @@ function renderCalendar(filteredTasks) {
           const sm = stStart.getFullYear() < year ? 0 : stStart.getMonth();
           const em = stEnd.getFullYear() > year ? 11 : stEnd.getMonth();
           const sb = document.createElement('div');
-          sb.className = `absolute h-5 rounded-lg shadow-sm text-[9.5px] font-bold flex items-center px-1.5 cursor-pointer transition-all hover:scale-[1.01] pointer-events-auto truncate ${subClass(st)}`;
+          sb.className = `absolute h-5 rounded-lg shadow-sm text-[9.5px] font-bold flex items-center px-1.5 cursor-pointer transition-all hover:scale-[1.01] pointer-events-auto truncate ${subClass(st)}${dimIfNotCritical({ ...st, isSub: true })}`;
           sb.style.left = `calc(${sm / 12 * 100}% + 4px)`;
           sb.style.width = `calc(${(em - sm + 1) / 12 * 100}% - 8px)`;
           sb.style.top = `${(g.globalLineStart + 1 + idx) * rowHeight + 10}px`;
