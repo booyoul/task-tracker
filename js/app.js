@@ -1311,9 +1311,10 @@ function renderActiveViews() {
   document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('ring-2', 'ring-indigo-600', 'bg-indigo-50/10'));
   document.getElementById(`card-${['ALL','PENDING','PROGRESS','COMPLETED','OVERDUE'].includes(fStatus) ? fStatus : 'OVERDUE'}`)?.classList.add('ring-2', 'ring-indigo-600', 'bg-indigo-50/10');
   applyCompactDashboardStyles();
-  setViewVisibility(currentViewMode === 'CALENDAR' ? 'CALENDAR' : 'TABLE');
-  updateViewToggleButtons(currentViewMode === 'CALENDAR' ? 'CALENDAR' : 'TABLE');
-  if (currentViewMode === 'CALENDAR') {
+  const mode = currentViewMode === 'CALENDAR' ? 'CALENDAR' : 'TABLE';
+  setViewVisibility(mode);
+  updateViewToggleButtons(mode);
+  if (mode === 'CALENDAR') {
     renderCalendar(filtered);
     return;
   }
@@ -1706,12 +1707,12 @@ function applyCompactDashboardStyles() {
   document.querySelectorAll('.filter-card').forEach(card => {
     const active = card.classList.contains('ring-2');
     card.className = `filter-card rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-sm cursor-pointer transition-all duration-150 hover:bg-slate-50 ${active ? 'ring-2 ring-indigo-600 bg-indigo-50/10' : ''}`;
-    const label = card.querySelector('.text-xs.font-semibold, .text-[10px].font-bold');
+    const label = (card.querySelector('.text-xs.font-semibold') || card.querySelector('.font-bold'));
     if (label) label.className = 'text-[10px] font-bold text-slate-500 uppercase tracking-tight';
     const value = card.querySelector('[id^="stat-"]:not([id$="pct"]):not([id$="lbl"])');
     if (value) value.className = value.id === 'stat-overdue' ? 'text-lg font-black text-rose-600' : 'text-lg font-black text-slate-900';
     card.querySelectorAll('svg').forEach(svg => { svg.classList.remove('h-5','w-5'); svg.classList.add('h-4','w-4'); });
-    const numberRow = card.querySelector('.mt-2.flex, .mt-1.flex');
+    const numberRow = (card.querySelector('.mt-2.flex') || card.querySelector('.mt-1.flex'));
     if (numberRow) numberRow.className = 'mt-1 flex items-baseline gap-1.5';
   });
 }
