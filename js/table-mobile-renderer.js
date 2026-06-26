@@ -205,3 +205,187 @@ function switchView(mode) {
   renderActiveViews();
 }
 
+// === Phase 11 Mobile Redesign: compact executive mobile cards + sticky bulk action ===
+console.info('Smart Task Flow mobile redesign v20260626-phase11 loaded');
+
+function getMobileStatusClass(status) {
+  const s = normalizeStatus(status);
+  if (s === 'COMPLETED') return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+  if (s === 'PROGRESS') return 'bg-blue-50 text-blue-700 border-blue-100';
+  return 'bg-amber-50 text-amber-700 border-amber-100';
+}
+
+function getMobileRiskAccent(t, todayStr) {
+  const risk = getTaskRiskInfo(t, todayStr);
+  const effective = getEffectiveStatus(t, todayStr);
+  if (['HIGH', 'CRITICAL'].includes(risk.level)) return 'border-rose-200 bg-rose-50/60 ring-1 ring-rose-100';
+  if (effective === 'OVERDUE') return 'border-amber-200 bg-amber-50/50 ring-1 ring-amber-100';
+  return 'border-slate-100 bg-white';
+}
+
+function getMobileDuePill(t, todayStr) {
+  const timeline = getTimelineStatus(t.dueDate || todayStr, t.status);
+  const risk = getTaskRiskInfo(t, todayStr);
+  const isRisk = risk.level !== 'NONE' || getEffectiveStatus(t, todayStr) === 'OVERDUE';
+  const cls = isRisk ? 'bg-rose-50 text-rose-700 border-rose-100' : 'bg-slate-50 text-slate-600 border-slate-100';
+  const due = (t.dueDate || '').substring(5) || '미정';
+  return `<span class="inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-bold ${cls}">📅 ${due}<span class="font-semibold opacity-80">${timeline.text || ''}</span></span>`;
+}
+
+function getMobileProgressBar(progressPct, status) {
+  const s = normalizeStatus(status);
+  const color = s === 'COMPLETED' ? 'bg-emerald-500' : s === 'PROGRESS' ? 'bg-blue-500' : 'bg-amber-400';
+  return `<div class="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100"><div class="h-full ${color} transition-all" style="width:${Math.max(0, Math.min(100, progressPct || 0))}%"></div></div>`;
+}
+
+function mobileStatusSegment(id, status) {
+  const s = normalizeStatus(status);
+  const btn = (value, label, activeClass) => {
+    const active = s === value;
+    return `<button type="button" class="mobile-status-btn flex-1 rounded-xl px-2 py-2 text-[11px] font-black transition ${active ? activeClass : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}" data-id="${escapeHTML(id)}" data-status="${value}">${label}</button>`;
+  };
+  return `<div class="mt-3 grid grid-cols-3 gap-1 rounded-2xl bg-slate-100/70 p-1">
+    ${btn('PENDING', '대기', 'bg-white text-amber-700 shadow-sm')}
+    ${btn('PROGRESS', '진행', 'bg-white text-blue-700 shadow-sm')}
+    ${btn('COMPLETED', '완료', 'bg-white text-emerald-700 shadow-sm')}
+  </div>`;
+}
+
+function buildMobileSubTaskHTML(t, subTasks) {
+  if (!subTasks.length) return '';
+  const isExpanded = expandedTaskIds.has(t.id) || countOverdueSubTasks(t) > 0;
+  const done = subTasks.filter(st => normalizeStatus(st.status) === 'COMPLETED').length;
+  if (!isExpanded) {
+    return `<button type="button" class="btn-toggle-subtasks mt-3 w-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-left text-xs font-bold text-slate-500" data-id="${escapeHTML(t.id)}">하위 업무 ${done}/${subTasks.length} 보기</button>`;
+  }
+  return `<div class="mt-3 space-y-2 rounded-2xl border border-slate-100 bg-slate-50/80 p-2">
+    <div class="flex items-center justify-between px-1 text-[11px] font-black text-slate-400"><span>하위 업무</span><button type="button" class="btn-toggle-subtasks text-indigo-600" data-id="${escapeHTML(t.id)}">접기</button></div>
+    ${subTasks.map(st => {
+      const status = normalizeStatus(st.status);
+      const overdue = isSubTaskOverdue(st);
+      const stTimeline = getSubTaskTimelineStatus(st);
+      return `<div class="rounded-xl border ${overdue ? 'border-rose-100 bg-white' : 'border-slate-100 bg-white'} p-2">
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0">
+            <div class="truncate text-xs font-black ${overdue ? 'text-rose-700' : 'text-slate-700'}">${overdue ? '🚨 ' : ''}${escapeHTML(st.title || '')}</div>
+            <div class="mt-1 text-[11px] text-slate-400">👤 ${escapeHTML(st.assignee || t.assignee || '미지정')} · ${st.startDate ? st.startDate.substring(5) : '미정'}~${st.dueDate ? st.dueDate.substring(5) : '미정'} ${stTimeline.text || ''}</div>
+          </div>
+          <select class="sel-subtask-status rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-600" data-task-id="${escapeHTML(t.id)}" data-subtask-id="${escapeHTML(st.id)}">
+            <option value="PENDING" ${status === 'PENDING' ? 'selected' : ''}>대기</option>
+            <option value="PROGRESS" ${status === 'PROGRESS' ? 'selected' : ''}>진행</option>
+            <option value="COMPLETED" ${status === 'COMPLETED' ? 'selected' : ''}>완료</option>
+          </select>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function ensureMobileBulkActionBar() {
+  if (document.getElementById('mobile-bulk-action-bar')) return;
+  const bar = document.createElement('div');
+  bar.id = 'mobile-bulk-action-bar';
+  bar.className = 'hidden lg:hidden fixed inset-x-3 bottom-3 z-40 rounded-3xl border border-indigo-100 bg-white/95 p-2 shadow-2xl backdrop-blur';
+  bar.innerHTML = `<div class="flex items-center gap-2">
+    <div class="min-w-0 flex-1 pl-2"><div id="mobile-bulk-count" class="text-xs font-black text-indigo-700">0개 선택됨</div><div class="text-[10px] text-slate-400">선택 업무 빠른 처리</div></div>
+    <button type="button" id="mobile-bulk-status" class="rounded-2xl bg-indigo-600 px-3 py-2 text-xs font-black text-white">상태</button>
+    <button type="button" id="mobile-bulk-due" class="rounded-2xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-700">마감</button>
+    <button type="button" id="mobile-bulk-delete" class="rounded-2xl bg-rose-50 px-3 py-2 text-xs font-black text-rose-600">삭제</button>
+  </div>`;
+  document.body.appendChild(bar);
+  document.getElementById('mobile-bulk-status')?.addEventListener('click', bulkChangeStatus);
+  document.getElementById('mobile-bulk-due')?.addEventListener('click', bulkChangeDueDate);
+  document.getElementById('mobile-bulk-delete')?.addEventListener('click', confirmBatchDelete);
+}
+
+function updateMobileBulkActionBar() {
+  ensureMobileBulkActionBar();
+  const bar = document.getElementById('mobile-bulk-action-bar');
+  const count = document.getElementById('mobile-bulk-count');
+  if (!bar || !count) return;
+  count.textContent = `${selectedTaskIds.size}개 선택됨`;
+  selectedTaskIds.size ? bar.classList.remove('hidden') : bar.classList.add('hidden');
+}
+
+function renderMobileCards(filtered) {
+  const container = document.getElementById('task-card-container');
+  const emptyState = document.getElementById('empty-state-mobile');
+  if (!container) return;
+  ensureMobileBulkActionBar();
+  container.innerHTML = '';
+  if (!filtered || filtered.length === 0) {
+    emptyState?.classList.remove('hidden');
+    emptyState?.classList.add('flex');
+    updateMobileBulkActionBar();
+    return;
+  }
+  emptyState?.classList.add('hidden');
+  emptyState?.classList.remove('flex');
+
+  const todayStr = getTodayStr();
+  const riskyCount = filtered.filter(t => isTaskOverdueEffective(t, todayStr) || ['HIGH','CRITICAL'].includes(getTaskRiskInfo(t, todayStr).level)).length;
+  const completedCount = filtered.filter(t => getEffectiveStatus(t, todayStr) === 'COMPLETED').length;
+
+  const header = document.createElement('section');
+  header.className = 'mobile-command-deck sticky top-0 z-20 -mx-1 mb-3 rounded-b-3xl border border-slate-100 bg-white/90 p-3 shadow-sm backdrop-blur lg:hidden';
+  header.innerHTML = `<div class="flex items-center justify-between gap-3">
+    <div><div class="text-[11px] font-black uppercase tracking-wide text-slate-400">Mobile Focus</div><div class="text-base font-black text-slate-900">업무 ${filtered.length}건</div></div>
+    <div class="flex items-center gap-1.5 text-[11px] font-black">
+      <span class="rounded-full bg-rose-50 px-2 py-1 text-rose-600">Risk ${riskyCount}</span>
+      <span class="rounded-full bg-emerald-50 px-2 py-1 text-emerald-600">완료 ${completedCount}</span>
+    </div>
+  </div>
+  <div class="mt-3 grid grid-cols-3 gap-2">
+    <button type="button" id="mobile-focus-risk" class="rounded-2xl border border-rose-100 bg-rose-50 px-3 py-2 text-xs font-black text-rose-700">Risk</button>
+    <button type="button" id="mobile-focus-high" class="rounded-2xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs font-black text-amber-700">High</button>
+    <button type="button" id="mobile-open-assignee" class="rounded-2xl border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs font-black text-indigo-700">담당자</button>
+  </div>`;
+  container.appendChild(header);
+  header.querySelector('#mobile-focus-risk')?.addEventListener('click', () => toggleFocusMode('riskOnly'));
+  header.querySelector('#mobile-focus-high')?.addEventListener('click', () => toggleFocusMode('highOnly'));
+  header.querySelector('#mobile-open-assignee')?.addEventListener('click', openAssigneeModal);
+
+  filtered.forEach(t => {
+    const subTasks = Array.isArray(t.subTasks) ? t.subTasks : [];
+    const effectiveStatus = getEffectiveStatus(t, todayStr);
+    const riskInfo = getTaskRiskInfo(t, todayStr);
+    const progressPct = getTaskProgress(t);
+    const subDone = subTasks.filter(st => normalizeStatus(st.status) === 'COMPLETED').length;
+    const checked = selectedTaskIds.has(t.id);
+    const notes = String(t.notes || '').trim();
+    const card = document.createElement('article');
+    card.className = `mobile-task-card rounded-[1.35rem] border p-3 shadow-sm transition ${getMobileRiskAccent(t, todayStr)}`;
+    card.dataset.id = t.id;
+    card.innerHTML = `<div class="flex items-start gap-3">
+      <input type="checkbox" class="cb-task mt-1 h-5 w-5 rounded-lg border-slate-300 text-indigo-600 focus:ring-indigo-500" data-id="${escapeHTML(t.id)}" ${checked ? 'checked' : ''}>
+      <div class="min-w-0 flex-1">
+        <div class="flex items-start justify-between gap-2">
+          <button type="button" class="btn-edit min-w-0 flex-1 text-left" data-id="${escapeHTML(t.id)}">
+            <div class="line-clamp-2 text-[15px] font-black leading-snug text-slate-900">${escapeHTML(t.title || '')}</div>
+          </button>
+          <div class="flex shrink-0 items-center gap-1">
+            <button type="button" class="btn-edit rounded-xl bg-white/80 px-2 py-1 text-xs font-black text-indigo-600 shadow-sm" data-id="${escapeHTML(t.id)}">수정</button>
+            <button type="button" class="btn-delete rounded-xl bg-white/80 px-2 py-1 text-xs font-black text-rose-500 shadow-sm" data-id="${escapeHTML(t.id)}">삭제</button>
+          </div>
+        </div>
+        <div class="mt-2 flex flex-wrap items-center gap-1.5">
+          <span class="inline-flex items-center rounded-full border px-2 py-1 text-[11px] font-bold ${getMobileStatusClass(effectiveStatus)}">${getStatusIcon(effectiveStatus)} ${getStatusKorean(effectiveStatus)}</span>
+          ${getMobileDuePill(t, todayStr)}
+          <span class="inline-flex items-center rounded-full border px-2 py-1 text-[11px] font-bold ${getMobilePriorityClass(t.priority)}">${t.priority === 'HIGH' ? '높음' : t.priority === 'LOW' ? '낮음' : '보통'}</span>
+        </div>
+        <div class="mt-2 flex items-center justify-between gap-2 text-[11px] text-slate-400">
+          <span class="truncate">👤 ${escapeHTML(t.assignee || '미지정')}</span>
+          <span class="shrink-0 font-bold text-slate-500">진척 ${progressPct}%</span>
+        </div>
+        ${getMobileProgressBar(progressPct, effectiveStatus)}
+        ${riskInfo.level !== 'NONE' ? `<div class="mt-2 rounded-2xl border border-rose-100 bg-white/80 px-3 py-2 text-xs font-bold text-rose-700">🚨 Risk: ${riskInfo.label} D+${riskInfo.delay}</div>` : ''}
+        ${notes ? `<div class="mt-2 line-clamp-2 rounded-2xl bg-slate-50 px-3 py-2 text-xs text-slate-500">${escapeHTML(notes)}</div>` : ''}
+        ${subTasks.length ? `<div class="mt-2 text-[11px] font-bold text-slate-400">하위 업무 ${subDone}/${subTasks.length}</div>` : ''}
+        ${mobileStatusSegment(t.id, effectiveStatus)}
+        ${buildMobileSubTaskHTML(t, subTasks)}
+      </div>
+    </div>`;
+    container.appendChild(card);
+  });
+  updateMobileBulkActionBar();
+}

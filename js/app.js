@@ -5,7 +5,8 @@ var focusState = window.focusState || { riskOnly: false, mineOnly: false, highOn
 window.focusState = focusState;
 var UX_STORAGE_KEYS = window.UX_STORAGE_KEYS || { myAssignee: 'flow_my_assignee_name' };
 window.UX_STORAGE_KEYS = UX_STORAGE_KEYS;
-var isDashboardCollapsed = window.isDashboardCollapsed || false;
+var isDashboardCollapsed = window.isDashboardCollapsed;
+if (typeof isDashboardCollapsed !== 'boolean') isDashboardCollapsed = safeLocalStorageGet('flow_kpi_collapsed', 'true') !== 'false';
 window.isDashboardCollapsed = isDashboardCollapsed;
 var isRiskPanelCollapsed = window.isRiskPanelCollapsed;
 if (typeof isRiskPanelCollapsed !== 'boolean') isRiskPanelCollapsed = true;
@@ -190,6 +191,7 @@ function toggleRiskPanelCompact() {
 function toggleDashboardCompact() {
   window.isDashboardCollapsed = !window.isDashboardCollapsed;
   isDashboardCollapsed = window.isDashboardCollapsed;
+  safeLocalStorageSet('flow_kpi_collapsed', String(isDashboardCollapsed));
   applyCompactDashboardStyles();
   updateDashboardCompactControls();
   renderActiveViews();
@@ -438,9 +440,11 @@ function toggleFocusMode(key) {
 function updateBulkActionBar() {
   const bar = document.getElementById('bulk-action-bar');
   const count = document.getElementById('bulk-selected-count');
-  if (!bar || !count) return;
-  count.textContent = `${selectedTaskIds.size}개 선택됨`;
-  selectedTaskIds.size ? bar.classList.remove('hidden') : bar.classList.add('hidden');
+  if (bar && count) {
+    count.textContent = `${selectedTaskIds.size}개 선택됨`;
+    selectedTaskIds.size ? bar.classList.remove('hidden') : bar.classList.add('hidden');
+  }
+  if (typeof updateMobileBulkActionBar === 'function') updateMobileBulkActionBar();
 }
 function clearSelection() {
   selectedTaskIds.clear();
