@@ -19,6 +19,12 @@
         ::-webkit-scrollbar-track { background: #f1f5f9; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    
+        /* Table layout refinement: keep assignee/action/timeline compact and on one line */
+        .task-nowrap { white-space: nowrap; }
+        .task-timeline-inline { display: inline-flex; align-items: center; gap: 0.5rem; white-space: nowrap; }
+        .task-status-compact { min-height: 36px; }
+
     </style>
 </head>
 <body class="min-h-screen text-slate-800 antialiased relative">
@@ -168,19 +174,19 @@
         <!-- 뷰 1: 데이터 테이블 -->
         <main id="view-table" class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm transition-all duration-300 block">
             <div class="overflow-x-auto">
-                <table class="w-full min-w-[1050px] divide-y divide-slate-100 text-left">
+                <table class="w-full min-w-[1120px] divide-y divide-slate-100 text-left">
                     <thead class="bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                         <tr>
                             <th class="w-[3%] px-2 py-4 text-center">순서</th>
                             <th class="w-[3%] px-3 py-4 text-center">
                                 <input type="checkbox" id="checkbox-select-all" class="rounded border border-slate-300 cursor-pointer text-indigo-600 focus:ring-indigo-500">
                             </th>
-                            <th class="w-[40%] px-4 py-4">업무 상세</th>
-                            <th class="w-[14%] px-3 py-4 whitespace-nowrap">담당자</th>
-                            <th class="w-[12%] px-3 py-4 whitespace-nowrap">마감 및 타임라인</th>
+                            <th class="w-[37%] px-4 py-4">업무 상세</th>
+                            <th class="w-[13%] px-3 py-4 whitespace-nowrap">담당자</th>
+                            <th class="w-[17%] px-3 py-4 whitespace-nowrap">마감 및 타임라인</th>
                             <th class="w-[6%] px-2 py-4 text-center">우선순위</th>
-                            <th class="w-[13%] px-3 py-4 text-center">진행 상태</th>
-                            <th class="w-[8%] px-2 py-4 text-center whitespace-nowrap">작업</th>
+                            <th class="w-[12%] px-3 py-4 text-center whitespace-nowrap">진행 상태</th>
+                            <th class="w-[7%] px-2 py-4 text-center whitespace-nowrap">작업</th>
                         </tr>
                     </thead>
                     <tbody id="task-table-body" class="divide-y divide-slate-100 text-sm"></tbody>
