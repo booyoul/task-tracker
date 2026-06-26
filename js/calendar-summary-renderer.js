@@ -1,14 +1,5 @@
 console.info('Smart Task Flow calendar-summary-renderer.js v20260626-module-split-phase4d-summary-renderer loaded');
 // SUMMARY calendar renderer. Extracted from app.js in Phase 4D.
-function renderCalendarSummaryView(ctx) {
-  const { weekdayHeader, grid, year, month, filteredTasks, todayStr } = ctx;
-  weekdayHeader?.classList.add('hidden');
-  grid.className = 'flex flex-col gap-4 bg-slate-50 border border-slate-100 p-5 rounded-xl min-h-[250px]';
-  grid.innerHTML = '';
-  const monthStart = new Date(year, month, 1);
-  const monthEnd = new Date(year, month + 1, 0, 23, 59, 59);
-  const monthTasks = filteredTasks.filter(t => dateRangeOverlaps(t, monthStart, monthEnd, todayStr));
-  if (!monthTasks.length) { grid.innerHTML = `<div class="text-sm text-slate-400">현재 조건 혹은 조회 기간 중 해당 월(${month + 1}월)의 업무 정보가 존재하지 않습니다.</div>`; return; }
   const cats = { OVERDUE: [], PROGRESS: [], PENDING: [], COMPLETED: [] };
   monthTasks.forEach(t => { const es = getEffectiveStatus(t, todayStr); if (es === 'OVERDUE') cats.OVERDUE.push(t); else cats[es || 'PENDING'].push(t); });
   const total = monthTasks.length;
@@ -74,7 +65,6 @@ function summaryMiniCard(label,value,tone='slate',sub=''){const toneMap={slate:'
 function getTopAssigneeRiskCompact(tasks,today){const m={};tasks.forEach(t=>{if(!isTaskOverdueEffective(t,today)&&!['HIGH','CRITICAL'].includes(getTaskRiskInfo(t,today).level))return;const n=t.assignee||'미지정';m[n]=(m[n]||0)+1;});return Object.entries(m).sort((a,b)=>b[1]-a[1])[0];}
 function getIndustryDistributionCompact(tasks){const m={};tasks.forEach(t=>{const k=t.industry||'GENERAL';m[k]=(m[k]||0)+1;});return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,6);}
 function generateMonthlyInsightLine(tasks,today){const total=tasks.length;const risk=tasks.filter(t=>isTaskOverdueEffective(t,today)||['HIGH','CRITICAL'].includes(getTaskRiskInfo(t,today).level));const completed=tasks.filter(t=>getEffectiveStatus(t,today)==='COMPLETED');const dueSoon=tasks.filter(t=>hasDueSoonRisk(t,today,3));if(!total)return'이번 달 표시할 업무가 없습니다.';const pct=Math.round(completed.length/total*100);return risk.length?`완료율 ${pct}% · Risk ${risk.length}건이 있어 우선순위 재점검이 필요합니다. 3일 내 마감 ${dueSoon.length}건도 함께 확인하세요.`:`완료율 ${pct}% · 현재 중대 Risk는 낮습니다. 3일 내 마감 ${dueSoon.length}건 중심으로 마무리 관리하세요.`;}
-function renderCalendarSummaryView({weekdayHeader,grid,year,month,filteredTasks,todayStr}){if(weekdayHeader)weekdayHeader.style.display='none';if(!grid)return;const tasks=(filteredTasks||[]).filter(t=>{const d=t.dueDate||t.startDate||todayStr;const date=new Date(d+'T00:00:00');return date.getFullYear()===year&&date.getMonth()===month;});const total=tasks.length;const completed=tasks.filter(t=>getEffectiveStatus(t,todayStr)==='COMPLETED').length;const progress=tasks.filter(t=>getEffectiveStatus(t,todayStr)==='PROGRESS').length;const pending=tasks.filter(t=>getEffectiveStatus(t,todayStr)==='PENDING').length;const risk=tasks.filter(t=>isTaskOverdueEffective(t,todayStr)||['HIGH','CRITICAL'].includes(getTaskRiskInfo(t,todayStr).level)).length;const high=tasks.filter(t=>t.priority==='HIGH').length;const pct=total?Math.round(completed/total*100):0;const topRisk=tasks.filter(t=>isTaskOverdueEffective(t,todayStr)||['HIGH','CRITICAL'].includes(getTaskRiskInfo(t,todayStr).level)).sort((a,b)=>getMaxDelayDays(b,todayStr)-getMaxDelayDays(a,todayStr))[0];const assigneeRisk=getTopAssigneeRiskCompact(tasks,todayStr);const industries=getIndustryDistributionCompact(tasks);const insight=generateMonthlyInsightLine(tasks,todayStr);grid.className='mt-px relative';grid.innerHTML=`<section class="space-y-3"><div class="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm"><div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><div><div class="text-[11px] font-black uppercase tracking-wide text-slate-400">Monthly Compact Summary</div><h3 class="text-xl font-black text-slate-900">${year}년 ${month+1}월 실행 현황</h3></div><div class="rounded-2xl bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700">${insight}</div></div></div><div class="grid grid-cols-2 gap-2 lg:grid-cols-6">${summaryMiniCard('Total',total,'slate')}${summaryMiniCard('Completion',pct+'%',pct>=70?'emerald':'amber',`${completed}/${total}`)}${summaryMiniCard('Risk',risk,risk?'rose':'emerald')}${summaryMiniCard('High',high,high?'amber':'slate')}${summaryMiniCard('Progress',progress,'blue')}${summaryMiniCard('Pending',pending,'amber')}</div><div class="grid grid-cols-1 gap-3 lg:grid-cols-3"><div class="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm"><div class="text-[11px] font-black uppercase tracking-wide text-slate-400">Top Bottleneck</div>${topRisk?`<div class="mt-2 text-sm font-black text-slate-900">${escapeHTML(topRisk.title||'')}</div><div class="mt-1 text-xs font-semibold text-rose-600">${getTaskRiskInfo(topRisk,todayStr).label} · D+${getTaskRiskInfo(topRisk,todayStr).delay}</div>`:'<div class="mt-2 text-sm font-bold text-emerald-600">중대 병목 없음</div>'}</div><div class="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm"><div class="text-[11px] font-black uppercase tracking-wide text-slate-400">Assignee Risk</div>${assigneeRisk?`<div class="mt-2 text-sm font-black text-slate-900">${escapeHTML(assigneeRisk[0])}</div><div class="mt-1 text-xs font-semibold text-rose-600">Risk ${assigneeRisk[1]}건</div>`:'<div class="mt-2 text-sm font-bold text-emerald-600">담당자별 Risk 낮음</div>'}</div><div class="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm"><div class="text-[11px] font-black uppercase tracking-wide text-slate-400">Industry Split</div><div class="mt-2 space-y-1">${industries.length?industries.map(([k,v])=>`<div class="flex items-center justify-between rounded-xl bg-slate-50 px-2 py-1.5 text-xs"><span class="font-bold text-slate-600">${escapeHTML(k)}</span><span class="font-black text-slate-900">${v}</span></div>`).join(''):'<div class="text-sm font-bold text-slate-400">데이터 없음</div>'}</div></div></div></section>`;}
 
 // === Final Stable: Compact Monthly Summary Dashboard Override ===
 console.info('Smart Task Flow compact monthly summary v20260626-final-stable loaded');
@@ -85,12 +75,59 @@ function summaryMiniCard(label,value,tone='slate',sub=''){
 function getTopAssigneeRiskCompact(tasks,today){const m={};tasks.forEach(t=>{if(!isTaskOverdueEffective(t,today)&&!['HIGH','CRITICAL'].includes(getTaskRiskInfo(t,today).level))return;const n=t.assignee||'미지정';m[n]=(m[n]||0)+1;});return Object.entries(m).sort((a,b)=>b[1]-a[1])[0];}
 function getIndustryDistributionCompact(tasks){const m={};tasks.forEach(t=>{const k=t.industry||'GENERAL';m[k]=(m[k]||0)+1;});return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,6);}
 function generateMonthlyInsightLine(tasks,today){const total=tasks.length;const risk=tasks.filter(t=>isTaskOverdueEffective(t,today)||['HIGH','CRITICAL'].includes(getTaskRiskInfo(t,today).level));const completed=tasks.filter(t=>getEffectiveStatus(t,today)==='COMPLETED');const dueSoon=tasks.filter(t=>hasDueSoonRisk(t,today,3));if(!total)return'이번 달 표시할 업무가 없습니다.';const pct=Math.round(completed.length/total*100);return risk.length?`완료율 ${pct}% · Risk ${risk.length}건이 있어 우선순위 재점검이 필요합니다. 3일 내 마감 ${dueSoon.length}건도 함께 확인하세요.`:`완료율 ${pct}% · 현재 중대 Risk는 낮습니다. 3일 내 마감 ${dueSoon.length}건 중심으로 마무리 관리하세요.`;}
-function renderCalendarSummaryView({weekdayHeader,grid,year,month,filteredTasks,todayStr}){
-  if(weekdayHeader)weekdayHeader.style.display='none'; if(!grid)return;
-  const tasks=(filteredTasks||[]).filter(t=>{const d=t.dueDate||t.startDate||todayStr;const date=new Date(d+'T00:00:00');return date.getFullYear()===year&&date.getMonth()===month;});
-  const total=tasks.length;const completed=tasks.filter(t=>getEffectiveStatus(t,todayStr)==='COMPLETED').length;const progress=tasks.filter(t=>getEffectiveStatus(t,todayStr)==='PROGRESS').length;const pending=tasks.filter(t=>getEffectiveStatus(t,todayStr)==='PENDING').length;const risk=tasks.filter(t=>isTaskOverdueEffective(t,todayStr)||['HIGH','CRITICAL'].includes(getTaskRiskInfo(t,todayStr).level)).length;const high=tasks.filter(t=>t.priority==='HIGH').length;const pct=total?Math.round(completed/total*100):0;
-  const topRisk=tasks.filter(t=>isTaskOverdueEffective(t,todayStr)||['HIGH','CRITICAL'].includes(getTaskRiskInfo(t,todayStr).level)).sort((a,b)=>getMaxDelayDays(b,todayStr)-getMaxDelayDays(a,todayStr))[0];
-  const assigneeRisk=getTopAssigneeRiskCompact(tasks,todayStr);const industries=getIndustryDistributionCompact(tasks);const insight=generateMonthlyInsightLine(tasks,todayStr);
-  grid.className='mt-px relative';
-  grid.innerHTML=`<section class="space-y-3"><div class="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm"><div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><div><div class="text-[11px] font-black uppercase tracking-wide text-slate-400">Monthly Compact Summary</div><h3 class="text-xl font-black text-slate-900">${year}년 ${month+1}월 실행 현황</h3></div><div class="rounded-2xl bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700">${insight}</div></div></div><div class="grid grid-cols-2 gap-2 lg:grid-cols-6">${summaryMiniCard('Total',total,'slate')}${summaryMiniCard('Completion',pct+'%',pct>=70?'emerald':'amber',`${completed}/${total}`)}${summaryMiniCard('Risk',risk,risk?'rose':'emerald')}${summaryMiniCard('High',high,high?'amber':'slate')}${summaryMiniCard('Progress',progress,'blue')}${summaryMiniCard('Pending',pending,'amber')}</div><div class="grid grid-cols-1 gap-3 lg:grid-cols-3"><div class="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm"><div class="text-[11px] font-black uppercase tracking-wide text-slate-400">Top Bottleneck</div>${topRisk?`<div class="mt-2 text-sm font-black text-slate-900">${escapeHTML(topRisk.title||'')}</div><div class="mt-1 text-xs font-semibold text-rose-600">${getTaskRiskInfo(topRisk,todayStr).label} · D+${getTaskRiskInfo(topRisk,todayStr).delay}</div>`:'<div class="mt-2 text-sm font-bold text-emerald-600">중대 병목 없음</div>'}</div><div class="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm"><div class="text-[11px] font-black uppercase tracking-wide text-slate-400">Assignee Risk</div>${assigneeRisk?`<div class="mt-2 text-sm font-black text-slate-900">${escapeHTML(assigneeRisk[0])}</div><div class="mt-1 text-xs font-semibold text-rose-600">Risk ${assigneeRisk[1]}건</div>`:'<div class="mt-2 text-sm font-bold text-emerald-600">담당자별 Risk 낮음</div>'}</div><div class="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm"><div class="text-[11px] font-black uppercase tracking-wide text-slate-400">Industry Split</div><div class="mt-2 space-y-1">${industries.length?industries.map(([k,v])=>`<div class="flex items-center justify-between rounded-xl bg-slate-50 px-2 py-1.5 text-xs"><span class="font-bold text-slate-600">${escapeHTML(k)}</span><span class="font-black text-slate-900">${v}</span></div>`).join(''):'<div class="text-sm font-bold text-slate-400">데이터 없음</div>'}</div></div></div></section>`;
+
+function renderCalendarSummaryView({ weekdayHeader, grid, year, month, filteredTasks, todayStr }) {
+  const container = grid;
+  const tasks = filteredTasks || [];
+
+  const total = tasks.length;
+  const completed = tasks.filter(t => getEffectiveStatus(t,todayStr)==='COMPLETED').length;
+  const progress = tasks.filter(t => getEffectiveStatus(t,todayStr)==='PROGRESS').length;
+  const overdue = tasks.filter(t => isTaskOverdueEffective(t,todayStr)).length;
+  const pct = total ? Math.round(completed/total*100) : 0;
+
+  const risk = tasks.filter(t =>
+    ['HIGH','CRITICAL'].includes(getTaskRiskInfo(t,todayStr).level)
+  ).length;
+
+  const dueSoon = tasks.filter(t => hasDueSoonRisk(t,todayStr,3)).length;
+
+  const topRisk = tasks
+    .filter(t=>isTaskOverdueEffective(t,todayStr))
+    .sort((a,b)=>getMaxDelayDays(b,todayStr)-getMaxDelayDays(a,todayStr))[0];
+
+  container.innerHTML = `
+
+    <div class="flex flex-wrap items-center gap-2 rounded-xl border bg-white px-3 py-2 shadow-sm mb-2">
+      <span class="text-xs font-black text-slate-500">${year}년 ${month+1}월</span>
+      <span class="kpi-chip bg-slate-50">Total <b>${total}</b></span>
+      <span class="kpi-chip bg-emerald-50 text-emerald-700">Done <b>${pct}%</b></span>
+      <span class="kpi-chip bg-blue-50 text-blue-700">Progress <b>${progress}</b></span>
+      <span class="kpi-chip bg-rose-50 text-rose-700">Delay <b>${overdue}</b></span>
+    </div>
+
+    <div class="grid grid-cols-2 gap-2 text-[11px] mb-2">
+      <div class="kpi-mini">High Risk <b class="text-rose-600">${risk}</b></div>
+      <div class="kpi-mini">Due Soon <b class="text-amber-600">${dueSoon}</b></div>
+    </div>
+
+    <div class="rounded-xl border bg-white p-3 mb-2">
+      <div class="flex justify-between mb-2">
+        <span class="text-xs font-black text-indigo-600">📊 Pipeline</span>
+        <span class="text-xs text-slate-400">${total}건</span>
+      </div>
+      <div class="space-y-1 text-xs">
+        ${tasks.slice(0,5).map(t=>`<div class="flex justify-between">
+          <span class="font-semibold">${t.title}</span>
+          <span class="text-slate-400">${(t.dueDate||'').substring(5)}</span>
+        </div>`).join('')}
+      </div>
+    </div>
+
+    <div class="rounded-xl border border-rose-100 bg-white p-3">
+      <div class="text-[11px] font-black text-rose-600">🚨 Risk</div>
+      <div class="text-xs">${topRisk ? topRisk.title : '없음'}</div>
+    </div>
+
+  `;
 }
