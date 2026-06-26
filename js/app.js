@@ -1191,7 +1191,22 @@ function buildMobileSubTaskHTML(t, subTasks) {
     const status = normalizeStatus(st.status);
     const stTimeline = getSubTaskTimelineStatus(st);
     const overdue = isSubTaskOverdue(st);
-    return `<div class="rounded-xl border ${overdue ? 'border-rose-100 bg-rose-50/70' : 'border-slate-100 bg-slate-50'} px-3 py-2"><div class="flex items-start justify-between gap-2"><div class="min-w-0"><div class="truncate text-xs font-bold ${status === 'COMPLETED' ? 'line-through text-slate-400' : overdue ? 'text-rose-700' : 'text-slate-700'}">↳ ${overdue ? '🚨 ' : ''}${escapeHTML(st.title || '')}</div><div class="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500"><span class="rounded-md bg-white px-1.5 py-0.5 border border-slate-100">👤 ${escapeHTML(st.assignee || t.assignee || '미지정')}</span><span class="inline-flex items-center gap-1 whitespace-nowrap"><span>📅 ${st.startDate ? st.startDate.substring(5) : '미정'} ~ ${st.dueDate ? st.dueDate.substring(5) : '미정'}</span><span class="inline-flex shrink-0 rounded-md border px-1.5 py-0.5 ${stTimeline.class}">${stTimeline.text}</span></span></div></div><select class="sel-subtask-status mobile-touch-btn shrink-0 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-600 outline-none" data-task-id="${escapeHTML(t.id)}" data-subtask-id="${escapeHTML(st.id)}"><option value="PENDING" ${status === 'PENDING' ? 'selected' : ''}>대기</option><option value="PROGRESS" ${status === 'PROGRESS' ? 'selected' : ''}>진행</option><option value="COMPLETED" ${status === 'COMPLETED' ? 'selected' : ''}>완료</option></select></div></div>`;
+    return `<div class="rounded-xl border ${overdue ? 'border-rose-100 bg-rose-50/70' : 'border-slate-100 bg-slate-50'} px-3 py-2">
+      <div class="flex items-start justify-between gap-2">
+        <div class="min-w-0">
+          <div class="truncate text-xs font-bold ${status === 'COMPLETED' ? 'line-through text-slate-400' : overdue ? 'text-rose-700' : 'text-slate-700'}">↳ ${overdue ? '🚨 ' : ''}${escapeHTML(st.title || '')}</div>
+          <div class="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500">
+            <span class="rounded-md bg-white px-1.5 py-0.5 border border-slate-100">👤 ${escapeHTML(st.assignee || t.assignee || '미지정')}</span>
+            <span class="inline-flex items-center gap-1 whitespace-nowrap"><span>📅 ${st.startDate ? st.startDate.substring(5) : '미정'} ~ ${st.dueDate ? st.dueDate.substring(5) : '미정'}</span><span class="inline-flex shrink-0 rounded-md border px-1.5 py-0.5 ${stTimeline.class}">${stTimeline.text}</span></span>
+          </div>
+        </div>
+        <select class="sel-subtask-status mobile-touch-btn shrink-0 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-600 outline-none" data-task-id="${escapeHTML(t.id)}" data-subtask-id="${escapeHTML(st.id)}">
+          <option value="PENDING" ${status === 'PENDING' ? 'selected' : ''}>대기</option>
+          <option value="PROGRESS" ${status === 'PROGRESS' ? 'selected' : ''}>진행</option>
+          <option value="COMPLETED" ${status === 'COMPLETED' ? 'selected' : ''}>완료</option>
+        </select>
+      </div>
+    </div>`;
   }).join('')}</div>`;
 }
 function renderMobileCards(filtered) {
@@ -1199,8 +1214,13 @@ function renderMobileCards(filtered) {
   const emptyState = document.getElementById('empty-state-mobile');
   if (!container) return;
   container.innerHTML = '';
-  if (!filtered || filtered.length === 0) { emptyState?.classList.remove('hidden'); emptyState?.classList.add('flex'); return; }
-  emptyState?.classList.add('hidden'); emptyState?.classList.remove('flex');
+  if (!filtered || filtered.length === 0) {
+    emptyState?.classList.remove('hidden');
+    emptyState?.classList.add('flex');
+    return;
+  }
+  emptyState?.classList.add('hidden');
+  emptyState?.classList.remove('flex');
   const todayStr = getTodayStr();
   filtered.forEach(t => {
     const subTasks = Array.isArray(t.subTasks) ? t.subTasks : [];
@@ -1211,7 +1231,34 @@ function renderMobileCards(filtered) {
     const subDone = subTasks.filter(st => normalizeStatus(st.status) === 'COMPLETED').length;
     const card = document.createElement('article');
     card.className = `mobile-task-card rounded-2xl border bg-white p-3 shadow-sm ${['HIGH','CRITICAL'].includes(riskInfo.level) ? 'border-rose-200 bg-rose-50/40' : effectiveStatus === 'OVERDUE' ? 'border-amber-200 bg-amber-50/30' : 'border-slate-100'}`;
-    card.innerHTML = `<div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-1"><button type="button" class="btn-edit block w-full text-left" data-id="${t.id}"><div class="truncate text-sm font-black text-slate-900">${escapeHTML(t.title || '')}</div></button><div class="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500"><span class="rounded-lg bg-slate-50 px-2 py-1 border border-slate-100">👤 ${escapeHTML(t.assignee || '미지정')}</span><span class="rounded-lg border px-2 py-1 font-bold ${getMobilePriorityClass(t.priority)}">${getPriorityBadge(t.priority)}</span><span class="rounded-lg bg-white px-2 py-1 font-bold text-slate-500 border border-slate-100">진척 ${progressPct}%</span></div></div><button type="button" class="btn-delete mobile-touch-btn shrink-0 rounded-xl bg-slate-50 px-2.5 py-1.5 text-xs text-slate-400 hover:text-rose-600" data-id="${t.id}">🗑</button></div><div class="mt-3 rounded-xl bg-white/80 border border-slate-100 px-3 py-2"><div class="flex items-center justify-between gap-2"><div class="min-w-0 overflow-x-auto"><div class="inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-semibold text-slate-600"><span class="shrink-0">📅 ${t.startDate ? t.startDate.substring(5) : '미정'} ~ ${(t.dueDate || '').substring(5) || '미정'}</span><span class="inline-flex shrink-0 rounded-lg border px-2 py-0.5 text-[11px] ${timeline.class}">${timeline.text}</span></div></div><select class="sel-status mobile-touch-btn shrink-0 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-600 outline-none" data-id="${t.id}"><option value="PENDING" ${t.status === 'PENDING' ? 'selected' : ''}>대기</option><option value="PROGRESS" ${t.status === 'PROGRESS' ? 'selected' : ''}>진행</option><option value="COMPLETED" ${t.status === 'COMPLETED' ? 'selected' : ''}>완료</option></select></div><div class="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full ${progressPct >= 100 ? 'bg-emerald-500' : progressPct > 0 ? 'bg-blue-500' : 'bg-slate-300'}" style="width:${progressPct}%"></div></div></div>${(riskInfo.level !== 'NONE') ? `<div class="mt-2 inline-flex rounded-lg border px-2 py-1 text-[11px] font-black ${riskInfo.class}">Risk: ${riskInfo.label} D+${riskInfo.delay}</div>` : ''}${subTasks.length ? `<div class="mt-2 text-[11px] font-semibold text-slate-400">하위 업무 ${subDone}/${subTasks.length}</div>` : ''}${buildMobileSubTaskHTML(t, subTasks)}<div class="mt-3 flex items-center justify-between border-t border-slate-100 pt-3"><button type="button" class="btn-toggle-subtasks ${subTasks.length ? '' : 'invisible'} mobile-touch-btn rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-bold text-slate-600" data-id="${t.id}">${expandedTaskIds.has(t.id) ? '하위 접기' : '하위 펼치기'}</button><button type="button" class="btn-edit mobile-touch-btn rounded-xl bg-indigo-600 px-3 py-1.5 text-[11px] font-bold text-white" data-id="${t.id}">수정</button></div>`;
+    card.innerHTML = `
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0 flex-1">
+          <button type="button" class="btn-edit block w-full text-left" data-id="${t.id}"><div class="truncate text-sm font-black text-slate-900">${escapeHTML(t.title || '')}</div></button>
+          <div class="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">
+            <span class="rounded-lg bg-slate-50 px-2 py-1 border border-slate-100">👤 ${escapeHTML(t.assignee || '미지정')}</span>
+            <span class="rounded-lg border px-2 py-1 font-bold ${getMobilePriorityClass(t.priority)}">${getPriorityBadge(t.priority)}</span>
+            <span class="rounded-lg bg-white px-2 py-1 font-bold text-slate-500 border border-slate-100">진척 ${progressPct}%</span>
+          </div>
+        </div>
+        <button type="button" class="btn-delete mobile-touch-btn shrink-0 rounded-xl bg-slate-50 px-2.5 py-1.5 text-xs text-slate-400 hover:text-rose-600" data-id="${t.id}">🗑</button>
+      </div>
+      <div class="mt-3 rounded-xl bg-white/80 border border-slate-100 px-3 py-2">
+        <div class="flex items-center justify-between gap-2">
+          <div class="min-w-0 overflow-x-auto"><div class="inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-semibold text-slate-600"><span class="shrink-0">📅 ${t.startDate ? t.startDate.substring(5) : '미정'} ~ ${(t.dueDate || '').substring(5) || '미정'}</span><span class="inline-flex shrink-0 rounded-lg border px-2 py-0.5 text-[11px] ${timeline.class}">${timeline.text}</span></div></div>
+          <select class="sel-status mobile-touch-btn shrink-0 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-600 outline-none" data-id="${t.id}">
+            <option value="PENDING" ${t.status === 'PENDING' ? 'selected' : ''}>대기</option><option value="PROGRESS" ${t.status === 'PROGRESS' ? 'selected' : ''}>진행</option><option value="COMPLETED" ${t.status === 'COMPLETED' ? 'selected' : ''}>완료</option>
+          </select>
+        </div>
+        <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full ${progressPct >= 100 ? 'bg-emerald-500' : progressPct > 0 ? 'bg-blue-500' : 'bg-slate-300'}" style="width:${progressPct}%"></div></div>
+      </div>
+      ${(riskInfo.level !== 'NONE') ? `<div class="mt-2 inline-flex rounded-lg border px-2 py-1 text-[11px] font-black ${riskInfo.class}">Risk: ${riskInfo.label} D+${riskInfo.delay}</div>` : ''}
+      ${subTasks.length ? `<div class="mt-2 text-[11px] font-semibold text-slate-400">하위 업무 ${subDone}/${subTasks.length}</div>` : ''}
+      ${buildMobileSubTaskHTML(t, subTasks)}
+      <div class="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
+        <button type="button" class="btn-toggle-subtasks ${subTasks.length ? '' : 'invisible'} mobile-touch-btn rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-bold text-slate-600" data-id="${t.id}">${expandedTaskIds.has(t.id) ? '하위 접기' : '하위 펼치기'}</button>
+        <button type="button" class="btn-edit mobile-touch-btn rounded-xl bg-indigo-600 px-3 py-1.5 text-[11px] font-bold text-white" data-id="${t.id}">수정</button>
+      </div>`;
     container.appendChild(card);
   });
 }
@@ -1585,6 +1632,8 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('checkbox-select-all')?.addEventListener('change', toggleSelectAll);
   document.getElementById('task-table-body')?.addEventListener('click', handleTableClick);
   document.getElementById('task-table-body')?.addEventListener('change', handleTableChange);
+  document.getElementById('task-card-container')?.addEventListener('click', handleTableClick);
+  document.getElementById('task-card-container')?.addEventListener('change', handleTableChange);
   document.getElementById('task-table-body')?.addEventListener('focusout', e => { const el = e.target.closest('.inline-edit-title'); if (el) updateTaskTitleInline(el.dataset.id, el.textContent); });
   document.getElementById('task-table-body')?.addEventListener('keydown', handleInlineEditKeydown);
   document.getElementById('btn-view-table')?.addEventListener('click', () => { currentViewMode = 'TABLE'; document.getElementById('btn-view-table').className = 'rounded-lg bg-white px-4 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition'; document.getElementById('btn-view-calendar').className = 'rounded-lg px-4 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition'; document.getElementById('view-table')?.classList.remove('hidden'); document.getElementById('view-mobile')?.classList.remove('hidden'); document.getElementById('view-calendar')?.classList.add('hidden'); renderActiveViews(); });
