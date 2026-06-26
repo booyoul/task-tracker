@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow app.js v20260626-calendar-ux-plus-final loaded');
+console.info('Smart Task Flow app.js v20260626-bd-dashboard-allinone loaded');
 // --- UX optimization globals: must be declared before helper functions ---
 var focusState = window.focusState || { riskOnly: false, mineOnly: false, highOnly: false };
 window.focusState = focusState;
@@ -12,7 +12,7 @@ if (typeof isRiskPanelCollapsed !== 'boolean') isRiskPanelCollapsed = true;
 window.isRiskPanelCollapsed = isRiskPanelCollapsed;
 var selectedAssigneeFilters = window.selectedAssigneeFilters || new Set();
 window.selectedAssigneeFilters = selectedAssigneeFilters;
-var calendarUxState = window.calendarUxState || { subtasksExpanded: true, criticalOnly: false, colorByIndustry: false };
+var calendarUxState = window.calendarUxState || { subtasksExpanded: true, criticalOnly: false, colorByIndustry: false, groupByAssignee: false };
 window.calendarUxState = calendarUxState;
 function safeLocalStorageGet(key, fallback = '') {
   try { return window.localStorage ? (localStorage.getItem(key) || fallback) : fallback; }
@@ -29,7 +29,7 @@ function loadCalendarUxState() {
     const raw = safeLocalStorageGet(CALENDAR_UX_STORAGE_KEY, '');
     if (!raw) return;
     const parsed = JSON.parse(raw);
-    calendarUxState = { ...calendarUxState, ...parsed };
+    calendarUxState = { subtasksExpanded: true, criticalOnly: false, colorByIndustry: false, groupByAssignee: false, ...calendarUxState, ...parsed };
     window.calendarUxState = calendarUxState;
   } catch (e) { console.warn('calendar UX state load failed', e); }
 }
@@ -46,6 +46,7 @@ function updateCalendarUxButtons() {
   const subBtn = document.getElementById('btn-cal-ux-subtasks');
   const riskBtn = document.getElementById('btn-cal-ux-risk');
   const industryBtn = document.getElementById('btn-cal-ux-industry');
+  const assigneeBtn = document.getElementById('btn-cal-ux-assignee');
   if (subBtn) {
     subBtn.textContent = calendarUxState.subtasksExpanded ? '하위 펼침' : '하위 접힘';
     subBtn.className = getCalendarUxButtonClass(calendarUxState.subtasksExpanded);
@@ -58,11 +59,15 @@ function updateCalendarUxButtons() {
     industryBtn.textContent = calendarUxState.colorByIndustry ? '산업 색상 ON' : '산업 색상';
     industryBtn.className = getCalendarUxButtonClass(calendarUxState.colorByIndustry);
   }
+  if (assigneeBtn) {
+    assigneeBtn.textContent = calendarUxState.groupByAssignee ? '담당자 보기 ON' : '담당자 보기';
+    assigneeBtn.className = getCalendarUxButtonClass(calendarUxState.groupByAssignee);
+  }
 }
 function ensureCalendarUxControls() {
   loadCalendarUxState();
   if (document.getElementById('calendar-ux-controls')) { updateCalendarUxButtons(); return; }
-  const anchor = document.getElementById('toggle-subtask-cal-wrapper') || document.getElementById('btn-cal-mode-summary')?.parentElement;
+  const anchor = document.getElementById('btn-cal-mode-summary')?.parentElement || document.getElementById('calendar-month-year');
   if (!anchor) return;
   const controls = document.createElement('div');
   controls.id = 'calendar-ux-controls';
@@ -70,7 +75,8 @@ function ensureCalendarUxControls() {
   controls.innerHTML = `
     <button type="button" id="btn-cal-ux-subtasks"></button>
     <button type="button" id="btn-cal-ux-risk"></button>
-    <button type="button" id="btn-cal-ux-industry"></button>`;
+    <button type="button" id="btn-cal-ux-industry"></button>
+    <button type="button" id="btn-cal-ux-assignee"></button>`;
   anchor.insertAdjacentElement('afterend', controls);
   document.getElementById('btn-cal-ux-subtasks')?.addEventListener('click', e => {
     e.preventDefault(); e.stopPropagation();
@@ -90,9 +96,16 @@ function ensureCalendarUxControls() {
     window.calendarUxState = calendarUxState;
     saveCalendarUxState(); updateCalendarUxButtons(); renderActiveViews();
   });
+  document.getElementById('btn-cal-ux-assignee')?.addEventListener('click', e => {
+    e.preventDefault(); e.stopPropagation();
+    calendarUxState.groupByAssignee = !calendarUxState.groupByAssignee;
+    window.calendarUxState = calendarUxState;
+    saveCalendarUxState(); updateCalendarUxButtons(); renderActiveViews();
+  });
   updateCalendarUxButtons();
 }
 function detectIndustryKey(item) {
+  if (item?.industry && item.industry !== 'AUTO') return String(item.industry).toUpperCase();
   const s = `${item?.title || ''} ${item?.notes || ''} ${item?.parentTitle || ''}`.toLowerCase();
   if (/pharma|bio|healthcare|제약|바이오|헬스케어/.test(s)) return 'PHARMA';
   if (/f&b|food|beverage|식품|음료/.test(s)) return 'FNB';
@@ -1075,7 +1088,7 @@ function renderCalendar(filteredTasks) {
   const monthEndDate = new Date(year, month + 1, 0, 23, 59, 59);
   if (!grid) return;
   ensureCalendarUxControls();
-  const showSubTaskBars = isCalSubTaskVisible && calendarUxState.subtasksExpanded;
+  const showSubTaskBars = calendarUxState.subtasksExpanded;
   const highlightRiskOnly = calendarUxState.criticalOnly;
   const useIndustryColor = calendarUxState.colorByIndustry;
   if (titleEl) titleEl.textContent = currentCalMode === 'MONTH' ? `${year}년 전체 Gantt 타임라인` : `${year}년 ${month + 1}월`;
@@ -1085,11 +1098,11 @@ function renderCalendar(filteredTasks) {
     const end = t.dueDate || todayStr;
     const g = {
       id: t.id, title: t.title, startDate: start > end ? end : start, dueDate: end, status: t.status || 'PENDING',
-      priority: t.priority || 'NORMAL', assignee: t.assignee || '미지정', notes: t.notes || '', order: t.order ?? 999,
+      priority: t.priority || 'NORMAL', industry: t.industry || 'AUTO', taskType: t.taskType || 'GENERAL', assignee: t.assignee || '미지정', notes: t.notes || '', order: t.order ?? 999,
       subTasks: (t.subTasks || []).map(st => {
         const ss = st.startDate || st.dueDate || end;
         const dd = st.dueDate || end;
-        return { id: st.id, title: st.title, startDate: ss > dd ? dd : ss, dueDate: dd, status: normalizeStatus(st.status), assignee: st.assignee || t.assignee || '미지정', parentId: t.id, parentTitle: t.title };
+        return { id: st.id, title: st.title, startDate: ss > dd ? dd : ss, dueDate: dd, status: normalizeStatus(st.status), assignee: st.assignee || t.assignee || '미지정', parentId: t.id, parentTitle: t.title, industry: t.industry || 'AUTO', taskType: t.taskType || 'GENERAL' };
       })
     };
     // Calendar lane calculation must use only the sub tasks relevant to the current view.
@@ -1102,25 +1115,60 @@ function renderCalendar(filteredTasks) {
     return g;
   }).sort((a, b) => a.order - b.order || a.rangeStart.localeCompare(b.rangeStart));
 
-  const lines = [];
-  groups.forEach(g => {
+  let lines = [];
+  const packGroupIntoLines = (g, lineStore, lineOffset = 0) => {
     const layoutSubTasks = currentCalMode === 'MONTH' ? g.subTasks : (g.monthSubTasks || []);
     const need = showSubTaskBars ? 1 + layoutSubTasks.length : 1;
     let startLine = 0;
     while (true) {
       let overlap = false;
       for (let i = 0; i < need; i++) {
-        if (!lines[startLine + i]) lines[startLine + i] = [];
-        if (lines[startLine + i].some(o => g.rangeStart <= o.end && o.start <= g.rangeEnd)) { overlap = true; break; }
+        if (!lineStore[startLine + i]) lineStore[startLine + i] = [];
+        if (lineStore[startLine + i].some(o => g.rangeStart <= o.end && o.start <= g.rangeEnd)) { overlap = true; break; }
       }
       if (!overlap) {
-        for (let i = 0; i < need; i++) lines[startLine + i].push({ start: g.rangeStart, end: g.rangeEnd });
-        g.globalLineStart = startLine;
+        for (let i = 0; i < need; i++) lineStore[startLine + i].push({ start: g.rangeStart, end: g.rangeEnd });
+        g.globalLineStart = lineOffset + startLine;
         break;
       }
       startLine++;
     }
+  };
+  const assigneeKpis = new Map();
+  groups.forEach(g => {
+    const key = g.assignee || '미지정';
+    const current = assigneeKpis.get(key) || { total: 0, progress: 0, overdue: 0, completed: 0 };
+    current.total += 1;
+    const es = getEffectiveStatus(g, todayStr);
+    if (es === 'PROGRESS') current.progress += 1;
+    if (es === 'OVERDUE') current.overdue += 1;
+    if (es === 'COMPLETED') current.completed += 1;
+    assigneeKpis.set(key, current);
   });
+  if (calendarUxState.groupByAssignee) {
+    const buckets = new Map();
+    groups.forEach(g => {
+      const key = g.assignee || '미지정';
+      if (!buckets.has(key)) buckets.set(key, []);
+      buckets.get(key).push(g);
+    });
+    let lineOffset = 0;
+    Array.from(buckets.entries()).sort((a, b) => String(a[0]).localeCompare(String(b[0]))).forEach(([assigneeName, bucket]) => {
+      const headerLine = lineOffset;
+      lines[headerLine] = [{ start: '0000-01-01', end: '9999-12-31', type: 'assignee-header' }];
+      const localLines = [];
+      bucket.forEach(g => {
+        g.assigneeHeaderLine = headerLine;
+        g.assigneeGroupName = assigneeName;
+        g.assigneeKpi = assigneeKpis.get(assigneeName) || { total: 0, progress: 0, overdue: 0, completed: 0 };
+        packGroupIntoLines(g, localLines, headerLine + 1);
+      });
+      localLines.forEach((ln, idx) => { lines[headerLine + 1 + idx] = ln; });
+      lineOffset = headerLine + 1 + Math.max(localLines.length, 1);
+    });
+  } else {
+    groups.forEach(g => packGroupIntoLines(g, lines, 0));
+  }
   const totalCalLanes = lines.length;
   const forceTextOnFirstDay = day => day === 1;
   const shouldShowCalendarText = (item, dateStr, isWeekStart, day) => dateStr === item.start || dateStr === item.end || isWeekStart || forceTextOnFirstDay(day) || dateStr === todayStr;
@@ -1246,17 +1294,35 @@ function renderCalendar(filteredTasks) {
         bar.style.paddingRight = '8px';
         bar.onclick = () => openTaskModal(item.parentId);
         bindGanttTooltip(bar, item.title, item.isSub
-          ? `[하위업무] 상위: ${escapeHTML(item.parentTitle)}<br>담당자: ${escapeHTML(item.assignee)}<br>기간: ${item.start} ~ ${item.end}<br>상태: ${getStatusKorean(item.status)}`
-          : `[본업무] 담당자: ${escapeHTML(item.assignee)}<br>기간: ${item.start} ~ ${item.end}<br>메모: ${escapeHTML(item.notes || '없음')}`);
+          ? `[하위업무] 상위: ${escapeHTML(item.parentTitle)}<br>담당자: ${escapeHTML(item.assignee)}<br>기간: ${item.start} ~ ${item.end}<br>상태: ${getStatusKorean(item.status)}<br>산업: ${escapeHTML(item.industry || 'AUTO')} · 유형: ${escapeHTML(item.taskType || 'GENERAL')}`
+          : `[본업무] 담당자: ${escapeHTML(item.assignee)}<br>기간: ${item.start} ~ ${item.end}<br>진척: ${item.progressPct ?? 0}% · 하위 ${item.subDone ?? 0}/${item.subCount ?? 0}<br>Risk: ${getTaskRiskInfo(item, todayStr).label}${getTaskRiskInfo(item, todayStr).delay ? ' D+' + getTaskRiskInfo(item, todayStr).delay : ''}<br>산업: ${escapeHTML(item.industry || 'AUTO')} · 유형: ${escapeHTML(item.taskType || 'GENERAL')}<br>메모: ${escapeHTML(item.notes || '없음')}`);
         if (showText) bar.innerHTML = `<span class="truncate">${barLabel(item)}</span>`;
         overlay.appendChild(bar);
       }
     };
 
+    if (calendarUxState.groupByAssignee) {
+      const renderedAssigneeLabels = new Set();
+      groups.forEach(g => {
+        if (g.assigneeHeaderLine == null || renderedAssigneeLabels.has(g.assigneeGroupName)) return;
+        renderedAssigneeLabels.add(g.assigneeGroupName);
+        const k = g.assigneeKpi || { total: 0, progress: 0, overdue: 0, completed: 0 };
+        for (let week = 0; week < weekCount; week++) {
+          const label = document.createElement('div');
+          label.className = 'absolute z-20 pointer-events-none rounded-md bg-slate-800/85 px-2 py-0.5 text-[10px] font-black text-white shadow-sm';
+          label.style.left = '4px';
+          label.style.top = `${week * rowHeight + rowDateHeight + g.assigneeHeaderLine * laneHeight + 1}px`;
+          label.style.maxWidth = 'calc(100% - 8px)';
+          label.textContent = `👤 ${g.assigneeGroupName} · 전체 ${k.total} · 진행 ${k.progress} · 지연 ${k.overdue} · 완료 ${k.completed}`;
+          overlay.appendChild(label);
+        }
+      });
+    }
+
     groups.forEach(g => {
       // Main task bar
       if (g.startDate <= lastDayStr && g.dueDate >= monthFirstStr) {
-        drawWeekFragment({ id: g.id, title: g.title, isSub: false, status: g.status, priority: g.priority, lane: g.globalLineStart, start: g.startDate, end: g.dueDate, parentId: g.id, assignee: g.assignee, notes: g.notes, dueDate: g.dueDate, subCount: (g.monthSubTasks || []).length });
+        drawWeekFragment({ id: g.id, title: g.title, isSub: false, status: g.status, priority: g.priority, industry: g.industry, taskType: g.taskType, lane: g.globalLineStart, start: g.startDate, end: g.dueDate, parentId: g.id, assignee: g.assignee, notes: g.notes, dueDate: g.dueDate, subCount: (g.monthSubTasks || []).length, subDone: (g.monthSubTasks || []).filter(st => normalizeStatus(st.status) === 'COMPLETED').length, progressPct: getTaskProgress(g) });
       }
       // Stable sub-task lane within the current month. Do not calculate by visible day; calculate once per month.
       if (showSubTaskBars) {
@@ -1290,6 +1356,21 @@ function renderCalendar(filteredTasks) {
     body.appendChild(tiles);
     const overlay = document.createElement('div');
     overlay.className = 'absolute inset-0 pointer-events-none';
+    if (calendarUxState.groupByAssignee) {
+      const renderedAssigneeLabels = new Set();
+      groups.forEach(g => {
+        if (g.assigneeHeaderLine == null || renderedAssigneeLabels.has(g.assigneeGroupName)) return;
+        renderedAssigneeLabels.add(g.assigneeGroupName);
+        const k = g.assigneeKpi || { total: 0, progress: 0, overdue: 0, completed: 0 };
+        const label = document.createElement('div');
+        label.className = 'absolute rounded-md bg-slate-800/85 px-2 py-0.5 text-[10px] font-black text-white shadow-sm';
+        label.style.left = '4px';
+        label.style.top = `${g.assigneeHeaderLine * rowHeight + 10}px`;
+        label.style.zIndex = 30;
+        label.textContent = `👤 ${g.assigneeGroupName} · 전체 ${k.total} · 진행 ${k.progress} · 지연 ${k.overdue} · 완료 ${k.completed}`;
+        overlay.appendChild(label);
+      });
+    }
     groups.forEach(g => {
       const startD = new Date(g.rangeStart.replace(/-/g, '/'));
       const endD = new Date(g.rangeEnd.replace(/-/g, '/'));
@@ -1349,6 +1430,27 @@ function renderCalendar(filteredTasks) {
   panel.className = 'grid grid-cols-2 md:grid-cols-4 gap-3';
   panel.innerHTML = `<div class="bg-white rounded-xl p-3 border"><div class="text-xs text-slate-400">월간 업무</div><div class="text-xl font-bold">${total}</div><div class="text-[10px] text-slate-400">진행 ${cats.PROGRESS.length} · 대기 ${cats.PENDING.length}</div></div><div class="bg-white rounded-xl p-3 border"><div class="text-xs text-slate-400">완료율</div><div class="text-xl font-bold">${Math.round(done / total * 100)}%</div><div class="text-[10px] text-slate-400">완료 ${done}/${total}</div></div><div class="bg-white rounded-xl p-3 border"><div class="text-xs text-slate-400">지연율</div><div class="text-xl font-bold text-rose-600">${Math.round(overdue / Math.max(total + subTotal, 1) * 100)}%</div><div class="text-[10px] text-slate-400">지연 ${overdue}/${total + subTotal}</div></div><div class="bg-white rounded-xl p-3 border"><div class="text-xs text-slate-400">하위 업무 완료</div><div class="text-xl font-bold">${subDone}/${subTotal}</div></div>`;
   grid.appendChild(panel);
+  const summaryGrid = document.createElement('div');
+  summaryGrid.className = 'grid grid-cols-1 lg:grid-cols-3 gap-3';
+  const assigneeSummary = {};
+  const industrySummary = {};
+  monthTasks.forEach(t => {
+    const a = t.assignee || '미지정';
+    assigneeSummary[a] = assigneeSummary[a] || { total: 0, overdue: 0, completed: 0 };
+    assigneeSummary[a].total += 1;
+    if (getEffectiveStatus(t, todayStr) === 'OVERDUE') assigneeSummary[a].overdue += 1;
+    if (getEffectiveStatus(t, todayStr) === 'COMPLETED') assigneeSummary[a].completed += 1;
+    const ind = detectIndustryKey(t);
+    industrySummary[ind] = (industrySummary[ind] || 0) + 1;
+  });
+  const topOverdue = [...monthTasks].filter(t => getEffectiveStatus(t, todayStr) === 'OVERDUE').sort((a,b) => getMaxDelayDays(b, todayStr) - getMaxDelayDays(a, todayStr)).slice(0, 5);
+  const assigneeRows = Object.entries(assigneeSummary).sort((a,b) => b[1].overdue - a[1].overdue || b[1].total - a[1].total).slice(0, 5);
+  const industryRows = Object.entries(industrySummary).sort((a,b) => b[1] - a[1]).slice(0, 6);
+  summaryGrid.innerHTML = `
+    <div class="rounded-xl border border-rose-100 bg-white p-3 shadow-sm"><div class="text-xs font-black text-rose-700">Top Risk</div><div class="mt-2 space-y-1">${topOverdue.length ? topOverdue.map(t => `<div class="truncate text-xs text-slate-600">🚨 ${escapeHTML(t.title)} · D+${getMaxDelayDays(t, todayStr)}</div>`).join('') : '<div class="text-xs text-emerald-600 font-bold">Risk 없음</div>'}</div></div>
+    <div class="rounded-xl border border-slate-100 bg-white p-3 shadow-sm"><div class="text-xs font-black text-slate-700">담당자별 요약</div><div class="mt-2 space-y-1">${assigneeRows.length ? assigneeRows.map(([name,k]) => `<div class="flex justify-between gap-2 text-xs"><span class="truncate text-slate-600">👤 ${escapeHTML(name)}</span><span class="font-bold text-slate-700">전체 ${k.total} · 지연 ${k.overdue} · 완료 ${k.completed}</span></div>`).join('') : '<div class="text-xs text-slate-400">데이터 없음</div>'}</div></div>
+    <div class="rounded-xl border border-slate-100 bg-white p-3 shadow-sm"><div class="text-xs font-black text-slate-700">산업별 요약</div><div class="mt-2 flex flex-wrap gap-1.5">${industryRows.length ? industryRows.map(([name,cnt]) => `<span class="rounded-lg bg-slate-50 px-2 py-1 text-[11px] font-bold text-slate-600 border border-slate-100">${escapeHTML(name)} ${cnt}</span>`).join('') : '<span class="text-xs text-slate-400">데이터 없음</span>'}</div></div>`;
+  grid.appendChild(summaryGrid);
   [
     { key: 'OVERDUE', label: '🚨 일정 초과 및 지연 상태', style: 'bg-rose-50/75 border-rose-100 text-rose-800' },
     { key: 'PROGRESS', label: '⚙️ 현재 적극 진행 중', style: 'bg-blue-50/75 border-blue-100 text-blue-800' },
@@ -1605,12 +1707,12 @@ function openTaskModal(id = null) {
   if (id) {
     const t = tasks.find(x => x.id === id); if (!t) return;
     if (title) title.textContent = '업무 상세 변경';
-    setVal('input-task-id', t.id); setVal('input-task-title', t.title || ''); setVal('input-task-assignee', t.assignee || ''); setVal('input-task-start', t.startDate || ''); setVal('input-task-due', t.dueDate || ''); setVal('input-task-priority', t.priority || 'NORMAL'); setVal('input-task-status', t.status || 'PENDING'); setVal('input-task-notes', t.notes || '');
+    setVal('input-task-id', t.id); setVal('input-task-title', t.title || ''); setVal('input-task-assignee', t.assignee || ''); setVal('input-task-start', t.startDate || ''); setVal('input-task-due', t.dueDate || ''); setVal('input-task-priority', t.priority || 'NORMAL'); setVal('input-task-status', t.status || 'PENDING'); setVal('input-task-industry', t.industry || 'AUTO'); setVal('input-task-type', t.taskType || 'GENERAL'); setVal('input-task-notes', t.notes || '');
     const subAssignee = document.getElementById('input-subtask-assignee'); if (subAssignee) subAssignee.placeholder = `담당자 (기본: ${t.assignee || '본 업무 담당자'})`;
     currentSubTasks = Array.isArray(t.subTasks) ? JSON.parse(JSON.stringify(t.subTasks)).map(st => ({ ...st, status: normalizeStatus(st.status) })) : [];
   } else {
     if (title) title.textContent = '새로운 업무 배정';
-    setVal('input-task-id', ''); setVal('input-task-start', getTodayStr()); setVal('input-task-due', getFutureDateStr(7));
+    setVal('input-task-id', ''); setVal('input-task-start', getTodayStr()); setVal('input-task-due', getFutureDateStr(7)); setVal('input-task-industry', 'AUTO'); setVal('input-task-type', 'GENERAL');
     const subAssignee = document.getElementById('input-subtask-assignee'); if (subAssignee) subAssignee.placeholder = '담당자 (선택)';
     currentSubTasks = [];
   }
@@ -1666,6 +1768,8 @@ async function handleTaskSubmit(e) {
     dueDate: due,
     priority: document.getElementById('input-task-priority').value,
     status: document.getElementById('input-task-status').value,
+    industry: document.getElementById('input-task-industry')?.value || 'AUTO',
+    taskType: document.getElementById('input-task-type')?.value || 'GENERAL',
     notes: document.getElementById('input-task-notes').value.trim(),
     subTasks: currentSubTasks.map(st => ({ ...st, status: normalizeStatus(st.status) }))
   };
@@ -1770,14 +1874,18 @@ function exportToJSON() {
   a.click();
 }
 function exportToCSV() {
-  let csv = '\uFEFF업무명,담당자,시작일,마감일,우선순위,상태,세부메모\n';
-  tasks.filter(t => t.trackerId === currentTrackerId).forEach(t => {
-    csv += `"${(t.title || '').replace(/"/g, '""')}","${(t.assignee || '').replace(/"/g, '""')}","${t.startDate || ''}","${t.dueDate || ''}","${getPriorityBadge(t.priority)}","${getStatusKorean(t.status)}","${(t.notes || '').replace(/"/g, '""')}"\n`;
+  const rows = [['rowType','parentTask','title','industry','taskType','assignee','startDate','dueDate','priority','status','progressPct','notes']];
+  tasks.filter(t => t.trackerId === currentTrackerId && !t.deleted).forEach(t => {
+    rows.push(['TASK','', t.title || '', t.industry || 'AUTO', t.taskType || 'GENERAL', t.assignee || '', t.startDate || '', t.dueDate || '', getPriorityBadge(t.priority), getStatusKorean(t.status), getTaskProgress(t), t.notes || '']);
+    (Array.isArray(t.subTasks) ? t.subTasks : []).forEach(st => {
+      rows.push(['SUBTASK', t.title || '', st.title || '', t.industry || 'AUTO', t.taskType || 'GENERAL', st.assignee || t.assignee || '', st.startDate || '', st.dueDate || '', '', getStatusKorean(normalizeStatus(st.status)), '', '']);
+    });
   });
+  const csv = '\uFEFF' + rows.map(row => row.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
   const a = document.createElement('a');
   a.href = url;
-  a.download = `export_${getTodayStr()}.csv`;
+  a.download = `bd_task_export_${getTodayStr()}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -1805,11 +1913,6 @@ function setCalMode(mode) {
       ? 'rounded-lg bg-white px-3.5 py-1.5 text-slate-800 shadow-sm transition'
       : 'rounded-lg px-3.5 py-1.5 text-slate-500 hover:text-slate-800 transition';
   });
-  const wrapper = document.getElementById('toggle-subtask-cal-wrapper');
-  if (wrapper) {
-    if (mode === 'DAY' || mode === 'MONTH') { wrapper.classList.remove('hidden'); wrapper.classList.add('inline-flex'); }
-    else { wrapper.classList.add('hidden'); wrapper.classList.remove('inline-flex'); }
-  }
   renderActiveViews();
 }
 async function ensureDefaultTrackersInFirestore() {
@@ -2030,7 +2133,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-cal-mode-day')?.addEventListener('click', () => setCalMode('DAY'));
   document.getElementById('btn-cal-mode-month')?.addEventListener('click', () => setCalMode('MONTH'));
   document.getElementById('btn-cal-mode-summary')?.addEventListener('click', () => setCalMode('SUMMARY'));
-  document.getElementById('cb-show-subtasks-cal')?.addEventListener('change', e => { isCalSubTaskVisible = e.target.checked; renderActiveViews(); });
   document.getElementById('btn-prev-month')?.addEventListener('click', () => { currentCalDate.setMonth(currentCalDate.getMonth() - 1); renderActiveViews(); });
   document.getElementById('btn-today-month')?.addEventListener('click', () => { currentCalDate = new Date(); renderActiveViews(); });
   document.getElementById('btn-next-month')?.addEventListener('click', () => { currentCalDate.setMonth(currentCalDate.getMonth() + 1); renderActiveViews(); });
