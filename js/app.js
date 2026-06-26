@@ -973,6 +973,8 @@ function renderCalendar(filteredTasks) {
   const weekdayHeader = document.getElementById('calendar-weekday-header');
   const titleEl = document.getElementById('calendar-month-year');
   const todayStr = getTodayStr();
+  const monthStartDate = new Date(year, month, 1);
+  const monthEndDate = new Date(year, month + 1, 0, 23, 59, 59);
   if (!grid) return;
   if (titleEl) titleEl.textContent = currentCalMode === 'MONTH' ? `${year}년 전체 Gantt 타임라인` : `${year}년 ${month + 1}월`;
 
@@ -988,14 +990,20 @@ function renderCalendar(filteredTasks) {
         return { id: st.id, title: st.title, startDate: ss > dd ? dd : ss, dueDate: dd, status: normalizeStatus(st.status), assignee: st.assignee || t.assignee || '미지정', parentId: t.id, parentTitle: t.title };
       })
     };
+    // Calendar lane calculation must use only the sub tasks relevant to the current view.
+    // DAY / SUMMARY: use only sub tasks overlapping the selected month to avoid wasting vertical space.
+    // MONTH(year Gantt): keep all sub tasks because the view spans the full year.
+    g.monthSubTasks = g.subTasks.filter(st => dateRangeOverlaps(st, monthStartDate, monthEndDate, todayStr));
+    const layoutSubTasks = currentCalMode === 'MONTH' ? g.subTasks : g.monthSubTasks;
     g.rangeStart = g.startDate; g.rangeEnd = g.dueDate;
-    g.subTasks.forEach(st => { if (st.startDate < g.rangeStart) g.rangeStart = st.startDate; if (st.dueDate > g.rangeEnd) g.rangeEnd = st.dueDate; });
+    layoutSubTasks.forEach(st => { if (st.startDate < g.rangeStart) g.rangeStart = st.startDate; if (st.dueDate > g.rangeEnd) g.rangeEnd = st.dueDate; });
     return g;
   }).sort((a, b) => a.order - b.order || a.rangeStart.localeCompare(b.rangeStart));
 
   const lines = [];
   groups.forEach(g => {
-    const need = isCalSubTaskVisible ? 1 + g.subTasks.length : 1;
+    const layoutSubTasks = currentCalMode === 'MONTH' ? g.subTasks : (g.monthSubTasks || []);
+    const need = isCalSubTaskVisible ? 1 + layoutSubTasks.length : 1;
     let startLine = 0;
     while (true) {
       let overlap = false;
@@ -1014,7 +1022,7 @@ function renderCalendar(filteredTasks) {
   const totalCalLanes = lines.length;
   const forceTextOnFirstDay = day => day === 1;
   const shouldShowCalendarText = (item, dateStr, isWeekStart, day) => dateStr === item.start || dateStr === item.end || isWeekStart || forceTextOnFirstDay(day) || dateStr === todayStr;
-  const addInvisibleCalendarSpacer = container => { const sp = document.createElement('div'); sp.className = 'calendar-lane-spacer min-h-[18px] invisible'; container.appendChild(sp); };
+  const addInvisibleCalendarSpacer = container => { const sp = document.createElement('div'); sp.className = 'calendar-lane-spacer min-h-[17px] invisible'; container.appendChild(sp); };
   const mainClass = item => getEffectiveStatus(item, todayStr) === 'OVERDUE' ? 'bg-rose-100 text-rose-800 border border-rose-200 font-semibold' : getEffectiveStatus(item, todayStr) === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : getEffectiveStatus(item, todayStr) === 'PROGRESS' ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-slate-200 text-slate-700';
   const subClass = item => normalizeStatus(item.status) === 'COMPLETED' ? 'bg-emerald-50/80 text-emerald-800 border border-dashed border-emerald-300' : isSubTaskOverdue(item, todayStr) ? 'bg-rose-50/90 text-rose-800 border border-dashed border-rose-300 font-semibold' : normalizeStatus(item.status) === 'PROGRESS' ? 'bg-blue-50/80 text-blue-800 border border-dashed border-blue-300' : 'bg-slate-50 text-slate-700 border border-dashed border-slate-300';
 
@@ -1034,11 +1042,13 @@ function renderCalendar(filteredTasks) {
       cell.className = `bg-white min-h-[44px] flex flex-col transition-colors border-r border-b border-slate-100 ${dateStr === todayStr ? 'bg-indigo-50/20' : 'hover:bg-slate-50'}`;
       cell.innerHTML = `<div class="p-1.5"><span class="inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${dateStr === todayStr ? 'bg-indigo-600 text-white shadow-sm' : dayOfWeek === 0 ? 'text-rose-500' : dayOfWeek === 6 ? 'text-blue-500' : 'text-slate-600'}">${day}</span></div>`;
       const taskContainer = document.createElement('div');
-      taskContainer.className = 'flex flex-col gap-0.5 px-1 pb-1';
+      // Compact stacking: no horizontal padding so weekly bar segments visually connect across days.
+      taskContainer.className = 'flex flex-col gap-0 px-0 pb-1';
       const items = [];
       groups.forEach(g => {
         if (dateStr >= g.startDate && dateStr <= g.dueDate) items.push({ id: g.id, title: g.title, isSub: false, status: g.status, lane: g.globalLineStart, start: g.startDate, end: g.dueDate, parentId: g.id, assignee: g.assignee, notes: g.notes, dueDate: g.dueDate });
-        if (isCalSubTaskVisible) g.subTasks.forEach((st, idx) => { if (dateStr >= st.startDate && dateStr <= st.dueDate) items.push({ ...st, isSub: true, lane: g.globalLineStart + 1 + idx, start: st.startDate, end: st.dueDate, parentId: g.id, parentTitle: g.title }); });
+        const daySubTasks = g.monthSubTasks || [];
+        if (isCalSubTaskVisible) daySubTasks.forEach((st, idx) => { if (dateStr >= st.startDate && dateStr <= st.dueDate) items.push({ ...st, isSub: true, lane: g.globalLineStart + 1 + idx, start: st.startDate, end: st.dueDate, parentId: g.id, parentTitle: g.title }); });
       });
       for (let lane = 0; lane < totalCalLanes; lane++) {
         const item = items.find(x => x.lane === lane);
@@ -1050,17 +1060,17 @@ function renderCalendar(filteredTasks) {
         const el = document.createElement('div');
         // Weekly continuous bar: render every active day so task flow continues across the week.
         // Text appears only on start/end/Sunday/1st/today; continuation days keep color but no label.
-        let shape = `calendar-bar-segment min-h-[18px] flex items-center shadow-sm ${item.isSub ? 'ml-2 border-dashed' : ''}`;
-        if (isStart || isWeekStart || forceTextOnFirstDay(day)) shape += ' rounded-l pl-1.5 pr-0';
-        else shape += ' rounded-none px-0 -ml-[1px]';
-        if (isEnd || isWeekEnd) shape += ' rounded-r pr-1.5';
+        let shape = `calendar-bar-segment min-h-[17px] w-[calc(100%+2px)] flex items-center shadow-sm ${item.isSub ? 'ml-1 border-dashed' : ''}`;
+        if (isStart || isWeekStart || forceTextOnFirstDay(day)) shape += ' rounded-l pl-1 pr-0 -mr-[1px]';
+        else shape += ' rounded-none px-0 -mx-[1px]';
+        if (isEnd || isWeekEnd) shape += ' rounded-r pr-1 -ml-[1px]';
         const elClassStatus = item.isSub ? subClass(item) : mainClass(item);
         el.className = `calendar-task-chip text-[10px] leading-tight font-semibold cursor-pointer transition-all hover:scale-[1.02] ${elClassStatus} ${shape}`;
         el.onclick = () => openTaskModal(item.parentId);
         bindGanttTooltip(el, item.title, item.isSub ? `[하위업무] 상위: ${escapeHTML(item.parentTitle)}<br>담당자: ${escapeHTML(item.assignee)}<br>기간: ${item.start} ~ ${item.end}<br>상태: ${getStatusKorean(item.status)}` : `[본업무] 담당자: ${escapeHTML(item.assignee)}<br>기간: ${item.start} ~ ${item.end}<br>메모: ${escapeHTML(item.notes || '없음')}`);
         if (showText) {
           const txt = document.createElement('div');
-          txt.className = 'truncate w-full whitespace-nowrap z-20 px-1';
+          txt.className = 'truncate w-full whitespace-nowrap z-20 px-0.5';
           const marker = isStart && isEnd ? '' : isStart ? '▶ ' : isEnd ? '■ ' : '';
           txt.innerHTML = item.isSub
             ? `${marker}${isSubTaskOverdue(item, todayStr) ? '🚨' : getStatusIcon(item.status)} ↳ 👤 ${escapeHTML(item.assignee)} | ${escapeHTML(item.title)}`
