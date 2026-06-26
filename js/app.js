@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow app.js v20260626-assignee-modal-tableux loaded');
+console.info('Smart Task Flow app.js v20260626-clean-detail-riskfix loaded');
 // --- UX optimization globals: must be declared before helper functions ---
 var focusState = window.focusState || { riskOnly: false, mineOnly: false, highOnly: false };
 window.focusState = focusState;
@@ -220,10 +220,11 @@ function updateDashboardCompactControls() {
   if (dashBtn) dashBtn.textContent = isDashboardCollapsed ? 'KPI 펼치기' : 'KPI 접기';
 }
 function toggleRiskPanelCompact() {
-  window.isRiskPanelCollapsed = !window.isRiskPanelCollapsed;
+  window.isRiskPanelCollapsed = !(window.isRiskPanelCollapsed === true);
   isRiskPanelCollapsed = window.isRiskPanelCollapsed;
   updateDashboardCompactControls();
-  renderActiveViews();
+  const scope = tasks.filter(t => t.trackerId === currentTrackerId && !t.deleted);
+  renderRiskDashboard(scope);
 }
 function toggleDashboardCompact() {
   window.isDashboardCollapsed = !window.isDashboardCollapsed;
@@ -832,6 +833,22 @@ function renderStats() {
   renderRiskDashboard(scope);
   updateDashboardCompactControls();
 }
+
+function buildTaskDetailCellHTML(t, subTasks, isExpanded, doneSubs, progressPct, bottleneckHTML) {
+  const subInfo = subTasks.length ? ` · 하위 업무 ${doneSubs}/${subTasks.length}` : '';
+  return `
+      <td class="px-4 py-4 align-top"><div class="flex items-start gap-2">
+        <button type="button" class="btn-toggle-subtasks mt-1 shrink-0 text-slate-400 hover:text-indigo-600 ${subTasks.length ? '' : 'invisible'}" data-id="${t.id}">${subTasks.length ? (isExpanded ? '▼' : '▶') : ''}</button>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2">
+            <span class="inline-edit-title block min-w-0 max-w-full rounded px-1 -mx-1 text-base font-black leading-snug text-slate-900 hover:bg-indigo-50 focus:bg-white focus:ring-2 focus:ring-indigo-100 outline-none" contenteditable="true" spellcheck="false" data-id="${t.id}" title="클릭해서 업무명을 바로 수정">${escapeHTML(t.title)}</span>
+          </div>
+          <div class="mt-1 text-xs text-slate-400">${escapeHTML(t.notes || '추가 지침 없음')} · 진척 ${progressPct}%${subInfo}</div>
+          ${bottleneckHTML}
+        </div>
+      </div></td>`;
+}
+
 function subTaskStatusSelect(parentId, subId, status) {
   status = normalizeStatus(status);
   return `
@@ -886,7 +903,7 @@ function renderTable(filtered) {
     tr.innerHTML = `
       <td class="px-2 py-4 text-center text-slate-400"><button type="button" class="btn-order-up block mx-auto hover:text-indigo-600" data-id="${t.id}">▲</button><button type="button" class="btn-order-down block mx-auto hover:text-indigo-600" data-id="${t.id}">▼</button></td>
       <td class="px-3 py-4 text-center"><input type="checkbox" class="cb-task rounded border-slate-300 cursor-pointer text-indigo-600 focus:ring-indigo-500" data-id="${t.id}" ${checked ? 'checked' : ''}></td>
-      <td class="px-4 py-4 align-top"><div class="flex items-start gap-2"><button type="button" class="btn-toggle-subtasks mt-1 shrink-0 text-slate-400 hover:text-indigo-600 ${subTasks.length ? '' : 'invisible'}" data-id="${t.id}">${subTasks.length ? (isExpanded ? '▼' : '▶') : ''}</button><div class="min-w-0 flex-1"><div class="flex items-center gap-2"><span class="inline-edit-title block min-w-0 max-w-full rounded px-1 -mx-1 text-base font-black leading-snug text-slate-900 hover:bg-indigo-50 focus:bg-white focus:ring-2 focus:ring-indigo-100 outline-none" contenteditable="true" spellcheck="false" data-id="${t.id}" title="클릭해서 업무명을 바로 수정">${escapeHTML(t.title)}</span></div><div class="mt-2 flex flex-col items-start gap-1">${subTasks.length ? `<span class="rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600">하위 업무 ${doneSubs}/${subTasks.length}</span>` : ''}${subOverdueBadge}${getEffectiveStatusBadge(effectiveStatus)}${riskBadge}</div><div class="mt-1 text-xs text-slate-400">${escapeHTML(t.notes || '추가 지침 없음')} · 진척 ${progressPct}%</div>${bottleneckHTML}</div></div></td>
+      ${buildTaskDetailCellHTML(t, subTasks, isExpanded, doneSubs, progressPct, bottleneckHTML)}
       <td class="px-3 py-4 align-top"><div class="inline-flex items-center gap-1.5"><span class="inline-flex h-7 w-7 items-center justify-center rounded-full ${getAvatarStyle(t.assignee)} text-xs font-bold">${escapeHTML((t.assignee || 'U').charAt(0))}</span><span class="font-semibold">${escapeHTML(t.assignee || '미지정')}</span></div></td>
       <td class="px-3 py-4 align-top"><div class="text-xs font-semibold text-slate-600">${t.startDate ? t.startDate.substring(5) : '미정'} ~ ${(t.dueDate || '').substring(5)}</div><span class="mt-1 inline-flex rounded-lg border px-2 py-1 text-xs ${timeline.class}">${timeline.text}</span></td>
       <td class="px-2 py-4 text-center align-top"><span class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold">${getPriorityBadge(t.priority)}</span></td>
@@ -1513,6 +1530,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('input-import-json')?.addEventListener('change', importFromJSON);
   document.getElementById('btn-tracker-dropdown')?.addEventListener('click', e => { e.stopPropagation(); document.getElementById('tracker-dropdown-menu')?.classList.toggle('hidden'); });
   document.addEventListener('click', e => { if (!e.target.closest('#tracker-dropdown-container')) document.getElementById('tracker-dropdown-menu')?.classList.add('hidden'); });
+  document.addEventListener('click', e => { if (e.target.closest('#btn-toggle-risk-panel')) { e.preventDefault(); toggleRiskPanelCompact(); } });
   document.getElementById('btn-create-tracker-open')?.addEventListener('click', () => openTrackerModal());
   document.getElementById('btn-edit-tracker-open')?.addEventListener('click', () => openTrackerModal(currentTrackerId));
   document.querySelectorAll('.filter-card').forEach(card => card.addEventListener('click', () => { const status = card.getAttribute('data-status'); const el = document.getElementById('filter-status'); if (el) el.value = status; renderActiveViews(); }));
