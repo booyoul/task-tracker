@@ -1,0 +1,157 @@
+console.info('Smart Task Flow date-risk-utils.js v20260626-module-split-phase2-utils loaded');
+// Date, risk, status, progress, and industry helper functions.
+// Loaded after state.js and before schema-service.js / app.js.
+function detectIndustryKey(item) {
+  if (item?.industry && item.industry !== 'AUTO') return String(item.industry).toUpperCase();
+  const s = `${item?.title || ''} ${item?.notes || ''} ${item?.parentTitle || ''}`.toLowerCase();
+  if (/pharma|bio|healthcare|제약|바이오|헬스케어/.test(s)) return 'PHARMA';
+  if (/f&b|food|beverage|식품|음료/.test(s)) return 'FNB';
+  if (/semi|semiconductor|반도체/.test(s)) return 'SEMI';
+  if (/display|디스플레이/.test(s)) return 'DISPLAY';
+  if (/oil|gas|o&g|정유|가스/.test(s)) return 'OILGAS';
+  if (/chemical|petrochemical|화학|석유화학/.test(s)) return 'CHEM';
+  if (/ship|marine|조선|선박/.test(s)) return 'SHIP';
+  if (/building|commercial|빌딩|건물/.test(s)) return 'BUILDING';
+  return 'GENERAL';
+}
+function getIndustryBarClass(item, isSub = false) {
+  const map = {
+    PHARMA: isSub ? 'bg-violet-50 text-violet-800 border border-violet-200' : 'bg-violet-100 text-violet-900 border border-violet-200',
+    FNB: isSub ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-emerald-100 text-emerald-900 border border-emerald-200',
+    SEMI: isSub ? 'bg-sky-50 text-sky-800 border border-sky-200' : 'bg-sky-100 text-sky-900 border border-sky-200',
+    DISPLAY: isSub ? 'bg-cyan-50 text-cyan-800 border border-cyan-200' : 'bg-cyan-100 text-cyan-900 border border-cyan-200',
+    OILGAS: isSub ? 'bg-orange-50 text-orange-800 border border-orange-200' : 'bg-orange-100 text-orange-900 border border-orange-200',
+    CHEM: isSub ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-amber-100 text-amber-900 border border-amber-200',
+    SHIP: isSub ? 'bg-blue-50 text-blue-800 border border-blue-200' : 'bg-blue-100 text-blue-900 border border-blue-200',
+    BUILDING: isSub ? 'bg-slate-50 text-slate-700 border border-slate-200' : 'bg-slate-200 text-slate-800 border border-slate-300',
+    GENERAL: isSub ? 'bg-indigo-50 text-indigo-800 border border-indigo-200' : 'bg-indigo-100 text-indigo-900 border border-indigo-200'
+  };
+  return map[detectIndustryKey(item)] || map.GENERAL;
+}
+
+// This app.js intentionally relies on state.js for global state, getTodayStr(), getFutureDateStr(), escapeHTML(), and AVATAR_COLORS.
+
+function getStatusKorean(status) {
+  return ({ PENDING: '진행 대기', PROGRESS: '진행 중', COMPLETED: '완료됨', OVERDUE: '기한 초과' })[status] || '전체';
+}
+function getPriorityBadge(priority) {
+  if (priority === 'HIGH') return '높음';
+  if (priority === 'NORMAL') return '보통';
+  return '낮음';
+}
+function getStatusIcon(status) {
+  if (status === 'COMPLETED') return '✅';
+  if (status === 'PROGRESS') return '⚙️';
+  return '⌛';
+}
+function normalizeStatus(status) {
+  return ['PENDING', 'PROGRESS', 'COMPLETED'].includes(status) ? status : 'PENDING';
+}
+function getAvatarStyle(name) {
+  if (!name || !Array.isArray(AVATAR_COLORS)) return 'bg-slate-100 text-slate-700';
+  let sum = 0;
+  String(name).split('').forEach(ch => sum += ch.charCodeAt(0));
+  return AVATAR_COLORS[sum % AVATAR_COLORS.length];
+}
+function getDelayDays(dueStr, todayStr = getTodayStr()) {
+  if (!dueStr) return 0;
+  const diff = Math.ceil((new Date(String(dueStr).replace(/-/g, '/')) - new Date(todayStr.replace(/-/g, '/'))) / 86400000);
+  return diff < 0 ? Math.abs(diff) : 0;
+}
+function getRiskLevelByDelay(days) {
+  if (days >= 7) return 'CRITICAL';
+  if (days >= 3) return 'HIGH';
+  if (days >= 1) return 'LOW';
+  return 'NONE';
+}
+function getRiskLabel(level) {
+  return ({ CRITICAL: '긴급', HIGH: '높음', LOW: '주의', NONE: '정상' })[level] || '정상';
+}
+function getRiskClass(level) {
+  return ({
+    CRITICAL: 'bg-red-100 text-red-800 border-red-200 font-black',
+    HIGH: 'bg-rose-50 text-rose-700 border-rose-100 font-bold',
+    LOW: 'bg-amber-50 text-amber-700 border-amber-200 font-semibold',
+    NONE: 'bg-slate-100 text-slate-700 border-slate-200'
+  })[level] || 'bg-slate-100 text-slate-700 border-slate-200';
+}
+function getTimelineStatus(dueStr, status) {
+  if (normalizeStatus(status) === 'COMPLETED') return { text: '완료됨', level: 'NONE', class: 'bg-emerald-50 text-emerald-700 border-emerald-100' };
+  const today = getTodayStr();
+  const due = dueStr || today;
+  const diff = Math.ceil((new Date(String(due).replace(/-/g, '/')) - new Date(today.replace(/-/g, '/'))) / 86400000);
+  if (diff < 0) {
+    const level = getRiskLevelByDelay(Math.abs(diff));
+    return { text: `기한 초과 (D+${Math.abs(diff)})`, level, class: getRiskClass(level) };
+  }
+  if (diff === 0) return { text: '오늘 마감', level: 'DUE_TODAY', class: 'bg-amber-50 text-amber-700 border-amber-200 font-semibold' };
+  if (diff <= 3) return { text: `임박 D-${diff}`, level: 'DUE_SOON', class: 'bg-orange-50 text-orange-700 border-orange-200 font-semibold' };
+  return { text: `D-${diff}`, level: 'NONE', class: 'bg-slate-100 text-slate-700 border-slate-200' };
+}
+
+function isSubTaskOverdue(st, todayStr = getTodayStr()) {
+  return !!st && normalizeStatus(st.status) !== 'COMPLETED' && !!st.dueDate && String(st.dueDate) < todayStr;
+}
+function countOverdueSubTasks(task, todayStr = getTodayStr()) {
+  return (Array.isArray(task?.subTasks) ? task.subTasks : []).filter(st => isSubTaskOverdue(st, todayStr)).length;
+}
+function isMainTaskOverdue(task, todayStr = getTodayStr()) {
+  return !!task && normalizeStatus(task.status) !== 'COMPLETED' && !!task.dueDate && String(task.dueDate) < todayStr;
+}
+function isTaskOverdueEffective(task, todayStr = getTodayStr()) {
+  return isMainTaskOverdue(task, todayStr) || countOverdueSubTasks(task, todayStr) > 0;
+}
+function countTaskOverdueUnits(task, todayStr = getTodayStr()) {
+  return (isMainTaskOverdue(task, todayStr) ? 1 : 0) + countOverdueSubTasks(task, todayStr);
+}
+function getSubTaskTimelineStatus(st, todayStr = getTodayStr()) {
+  return getTimelineStatus(st?.dueDate || todayStr, normalizeStatus(st?.status));
+}
+
+function getMaxDelayDays(task, todayStr = getTodayStr()) {
+  const mainDelay = isMainTaskOverdue(task, todayStr) ? getDelayDays(task.dueDate, todayStr) : 0;
+  const subDelay = (Array.isArray(task?.subTasks) ? task.subTasks : [])
+    .filter(st => isSubTaskOverdue(st, todayStr))
+    .reduce((max, st) => Math.max(max, getDelayDays(st.dueDate, todayStr)), 0);
+  return Math.max(mainDelay, subDelay);
+}
+function getTaskRiskInfo(task, todayStr = getTodayStr()) {
+  const delay = getMaxDelayDays(task, todayStr);
+  const level = getRiskLevelByDelay(delay);
+  return { delay, level, label: getRiskLabel(level), class: getRiskClass(level) };
+}
+function getEffectiveStatus(task, todayStr = getTodayStr()) {
+  const status = normalizeStatus(task?.status);
+  const subs = Array.isArray(task?.subTasks) ? task.subTasks : [];
+  if (status === 'COMPLETED') return 'COMPLETED';
+  if (isTaskOverdueEffective(task, todayStr)) return 'OVERDUE';
+  if (subs.length && subs.every(st => normalizeStatus(st.status) === 'COMPLETED')) return 'COMPLETED';
+  if (status === 'PROGRESS' || subs.some(st => ['PROGRESS', 'COMPLETED'].includes(normalizeStatus(st.status)))) return 'PROGRESS';
+  return status;
+}
+function getTaskProgress(task) {
+  const subs = Array.isArray(task?.subTasks) ? task.subTasks : [];
+  if (!subs.length) return normalizeStatus(task?.status) === 'COMPLETED' ? 100 : normalizeStatus(task?.status) === 'PROGRESS' ? 50 : 0;
+  const done = subs.filter(st => normalizeStatus(st.status) === 'COMPLETED').length;
+  return Math.round(done / subs.length * 100);
+}
+function getBottleneckSubTask(task, todayStr = getTodayStr()) {
+  const subs = (Array.isArray(task?.subTasks) ? task.subTasks : []).filter(st => normalizeStatus(st.status) !== 'COMPLETED');
+  if (!subs.length) return null;
+  return [...subs].sort((a, b) => {
+    const ad = isSubTaskOverdue(a, todayStr) ? -getDelayDays(a.dueDate, todayStr) : 0;
+    const bd = isSubTaskOverdue(b, todayStr) ? -getDelayDays(b.dueDate, todayStr) : 0;
+    if (ad !== bd) return ad - bd;
+    return String(a.dueDate || '9999-12-31').localeCompare(String(b.dueDate || '9999-12-31'));
+  })[0];
+}
+function hasDueSoonRisk(task, todayStr = getTodayStr(), days = 3) {
+  const inRange = d => !!d && String(d) >= todayStr && String(d) <= getFutureDateStr(days);
+  return normalizeStatus(task?.status) !== 'COMPLETED' && (inRange(task?.dueDate) || (Array.isArray(task?.subTasks) ? task.subTasks : []).some(st => normalizeStatus(st.status) !== 'COMPLETED' && inRange(st.dueDate)));
+}
+function getEffectiveStatusBadge(status) {
+  const s = status === 'OVERDUE' ? 'OVERDUE' : normalizeStatus(status);
+  const cls = s === 'OVERDUE' ? 'bg-rose-50 text-rose-700 border-rose-100' : s === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : s === 'PROGRESS' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-amber-50 text-amber-700 border-amber-100';
+  return `<span class="rounded-lg border px-2 py-1 text-[10px] font-bold ${cls}">운영상태: ${getStatusKorean(s)}</span>`;
+}
+
