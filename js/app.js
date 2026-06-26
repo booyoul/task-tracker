@@ -1084,6 +1084,10 @@ function ensureUXToolbar() {
   updateFocusButtons();
   updateBulkActionBar();
 }
+
+// === Phase 12/13 Render Orchestration Override ===
+function renderActiveViews(){ensureAdvancedFilterOptions();ensureUXToolbar();if(typeof focusState==='undefined')window.focusState=focusState={riskOnly:false,mineOnly:false,highOnly:false};if(typeof UX_STORAGE_KEYS==='undefined')window.UX_STORAGE_KEYS=UX_STORAGE_KEYS={myAssignee:'flow_my_assignee_name'};updateFocusButtons();updateAssigneeMultiSelect();updateBulkActionBar();const filtered=getFilteredTasks();const fStatus=document.getElementById('filter-status')?.value||'ALL';document.querySelectorAll('.filter-card').forEach(c=>c.classList.remove('ring-2','ring-indigo-600','bg-indigo-50/10'));document.getElementById(`card-${['ALL','PENDING','PROGRESS','COMPLETED','OVERDUE'].includes(fStatus)?fStatus:'OVERDUE'}`)?.classList.add('ring-2','ring-indigo-600','bg-indigo-50/10');applyCompactDashboardStyles();const mode=currentViewMode==='CALENDAR'?'CALENDAR':currentViewMode==='KANBAN'?'KANBAN':'TABLE';setViewVisibility(mode);updateViewToggleButtons(mode);if(mode==='CALENDAR'){renderCalendar(filtered);return;}if(mode==='KANBAN'){if(typeof renderKanbanView==='function')renderKanbanView(filtered);return;}renderTable(filtered);renderMobileCards(filtered);}
+
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof window.bootstrapApp === 'function') {
     window.bootstrapApp();
