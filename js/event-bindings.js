@@ -17,8 +17,8 @@ function initEventBindings(){
   document.getElementById('btn-create-tracker-open')?.addEventListener('click',()=>window.openTrackerModal?.());
   document.getElementById('btn-edit-tracker-open')?.addEventListener('click',()=>window.openTrackerModal?.(currentTrackerId));
   document.querySelectorAll('.filter-card').forEach(card=>card.addEventListener('click',()=>{const status=card.getAttribute('data-status');const el=document.getElementById('filter-status');if(el)el.value=status;renderActiveViews();}));
-  ['filter-search','filter-start-date','filter-end-date'].forEach(id=>document.getElementById(id)?.addEventListener('input',renderActiveViews));
-  ['filter-status','filter-priority','filter-assignee'].forEach(id=>document.getElementById(id)?.addEventListener('change',renderActiveViews));
+  ['filter-search','filter-start-month','filter-end-month'].forEach(id=>document.getElementById(id)?.addEventListener('input',renderActiveViews));
+  ['filter-status','filter-priority','filter-assignee','filter-start-month','filter-end-month'].forEach(id=>document.getElementById(id)?.addEventListener('change',renderActiveViews));
   document.getElementById('btn-reset-filters')?.addEventListener('click',resetFilters);
   document.getElementById('checkbox-select-all')?.addEventListener('change',toggleSelectAll);
   document.getElementById('task-table-body')?.addEventListener('click',handleTableClick);
@@ -49,6 +49,46 @@ function initEventBindings(){
   document.getElementById('btn-cancel-confirm')?.addEventListener('click',()=>window.closeConfirmModal?.());
   document.getElementById('btn-action-confirm')?.addEventListener('click',()=>{if(confirmActionCb)confirmActionCb();});
   document.addEventListener('click',e=>{const statusBtn=e.target.closest('.mobile-status-btn');if(statusBtn){e.preventDefault();e.stopPropagation();updateTaskStatus(statusBtn.dataset.id,statusBtn.dataset.status);return;}const btn=e.target.closest('button');if(!btn)return;if(btn.id==='btn-focus-risk')toggleFocusMode('riskOnly');else if(btn.id==='btn-focus-high')toggleFocusMode('highOnly');else if(btn.id==='btn-open-assignee-modal')openAssigneeModal();else if(btn.id==='btn-clear-assignee-filter')clearAssigneeMultiSelect();else if(btn.id==='bulk-change-status')bulkChangeStatus();else if(btn.id==='bulk-change-assignee')bulkChangeAssignee();else if(btn.id==='bulk-change-due')bulkChangeDueDate();else if(btn.id==='bulk-clear-selection')clearSelection();});
+  
+  // Backdrop click listeners to close modals
+  document.getElementById('modal-task')?.addEventListener('click', e => {
+    if (e.target.closest('#modal-task .inline-block') === null) {
+      window.closeModal?.();
+    }
+  });
+  document.getElementById('modal-tracker')?.addEventListener('click', e => {
+    if (e.target.closest('#modal-tracker .inline-block') === null) {
+      window.closeTrackerModal?.();
+    }
+  });
+  document.getElementById('modal-confirm')?.addEventListener('click', e => {
+    if (e.target.closest('#modal-confirm .inline-block') === null) {
+      window.closeConfirmModal?.();
+    }
+  });
+
+  // ESC key listener to close modals
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      const modalTask = document.getElementById('modal-task');
+      if (modalTask && !modalTask.classList.contains('hidden')) {
+        window.closeModal?.();
+      }
+      const modalTracker = document.getElementById('modal-tracker');
+      if (modalTracker && !modalTracker.classList.contains('hidden')) {
+        window.closeTrackerModal?.();
+      }
+      const modalConfirm = document.getElementById('modal-confirm');
+      if (modalConfirm && !modalConfirm.classList.contains('hidden')) {
+        window.closeConfirmModal?.();
+      }
+      const modalAssignee = document.getElementById('assignee-filter-modal');
+      if (modalAssignee && !modalAssignee.classList.contains('hidden')) {
+        window.closeAssigneeModal?.();
+      }
+    }
+  });
+
   window.addEventListener('resize',()=>setViewVisibility(currentViewMode==='CALENDAR'?'CALENDAR':currentViewMode==='KANBAN'?'KANBAN':'TABLE'));
   window.addEventListener('beforeunload',()=>{if(typeof unsubscribeTasks==='function')unsubscribeTasks();if(typeof unsubscribeTrackers==='function')unsubscribeTrackers();});
 }

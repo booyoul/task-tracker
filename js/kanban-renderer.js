@@ -3,10 +3,10 @@ console.info('Smart Task Flow kanban-renderer.js v20260626-final-stable loaded')
 
 function getKanbanColumns(){
   return [
-    {key:'PENDING',title:'Backlog',hint:'대기/준비 업무',color:'amber'},
-    {key:'PROGRESS',title:'In Progress',hint:'진행 중 업무',color:'blue'},
-    {key:'CLOSING',title:'Closing Focus',hint:'High/Risk 집중',color:'rose'},
-    {key:'COMPLETED',title:'Completed',hint:'완료 업무',color:'emerald'}
+    {key:'PENDING',title:'대기',hint:'대기/준비 업무',color:'amber'},
+    {key:'PROGRESS',title:'진행 중',hint:'진행 중 업무',color:'blue'},
+    {key:'CLOSING',title:'집중 관리',hint:'High/Risk 집중',color:'rose'},
+    {key:'COMPLETED',title:'완료',hint:'완료 업무',color:'emerald'}
   ];
 }
 function getKanbanBucket(t,today){
@@ -34,7 +34,7 @@ function buildKanbanCard(t,today){
     <div class="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] font-bold">
       <span class="rounded-full bg-slate-50 px-2 py-1 text-slate-500">👤 ${escapeHTML(t.assignee||'미지정')}</span>
       <span class="rounded-full bg-slate-50 px-2 py-1 text-slate-500">📅 ${(t.dueDate||'').substring(5)||'미정'}</span>
-      <span class="rounded-full ${(t.priority==='HIGH')?'bg-rose-50 text-rose-700':'bg-amber-50 text-amber-700'} px-2 py-1">${t.priority==='HIGH'?'High':'Normal'}</span>
+      <span class="rounded-full ${(t.priority==='HIGH')?'bg-rose-50 text-rose-700':'bg-amber-50 text-amber-700'} px-2 py-1">${t.priority==='HIGH'?'높음':'보통'}</span>
     </div>
     <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100"><div class="h-full ${eff==='COMPLETED'?'bg-emerald-500':eff==='PROGRESS'?'bg-blue-500':'bg-amber-400'}" style="width:${pct}%"></div></div>
     <div class="mt-2 flex items-center justify-between text-[11px] text-slate-400"><span>진척 ${pct}%</span><span>하위 ${done}/${subs.length}</span></div>
@@ -62,7 +62,7 @@ function renderKanbanView(filtered){
   const risk=list.filter(t=>isTaskOverdueEffective(t,today)||['HIGH','CRITICAL'].includes(getTaskRiskInfo(t,today).level)).length;
   const completed=list.filter(t=>getEffectiveStatus(t,today)==='COMPLETED').length;
   const pct=total?Math.round(completed/total*100):0;
-  container.insertAdjacentHTML('beforeend',`<section class="mb-3 rounded-3xl border border-slate-100 bg-white p-4 shadow-sm"><div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"><div><div class="text-[11px] font-black uppercase tracking-wide text-slate-400">BD Pipeline Kanban</div><div class="text-xl font-black text-slate-900">업무 흐름 관리</div></div><div class="grid grid-cols-3 gap-2 text-center text-xs font-black sm:flex sm:text-left"><div class="rounded-2xl bg-slate-50 px-3 py-2"><div class="text-slate-400">Total</div><div class="text-slate-900">${total}</div></div><div class="rounded-2xl bg-rose-50 px-3 py-2"><div class="text-rose-400">Risk</div><div class="text-rose-700">${risk}</div></div><div class="rounded-2xl bg-emerald-50 px-3 py-2"><div class="text-emerald-400">Done</div><div class="text-emerald-700">${pct}%</div></div></div></div></section>`);
+  container.insertAdjacentHTML('beforeend',`<section class="mb-3 rounded-3xl border border-slate-100 bg-white p-4 shadow-sm"><div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"><div><div class="text-[11px] font-black uppercase tracking-wide text-slate-400">업무 흐름 칸반</div><div class="text-xl font-black text-slate-900">업무 흐름 관리</div></div><div class="grid grid-cols-3 gap-2 text-center text-xs font-black sm:flex sm:text-left"><div class="rounded-2xl bg-slate-50 px-3 py-2"><div class="text-slate-400">전체</div><div class="text-slate-900">${total}</div></div><div class="rounded-2xl bg-rose-50 px-3 py-2"><div class="text-rose-400">위험</div><div class="text-rose-700">${risk}</div></div><div class="rounded-2xl bg-emerald-50 px-3 py-2"><div class="text-emerald-400">달성률</div><div class="text-emerald-700">${pct}%</div></div></div></div></section>`);
   const board=document.createElement('div');
   board.className='grid grid-cols-1 gap-3 lg:grid-cols-4';
   board.innerHTML=cols.map(col=>`<section class="min-h-[220px] rounded-3xl border p-3 ${kanbanTone(col.color)}"><div class="mb-3 flex items-center justify-between gap-2"><div><div class="text-sm font-black text-slate-800">${col.title}</div><div class="text-[11px] font-semibold text-slate-400">${col.hint}</div></div><span class="rounded-full px-2 py-1 text-xs font-black ${kanbanBadge(col.color)}">${col.tasks.length}</span></div><div class="space-y-2">${col.tasks.length?col.tasks.map(t=>buildKanbanCard(t,today)).join(''):'<div class="rounded-2xl border border-dashed border-slate-200 bg-white/60 p-4 text-center text-xs font-bold text-slate-400">해당 업무 없음</div>'}</div></section>`).join('');

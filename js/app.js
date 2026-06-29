@@ -360,6 +360,8 @@ function closeAssigneeModal() {
   const modal = document.getElementById('assignee-filter-modal');
   if (modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
 }
+window.openAssigneeModal = openAssigneeModal;
+window.closeAssigneeModal = closeAssigneeModal;
 function applyAssigneeModalSelection() {
   selectedAssigneeFilters = new Set(Array.from(document.querySelectorAll('#assignee-modal-list .assignee-modal-checkbox:checked')).map(cb => cb.value));
   window.selectedAssigneeFilters = selectedAssigneeFilters;
@@ -508,8 +510,8 @@ function showToast(msg, isSuccess = true) {
   }, 3500);
 }
 function getServerTimestamp() {
-  return (typeof firebase !== 'undefined' && firebase.firestore && firebase.firestore.FieldValue)
-    ? firebase.firestore.FieldValue.serverTimestamp()
+  return (typeof window.fs !== 'undefined' && window.fs.serverTimestamp)
+    ? window.fs.serverTimestamp()
     : new Date().toISOString();
 }
 function canWriteToFirestore() {
@@ -548,8 +550,8 @@ async function saveTrackerOrder() {
   const coll = getTrackersCollection();
   if (canWriteToFirestore() && coll) {
     try {
-      const batch = db.batch();
-      trackers.forEach((t, i) => batch.set(coll.doc(t.id), { order: i + 1, updatedAt: getServerTimestamp() }, { merge: true }));
+      const batch = window.fs.writeBatch(window.db);
+      trackers.forEach((t, i) => batch.set(window.fs.doc(coll, t.id), { order: i + 1, updatedAt: getServerTimestamp() }, { merge: true }));
       await batch.commit();
       markSaved();
     } catch (e) {
@@ -595,8 +597,21 @@ function getFilteredTasks() {
   const status = document.getElementById('filter-status')?.value || 'ALL';
   const priority = document.getElementById('filter-priority')?.value || 'ALL';
   const assignee = document.getElementById('filter-assignee')?.value || 'ALL';
-  const startDate = document.getElementById('filter-start-date')?.value || '';
-  const endDate = document.getElementById('filter-end-date')?.value || '';
+  const startMonthVal = document.getElementById('filter-start-month')?.value || '';
+  const endMonthVal = document.getElementById('filter-end-month')?.value || '';
+  
+  let filterStartDate = '';
+  let filterEndDate = '';
+  if (startMonthVal) {
+    const [yr, mn] = startMonthVal.split('-').map(Number);
+    filterStartDate = `${yr}-${String(mn).padStart(2, '0')}-01`;
+  }
+  if (endMonthVal) {
+    const [yr, mn] = endMonthVal.split('-').map(Number);
+    const lastDay = new Date(yr, mn, 0).getDate();
+    filterEndDate = `${yr}-${String(mn).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+  }
+  
   const today = getTodayStr();
   return tasks.filter(t => {
     if (t.deleted === true || t.trackerId !== currentTrackerId) return false;
@@ -619,8 +634,8 @@ function getFilteredTasks() {
     if (focusState.mineOnly && !isMineTask(t)) return false;
     if (focusState.highOnly && t.priority !== 'HIGH') return false;
     if (!isAssigneeFilterMatched(t)) return false;
-    if (startDate && (t.dueDate || today) < startDate) return false;
-    if (endDate && (t.startDate || today) > endDate) return false;
+    if (filterStartDate && (t.dueDate || today) < filterStartDate) return false;
+    if (filterEndDate && (t.startDate || today) > filterEndDate) return false;
     return true;
   });
 }
@@ -655,9 +670,13 @@ function updateTrackerUI() {
         <div class="text-xs font-bold text-slate-800">${escapeHTML(t.name)}</div>
         <div class="text-[10px] text-slate-400 truncate">${escapeHTML(t.desc || '상세 설명 없음')}</div>
       </button>
-      <div class="flex flex-col py-1 pr-1">
-        <button type="button" class="btn-tracker-up text-[10px] text-slate-400 hover:text-indigo-600">▲</button>
-        <button type="button" class="btn-tracker-down text-[10px] text-slate-400 hover:text-indigo-600">▼</button>
+      <div class="flex flex-col py-1 pr-1 justify-center">
+        <button type="button" class="btn-tracker-up text-slate-400 hover:text-indigo-600 p-0.5" title="위로 이동">
+          <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>
+        </button>
+        <button type="button" class="btn-tracker-down text-slate-400 hover:text-indigo-600 p-0.5" title="아래로 이동">
+          <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+        </button>
       </div>`;
     row.querySelector('.tracker-select').addEventListener('click', () => {
       currentTrackerId = t.id;
@@ -701,7 +720,9 @@ function buildTaskDetailCellHTML(t, subTasks, isExpanded, doneSubs, progressPct,
   const subInfo = subTasks.length ? ` · 하위 업무 ${doneSubs}/${subTasks.length}` : '';
   return `
       <td class="px-4 py-4 align-top"><div class="flex items-start gap-2">
-        <button type="button" class="btn-toggle-subtasks mt-1 shrink-0 text-slate-400 hover:text-indigo-600 ${subTasks.length ? '' : 'invisible'}" data-id="${t.id}">${subTasks.length ? (isExpanded ? '▼' : '▶') : ''}</button>
+        <button type="button" class="btn-toggle-subtasks mt-1.5 shrink-0 text-slate-400 hover:text-indigo-600 flex items-center justify-center ${subTasks.length ? '' : 'invisible'}" data-id="${t.id}" title="하위 업무 토글">
+          ${subTasks.length ? (isExpanded ? `<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>` : `<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>`) : ''}
+        </button>
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2">
             <span class="inline-edit-title block min-w-0 max-w-full rounded px-1 -mx-1 text-base font-black leading-snug text-slate-900 hover:bg-indigo-50 focus:bg-white focus:ring-2 focus:ring-indigo-100 outline-none" contenteditable="true" spellcheck="false" data-id="${t.id}" title="클릭해서 업무명을 바로 수정">${escapeHTML(t.title)}</span>
@@ -861,8 +882,8 @@ async function undoDelete() {
   const coll = getTasksCollection();
   if (canWriteToFirestore() && coll) {
     try {
-      const batch = db.batch();
-      last.items.forEach(t => { const { id, ...data } = t; batch.set(coll.doc(id), { ...data, deleted: false, deletedAt: null, updatedAt: getServerTimestamp() }, { merge: true }); });
+      const batch = window.fs.writeBatch(window.db);
+      last.items.forEach(t => { const { id, ...data } = t; batch.set(window.fs.doc(coll, id), { ...data, deleted: false, deletedAt: null, updatedAt: getServerTimestamp() }, { merge: true }); });
       await batch.commit();
     } catch (e) { showToast('Firebase 복원 실패', false); }
   }
@@ -901,7 +922,7 @@ function updateSelectAllState(totalVisible, totalSelected) {
 function updateBatchButton() { const btn = document.getElementById('btn-batch-delete'); if (btn) selectedTaskIds.size ? btn.classList.remove('hidden') : btn.classList.add('hidden'); updateBulkActionBar(); }
 function updateUndoButton() { const btn = document.getElementById('btn-undo'); if (btn) deletionHistory.length ? btn.classList.remove('hidden') : btn.classList.add('hidden'); }
 function resetFilters() {
-  ['filter-search', 'filter-start-date', 'filter-end-date'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['filter-search', 'filter-start-month', 'filter-end-month'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   ['filter-status', 'filter-priority', 'filter-assignee'].forEach(id => { const el = document.getElementById(id); if (el) el.value = 'ALL'; });
   renderActiveViews();
 }
@@ -949,6 +970,17 @@ function ensureKpiCollapsedSummary(section) {
   if (!summary) {
     summary = document.createElement('section');
     summary.id = 'kpi-collapsed-summary';
+    summary.addEventListener('click', e => {
+      const chip = e.target.closest('.kpi-compact-chip');
+      if (chip) {
+        const status = chip.getAttribute('data-status');
+        if (status) {
+          const el = document.getElementById('filter-status');
+          if (el) el.value = status;
+          renderActiveViews();
+        }
+      }
+    });
     section.insertAdjacentElement('beforebegin', summary);
   }
   return summary;
@@ -992,16 +1024,22 @@ function applyCompactDashboardStyles() {
   if (!section) return;
   section.id = section.id || 'kpi-dashboard-section';
   const summary = ensureKpiCollapsedSummary(section);
+
   if (isDashboardCollapsed) {
     const k = getKpiCompactValues();
     section.className = 'hidden';
     summary.className = 'mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-sm';
+    
+    const currentStatus = document.getElementById('filter-status')?.value || 'ALL';
+    const activeClass = (status) => currentStatus === status ? 'ring-2 ring-indigo-600 ring-offset-1 scale-[1.02]' : '';
+
     summary.innerHTML = `
-      <span class="text-[11px] font-black uppercase tracking-wide text-slate-400">KPI</span>
-      <span class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-700 border border-slate-100">전체 <b class="text-slate-900">${k.total}</b></span>
-      <span class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700 border border-blue-100">진행 <b>${k.progress}</b></span>
-      <span class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700 border border-emerald-100">완료 <b>${k.completed}</b></span>
-      <span class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-rose-50 px-2.5 py-1 text-[11px] font-black text-rose-700 border border-rose-100">지연 <b>${k.overdue}</b></span>`;
+      <span class="text-[11px] font-black uppercase tracking-wide text-slate-400 mr-1">KPI</span>
+      <span data-status="ALL" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-700 border border-slate-200 cursor-pointer hover:bg-slate-100 transition duration-150 ${activeClass('ALL')}">전체 <b class="text-slate-900">${k.total}</b></span>
+      <span data-status="PENDING" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700 border border-amber-200 cursor-pointer hover:bg-amber-100 transition duration-150 ${activeClass('PENDING')}">대기 <b>${k.pending}</b></span>
+      <span data-status="PROGRESS" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700 border border-blue-200 cursor-pointer hover:bg-blue-100 transition duration-150 ${activeClass('PROGRESS')}">진행 <b>${k.progress}</b></span>
+      <span data-status="COMPLETED" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700 border border-emerald-200 cursor-pointer hover:bg-emerald-100 transition duration-150 ${activeClass('COMPLETED')}">완료 <b>${k.completed}</b></span>
+      <span data-status="OVERDUE" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-rose-700 border border-rose-200 cursor-pointer hover:bg-rose-100 transition duration-150 ${activeClass('OVERDUE')}">지연 <b>${k.overdue}</b></span>`;
     return;
   }
   summary.className = 'hidden';

@@ -6,44 +6,37 @@
     <title>스마트 업무 협업 트래커</title>
     <link rel="icon" href="./favicon.ico?v=20260625-monthly-kpi">
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
-    
-    <!-- Firebase Compat SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js" onerror="console.warn('Firebase App SDK 로드 실패')"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js" onerror="console.warn('Firebase Firestore SDK 로드 실패')"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js" onerror="console.warn('Firebase Auth SDK 로드 실패')"></script>
-
     <style>
         body { font-family: 'Noto Sans KR', sans-serif; background-color: #f8fafc; }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-    
+
         /* Table layout refinement: keep assignee/action/timeline compact and on one line */
         .task-nowrap { white-space: nowrap; }
         .task-timeline-inline { display: inline-flex; align-items: center; gap: 0.5rem; white-space: nowrap; }
         .task-status-compact { min-height: 36px; }
 
-    
+
         .mobile-task-card { animation: mobileCardIn .18s ease-out both; }
         @keyframes mobileCardIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
         .mobile-touch-btn { min-height: 34px; }
-    
+
         /* Control hub refinement */
         .control-hub-actions .control-action-btn { min-height: 32px; }
         .kpi-compact-chip { min-height: 30px; }
 
-    
+
         /* Final polish: responsive view separation */
         .view-transition { transition: opacity .16s ease, transform .16s ease; }
 
-    
+
         /* Calendar day-view compact polish */
         #calendar-grid.compact-day-grid { align-items: start; }
         #calendar-grid.compact-day-grid > div { align-self: start; }
 
-    
+
         /* Calendar day-view continuous weekly bars with month-wide lane alignment */
         .calendar-lane-spacer { pointer-events: none; }
         .calendar-task-chip { max-width: 100%; }
@@ -53,7 +46,7 @@
         /* Phase 11 mobile redesign */
         @media (max-width: 1023px) {
           body { padding-bottom: 5.5rem; }
-          .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+          .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
           #view-mobile { padding-bottom: 4.5rem; }
           #dashboard-compact-controls { position: sticky; top: 0; z-index: 30; backdrop-filter: blur(10px); }
         }
@@ -61,17 +54,25 @@
         /* Phase 12/13 compact dashboard and Kanban */
         @media (max-width: 1023px) {
           body { padding-bottom: 5.5rem; }
-          .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+          .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
           #view-kanban { padding: 0.75rem; }
         }
 
         /* Final stable Kanban helpers */
         @media (max-width: 1023px) {
           body { padding-bottom: 5.5rem; }
-          .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+          .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
           #view-kanban { padding: 0.75rem; }
         }
     </style>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    
+    <!-- Firebase Modular SDK -->
+
+    <!-- DOMPurify for XSS Protection -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js" integrity="sha512-H+rglffZ6f5gF7UJgvH4Naa+fGCgjrHKMgoFOGmcPTRwR6oILo5R+gtzNrpDp7iMV3udbymBVjkeZGNz1Em4rQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    
 </head>
 <body class="min-h-screen text-slate-800 antialiased relative">
 
@@ -193,10 +194,10 @@
                 
                 <div class="flex flex-wrap items-center gap-3">
                     <div class="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                        <span class="font-semibold text-slate-500">마감 기간:</span>
-                        <input type="date" id="filter-start-date" class="bg-transparent border-none outline-none cursor-pointer font-medium text-slate-700">
+                        <span class="font-semibold text-slate-500">마감 월:</span>
+                        <input type="month" id="filter-start-month" class="bg-transparent border-none outline-none cursor-pointer font-medium text-slate-700">
                         <span class="text-slate-300">~</span>
-                        <input type="date" id="filter-end-date" class="bg-transparent border-none outline-none cursor-pointer font-medium text-slate-700">
+                        <input type="month" id="filter-end-month" class="bg-transparent border-none outline-none cursor-pointer font-medium text-slate-700">
                     </div>
 
                     <select id="filter-status" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 outline-none transition focus:border-indigo-500 focus:bg-indigo-50">
@@ -222,7 +223,7 @@
                     <div class="ml-2 inline-flex rounded-xl bg-slate-100 p-1">
                         <button id="btn-view-table" class="rounded-lg bg-white px-4 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition">목록</button>
                         <button id="btn-view-calendar" class="rounded-lg px-4 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition">캘린더</button>
-                        <button id="btn-view-kanban" class="rounded-lg px-4 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition">Kanban</button>
+                        <button id="btn-view-kanban" class="rounded-lg px-4 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition">칸반</button>
                     </div>
                 </div>
             </div>
@@ -279,10 +280,14 @@
                     </div>
                 </div>
                 
-                <div class="flex gap-1 bg-slate-100 p-1 rounded-xl shrink-0">
-                    <button id="btn-prev-month" class="rounded-lg px-3 py-1.5 text-sm font-semibold text-slate-600 hover:bg-white hover:shadow-sm transition">&lt;</button>
+                <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl shrink-0">
+                    <button id="btn-prev-month" class="rounded-lg p-2 text-slate-600 hover:bg-white hover:shadow-sm transition" title="이전 월">
+                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+                    </button>
                     <button id="btn-today-month" class="rounded-lg px-4 py-1.5 text-sm font-semibold text-slate-600 hover:bg-white hover:shadow-sm transition">오늘</button>
-                    <button id="btn-next-month" class="rounded-lg px-3 py-1.5 text-sm font-semibold text-slate-600 hover:bg-white hover:shadow-sm transition">&gt;</button>
+                    <button id="btn-next-month" class="rounded-lg p-2 text-slate-600 hover:bg-white hover:shadow-sm transition" title="다음 월">
+                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                    </button>
                 </div>
             </div>
             
@@ -495,22 +500,21 @@
     </div>
 
     <!-- 스크립트 비즈니스 로직 연동 시작 -->
-    <script defer src="./js/firebase.js?v=20260626-final-stable"></script>
-    <script defer src="./js/state.js?v=20260626-final-stable"></script>
-    <script defer src="./js/date-risk-utils.js?v=20260626-final-stable"></script>
-    <script defer src="./js/schema-service.js?v=20260626-final-stable"></script>
-    <script defer src="./js/calendar-utils.js?v=20260626-final-stable"></script>
-    <script defer src="./js/calendar-day-renderer.js?v=20260626-final-stable"></script>
-    <script defer src="./js/calendar-month-renderer.js?v=20260626-final-stable"></script>
-    <script defer src="./js/calendar-summary-renderer.js?v=20260626-final-stable"></script>
-    <script defer src="./js/table-mobile-renderer.js?v=20260626-final-stable"></script>
-    <script defer src="./js/kanban-renderer.js?v=20260626-final-stable"></script>
-    <script defer src="./js/modal-controller.js?v=20260626-final-stable"></script>
-    <script defer src="./js/event-bindings.js?v=20260626-final-stable"></script>
-    <script defer src="./js/bootstrap-service.js?v=20260626-final-stable"></script>
-    <script defer src="./js/app.js?v=20260626-final-stable"></script>
-    <script defer src="./js/task-service.js?v=20260626-final-stable"></script>
-    <script defer src="./js/export-service.js?v=20260626-final-stable"></script>
-    <script defer src="./js/monthly-kpi-unified-patch.js?v=20260626-final-stable"></script>
+    <script type="module" src="./js/firebase.js?v=20260628-v13"></script>
+    <script defer src="./js/state.js?v=20260628-v13"></script>
+    <script defer src="./js/date-risk-utils.js?v=20260628-v13"></script>
+    <script defer src="./js/schema-service.js?v=20260628-v13"></script>
+    <script defer src="./js/calendar-utils.js?v=20260628-v13"></script>
+    <script defer src="./js/calendar-day-renderer.js?v=20260628-v13"></script>
+    <script defer src="./js/calendar-month-renderer.js?v=20260628-v13"></script>
+    <script defer src="./js/calendar-summary-renderer.js?v=20260628-v13"></script>
+    <script defer src="./js/table-mobile-renderer.js?v=20260628-v13"></script>
+    <script defer src="./js/kanban-renderer.js?v=20260629-v1"></script>
+    <script defer src="./js/modal-controller.js?v=20260628-v13"></script>
+    <script defer src="./js/event-bindings.js?v=20260628-v13"></script>
+    <script defer src="./js/bootstrap-service.js?v=20260628-v13"></script>
+    <script defer src="./js/app.js?v=20260628-v13"></script>
+    <script defer src="./js/task-service.js?v=20260628-v13"></script>
+    <script defer src="./js/export-service.js?v=20260628-v13"></script>
 </body>
 </html>

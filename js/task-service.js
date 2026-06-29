@@ -7,7 +7,7 @@ async function db_addTask(taskData) {
   const payload = normalizeTaskForSchema({ ...taskData, trackerId: taskData.trackerId || currentTrackerId, trackerName: tracker ? tracker.name : '', deleted: false, createdAt: getServerTimestamp(), updatedAt: getServerTimestamp() });
   markSaving();
   if (canWriteToFirestore() && coll) {
-    try { await coll.doc(id).set(payload, { merge: true }); markSaved(); }
+    try { await window.fs.setDoc(window.fs.doc(coll, id), payload, { merge: true }); markSaved(); }
     catch (e) { markSaveError(); console.warn('업무 추가 실패', e); showToast('Firebase 저장 실패', false); }
   }
   if (!tasks.some(t => t.id === id)) tasks.push({ id, ...payload });
@@ -20,7 +20,7 @@ async function db_updateTask(id, taskData) {
   const payload = normalizeTaskForSchema({ ...originalTask, ...taskData, trackerName: tracker ? tracker.name : taskData.trackerName, updatedAt: getServerTimestamp() });
   markSaving();
   if (canWriteToFirestore() && coll) {
-    try { await coll.doc(id).set(payload, { merge: true }); markSaved(); }
+    try { await window.fs.setDoc(window.fs.doc(coll, id), payload, { merge: true }); markSaved(); }
     catch (e) { markSaveError(); console.warn('업무 수정 실패', e); showToast('Firebase 수정 실패', false); }
   }
   const idx = tasks.findIndex(t => t.id === id);
@@ -31,7 +31,7 @@ async function db_deleteTask(id) {
   const coll = getTasksCollection();
   const payload = { deleted: true, deletedAt: getServerTimestamp(), updatedAt: getServerTimestamp() };
   if (canWriteToFirestore() && coll) {
-    try { await coll.doc(id).set(payload, { merge: true }); markSaved(); }
+    try { await window.fs.setDoc(window.fs.doc(coll, id), payload, { merge: true }); markSaved(); }
     catch (e) { markSaveError(); console.warn('업무 삭제 실패', e); showToast('Firebase 삭제 실패', false); }
   }
   tasks = tasks.filter(t => t.id !== id);
@@ -43,8 +43,8 @@ async function db_batchDelete(idsSet) {
   const coll = getTasksCollection();
   if (canWriteToFirestore() && coll) {
     try {
-      const batch = db.batch();
-      ids.forEach(id => batch.set(coll.doc(id), { deleted: true, deletedAt: getServerTimestamp(), updatedAt: getServerTimestamp() }, { merge: true }));
+      const batch = window.fs.writeBatch(window.db);
+      ids.forEach(id => batch.set(window.fs.doc(coll, id), { deleted: true, deletedAt: getServerTimestamp(), updatedAt: getServerTimestamp() }, { merge: true }));
       await batch.commit();
       markSaved();
     } catch (e) { markSaveError(); showToast('Firebase 일괄 삭제 실패', false); }
@@ -59,7 +59,7 @@ async function db_addTracker(data) {
   const nextOrder = trackers.length ? Math.max(...trackers.map(t => typeof t.order === 'number' ? t.order : 0)) + 1 : 1;
   const payload = { ...data, order: nextOrder, deleted: false, createdAt: getServerTimestamp(), updatedAt: getServerTimestamp() };
   if (canWriteToFirestore() && coll) {
-    try { await coll.doc(id).set(payload, { merge: true }); markSaved(); }
+    try { await window.fs.setDoc(window.fs.doc(coll, id), payload, { merge: true }); markSaved(); }
     catch (e) { console.warn('트래커 추가 실패', e); showToast('Firebase 트래커 저장 실패', false); }
   }
   if (!trackers.some(t => t.id === id)) trackers.push({ id, ...payload });
@@ -73,7 +73,7 @@ async function db_updateTracker(id, data) {
   const original = trackers.find(t => t.id === id);
   const payload = { ...data, order: original && typeof original.order === 'number' ? original.order : data.order, updatedAt: getServerTimestamp() };
   if (canWriteToFirestore() && coll) {
-    try { await coll.doc(id).set(payload, { merge: true }); markSaved(); }
+    try { await window.fs.setDoc(window.fs.doc(coll, id), payload, { merge: true }); markSaved(); }
     catch (e) { console.warn('트래커 수정 실패', e); showToast('Firebase 트래커 수정 실패', false); }
   }
   const idx = trackers.findIndex(t => t.id === id);
@@ -86,10 +86,10 @@ async function db_deleteTracker(id) {
   const tColl = getTasksCollection();
   if (canWriteToFirestore() && coll) {
     try {
-      await coll.doc(id).set({ deleted: true, deletedAt: getServerTimestamp(), updatedAt: getServerTimestamp() }, { merge: true });
+      await window.fs.setDoc(window.fs.doc(coll, id), { deleted: true, deletedAt: getServerTimestamp(), updatedAt: getServerTimestamp() }, { merge: true });
       if (tColl) {
-        const snap = await tColl.where('trackerId', '==', id).get();
-        const batch = db.batch();
+        const snap = await window.fs.getDocs(window.fs.query(tColl, window.fs.where('trackerId', "==", id)));
+        const batch = window.fs.writeBatch(window.db);
         snap.docs.forEach(doc => batch.set(doc.ref, { deleted: true, deletedAt: getServerTimestamp(), updatedAt: getServerTimestamp() }, { merge: true }));
         if (!snap.empty) await batch.commit();
       }
@@ -110,8 +110,8 @@ async function ensureDefaultTrackersInFirestore() {
   try {
     for (let i = 0; i < trackers.length; i++) {
       const t = trackers[i]; if (!t || !t.id) continue;
-      const snap = await coll.doc(t.id).get();
-      if (!snap.exists) await coll.doc(t.id).set({ name: t.name, desc: t.desc || '', order: t.order || i + 1, deleted: false, createdAt: getServerTimestamp(), updatedAt: getServerTimestamp() }, { merge: true });
+      const snap = await window.fs.getDoc(window.fs.doc(coll, t.id));
+      if (!snap.exists) await window.fs.setDoc(window.fs.doc(coll, t.id), { name: t.name, desc: t.desc || '', order: t.order || i + 1, deleted: false, createdAt: getServerTimestamp(), updatedAt: getServerTimestamp() }, { merge: true });
     }
   } catch (e) { console.warn('기본 트래커 보정 실패', e); }
 }
@@ -122,7 +122,7 @@ function setupRealtimeListeners() {
   if (!trackerColl || !taskColl) return false;
   if (typeof unsubscribeTrackers === 'function') unsubscribeTrackers();
   if (typeof unsubscribeTasks === 'function') unsubscribeTasks();
-  unsubscribeTrackers = trackerColl.onSnapshot(snapshot => {
+  unsubscribeTrackers = window.fs.onSnapshot(trackerColl, snapshot => {
     const incoming = sortTrackersByOrder(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(t => t.deleted !== true));
     if (incoming.length) trackers = incoming;
     const saved = localStorage.getItem('flow_current_tracker');
@@ -131,7 +131,7 @@ function setupRealtimeListeners() {
     updateTrackerUI();
     updateUI();
   }, err => { console.error('트래커 동기화 오류', err); showToast('트래커 실시간 동기화 오류', false); });
-  unsubscribeTasks = taskColl.onSnapshot(snapshot => {
+  unsubscribeTasks = window.fs.onSnapshot(taskColl, snapshot => {
     tasks = snapshot.docs.map(doc => normalizeTaskForSchema({ id: doc.id, ...doc.data() })).filter(t => t.deleted !== true);
     updateTrackerUI();
     updateUI();

@@ -19,6 +19,33 @@
             return str.toString().replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
         };
 
+        const safeHTML = (html) => {
+            if (typeof DOMPurify !== 'undefined') {
+                // DOMPurify 기본 설정은 data-* 속성을 허용합니다. (안전하게 명시)
+                return DOMPurify.sanitize(html, { ALLOW_DATA_ATTR: true });
+            }
+            return html;
+        };
+
+        // 전역적인 XSS 방어를 위해 Element.prototype.innerHTML 오버라이드 (보안 강화)
+        // 단, tr/tbody/thead/table 등의 테이블 구조 태그는 DOMPurify의 Context-free 파싱 시 td/tr 태그가 유실되므로 제외합니다.
+        const originalInnerHTML = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
+        if (originalInnerHTML) {
+            Object.defineProperty(Element.prototype, 'innerHTML', {
+                set: function(value) {
+                    const tag = this.tagName.toLowerCase();
+                    if (['tr', 'tbody', 'thead', 'table', 'col', 'colgroup', 'tfoot'].includes(tag)) {
+                        originalInnerHTML.set.call(this, value);
+                    } else {
+                        originalInnerHTML.set.call(this, safeHTML(value));
+                    }
+                },
+                get: function() {
+                    return originalInnerHTML.get.call(this);
+                }
+            });
+        }
+
         const getMockTasks = () => [
             {
                 id: "mock-1",

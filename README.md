@@ -22,8 +22,28 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // 1. 기본적으로 모든 읽기/쓰기를 거부합니다.
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if false;
+    }
+
+    // 2. 트래커 컬렉션 접근 권한
+    match /trackers/{trackerId} {
+      // 누구나 읽을 수 있게 하거나, 특정 도메인 사용자만 읽게 할 수 있습니다.
+      allow read: if request.auth != null;
+      // 생성자만 수정/삭제할 수 있도록 권장합니다.
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && resource.data.createdBy == request.auth.uid;
+    }
+
+    // 3. 업무(Tasks) 컬렉션 접근 권한
+    match /tasks/{taskId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null;
+      
+      // (선택 사항) 특정 트래커 소속의 데이터만 조작할 수 있도록 제한하는 예시:
+      // allow read, write: if request.auth != null && resource.data.trackerId != null;
     }
   }
 }

@@ -7,7 +7,17 @@ function renderCalendarMonthView(ctx) {
     grid.innerHTML = '';
     const header = document.createElement('div');
     header.className = 'grid grid-cols-12 gap-px bg-slate-50 relative z-20 border-b border-slate-200/80 shadow-sm';
-    for (let m = 1; m <= 12; m++) { const h = document.createElement('div'); h.className = 'py-3 text-center text-xs font-bold text-slate-700'; h.textContent = `${m}월`; header.appendChild(h); }
+    for (let m = 1; m <= 12; m++) {
+      const h = document.createElement('div');
+      h.className = 'py-3 text-center text-xs font-bold text-slate-700 cursor-pointer hover:text-indigo-600 hover:bg-slate-100 transition-colors';
+      h.textContent = `${m}월`;
+      h.title = `${m}월 일별 보기로 이동`;
+      h.onclick = () => {
+        currentCalDate.setMonth(m - 1);
+        setCalMode('DAY');
+      };
+      header.appendChild(h);
+    }
     grid.appendChild(header);
     const body = document.createElement('div');
     body.className = 'relative z-10 w-full';
@@ -16,7 +26,17 @@ function renderCalendarMonthView(ctx) {
     const rowHeight = 28;
     const totalLines = lines.length > 5 ? lines.length : 5;
     const bodyHeight = totalLines * rowHeight + 20;
-    for (let i = 0; i < 12; i++) { const tile = document.createElement('div'); tile.className = 'bg-white border-b border-slate-100'; tile.style.height = `${bodyHeight}px`; tiles.appendChild(tile); }
+    for (let i = 0; i < 12; i++) {
+      const tile = document.createElement('div');
+      tile.className = 'bg-white border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors';
+      tile.style.height = `${bodyHeight}px`;
+      tile.title = `${i + 1}월 일별 보기로 이동`;
+      tile.onclick = () => {
+        currentCalDate.setMonth(i);
+        setCalMode('DAY');
+      };
+      tiles.appendChild(tile);
+    }
     body.appendChild(tiles);
     const overlay = document.createElement('div');
     overlay.className = 'absolute inset-0 pointer-events-none';
