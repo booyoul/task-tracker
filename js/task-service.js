@@ -4,7 +4,16 @@ async function db_addTask(taskData) {
   const coll = getTasksCollection();
   const id = 'task_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
   const tracker = trackers.find(t => t.id === currentTrackerId);
-  const payload = normalizeTaskForSchema({ ...taskData, trackerId: taskData.trackerId || currentTrackerId, trackerName: tracker ? tracker.name : '', deleted: false, createdAt: getServerTimestamp(), updatedAt: getServerTimestamp() });
+  const payload = normalizeTaskForSchema({
+    ...taskData,
+    trackerId: taskData.trackerId || currentTrackerId,
+    trackerName: tracker ? tracker.name : '',
+    deleted: false,
+    createdAt: getServerTimestamp(),
+    updatedAt: getServerTimestamp(),
+    createdBy: currentUser ? currentUser.uid : 'anonymous',
+    createdByName: currentUser ? (currentUser.displayName || currentUser.email) : 'anonymous'
+  });
   markSaving();
   if (canWriteToFirestore() && coll) {
     try { await window.fs.setDoc(window.fs.doc(coll, id), payload, { merge: true }); markSaved(); }
@@ -14,9 +23,13 @@ async function db_addTask(taskData) {
   updateUI();
 }
 async function db_updateTask(id, taskData) {
+  const originalTask = tasks.find(t => t.id === id) || {};
+  if (!window.hasWritePermission(originalTask)) {
+    showToast('수정 권한이 없습니다.', false);
+    return;
+  }
   const coll = getTasksCollection();
   const tracker = trackers.find(t => t.id === (taskData.trackerId || currentTrackerId));
-  const originalTask = tasks.find(t => t.id === id) || {};
   const payload = normalizeTaskForSchema({ ...originalTask, ...taskData, trackerName: tracker ? tracker.name : taskData.trackerName, updatedAt: getServerTimestamp() });
   markSaving();
   if (canWriteToFirestore() && coll) {
@@ -28,6 +41,11 @@ async function db_updateTask(id, taskData) {
   updateUI();
 }
 async function db_deleteTask(id) {
+  const originalTask = tasks.find(t => t.id === id);
+  if (!window.hasWritePermission(originalTask)) {
+    showToast('삭제 권한이 없습니다.', false);
+    return;
+  }
   const coll = getTasksCollection();
   const payload = { deleted: true, deletedAt: getServerTimestamp(), updatedAt: getServerTimestamp() };
   if (canWriteToFirestore() && coll) {
@@ -40,24 +58,42 @@ async function db_deleteTask(id) {
 }
 async function db_batchDelete(idsSet) {
   const ids = Array.from(idsSet || []);
+  const myIds = ids.filter(id => {
+    const task = tasks.find(t => t.id === id);
+    return window.hasWritePermission(task);
+  });
+  if (myIds.length === 0) {
+    showToast('삭제 권한이 있는 업무가 없습니다.', false);
+    return;
+  }
   const coll = getTasksCollection();
   if (canWriteToFirestore() && coll) {
     try {
       const batch = window.fs.writeBatch(window.db);
-      ids.forEach(id => batch.set(window.fs.doc(coll, id), { deleted: true, deletedAt: getServerTimestamp(), updatedAt: getServerTimestamp() }, { merge: true }));
+      myIds.forEach(id => batch.set(window.fs.doc(coll, id), { deleted: true, deletedAt: getServerTimestamp(), updatedAt: getServerTimestamp() }, { merge: true }));
       await batch.commit();
       markSaved();
     } catch (e) { markSaveError(); showToast('Firebase 일괄 삭제 실패', false); }
   }
-  tasks = tasks.filter(t => !ids.includes(t.id));
-  if (idsSet && typeof idsSet.clear === 'function') idsSet.clear();
+  tasks = tasks.filter(t => !myIds.includes(t.id));
+  if (idsSet && typeof idsSet.clear === 'function') {
+    ids.forEach(id => idsSet.delete(id));
+  }
   updateUI();
 }
 async function db_addTracker(data) {
   const coll = getTrackersCollection();
   const id = 'tracker_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
   const nextOrder = trackers.length ? Math.max(...trackers.map(t => typeof t.order === 'number' ? t.order : 0)) + 1 : 1;
-  const payload = { ...data, order: nextOrder, deleted: false, createdAt: getServerTimestamp(), updatedAt: getServerTimestamp() };
+  const payload = {
+    ...data,
+    order: nextOrder,
+    deleted: false,
+    createdAt: getServerTimestamp(),
+    updatedAt: getServerTimestamp(),
+    createdBy: currentUser ? currentUser.uid : 'anonymous',
+    createdByName: currentUser ? (currentUser.displayName || currentUser.email) : 'anonymous'
+  };
   if (canWriteToFirestore() && coll) {
     try { await window.fs.setDoc(window.fs.doc(coll, id), payload, { merge: true }); markSaved(); }
     catch (e) { console.warn('트래커 추가 실패', e); showToast('Firebase 트래커 저장 실패', false); }
@@ -69,8 +105,12 @@ async function db_addTracker(data) {
   updateUI();
 }
 async function db_updateTracker(id, data) {
-  const coll = getTrackersCollection();
   const original = trackers.find(t => t.id === id);
+  if (!window.hasWritePermission(original)) {
+    showToast('트래커 수정 권한이 없습니다.', false);
+    return;
+  }
+  const coll = getTrackersCollection();
   const payload = { ...data, order: original && typeof original.order === 'number' ? original.order : data.order, updatedAt: getServerTimestamp() };
   if (canWriteToFirestore() && coll) {
     try { await window.fs.setDoc(window.fs.doc(coll, id), payload, { merge: true }); markSaved(); }
@@ -82,6 +122,11 @@ async function db_updateTracker(id, data) {
   updateUI();
 }
 async function db_deleteTracker(id) {
+  const original = trackers.find(t => t.id === id);
+  if (!window.hasWritePermission(original)) {
+    showToast('트래커 삭제 권한이 없습니다.', false);
+    return;
+  }
   const coll = getTrackersCollection();
   const tColl = getTasksCollection();
   if (canWriteToFirestore() && coll) {
@@ -140,3 +185,18 @@ function setupRealtimeListeners() {
   return true;
 }
 async function fetchInitialData() { await ensureDefaultTrackersInFirestore(); if (!setupRealtimeListeners()) updateUI(); }
+
+// 새 함수: 실시간 리스너 해제
+function stopRealtimeListeners() {
+  if (typeof unsubscribeTrackers === 'function') {
+    try { unsubscribeTrackers(); } catch (e) { console.warn('unsubscribeTrackers error', e); }
+    unsubscribeTrackers = null;
+  }
+  if (typeof unsubscribeTasks === 'function') {
+    try { unsubscribeTasks(); } catch (e) { console.warn('unsubscribeTasks error', e); }
+    unsubscribeTasks = null;
+  }
+}
+
+// 전역으로 노출
+window.stopRealtimeListeners = stopRealtimeListeners;

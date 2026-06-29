@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getFirestore, enableIndexedDbPersistence, collection, doc, setDoc, writeBatch, onSnapshot, serverTimestamp, getDoc, getDocs, query, where, orderBy, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { getAuth, signInAnonymously, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 let firebaseConfig = {
     apiKey: "AIzaSyDzFpffymwAdYQUPcTD5nO4G-VZLSZ0ARg",
@@ -57,8 +57,12 @@ window.auth = auth;
 window.fs = { collection, doc, setDoc, writeBatch, onSnapshot, serverTimestamp, getDoc, getDocs, query, where, orderBy, deleteDoc };
 window.signInAnonymously = signInAnonymously;
 window.onAuthStateChanged = onAuthStateChanged;
+window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
+window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+window.signOut = signOut;
+window.updateProfile = updateProfile;
 
-window.getTasksCollection = function() {
+window.getTasksCollection = function () {
     if (isFirebaseAvailable && db) {
         if (useEnvFirebase) {
             return collection(db, 'artifacts', envAppId, 'public', 'data', 'tasks');
@@ -69,12 +73,23 @@ window.getTasksCollection = function() {
     return null;
 };
 
-window.getTrackersCollection = function() {
+window.getTrackersCollection = function () {
     if (isFirebaseAvailable && db) {
         if (useEnvFirebase) {
             return collection(db, 'artifacts', envAppId, 'public', 'data', 'trackers');
         } else {
             return collection(db, 'trackers');
+        }
+    }
+    return null;
+};
+
+window.getUsersCollection = function () {
+    if (isFirebaseAvailable && db) {
+        if (useEnvFirebase) {
+            return collection(db, 'artifacts', envAppId, 'public', 'data', 'users');
+        } else {
+            return collection(db, 'users');
         }
     }
     return null;

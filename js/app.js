@@ -135,46 +135,7 @@ function ensureRiskDashboardPanel() {
   return panel;  
 }
 
-function applyCompactDashboardStyles() {
-  const section = document.getElementById('card-ALL')?.parentElement;
-  if (!section) return;
-  section.id = section.id || 'kpi-dashboard-section';
-  section.className = isDashboardCollapsed
-    ? 'hidden'
-    : 'mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5';
-  document.querySelectorAll('.filter-card').forEach(card => {
-    const active = card.classList.contains('ring-2');
-    card.className = `filter-card rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-sm cursor-pointer transition-all duration-150 hover:bg-slate-50 ${active ? 'ring-2 ring-indigo-600 bg-indigo-50/10' : ''}`;
-    const label = card.querySelector('.text-xs.font-semibold');
-    if (label) label.className = 'text-[10px] font-bold text-slate-500 uppercase tracking-tight';
-    const value = card.querySelector('[id^="stat-"]:not([id$="pct"]):not([id$="lbl"])');
-    if (value) value.className = value.id === 'stat-overdue' ? 'text-lg font-black text-rose-600' : 'text-lg font-black text-slate-900';
-    card.querySelectorAll('svg').forEach(svg => { svg.classList.remove('h-5','w-5'); svg.classList.add('h-4','w-4'); });
-    const numberRow = card.querySelector('.mt-2.flex');
-    if (numberRow) numberRow.className = 'mt-1 flex items-baseline gap-1.5';
-  });
-}
-function ensureDashboardCompactControls() {
-  if (document.getElementById('dashboard-compact-controls')) return;
-  const section = document.getElementById('card-ALL')?.parentElement;
-  if (!section) return;
-  const controls = document.createElement('div');
-  controls.id = 'dashboard-compact-controls';
-  controls.className = 'mb-2 flex items-center justify-between rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-sm';
-  controls.innerHTML = `
-    <div class="flex items-center gap-2">
-      <span class="text-xs font-black text-slate-700">Dashboard</span>
-      <span class="text-[10px] text-slate-400">Compact view</span>
-    </div>
-    <div class="flex items-center gap-1.5">
-      <button type="button" id="btn-toggle-risk-panel" class="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-600 hover:bg-white">Risk 펼치기</button>
-      <button type="button" id="btn-toggle-dashboard" class="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-600 hover:bg-white">KPI 접기</button>
-    </div>`;
-  section.insertAdjacentElement('beforebegin', controls);
-  document.getElementById('btn-toggle-risk-panel')?.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); toggleRiskPanelCompact(); });
-  document.getElementById('btn-toggle-dashboard')?.addEventListener('click', toggleDashboardCompact);
-  updateDashboardCompactControls();
-}
+
 function updateDashboardCompactControls() {
   const riskBtn = document.getElementById('btn-toggle-risk-panel');
   const dashBtn = document.getElementById('btn-toggle-dashboard');
@@ -378,40 +339,7 @@ function clearAssigneeMultiSelect() {
 function updateAssigneeMultiSelect() { updateAssigneeButton(); }
 function handleAssigneeMultiSelectChange() { updateAssigneeButton(); renderActiveViews(); }
 
-function ensureUXToolbar() {
-  if (document.getElementById('ux-toolbar')) return;
-  const filterBox = document.getElementById('btn-reset-filters')?.closest('.mb-4');
-  if (!filterBox) return;
-  const bar = document.createElement('div');
-  bar.id = 'ux-toolbar';
-  bar.className = 'mt-4 flex flex-col gap-3 border-t border-slate-100 pt-4';
-  bar.innerHTML = `
-    <div class="flex flex-wrap items-center gap-2">
-      <span class="text-[11px] font-bold uppercase tracking-wide text-slate-400">Focus Mode</span>
-      <button type="button" id="btn-focus-risk" class="ux-focus-btn rounded-xl border px-3 py-1.5 text-xs font-bold transition">🚨 Risk Only</button>
-      <button type="button" id="btn-focus-high" class="ux-focus-btn rounded-xl border px-3 py-1.5 text-xs font-bold transition">🔥 High Priority</button>
-      <button type="button" id="btn-open-assignee-modal" class="rounded-xl border border-indigo-100 bg-white px-3 py-1.5 text-xs font-bold text-indigo-700 shadow-sm hover:bg-indigo-50 transition">👤 담당자: 전체</button>
-      <button type="button" id="btn-clear-assignee-filter" class="rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[11px] font-bold text-slate-500 hover:bg-white transition">담당자 해제</button>
-    </div>
-    <div id="bulk-action-bar" class="hidden flex-wrap items-center gap-2 rounded-xl border border-indigo-100 bg-indigo-50/60 p-2">
-      <span id="bulk-selected-count" class="text-xs font-bold text-indigo-700">0개 선택됨</span>
-      <button type="button" id="bulk-change-status" class="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50">상태 변경</button>
-      <button type="button" id="bulk-change-assignee" class="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50">담당자 변경</button>
-      <button type="button" id="bulk-change-due" class="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50">마감일 변경</button>
-      <button type="button" id="bulk-clear-selection" class="rounded-lg px-3 py-1.5 text-xs font-bold text-slate-500 hover:bg-white">선택 해제</button>
-    </div>`;
-  filterBox.appendChild(bar);
-  document.getElementById('btn-focus-risk')?.addEventListener('click', () => toggleFocusMode('riskOnly'));
-  document.getElementById('btn-focus-high')?.addEventListener('click', () => toggleFocusMode('highOnly'));
-  document.getElementById('btn-open-assignee-modal')?.addEventListener('click', openAssigneeModal);
-  document.getElementById('btn-clear-assignee-filter')?.addEventListener('click', clearAssigneeMultiSelect);
-  document.getElementById('bulk-change-status')?.addEventListener('click', bulkChangeStatus);
-  document.getElementById('bulk-change-assignee')?.addEventListener('click', bulkChangeAssignee);
-  document.getElementById('bulk-change-due')?.addEventListener('click', bulkChangeDueDate);
-  document.getElementById('bulk-clear-selection')?.addEventListener('click', clearSelection);
-  updateFocusButtons();
-  updateBulkActionBar();
-}
+
 function getFocusButtonClass(isOn) {
   return isOn
     ? 'ux-focus-btn rounded-xl border border-indigo-200 bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition'
@@ -821,30 +749,25 @@ function renderCalendar(filteredTasks) {
 }
 
 // Mobile card renderer moved to js/table-mobile-renderer.js
-function renderActiveViews() {
-  ensureAdvancedFilterOptions();
-  ensureUXToolbar();
-  if (typeof focusState === 'undefined') window.focusState = focusState = { riskOnly: false, mineOnly: false, highOnly: false };
-  if (typeof UX_STORAGE_KEYS === 'undefined') window.UX_STORAGE_KEYS = UX_STORAGE_KEYS = { myAssignee: 'flow_my_assignee_name' };
-  updateFocusButtons();
-  updateAssigneeMultiSelect();
-  updateBulkActionBar();
-  const filtered = getFilteredTasks();
-  const fStatus = document.getElementById('filter-status')?.value || 'ALL';
-  document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('ring-2', 'ring-indigo-600', 'bg-indigo-50/10'));
-  document.getElementById(`card-${['ALL','PENDING','PROGRESS','COMPLETED','OVERDUE'].includes(fStatus) ? fStatus : 'OVERDUE'}`)?.classList.add('ring-2', 'ring-indigo-600', 'bg-indigo-50/10');
-  applyCompactDashboardStyles();
-  const mode = currentViewMode === 'CALENDAR' ? 'CALENDAR' : 'TABLE';
-  setViewVisibility(mode);
-  updateViewToggleButtons(mode);
-  if (mode === 'CALENDAR') {
-    renderCalendar(filtered);
-    return;
+
+function updateUI() {
+  const gateway = document.getElementById('auth-gateway-view');
+  const mainContent = document.getElementById('app-main-content');
+  if (gateway && mainContent) {
+    if (isAuthReady && !currentUser) {
+      gateway.classList.remove('hidden');
+      mainContent.classList.add('hidden');
+      return;
+    } else {
+      gateway.classList.add('hidden');
+      mainContent.classList.remove('hidden');
+    }
   }
-  renderTable(filtered);
-  renderMobileCards(filtered);
+  renderStats();
+  buildAssigneeDropdownFilter();
+  renderActiveViews();
+  updateUndoButton();
 }
-function updateUI() { renderStats(); buildAssigneeDropdownFilter(); renderActiveViews(); updateUndoButton(); }
 
 // Task/tracker modal controller moved to js/modal-controller.js
 async function updateTaskStatus(id, status) { await db_updateTask(id, { status }); showToast(`상태 변경: ${getStatusKorean(status)}`); }
@@ -1109,22 +1032,13 @@ function ensureUXToolbar() {
         <button type="button" id="bulk-clear-selection" class="rounded-lg px-3 py-1.5 text-xs font-bold text-slate-500 hover:bg-white">선택 해제</button>
       </div>`;
     filterBox.appendChild(bar);
-    document.getElementById('btn-focus-risk')?.addEventListener('click', () => toggleFocusMode('riskOnly'));
-    document.getElementById('btn-focus-high')?.addEventListener('click', () => toggleFocusMode('highOnly'));
-    document.getElementById('btn-open-assignee-modal')?.addEventListener('click', openAssigneeModal);
-    document.getElementById('btn-clear-assignee-filter')?.addEventListener('click', clearAssigneeMultiSelect);
-    document.getElementById('bulk-change-status')?.addEventListener('click', bulkChangeStatus);
-    document.getElementById('bulk-change-assignee')?.addEventListener('click', bulkChangeAssignee);
-    document.getElementById('bulk-change-due')?.addEventListener('click', bulkChangeDueDate);
-    document.getElementById('bulk-clear-selection')?.addEventListener('click', clearSelection);
   }
   relocateHeaderActionsToToolbar();
   updateFocusButtons();
   updateBulkActionBar();
 }
 
-// === Phase 12/13 Render Orchestration Override ===
-function renderActiveViews(){ensureAdvancedFilterOptions();ensureUXToolbar();if(typeof focusState==='undefined')window.focusState=focusState={riskOnly:false,mineOnly:false,highOnly:false};if(typeof UX_STORAGE_KEYS==='undefined')window.UX_STORAGE_KEYS=UX_STORAGE_KEYS={myAssignee:'flow_my_assignee_name'};updateFocusButtons();updateAssigneeMultiSelect();updateBulkActionBar();const filtered=getFilteredTasks();const fStatus=document.getElementById('filter-status')?.value||'ALL';document.querySelectorAll('.filter-card').forEach(c=>c.classList.remove('ring-2','ring-indigo-600','bg-indigo-50/10'));document.getElementById(`card-${['ALL','PENDING','PROGRESS','COMPLETED','OVERDUE'].includes(fStatus)?fStatus:'OVERDUE'}`)?.classList.add('ring-2','ring-indigo-600','bg-indigo-50/10');applyCompactDashboardStyles();const mode=currentViewMode==='CALENDAR'?'CALENDAR':currentViewMode==='KANBAN'?'KANBAN':'TABLE';setViewVisibility(mode);updateViewToggleButtons(mode);if(mode==='CALENDAR'){renderCalendar(filtered);return;}if(mode==='KANBAN'){if(typeof renderKanbanView==='function')renderKanbanView(filtered);return;}renderTable(filtered);renderMobileCards(filtered);}
+
 
 // === Final Stable Render Orchestration Override ===
 function renderActiveViews(){
@@ -1135,6 +1049,12 @@ function renderActiveViews(){
   updateFocusButtons();
   updateAssigneeMultiSelect();
   updateBulkActionBar();
+  // ADMIN 뷰는 별도 렌더러 없이 HTML 정적 콘텐츠만 사용하므로 여기서 early return
+  if(currentViewMode==='ADMIN'){
+    setViewVisibility('ADMIN');
+    updateViewToggleButtons('ADMIN');
+    return;
+  }
   const filtered=getFilteredTasks();
   const fStatus=document.getElementById('filter-status')?.value||'ALL';
   document.querySelectorAll('.filter-card').forEach(c=>c.classList.remove('ring-2','ring-indigo-600','bg-indigo-50/10'));
@@ -1148,6 +1068,7 @@ function renderActiveViews(){
   renderTable(filtered);
   renderMobileCards(filtered);
 }
+
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof window.bootstrapApp === 'function') {
     window.bootstrapApp();

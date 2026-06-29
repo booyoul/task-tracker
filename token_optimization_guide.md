@@ -15,25 +15,30 @@
 본 프로젝트는 현대식 ES Module을 사용하지 않고, HTML에서 `<script defer>` 태그를 이용해 브라우저의 **전역 스코프(Global Scope)**에 객체와 함수를 순차적으로 주입하여 연동하는 레거시 결합 아키텍처를 가지고 있습니다.
 
 ### 스크립트 로드 순서 및 의존성 관계
-`index.html` 하단(503~518라인)의 스크립트 적재 순서입니다. 하위 스크립트는 상위 스크립트에서 선언된 전역 변수나 함수에 의존합니다.
+`index.html` 하단의 스크립트 적재 순서입니다. 하위 스크립트는 상위 스크립트에서 선언된 전역 변수나 함수에 의존합니다.
 1. `firebase.js` (Firebase 초기화 - `type="module"`)
 2. `state.js` (전역 변수 `tasks`, `trackers`, `currentTrackerId` 등 상태 선언)
-3. `date-risk-utils.js` (날짜 및 위험 요소 판단 유틸)
-4. `schema-service.js` (데이터 검증 및 스키마 보정)
-5. `calendar-utils.js` / `calendar-day-renderer.js` / `calendar-month-renderer.js` / `calendar-summary-renderer.js` (Gantt 캘린더 및 통계 KPI)
-6. `table-mobile-renderer.js` (모바일/리스트 뷰 렌더러)
-7. `kanban-renderer.js` (칸반 보드 렌더러)
-8. `modal-controller.js` (모달 UI 제어 및 마크업 바인딩)
-9. `event-bindings.js` (전역 클릭, 핫키, Drag & Drop 등 이벤트 바인딩)
-10. `bootstrap-service.js` (시작 시 데이터 무결성 체크 및 초기화)
-11. `app.js` (핵심 비즈니스 로직, 화면 토글, 전역 렌더러 `updateUI`)
-12. `task-service.js` (Firestore CRUD 및 데이터 실시간 수신)
-13. `export-service.js` (CSV / 엑셀 백업 및 파일 가져오기/내보내기)
+3. `auth-service.js` (Google Auth 인증 상태 및 UI, 권한 판단 `hasWritePermission`)
+4. `date-risk-utils.js` (날짜 및 위험 요소 판단 유틸)
+5. `schema-service.js` (데이터 검증 및 스키마 보정)
+6. `calendar-utils.js` / `calendar-day-renderer.js` / `calendar-month-renderer.js` / `calendar-summary-renderer.js` (Gantt 캘린더 및 통계 KPI)
+7. `table-mobile-renderer.js` (모바일/리스트 뷰 렌더러)
+8. `kanban-renderer.js` (칸반 보드 렌더러)
+9. `modal-controller.js` (모달 UI 제어 및 마크업 바인딩)
+10. `admin-approvals.js` (사용자 가입 승인/거부 관리 및 승인 유저 실시간 동기화)
+11. `event-bindings.js` (전역 클릭, 핫키, Drag & Drop 등 이벤트 바인딩 - **일반 defer 스크립트**, ES Module 아님)
+12. `bootstrap-service.js` (시작 시 데이터 무결성 체크 및 초기화)
+13. `app.js` (핵심 비즈니스 로직, 화면 토글, 전역 렌더러 `updateUI`)
+14. `task-service.js` (Firestore CRUD 및 데이터 실시간 수신)
+15. `export-service.js` (CSV / 엑셀 백업 및 파일 가져오기/내보내기)
 
-### 공유되는 전역 상태 (Shared Globals in `js/state.js`)
+### 공유되는 전역 상태 (Shared Globals in `js/state.js` 및 `js/auth-service.js`)
 - `trackers`: 활성화된 트래커 리스트
 - `tasks`: 현재 로드된 전체 업무 목록 (실시간 수신 상태)
 - `currentTrackerId`: 현재 활성화된 트래커 ID
+- `currentUser`: 현재 로그인한 사용자 세션 정보
+- `signUpWithEmail(email, password)`, `loginWithEmail(email, password)`: 사내 이메일 도메인 필터링 기반 가입 및 로그인 함수
+- `hasWritePermission(item)`: 데이터에 대한 쓰기 권한이 본인에게 있는지 여부 검사 함수
 - `updateUI()`, `updateTrackerUI()`: `js/app.js`에서 선언된 화면 강제 렌더러 함수들
 
 ---
@@ -45,6 +50,8 @@
 | :--- | :--- |
 | **기본 UI 구조 및 모달 창 HTML 마크업** | [index.html](file:///home/booyoul/projects/task-tracker-main/index.html) |
 | **전역 상태, 더미 데이터, DOMPurify 보안 설정** | [state.js](file:///home/booyoul/projects/task-tracker-main/js/state.js) |
+| **가입 신청 및 어드민 가입 승인/거부 관리** | [admin-approvals.js](file:///home/booyoul/projects/task-tracker-main/js/admin-approvals.js) / [auth-service.js](file:///home/booyoul/projects/task-tracker-main/js/auth-service.js) |
+| **로그인 인증 상태 관리 및 소유자 기반 권한 판단** | [auth-service.js](file:///home/booyoul/projects/task-tracker-main/js/auth-service.js) |
 | **Firestore 데이터 쓰기/수정/삭제 및 리스너 등록** | [task-service.js](file:///home/booyoul/projects/task-tracker-main/js/task-service.js) / [firebase.js](file:///home/booyoul/projects/task-tracker-main/js/firebase.js) |
 | **화면 모드 토글, 필터 검색, 통계 및 요약 요약 계산** | [app.js](file:///home/booyoul/projects/task-tracker-main/js/app.js) |
 | **업무 상세 리스트 뷰, 모바일 뷰, 인라인 수정** | [table-mobile-renderer.js](file:///home/booyoul/projects/task-tracker-main/js/table-mobile-renderer.js) |
@@ -87,3 +94,4 @@
 1. **스크립트 주입 순서 검토**: 스크립트를 추가할 경우 전역 상태가 정의되는 `state.js` 아래, 화면 메인 루프가 돌아가는 `app.js` 이전에 적절히 위치했는지 순서를 철저히 검증하십시오.
 2. **브라우저 캐시 방지**: `index.html` 수정 시 로드되는 스크립트 경로 뒤의 버전을 쿼리스트링 파라미터(`?v=버전코드`) 형태로 동시 업데이트해 브라우저 캐싱을 방지해야 합니다.
 3. **TailwindCSS 빌드 무결성**: 마크업을 변경한 뒤에는 `npm run build:css`를 가동하여 컴파일 오류나 경고가 발생하지 않는지 검증하고 변경 사항을 커밋하십시오.
+4. **글로벌 스코프 함수 중복 선언(Override) 검증**: 동일 이름의 함수/변수가 프로젝트 내 다른 곳에 선언되어 조용히 덮어씌워지는 무음 오작동(Silent Override)을 방지하기 위해, 작업 대상 함수를 건드리기 전 반드시 `grep_search`를 이용해 파일 내 중복 정의가 없는지 1차 확인을 수행하십시오.

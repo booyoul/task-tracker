@@ -1,5 +1,6 @@
 
 console.info('Smart Task Flow event-bindings.js v20260626-final-stable loaded');
+
 function initEventBindings(){
   if(window.__eventBindingsInitialized)return;
   window.__eventBindingsInitialized=true;
@@ -29,9 +30,11 @@ function initEventBindings(){
   document.getElementById('kanban-container')?.addEventListener('change',handleTableChange);
   document.getElementById('task-table-body')?.addEventListener('focusout',e=>{const el=e.target.closest('.inline-edit-title');if(el)updateTaskTitleInline(el.dataset.id,el.textContent);});
   document.getElementById('task-table-body')?.addEventListener('keydown',handleInlineEditKeydown);
-  document.getElementById('btn-view-table')?.addEventListener('click',()=>switchView('TABLE'));
-  document.getElementById('btn-view-calendar')?.addEventListener('click',()=>switchView('CALENDAR'));
-  document.getElementById('btn-view-kanban')?.addEventListener('click',()=>switchView('KANBAN'));
+  document.getElementById('btn-view-table')?.addEventListener('click',()=>window.switchView?.('TABLE'));
+  document.getElementById('btn-view-calendar')?.addEventListener('click',()=>window.switchView?.('CALENDAR'));
+  document.getElementById('btn-view-kanban')?.addEventListener('click',()=>window.switchView?.('KANBAN'));
+  document.getElementById('btn-view-admin')?.addEventListener('click',()=>window.switchView?.('ADMIN'));
+
   document.getElementById('btn-cal-mode-day')?.addEventListener('click',()=>setCalMode('DAY'));
   document.getElementById('btn-cal-mode-month')?.addEventListener('click',()=>setCalMode('MONTH'));
   document.getElementById('btn-cal-mode-summary')?.addEventListener('click',()=>setCalMode('SUMMARY'));
@@ -48,7 +51,42 @@ function initEventBindings(){
   document.getElementById('btn-delete-tracker')?.addEventListener('click',handleDeleteTrackerClick);
   document.getElementById('btn-cancel-confirm')?.addEventListener('click',()=>window.closeConfirmModal?.());
   document.getElementById('btn-action-confirm')?.addEventListener('click',()=>{if(confirmActionCb)confirmActionCb();});
-  document.addEventListener('click',e=>{const statusBtn=e.target.closest('.mobile-status-btn');if(statusBtn){e.preventDefault();e.stopPropagation();updateTaskStatus(statusBtn.dataset.id,statusBtn.dataset.status);return;}const btn=e.target.closest('button');if(!btn)return;if(btn.id==='btn-focus-risk')toggleFocusMode('riskOnly');else if(btn.id==='btn-focus-high')toggleFocusMode('highOnly');else if(btn.id==='btn-open-assignee-modal')openAssigneeModal();else if(btn.id==='btn-clear-assignee-filter')clearAssigneeMultiSelect();else if(btn.id==='bulk-change-status')bulkChangeStatus();else if(btn.id==='bulk-change-assignee')bulkChangeAssignee();else if(btn.id==='bulk-change-due')bulkChangeDueDate();else if(btn.id==='bulk-clear-selection')clearSelection();});
+  document.addEventListener('click',e=>{
+    console.log('[EventBindings] click detected on:', e.target);
+    const statusBtn=e.target.closest('.mobile-status-btn');
+    if(statusBtn){
+      console.log('[EventBindings] handling mobile-status-btn');
+      e.preventDefault();
+      e.stopPropagation();
+      updateTaskStatus(statusBtn.dataset.id,statusBtn.dataset.status);
+      return;
+    }
+    const btn=e.target.closest('button');
+    if(!btn) {
+      console.log('[EventBindings] no button ancestor found');
+      return;
+    }
+    console.log('[EventBindings] button clicked:', btn.id, btn.className);
+    if(btn.id==='btn-focus-risk') {
+      console.log('[EventBindings] triggering toggleFocusMode for riskOnly');
+      toggleFocusMode('riskOnly');
+    }
+    else if(btn.id==='btn-focus-high') {
+      console.log('[EventBindings] triggering toggleFocusMode for highOnly');
+      toggleFocusMode('highOnly');
+    }
+    else if(btn.id==='btn-open-assignee-modal') openAssigneeModal();
+    else if(btn.id==='btn-clear-assignee-filter') clearAssigneeMultiSelect();
+    else if(btn.id==='bulk-change-status') bulkChangeStatus();
+    else if(btn.id==='bulk-change-assignee') bulkChangeAssignee();
+    else if(btn.id==='bulk-change-due') bulkChangeDueDate();
+    else if(btn.id==='bulk-clear-selection') clearSelection();
+    else if(btn.id==='btn-logout') {
+      if (typeof window.logout === 'function') {
+        window.logout();
+      }
+    }
+  });
   
   // Backdrop click listeners to close modals
   document.getElementById('modal-task')?.addEventListener('click', e => {

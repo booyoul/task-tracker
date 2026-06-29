@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,487 +8,958 @@
     <link rel="icon" href="./favicon.ico?v=20260625-monthly-kpi">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { font-family: 'Noto Sans KR', sans-serif; background-color: #f8fafc; }
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #f1f5f9; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
 
         /* Table layout refinement: keep assignee/action/timeline compact and on one line */
-        .task-nowrap { white-space: nowrap; }
-        .task-timeline-inline { display: inline-flex; align-items: center; gap: 0.5rem; white-space: nowrap; }
-        .task-status-compact { min-height: 36px; }
+        .task-nowrap {
+            white-space: nowrap;
+        }
+
+        .task-timeline-inline {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+        }
+
+        .task-status-compact {
+            min-height: 36px;
+        }
 
 
-        .mobile-task-card { animation: mobileCardIn .18s ease-out both; }
-        @keyframes mobileCardIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-        .mobile-touch-btn { min-height: 34px; }
+        .mobile-task-card {
+            animation: mobileCardIn .18s ease-out both;
+        }
+
+        @keyframes mobileCardIn {
+            from {
+                opacity: 0;
+                transform: translateY(4px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .mobile-touch-btn {
+            min-height: 34px;
+        }
 
         /* Control hub refinement */
-        .control-hub-actions .control-action-btn { min-height: 32px; }
-        .kpi-compact-chip { min-height: 30px; }
+        .control-hub-actions .control-action-btn {
+            min-height: 32px;
+        }
+
+        .kpi-compact-chip {
+            min-height: 30px;
+        }
 
 
         /* Final polish: responsive view separation */
-        .view-transition { transition: opacity .16s ease, transform .16s ease; }
+        .view-transition {
+            transition: opacity .16s ease, transform .16s ease;
+        }
 
 
         /* Calendar day-view compact polish */
-        #calendar-grid.compact-day-grid { align-items: start; }
-        #calendar-grid.compact-day-grid > div { align-self: start; }
+        #calendar-grid.compact-day-grid {
+            align-items: start;
+        }
+
+        #calendar-grid.compact-day-grid>div {
+            align-self: start;
+        }
 
 
         /* Calendar day-view continuous weekly bars with month-wide lane alignment */
-        .calendar-lane-spacer { pointer-events: none; }
-        .calendar-task-chip { max-width: 100%; }
-        .calendar-bar-segment:empty { min-height: 18px; }
+        .calendar-lane-spacer {
+            pointer-events: none;
+        }
+
+        .calendar-task-chip {
+            max-width: 100%;
+        }
+
+        .calendar-bar-segment:empty {
+            min-height: 18px;
+        }
 
 
         /* Phase 11 mobile redesign */
         @media (max-width: 1023px) {
-          body { padding-bottom: 5.5rem; }
-          .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-          #view-mobile { padding-bottom: 4.5rem; }
-          #dashboard-compact-controls { position: sticky; top: 0; z-index: 30; backdrop-filter: blur(10px); }
+            body {
+                padding-bottom: 5.5rem;
+            }
+
+            .line-clamp-2 {
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                line-clamp: 2;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+            }
+
+            #view-mobile {
+                padding-bottom: 4.5rem;
+            }
+
+            #dashboard-compact-controls {
+                position: sticky;
+                top: 0;
+                z-index: 30;
+                backdrop-filter: blur(10px);
+            }
         }
 
         /* Phase 12/13 compact dashboard and Kanban */
         @media (max-width: 1023px) {
-          body { padding-bottom: 5.5rem; }
-          .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-          #view-kanban { padding: 0.75rem; }
+            body {
+                padding-bottom: 5.5rem;
+            }
+
+            .line-clamp-2 {
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                line-clamp: 2;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+            }
+
+            #view-kanban {
+                padding: 0.75rem;
+            }
         }
 
         /* Final stable Kanban helpers */
         @media (max-width: 1023px) {
-          body { padding-bottom: 5.5rem; }
-          .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-          #view-kanban { padding: 0.75rem; }
+            body {
+                padding-bottom: 5.5rem;
+            }
+
+            .line-clamp-2 {
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                line-clamp: 2;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+            }
+
+            #view-kanban {
+                padding: 0.75rem;
+            }
         }
     </style>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap"
+        rel="stylesheet">
+
     <!-- Firebase Modular SDK -->
 
     <!-- DOMPurify for XSS Protection -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js" integrity="sha512-H+rglffZ6f5gF7UJgvH4Naa+fGCgjrHKMgoFOGmcPTRwR6oILo5R+gtzNrpDp7iMV3udbymBVjkeZGNz1Em4rQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"
+        integrity="sha512-H+rglffZ6f5gF7UJgvH4Naa+fGCgjrHKMgoFOGmcPTRwR6oILo5R+gtzNrpDp7iMV3udbymBVjkeZGNz1Em4rQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
-    
+
 </head>
+
 <body class="min-h-screen text-slate-800 antialiased relative">
 
     <!-- 글로벌 플로팅 툴팁 요소 -->
-    <div id="gantt-tooltip" class="fixed z-[100] hidden bg-slate-900/95 text-white text-xs rounded-xl p-3 shadow-xl pointer-events-none border border-slate-800/80 transition-opacity duration-150 max-w-xs backdrop-blur-sm"></div>
+    <div id="gantt-tooltip"
+        class="fixed z-[100] hidden bg-slate-900/95 text-white text-xs rounded-xl p-3 shadow-xl pointer-events-none border border-slate-800/80 transition-opacity duration-150 max-w-xs backdrop-blur-sm">
+    </div>
 
     <!-- 메인 컨테이너 -->
     <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        
-        <header class="mb-8 flex flex-col justify-between gap-4 lg:flex-row lg:items-center bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+
+        <header
+            class="mb-8 flex flex-col justify-between gap-4 lg:flex-row lg:items-center bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
             <div class="flex flex-col sm:flex-row sm:items-center gap-4">
-                <span class="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-200">
+                <span
+                    class="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-200">
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012 2h2a2 2 0 012-2m-3 7h3m-3 4h3m-6-4h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012 2h2a2 2 0 012-2m-3 7h3m-3 4h3m-6-4h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
                 </span>
                 <div>
                     <!-- 멀티 트래커 스위처 및 드롭다운 컨트롤 -->
                     <div class="relative inline-block text-left mb-1" id="tracker-dropdown-container">
-                        <button id="btn-tracker-dropdown" class="group inline-flex items-center gap-2 rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-1.5 text-sm font-bold text-slate-800 hover:bg-slate-100 transition shadow-sm outline-none">
+                        <button id="btn-tracker-dropdown"
+                            class="group inline-flex items-center gap-2 rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-1.5 text-sm font-bold text-slate-800 hover:bg-slate-100 transition shadow-sm outline-none">
                             <span id="current-tracker-name" class="text-base text-indigo-700">기본 트래커</span>
-                            <svg class="h-4 w-4 text-slate-400 group-hover:text-slate-600 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" /></svg>
+                            <svg class="h-4 w-4 text-slate-400 group-hover:text-slate-600 transition" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                    d="M19 9l-7 7-7-7" />
+                            </svg>
                         </button>
                         <!-- 드롭다운 팝업 리스트 -->
-                        <div id="tracker-dropdown-menu" class="hidden absolute left-0 mt-2 w-72 origin-top-left rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 focus:outline-none z-50 p-2 border border-slate-100">
-                            <div class="text-[10px] font-bold text-slate-400 px-3 py-1.5 uppercase tracking-wider">트래커 스페이스 전환</div>
+                        <div id="tracker-dropdown-menu"
+                            class="hidden absolute left-0 mt-2 w-72 origin-top-left rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 focus:outline-none z-50 p-2 border border-slate-100">
+                            <div class="text-[10px] font-bold text-slate-400 px-3 py-1.5 uppercase tracking-wider">트래커
+                                스페이스 전환</div>
                             <div id="tracker-list-items" class="max-h-56 overflow-y-auto space-y-1"></div>
                             <div class="border-t border-slate-100 mt-2 pt-2 flex flex-col gap-1">
-                                <button id="btn-create-tracker-open" class="w-full text-left inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 transition">
+                                <button id="btn-create-tracker-open"
+                                    class="w-full text-left inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 transition">
                                     <span>➕</span> 새 트래커 추가
                                 </button>
-                                <button id="btn-edit-tracker-open" class="w-full text-left inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">
+                                <button id="btn-edit-tracker-open"
+                                    class="w-full text-left inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">
                                     <span>⚙️</span> 현재 트래커 정보 편집
                                 </button>
                             </div>
                         </div>
                     </div>
-                    <p id="current-tracker-desc" class="text-xs text-slate-500 font-medium">실시간 업무 배정, 기한 관리 및 진척도 모니터링 시스템</p>
+                    <p id="current-tracker-desc" class="text-xs text-slate-500 font-medium">실시간 업무 배정, 기한 관리 및 진척도 모니터링
+                        시스템</p>
                 </div>
             </div>
-            
-            <div class="flex flex-wrap items-center gap-2">
-                <button id="btn-undo" class="hidden inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-700 shadow-sm hover:bg-amber-100 transition">
-                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
+
+            <div class="flex flex-wrap items-center gap-3">
+                <div id="user-menu-container" class="mr-2"></div>
+                <button id="btn-undo"
+                    class="hidden inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-700 shadow-sm hover:bg-amber-100 transition">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                    </svg>
                     실행 취소
                 </button>
 
-                <button id="btn-batch-delete" class="hidden inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 shadow-sm hover:bg-rose-100 transition">
-                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                <button id="btn-batch-delete"
+                    class="hidden inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 shadow-sm hover:bg-rose-100 transition">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
                     선택 일괄 삭제
                 </button>
 
-                <button id="btn-export-csv" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition">
-                    <svg class="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                <button id="btn-export-csv"
+                    class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition">
+                    <svg class="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
                     CSV
                 </button>
 
-                <button id="btn-export-excel" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition">
+                <button id="btn-export-excel"
+                    class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition">
                     <span class="text-emerald-600 font-black">XLS</span>
                     Excel
                 </button>
 
-                <button id="btn-export-powerbi" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition">
+                <button id="btn-export-powerbi"
+                    class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition">
                     <span class="text-yellow-600 font-black">BI</span>
                     Power BI
                 </button>
 
-                <button id="btn-export-json" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition">
-                    <svg class="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                <button id="btn-export-json"
+                    class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition">
+                    <svg class="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                    </svg>
                     백업
                 </button>
 
-                <button id="btn-import-trigger" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition">
-                    <svg class="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                <button id="btn-import-trigger"
+                    class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition">
+                    <svg class="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
                     가져오기
                 </button>
                 <input type="file" id="input-import-json" class="hidden" accept=".json">
 
-                <button id="btn-add-task" class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
-                    <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                <button id="btn-add-task"
+                    class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+                    <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd"
+                            d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                            clip-rule="evenodd" />
+                    </svg>
                     새 업무 추가
                 </button>
             </div>
         </header>
 
-        <!-- 대시보드 요약 (Metrics Cards) -->
-        <section class="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-            <div id="card-ALL" data-status="ALL" class="filter-card rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-md ring-2 ring-indigo-600 bg-indigo-50/10">
-                <div class="flex items-center justify-between"><span class="text-xs font-semibold text-slate-500 uppercase">전체 업무</span><span class="rounded-full bg-slate-50 p-1.5 text-slate-600"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012 2h2a2 2 0 012-2m-3 7h3m-3 4h3m-6-4h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg></span></div>
-                <div class="mt-1 flex items-baseline gap-1.5"><span id="stat-total" class="text-lg font-black text-slate-900">0</span><span class="text-xs text-slate-400">건</span></div>
+        <!-- 로그인 안되었을 때 보여줄 화면 -->
+        <div id="auth-gateway-view"
+            class="hidden flex flex-col items-center justify-center py-20 px-6 bg-white border border-slate-100 rounded-2xl shadow-sm text-center">
+            <div class="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-6">
+                <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
             </div>
-            <div id="card-PENDING" data-status="PENDING" class="filter-card rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
-                <div class="flex items-center justify-between"><span class="text-xs font-semibold text-slate-500 uppercase">진행 대기</span><span class="rounded-full bg-amber-50 p-1.5 text-amber-600"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></span></div>
-                <div class="mt-1 flex items-baseline gap-1.5"><span id="stat-pending" class="text-lg font-black text-slate-900">0</span><span id="stat-pending-pct" class="text-xs text-amber-600 font-medium">0%</span></div>
-            </div>
-            <div id="card-PROGRESS" data-status="PROGRESS" class="filter-card rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
-                <div class="flex items-center justify-between"><span class="text-xs font-semibold text-slate-500 uppercase">진행 중</span><span class="rounded-full bg-blue-50 p-1.5 text-blue-600"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg></span></div>
-                <div class="mt-1 flex items-baseline gap-1.5"><span id="stat-progress" class="text-lg font-black text-slate-900">0</span><span id="stat-progress-pct" class="text-xs text-blue-600 font-medium">0%</span></div>
-            </div>
-            <div id="card-COMPLETED" data-status="COMPLETED" class="filter-card rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
-                <div class="flex items-center justify-between"><span class="text-xs font-semibold text-slate-500 uppercase">완료됨</span><span class="rounded-full bg-emerald-50 p-1.5 text-emerald-600"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></span></div>
-                <div class="mt-1 flex items-baseline gap-1.5"><span id="stat-completed" class="text-lg font-black text-slate-900">0</span><span id="stat-completed-pct" class="text-xs text-emerald-600 font-medium">0%</span></div>
-            </div>
-            <div id="card-OVERDUE" data-status="OVERDUE" class="filter-card rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-sm col-span-2 lg:col-span-1 cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
-                <div class="flex items-center justify-between"><span class="text-xs font-semibold text-slate-500 uppercase">기한 초과</span><span class="rounded-full bg-rose-50 p-1.5 text-rose-600"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></span></div>
-                <div class="mt-1 flex items-baseline gap-1.5"><span id="stat-overdue" class="text-lg font-black text-rose-600">0</span><span id="stat-overdue-lbl" class="text-xs font-medium">대기 중</span></div>
-            </div>
-        </section>
-
-        <!-- 필터 및 뷰 토글 -->
-        <div class="mb-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-            <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div class="relative flex-1 max-w-sm">
-                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                    </span>
-                    <input type="text" id="filter-search" placeholder="업무명 또는 담당자 검색..." class="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-3 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
-                </div>
-                
-                <div class="flex flex-wrap items-center gap-3">
-                    <div class="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                        <span class="font-semibold text-slate-500">마감 월:</span>
-                        <input type="month" id="filter-start-month" class="bg-transparent border-none outline-none cursor-pointer font-medium text-slate-700">
-                        <span class="text-slate-300">~</span>
-                        <input type="month" id="filter-end-month" class="bg-transparent border-none outline-none cursor-pointer font-medium text-slate-700">
-                    </div>
-
-                    <select id="filter-status" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 outline-none transition focus:border-indigo-500 focus:bg-indigo-50">
-                        <option value="ALL">상태: 전체 보기</option>
-                        <option value="PENDING">진행 대기</option>
-                        <option value="PROGRESS">진행 중</option>
-                        <option value="COMPLETED">완료됨</option>
-                        <option value="OVERDUE">기한 초과</option>
-                    </select>
-                    <select id="filter-priority" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 outline-none transition focus:border-indigo-500 focus:bg-indigo-50">
-                        <option value="ALL">우선순위: 전체 보기</option>
-                        <option value="HIGH">높음</option>
-                        <option value="NORMAL">보통</option>
-                        <option value="LOW">낮음</option>
-                    </select>
-                    <select id="filter-assignee" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 outline-none transition focus:border-indigo-500 focus:bg-indigo-50">
-                        <option value="ALL">담당자: 전체</option>
-                    </select>
-                    <button type="button" id="btn-reset-filters" class="rounded-xl bg-slate-100 p-2 text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition" title="필터 초기화">
-                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A9.006 9.006 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.968 8.968 0 01-15.356-2m15.356 2H15" /></svg>
-                    </button>
-                    <!-- 뷰 전환 토글 -->
-                    <div class="ml-2 inline-flex rounded-xl bg-slate-100 p-1">
-                        <button id="btn-view-table" class="rounded-lg bg-white px-4 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition">목록</button>
-                        <button id="btn-view-calendar" class="rounded-lg px-4 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition">캘린더</button>
-                        <button id="btn-view-kanban" class="rounded-lg px-4 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition">칸반</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 뷰 1: 데이터 테이블 -->
-        <main id="view-table" class="hidden lg:block overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm transition-all duration-300">
-            <div class="overflow-x-auto">
-                <table class="w-full min-w-[1120px] divide-y divide-slate-100 text-left">
-                    <thead class="bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                        <tr>
-                            <th class="w-[3%] px-2 py-4 text-center">순서</th>
-                            <th class="w-[3%] px-3 py-4 text-center">
-                                <input type="checkbox" id="checkbox-select-all" class="rounded border border-slate-300 cursor-pointer text-indigo-600 focus:ring-indigo-500">
-                            </th>
-                            <th class="w-[37%] px-4 py-4">업무 상세</th>
-                            <th class="w-[13%] px-3 py-4 whitespace-nowrap">담당자</th>
-                            <th class="w-[17%] px-3 py-4 whitespace-nowrap">마감 및 타임라인</th>
-                            <th class="w-[6%] px-2 py-4 text-center">우선순위</th>
-                            <th class="w-[12%] px-3 py-4 text-center whitespace-nowrap">진행 상태</th>
-                            <th class="w-[7%] px-2 py-4 text-center whitespace-nowrap">작업</th>
-                        </tr>
-                    </thead>
-                    <tbody id="task-table-body" class="divide-y divide-slate-100 text-sm"></tbody>
-                </table>
-            </div>
-            <div id="empty-state-table" class="hidden flex-col items-center justify-center p-16 text-center">
-                <span class="rounded-full bg-slate-50 p-4 text-slate-300">
-                    <svg class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                </span>
-                <h3 class="mt-4 text-base font-semibold text-slate-900">해당 조건의 업무가 없습니다.</h3>
-            </div>
-        </main>
-
-        <!-- 모바일 전용 카드 뷰 -->
-        <main id="view-mobile" class="block lg:hidden transition-all duration-300">
-            <div id="task-card-container" class="space-y-3"></div>
-            <div id="empty-state-mobile" class="hidden flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center shadow-sm">
-                <h3 class="text-sm font-semibold text-slate-900">해당 조건의 업무가 없습니다.</h3>
-            </div>
-        </main>
-
-        <!-- 뷰 2: 캘린더 -->
-        <main id="view-calendar" class="hidden overflow-hidden transition-all duration-300 rounded-2xl border border-slate-100 bg-white shadow-sm p-6">
-            <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div class="flex items-center gap-4 flex-wrap">
-                    <h2 id="calendar-month-year" class="text-xl font-bold text-slate-800"></h2>
-                    
-                    <!-- 캘린더 일별 / 월별 / 월별 요약 3단 토글 스위치 -->
-                    <div class="inline-flex rounded-xl bg-slate-100 p-1 text-xs font-semibold">
-                        <button id="btn-cal-mode-day" class="rounded-lg bg-white px-3.5 py-1.5 text-slate-800 shadow-sm transition">일별 보기</button>
-                        <button id="btn-cal-mode-month" class="rounded-lg px-3.5 py-1.5 text-slate-500 hover:text-slate-800 transition">월별 보기</button>
-                        <button id="btn-cal-mode-summary" class="rounded-lg px-3.5 py-1.5 text-slate-500 hover:text-slate-800 transition">월별 요약</button>
-                    </div>
-                </div>
-                
-                <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl shrink-0">
-                    <button id="btn-prev-month" class="rounded-lg p-2 text-slate-600 hover:bg-white hover:shadow-sm transition" title="이전 월">
-                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
-                    </button>
-                    <button id="btn-today-month" class="rounded-lg px-4 py-1.5 text-sm font-semibold text-slate-600 hover:bg-white hover:shadow-sm transition">오늘</button>
-                    <button id="btn-next-month" class="rounded-lg p-2 text-slate-600 hover:bg-white hover:shadow-sm transition" title="다음 월">
-                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
-                    </button>
-                </div>
-            </div>
+            <h2 id="auth-title" class="text-xl font-bold text-slate-800 mb-1">사내 협업 트래커 로그인</h2>
+            <p id="auth-desc" class="text-[11px] text-slate-400 mb-6">등록된 이메일 도메인(@kr.spiraxsarco.com, @test.com)만 가입이 가능합니다.</p>
             
-            <!-- 반응형 가로 스크롤 가능 컨테이너 -->
-            <div class="overflow-x-auto rounded-xl pb-2">
-                <div class="min-w-[900px] sm:min-w-0 relative">
-                    <!-- 주단위 요일 라벨 헤더 (일별 보기에만 유효) -->
-                    <div id="calendar-weekday-header" class="grid grid-cols-7 gap-px bg-slate-200 border border-slate-200 rounded-t-lg overflow-hidden">
-                        <div class="bg-slate-50 py-2 text-center text-xs font-semibold text-rose-500">일</div>
-                        <div class="bg-slate-50 py-2 text-center text-xs font-semibold text-slate-500">월</div>
-                        <div class="bg-slate-50 py-2 text-center text-xs font-semibold text-slate-500">화</div>
-                        <div class="bg-slate-50 py-2 text-center text-xs font-semibold text-slate-500">수</div>
-                        <div class="bg-slate-50 py-2 text-center text-xs font-semibold text-slate-500">목</div>
-                        <div class="bg-slate-50 py-2 text-center text-xs font-semibold text-slate-500">금</div>
-                        <div class="bg-slate-50 py-2 text-center text-xs font-semibold text-blue-500">토</div>
-                    </div>
-                    
-                    <!-- 달력 및 Gantt 오버레이 통합 구동 베이스 플레이트 -->
-                    <div id="calendar-grid" class="mt-px relative">
-                        <!-- 동적 드로잉 콘텐츠 영역 -->
-                    </div>
+            <form id="auth-form" onsubmit="handleAuthSubmit(event)" class="w-full space-y-4">
+                <div class="text-left">
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">이메일 주소</label>
+                    <input type="email" id="auth-email" required placeholder="name@kr.spiraxsarco.com" class="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" />
                 </div>
-            </div>
-        </main>
-        <!-- 뷰 3: Kanban -->
-        <main id="view-kanban" class="hidden overflow-hidden transition-all duration-300 rounded-2xl border border-slate-100 bg-white shadow-sm p-4">
-            <div id="kanban-container" class="w-full"></div>
-            <div id="empty-state-kanban" class="hidden flex-col items-center justify-center p-16 text-center">
-                <span class="rounded-full bg-slate-50 p-4 text-slate-300">
-                    <svg class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m-8 0h8m-8 0H5a2 2 0 01-2-2V7a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-4" />
-                    </svg>
-                </span>
-                <h3 class="mt-4 text-base font-semibold text-slate-900">Kanban에 표시할 업무가 없습니다.</h3>
-                <p class="mt-1 text-sm text-slate-400">필터 조건을 변경하거나 새 업무를 추가해 주세요.</p>
-            </div>
-        </main>
-        
-
-        
-        <footer class="mt-8 text-center text-xs text-slate-400">
-            &copy; 2026 Smart Task Flow. All rights reserved. Firebase 실시간 동기화 지원.
-        </footer>
-    </div>
-
-    <!-- 1. 새 업무 / 상세 편집 모달 -->
-    <div id="modal-task" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-        <div class="flex min-h-screen items-end justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            <div id="modal-task-backdrop" class="fixed inset-0 bg-slate-500 bg-opacity-40 transition-opacity"></div>
-            <span class="hidden sm:inline-block sm:h-screen sm:align-middle" aria-hidden="true">&#8203;</span>
-            <div class="inline-block transform overflow-hidden rounded-2xl bg-white text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:align-middle">
-                <div class="bg-white px-6 pt-6 pb-4">
-                    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                        <h3 class="text-lg font-bold text-slate-900" id="modal-title">새로운 업무 배정</h3>
-                        <button id="btn-close-task-modal" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition">
-                            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
-                        </button>
-                    </div>
-
-                    <form id="form-task" class="mt-4 space-y-4">
-                        <input type="hidden" id="input-task-id">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-500 mb-1">업무명 *</label>
-                            <input type="text" id="input-task-title" required maxlength="100" placeholder="수행할 핵심 업무 내용을 적어주세요." class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-500 mb-1">담당자 *</label>
-                            <input type="text" id="input-task-assignee" required maxlength="30" placeholder="배정할 사람의 이름을 적어주세요." class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
-                        </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-500 mb-1">시작일</label>
-                                <input type="date" id="input-task-start" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-500 mb-1">마감일 *</label>
-                                <input type="date" id="input-task-due" required class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-500 mb-1">우선순위</label>
-                                <select id="input-task-priority" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
-                                    <option value="HIGH">높음 🔴</option><option value="NORMAL" selected>보통 🟡</option><option value="LOW">낮음 🟢</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-500 mb-1">현재 상태</label>
-                                <select id="input-task-status" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
-                                    <option value="PENDING" selected>진행 대기 ⌛</option><option value="PROGRESS">진행 중 ⚙️</option><option value="COMPLETED">완료 ⭐️</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-500 mb-1">산업</label>
-                                <select id="input-task-industry" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
-                                    <option value="AUTO" selected>자동 분류</option><option value="FNB">F&B</option><option value="PHARMA">Healthcare / Pharma / Bio</option><option value="SEMI">Semiconductor</option><option value="DISPLAY">Display</option><option value="OILGAS">Oil & Gas</option><option value="CHEM">Chemical / Petrochemical</option><option value="SHIP">Shipbuilding</option><option value="BUILDING">Commercial Building</option><option value="GENERAL">General</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-500 mb-1">업무 유형</label>
-                                <select id="input-task-type" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
-                                    <option value="GENERAL" selected>General</option><option value="PIPELINE_REVIEW">Pipeline Review</option><option value="CUSTOMER_VISIT">Customer Visit</option><option value="TECH_FOLLOWUP">Technical Follow-up</option><option value="QUOTATION">Quotation</option><option value="NPI_LAUNCH">NPI / Launch</option><option value="MARKETING">Marketing / Webinar</option><option value="DISTRIBUTOR">Distributor</option><option value="INTERNAL_REVIEW">Internal Review</option><option value="COMPLIANCE">Compliance / Certification</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <!-- 하위 업무(Sub tasks) 고도화된 추가 및 수정 관리 영역 -->
-                        <div class="border-t border-slate-100 pt-3">
-                            <label class="block text-xs font-semibold text-slate-500 mb-1">하위 과제(Sub Tasks) 관리</label>
-                            <div class="flex flex-col gap-2 mb-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200/50">
-                                <div class="flex gap-2">
-                                    <input type="text" id="input-subtask-title" placeholder="하위 세부 실행 과제명" class="flex-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs outline-none transition focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100">
-                                    <input type="text" id="input-subtask-assignee" placeholder="담당자 (선택)" class="w-24 sm:w-32 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs outline-none transition focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100">
-                                </div>
-                                <div class="flex flex-wrap items-center justify-between gap-2">
-                                    <div class="flex items-center gap-3">
-                                        <div class="flex items-center gap-1.5">
-                                            <span class="text-[11px] text-slate-400 font-semibold whitespace-nowrap">시작:</span>
-                                            <input type="date" id="input-subtask-start" class="w-28 sm:w-auto rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs outline-none focus:border-indigo-500 transition">
-                                        </div>
-                                        <div class="flex items-center gap-1.5">
-                                            <span class="text-[11px] text-slate-400 font-semibold whitespace-nowrap">마감:</span>
-                                            <input type="date" id="input-subtask-due" class="w-28 sm:w-auto rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs outline-none focus:border-indigo-500 transition">
-                                        </div>
-                                    </div>
-                                    <button type="button" id="btn-add-subtask" class="rounded-lg bg-slate-800 px-4 py-1.5 text-xs font-bold text-white hover:bg-slate-700 transition shrink-0 ml-auto">추가</button>
-                                </div>
-                            </div>
-                            <ul id="subtask-list-container" class="space-y-1.5 max-h-36 overflow-y-auto pr-1"></ul>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-500 mb-1">세부 안내 및 메모</label>
-                            <textarea id="input-task-notes" rows="3" maxlength="300" placeholder="참고사항이나 전달사항을 남겨주세요." class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100"></textarea>
-                        </div>
-                        <div class="border-t border-slate-100 pt-4 flex items-center justify-end gap-2">
-                            <button type="button" id="btn-cancel-task" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">취소</button>
-                            <button type="submit" class="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition">저장하기</button>
-                        </div>
-                    </form>
+                <div id="auth-name-container" class="text-left hidden">
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">이름 (표시명) *</label>
+                    <input type="text" id="auth-name" placeholder="홍길동" class="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" />
                 </div>
+                <div class="text-left">
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">비밀번호</label>
+                    <input type="password" id="auth-password" required placeholder="••••••••" class="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" />
+                </div>
+                <button type="submit" id="btn-auth-submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-xl shadow-md transition">
+                    로그인
+                </button>
+            </form>
+            
+            <div class="mt-4 text-center">
+                <button onclick="toggleAuthMode()" id="btn-toggle-auth" class="text-xs text-indigo-600 hover:underline font-semibold">
+                    계정이 없으신가요? 사내 메일로 회원가입하기
+                </button>
             </div>
+
+            <script>
+                var isSignUpMode = false;
+                function toggleAuthMode() {
+                    isSignUpMode = !isSignUpMode;
+                    var title = document.getElementById('auth-title');
+                    var btn = document.getElementById('btn-auth-submit');
+                    var toggleBtn = document.getElementById('btn-toggle-auth');
+                    var nameContainer = document.getElementById('auth-name-container');
+                    var nameInput = document.getElementById('auth-name');
+                    if (isSignUpMode) {
+                        title.textContent = "사내 이메일 회원가입";
+                        btn.textContent = "가입하기";
+                        toggleBtn.textContent = "이미 계정이 있으신가요? 로그인하기";
+                        if (nameContainer) nameContainer.classList.remove('hidden');
+                        if (nameInput) nameInput.required = true;
+                    } else {
+                        title.textContent = "사내 협업 트래커 로그인";
+                        btn.textContent = "로그인";
+                        toggleBtn.textContent = "계정이 없으신가요? 사내 메일로 회원가입하기";
+                        if (nameContainer) nameContainer.classList.add('hidden');
+                        if (nameInput) {
+                            nameInput.required = false;
+                            nameInput.value = '';
+                        }
+                    }
+                }
+                function handleAuthSubmit(e) {
+                    e.preventDefault();
+                    var email = document.getElementById('auth-email').value;
+                    var pw = document.getElementById('auth-password').value;
+                    var name = document.getElementById('auth-name')?.value || '';
+                    if (isSignUpMode) {
+                        window.signUpWithEmail(email, pw, name);
+                    } else {
+                        window.loginWithEmail(email, pw);
+                    }
+                }
+            </script>
         </div>
-    </div>
 
-    <!-- 2. 신규 트래커 생성/수정 모달 -->
-    <div id="modal-tracker" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-tracker-title" role="dialog" aria-modal="true">
-        <div class="flex min-h-screen items-end justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            <div id="modal-tracker-backdrop" class="fixed inset-0 bg-slate-500 bg-opacity-40 transition-opacity"></div>
-            <span class="hidden sm:inline-block sm:h-screen sm:align-middle" aria-hidden="true">&#8203;</span>
-            <div class="inline-block transform overflow-hidden rounded-2xl bg-white text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md sm:align-middle">
-                <div class="bg-white p-6">
-                    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                        <h3 class="text-lg font-bold text-slate-900" id="modal-tracker-title">새 트래커 스페이스 추가</h3>
-                        <button id="btn-close-tracker-modal" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition">
-                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                        </button>
-                    </div>
-                    <form id="form-tracker" class="mt-4 space-y-4">
-                        <input type="hidden" id="input-tracker-id">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-500 mb-1">트래커 이름 *</label>
-                            <input type="text" id="input-tracker-name" required maxlength="50" placeholder="예: 서비스 런칭 스프린트, 마케팅 전략" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-500 mb-1">설명</label>
-                            <textarea id="input-tracker-desc" rows="3" maxlength="200" placeholder="트래커 스페이스에 대한 간단한 역할을 설명해 주세요." class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100"></textarea>
-                        </div>
-                        <div class="border-t border-slate-100 pt-4 flex items-center justify-between gap-2">
-                            <button type="button" id="btn-delete-tracker" class="hidden rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 hover:bg-rose-100 transition">이 트래커 삭제</button>
-                            <div class="flex items-center gap-2 ml-auto">
-                                <button type="button" id="btn-cancel-tracker" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">취소</button>
-                                <button type="submit" class="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition">저장하기</button>
-                            </div>
-                        </div>
-                    </form>
+        <!-- 로그인 완료 후 보일 메인 콘텐츠 영역 -->
+        <div id="app-main-content" class="hidden">
+
+            <!-- 대시보드 요약 (Metrics Cards) -->
+            <section class="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+                <div id="card-ALL" data-status="ALL"
+                    class="filter-card rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-md ring-2 ring-indigo-600 bg-indigo-50/10">
+                    <div class="flex items-center justify-between"><span
+                            class="text-xs font-semibold text-slate-500 uppercase">전체 업무</span><span
+                            class="rounded-full bg-slate-50 p-1.5 text-slate-600"><svg class="h-5 w-5" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012 2h2a2 2 0 012-2m-3 7h3m-3 4h3m-6-4h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg></span></div>
+                    <div class="mt-1 flex items-baseline gap-1.5"><span id="stat-total"
+                            class="text-lg font-black text-slate-900">0</span><span
+                            class="text-xs text-slate-400">건</span></div>
                 </div>
-            </div>
-        </div>
-    </div>
+                <div id="card-PENDING" data-status="PENDING"
+                    class="filter-card rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
+                    <div class="flex items-center justify-between"><span
+                            class="text-xs font-semibold text-slate-500 uppercase">진행 대기</span><span
+                            class="rounded-full bg-amber-50 p-1.5 text-amber-600"><svg class="h-5 w-5" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg></span></div>
+                    <div class="mt-1 flex items-baseline gap-1.5"><span id="stat-pending"
+                            class="text-lg font-black text-slate-900">0</span><span id="stat-pending-pct"
+                            class="text-xs text-amber-600 font-medium">0%</span></div>
+                </div>
+                <div id="card-PROGRESS" data-status="PROGRESS"
+                    class="filter-card rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
+                    <div class="flex items-center justify-between"><span
+                            class="text-xs font-semibold text-slate-500 uppercase">진행 중</span><span
+                            class="rounded-full bg-blue-50 p-1.5 text-blue-600"><svg class="h-5 w-5" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg></span></div>
+                    <div class="mt-1 flex items-baseline gap-1.5"><span id="stat-progress"
+                            class="text-lg font-black text-slate-900">0</span><span id="stat-progress-pct"
+                            class="text-xs text-blue-600 font-medium">0%</span></div>
+                </div>
+                <div id="card-COMPLETED" data-status="COMPLETED"
+                    class="filter-card rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
+                    <div class="flex items-center justify-between"><span
+                            class="text-xs font-semibold text-slate-500 uppercase">완료됨</span><span
+                            class="rounded-full bg-emerald-50 p-1.5 text-emerald-600"><svg class="h-5 w-5" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg></span></div>
+                    <div class="mt-1 flex items-baseline gap-1.5"><span id="stat-completed"
+                            class="text-lg font-black text-slate-900">0</span><span id="stat-completed-pct"
+                            class="text-xs text-emerald-600 font-medium">0%</span></div>
+                </div>
+                <div id="card-OVERDUE" data-status="OVERDUE"
+                    class="filter-card rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-sm col-span-2 lg:col-span-1 cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
+                    <div class="flex items-center justify-between"><span
+                            class="text-xs font-semibold text-slate-500 uppercase">기한 초과</span><span
+                            class="rounded-full bg-rose-50 p-1.5 text-rose-600"><svg class="h-5 w-5" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg></span></div>
+                    <div class="mt-1 flex items-baseline gap-1.5"><span id="stat-overdue"
+                            class="text-lg font-black text-rose-600">0</span><span id="stat-overdue-lbl"
+                            class="text-xs font-medium">대기 중</span></div>
+                </div>
+            </section>
 
-    <!-- 3. 확인(Confirm) 모달 -->
-    <div id="modal-confirm" class="fixed inset-0 z-50 hidden overflow-y-auto" role="dialog" aria-modal="true">
-        <div class="flex min-h-screen items-end justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            <div id="modal-confirm-backdrop" class="fixed inset-0 bg-slate-500 bg-opacity-40 transition-opacity"></div>
-            <span class="hidden sm:inline-block sm:h-screen sm:align-middle">&#8203;</span>
-            <div class="inline-block transform overflow-hidden rounded-2xl bg-white text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md sm:align-middle">
-                <div class="p-6">
-                    <div class="flex items-center gap-3">
-                        <span class="rounded-full bg-rose-50 p-2 text-rose-600">
-                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4v2m0 4v2m0-16a9 9 0 010 18 9 9 0 010-18z" /></svg>
+            <!-- 필터 및 뷰 토글 -->
+            <div class="mb-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div class="relative flex-1 max-w-sm">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
                         </span>
-                        <h3 class="text-base font-bold text-slate-900" id="confirm-title">업무를 삭제하시겠습니까?</h3>
+                        <input type="text" id="filter-search" placeholder="업무명 또는 담당자 검색..."
+                            class="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-3 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
                     </div>
-                    <p class="mt-2 text-sm text-slate-500 pl-11" id="confirm-message">이 작업은 복구할 수 없습니다.</p>
-                    <div class="mt-6 flex items-center justify-end gap-2 pl-11">
-                        <button id="btn-cancel-confirm" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">취소</button>
-                        <button id="btn-action-confirm" class="rounded-xl bg-rose-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-rose-700 transition">삭제하기</button>
+
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div
+                            class="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                            <span class="font-semibold text-slate-500">마감 월:</span>
+                            <input type="month" id="filter-start-month"
+                                class="bg-transparent border-none outline-none cursor-pointer font-medium text-slate-700">
+                            <span class="text-slate-300">~</span>
+                            <input type="month" id="filter-end-month"
+                                class="bg-transparent border-none outline-none cursor-pointer font-medium text-slate-700">
+                        </div>
+
+                        <select id="filter-status"
+                            class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 outline-none transition focus:border-indigo-500 focus:bg-indigo-50">
+                            <option value="ALL">상태: 전체 보기</option>
+                            <option value="PENDING">진행 대기</option>
+                            <option value="PROGRESS">진행 중</option>
+                            <option value="COMPLETED">완료됨</option>
+                            <option value="OVERDUE">기한 초과</option>
+                        </select>
+                        <select id="filter-priority"
+                            class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 outline-none transition focus:border-indigo-500 focus:bg-indigo-50">
+                            <option value="ALL">우선순위: 전체 보기</option>
+                            <option value="HIGH">높음</option>
+                            <option value="NORMAL">보통</option>
+                            <option value="LOW">낮음</option>
+                        </select>
+                        <select id="filter-assignee"
+                            class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 outline-none transition focus:border-indigo-500 focus:bg-indigo-50">
+                            <option value="ALL">담당자: 전체</option>
+                        </select>
+                        <button type="button" id="btn-reset-filters"
+                            class="rounded-xl bg-slate-100 p-2 text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition"
+                            title="필터 초기화">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 4v5h.582m15.356 2A9.006 9.006 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.968 8.968 0 01-15.356-2m15.356 2H15" />
+                            </svg>
+                        </button>
+                        <!-- 뷰 전환 토글 -->
+                        <div class="ml-2 inline-flex rounded-xl bg-slate-100 p-1">
+                            <button id="btn-view-table"
+                                class="rounded-lg bg-white px-4 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition">목록</button>
+                            <button id="btn-view-calendar"
+                                class="rounded-lg px-4 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition">캘린더</button>
+                            <button id="btn-view-kanban"
+                                class="rounded-lg px-4 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition">칸반</button>
+                            <button id="btn-view-admin"
+                                class="hidden rounded-lg px-4 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition">승인 관리</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 뷰 0: 어드민 승인 관리 -->
+            <main id="view-admin-approvals"
+                class="hidden overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm transition-all duration-300 p-6">
+                <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4">
+                    <div>
+                        <h2 class="text-lg font-black text-slate-800">가입 승인 관리</h2>
+                        <p class="text-xs text-slate-400">사내 트래커 신규 가입 신청자의 승인 상태를 제어합니다.</p>
+                    </div>
+                    <div class="flex items-center gap-2 self-start sm:self-auto">
+                        <!-- 마이그레이션 버튼 -->
+                        <button id="btn-migrate-names" class="inline-flex items-center gap-1.5 rounded-xl border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-bold text-violet-700 hover:bg-violet-100 transition shadow-sm">
+                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A9.006 9.006 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.968 8.968 0 01-15.356-2m15.356 2H15" />
+                            </svg>
+                            <span>데이터 이름 정상화</span>
+                        </button>
+                        <!-- 탭 구분 -->
+                        <div class="inline-flex rounded-xl bg-slate-100 p-1">
+                            <button id="btn-admin-tab-pending" class="rounded-lg bg-white px-3 py-1 text-xs font-bold text-slate-800 shadow-sm transition">승인 대기자 (<span id="admin-pending-count">0</span>)</button>
+                            <button id="btn-admin-tab-all" class="rounded-lg px-3 py-1 text-xs font-semibold text-slate-500 hover:text-slate-800 transition">전체 가입자</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 탭 1: 승인 대기자 목록 -->
+                <div id="admin-panel-pending" class="block">
+                    <div class="overflow-x-auto">
+                        <table class="w-full min-w-[600px] divide-y divide-slate-100 text-left">
+                            <thead class="bg-slate-50 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                <tr>
+                                    <th class="px-4 py-3">이름(표시명)</th>
+                                    <th class="px-4 py-3">이메일</th>
+                                    <th class="px-4 py-3">신청일</th>
+                                    <th class="px-4 py-3 text-right">처리</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-pending-tbody" class="divide-y divide-slate-100 text-sm text-slate-600">
+                                <tr>
+                                    <td colspan="4" class="px-4 py-8 text-center text-slate-400">대기 중인 신청자가 없습니다.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 탭 2: 전체 가입자 목록 -->
+                <div id="admin-panel-all" class="hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full min-w-[600px] divide-y divide-slate-100 text-left">
+                            <thead class="bg-slate-50 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                <tr>
+                                    <th class="px-4 py-3">이름(표시명)</th>
+                                    <th class="px-4 py-3">이메일</th>
+                                    <th class="px-4 py-3">신청일</th>
+                                    <th class="px-4 py-3">상태</th>
+                                    <th class="px-4 py-3 text-center">권한</th>
+                                    <th class="px-4 py-3 text-right">작업</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-all-tbody" class="divide-y divide-slate-100 text-sm text-slate-600">
+                                <tr>
+                                    <td colspan="6" class="px-4 py-8 text-center text-slate-400">등록된 가입자가 없습니다.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+
+            <!-- 뷰 1: 데이터 테이블 -->
+            <main id="view-table"
+                class="hidden lg:block overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm transition-all duration-300">
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[1120px] divide-y divide-slate-100 text-left">
+                        <thead class="bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                            <tr>
+                                <th class="w-[3%] px-2 py-4 text-center">순서</th>
+                                <th class="w-[3%] px-3 py-4 text-center">
+                                    <input type="checkbox" id="checkbox-select-all"
+                                        class="rounded border border-slate-300 cursor-pointer text-indigo-600 focus:ring-indigo-500">
+                                </th>
+                                <th class="w-[37%] px-4 py-4">업무 상세</th>
+                                <th class="w-[13%] px-3 py-4 whitespace-nowrap">담당자</th>
+                                <th class="w-[17%] px-3 py-4 whitespace-nowrap">마감 및 타임라인</th>
+                                <th class="w-[6%] px-2 py-4 text-center">우선순위</th>
+                                <th class="w-[12%] px-3 py-4 text-center whitespace-nowrap">진행 상태</th>
+                                <th class="w-[7%] px-2 py-4 text-center whitespace-nowrap">작업</th>
+                            </tr>
+                        </thead>
+                        <tbody id="task-table-body" class="divide-y divide-slate-100 text-sm"></tbody>
+                    </table>
+                </div>
+                <div id="empty-state-table" class="hidden flex-col items-center justify-center p-16 text-center">
+                    <span class="rounded-full bg-slate-50 p-4 text-slate-300">
+                        <svg class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </span>
+                    <h3 class="mt-4 text-base font-semibold text-slate-900">해당 조건의 업무가 없습니다.</h3>
+                </div>
+            </main>
+
+            <!-- 모바일 전용 카드 뷰 -->
+            <main id="view-mobile" class="block lg:hidden transition-all duration-300">
+                <div id="task-card-container" class="space-y-3"></div>
+                <div id="empty-state-mobile"
+                    class="hidden flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center shadow-sm">
+                    <h3 class="text-sm font-semibold text-slate-900">해당 조건의 업무가 없습니다.</h3>
+                </div>
+            </main>
+
+            <!-- 뷰 2: 캘린더 -->
+            <main id="view-calendar"
+                class="hidden overflow-hidden transition-all duration-300 rounded-2xl border border-slate-100 bg-white shadow-sm p-6">
+                <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex items-center gap-4 flex-wrap">
+                        <h2 id="calendar-month-year" class="text-xl font-bold text-slate-800"></h2>
+
+                        <!-- 캘린더 일별 / 월별 / 월별 요약 3단 토글 스위치 -->
+                        <div class="inline-flex rounded-xl bg-slate-100 p-1 text-xs font-semibold">
+                            <button id="btn-cal-mode-day"
+                                class="rounded-lg bg-white px-3.5 py-1.5 text-slate-800 shadow-sm transition">일별
+                                보기</button>
+                            <button id="btn-cal-mode-month"
+                                class="rounded-lg px-3.5 py-1.5 text-slate-500 hover:text-slate-800 transition">월별
+                                보기</button>
+                            <button id="btn-cal-mode-summary"
+                                class="rounded-lg px-3.5 py-1.5 text-slate-500 hover:text-slate-800 transition">월별
+                                요약</button>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl shrink-0">
+                        <button id="btn-prev-month"
+                            class="rounded-lg p-2 text-slate-600 hover:bg-white hover:shadow-sm transition"
+                            title="이전 월">
+                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                stroke-width="3">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                            </svg>
+                        </button>
+                        <button id="btn-today-month"
+                            class="rounded-lg px-4 py-1.5 text-sm font-semibold text-slate-600 hover:bg-white hover:shadow-sm transition">오늘</button>
+                        <button id="btn-next-month"
+                            class="rounded-lg p-2 text-slate-600 hover:bg-white hover:shadow-sm transition"
+                            title="다음 월">
+                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                stroke-width="3">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 반응형 가로 스크롤 가능 컨테이너 -->
+                <div class="overflow-x-auto rounded-xl pb-2">
+                    <div class="min-w-[900px] sm:min-w-0 relative">
+                        <!-- 주단위 요일 라벨 헤더 (일별 보기에만 유효) -->
+                        <div id="calendar-weekday-header"
+                            class="grid grid-cols-7 gap-px bg-slate-200 border border-slate-200 rounded-t-lg overflow-hidden">
+                            <div class="bg-slate-50 py-2 text-center text-xs font-semibold text-rose-500">일</div>
+                            <div class="bg-slate-50 py-2 text-center text-xs font-semibold text-slate-500">월</div>
+                            <div class="bg-slate-50 py-2 text-center text-xs font-semibold text-slate-500">화</div>
+                            <div class="bg-slate-50 py-2 text-center text-xs font-semibold text-slate-500">수</div>
+                            <div class="bg-slate-50 py-2 text-center text-xs font-semibold text-slate-500">목</div>
+                            <div class="bg-slate-50 py-2 text-center text-xs font-semibold text-slate-500">금</div>
+                            <div class="bg-slate-50 py-2 text-center text-xs font-semibold text-blue-500">토</div>
+                        </div>
+
+                        <!-- 달력 및 Gantt 오버레이 통합 구동 베이스 플레이트 -->
+                        <div id="calendar-grid" class="mt-px relative">
+                            <!-- 동적 드로잉 콘텐츠 영역 -->
+                        </div>
+                    </div>
+                </div>
+            </main>
+            <!-- 뷰 3: Kanban -->
+            <main id="view-kanban"
+                class="hidden overflow-hidden transition-all duration-300 rounded-2xl border border-slate-100 bg-white shadow-sm p-4">
+                <div id="kanban-container" class="w-full"></div>
+                <div id="empty-state-kanban" class="hidden flex-col items-center justify-center p-16 text-center">
+                    <span class="rounded-full bg-slate-50 p-4 text-slate-300">
+                        <svg class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m-8 0h8m-8 0H5a2 2 0 01-2-2V7a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-4" />
+                        </svg>
+                    </span>
+                    <h3 class="mt-4 text-base font-semibold text-slate-900">Kanban에 표시할 업무가 없습니다.</h3>
+                    <p class="mt-1 text-sm text-slate-400">필터 조건을 변경하거나 새 업무를 추가해 주세요.</p>
+                </div>
+            </main>
+
+
+
+            <footer class="mt-8 text-center text-xs text-slate-400">
+                &copy; 2026 Smart Task Flow. All rights reserved. Firebase 실시간 동기화 지원.
+            </footer>
+        </div>
+
+        <!-- 1. 새 업무 / 상세 편집 모달 -->
+        <div id="modal-task" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title"
+            role="dialog" aria-modal="true">
+            <div class="flex min-h-screen items-end justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                <div id="modal-task-backdrop" class="fixed inset-0 bg-slate-500 bg-opacity-40 transition-opacity"></div>
+                <span class="hidden sm:inline-block sm:h-screen sm:align-middle" aria-hidden="true">&#8203;</span>
+                <div
+                    class="inline-block transform overflow-hidden rounded-2xl bg-white text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:align-middle">
+                    <div class="bg-white px-6 pt-6 pb-4">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <h3 class="text-lg font-bold text-slate-900" id="modal-title">새로운 업무 배정</h3>
+                            <button id="btn-close-task-modal"
+                                class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition">
+                                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd"
+                                        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                        clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <form id="form-task" class="mt-4 space-y-4">
+                            <input type="hidden" id="input-task-id">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">업무명 *</label>
+                                <input type="text" id="input-task-title" required maxlength="100"
+                                    placeholder="수행할 핵심 업무 내용을 적어주세요."
+                                    class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">담당자 *</label>
+                                <select id="input-task-assignee" required
+                                    class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
+                                    <option value="미지정">미지정</option>
+                                </select>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-500 mb-1">시작일</label>
+                                    <input type="date" id="input-task-start"
+                                        class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-500 mb-1">마감일 *</label>
+                                    <input type="date" id="input-task-due" required
+                                        class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-500 mb-1">우선순위</label>
+                                    <select id="input-task-priority"
+                                        class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
+                                        <option value="HIGH">높음 🔴</option>
+                                        <option value="NORMAL" selected>보통 🟡</option>
+                                        <option value="LOW">낮음 🟢</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-500 mb-1">현재 상태</label>
+                                    <select id="input-task-status"
+                                        class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
+                                        <option value="PENDING" selected>진행 대기 ⌛</option>
+                                        <option value="PROGRESS">진행 중 ⚙️</option>
+                                        <option value="COMPLETED">완료 ⭐️</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-500 mb-1">산업</label>
+                                    <select id="input-task-industry"
+                                        class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
+                                        <option value="AUTO" selected>자동 분류</option>
+                                        <option value="FNB">F&B</option>
+                                        <option value="PHARMA">Healthcare / Pharma / Bio</option>
+                                        <option value="SEMI">Semiconductor</option>
+                                        <option value="DISPLAY">Display</option>
+                                        <option value="OILGAS">Oil & Gas</option>
+                                        <option value="CHEM">Chemical / Petrochemical</option>
+                                        <option value="SHIP">Shipbuilding</option>
+                                        <option value="BUILDING">Commercial Building</option>
+                                        <option value="GENERAL">General</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-500 mb-1">업무 유형</label>
+                                    <select id="input-task-type"
+                                        class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
+                                        <option value="GENERAL" selected>General</option>
+                                        <option value="PIPELINE_REVIEW">Pipeline Review</option>
+                                        <option value="CUSTOMER_VISIT">Customer Visit</option>
+                                        <option value="TECH_FOLLOWUP">Technical Follow-up</option>
+                                        <option value="QUOTATION">Quotation</option>
+                                        <option value="NPI_LAUNCH">NPI / Launch</option>
+                                        <option value="MARKETING">Marketing / Webinar</option>
+                                        <option value="DISTRIBUTOR">Distributor</option>
+                                        <option value="INTERNAL_REVIEW">Internal Review</option>
+                                        <option value="COMPLIANCE">Compliance / Certification</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- 하위 업무(Sub tasks) 고도화된 추가 및 수정 관리 영역 -->
+                            <div class="border-t border-slate-100 pt-3">
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">하위 과제(Sub Tasks)
+                                    관리</label>
+                                <div
+                                    class="flex flex-col gap-2 mb-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200/50">
+                                    <div class="flex gap-2">
+                                        <input type="text" id="input-subtask-title" placeholder="하위 세부 실행 과제명"
+                                            class="flex-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs outline-none transition focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100">
+                                        <select id="input-subtask-assignee"
+                                            class="w-24 sm:w-32 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs outline-none transition focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100">
+                                            <option value="">본 업무 담당자</option>
+                                        </select>
+                                    </div>
+                                    <div class="flex flex-wrap items-center justify-between gap-2">
+                                        <div class="flex items-center gap-3">
+                                            <div class="flex items-center gap-1.5">
+                                                <span
+                                                    class="text-[11px] text-slate-400 font-semibold whitespace-nowrap">시작:</span>
+                                                <input type="date" id="input-subtask-start"
+                                                    class="w-28 sm:w-auto rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs outline-none focus:border-indigo-500 transition">
+                                            </div>
+                                            <div class="flex items-center gap-1.5">
+                                                <span
+                                                    class="text-[11px] text-slate-400 font-semibold whitespace-nowrap">마감:</span>
+                                                <input type="date" id="input-subtask-due"
+                                                    class="w-28 sm:w-auto rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs outline-none focus:border-indigo-500 transition">
+                                            </div>
+                                        </div>
+                                        <button type="button" id="btn-add-subtask"
+                                            class="rounded-lg bg-slate-800 px-4 py-1.5 text-xs font-bold text-white hover:bg-slate-700 transition shrink-0 ml-auto">추가</button>
+                                    </div>
+                                </div>
+                                <ul id="subtask-list-container" class="space-y-1.5 max-h-36 overflow-y-auto pr-1"></ul>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">세부 안내 및 메모</label>
+                                <textarea id="input-task-notes" rows="3" maxlength="300"
+                                    placeholder="참고사항이나 전달사항을 남겨주세요."
+                                    class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100"></textarea>
+                            </div>
+                            <div class="border-t border-slate-100 pt-4 flex items-center justify-end gap-2">
+                                <button type="button" id="btn-cancel-task"
+                                    class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">취소</button>
+                                <button type="submit"
+                                    class="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition">저장하기</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. 신규 트래커 생성/수정 모달 -->
+        <div id="modal-tracker" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-tracker-title"
+            role="dialog" aria-modal="true">
+            <div class="flex min-h-screen items-end justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                <div id="modal-tracker-backdrop" class="fixed inset-0 bg-slate-500 bg-opacity-40 transition-opacity">
+                </div>
+                <span class="hidden sm:inline-block sm:h-screen sm:align-middle" aria-hidden="true">&#8203;</span>
+                <div
+                    class="inline-block transform overflow-hidden rounded-2xl bg-white text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md sm:align-middle">
+                    <div class="bg-white p-6">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <h3 class="text-lg font-bold text-slate-900" id="modal-tracker-title">새 트래커 스페이스 추가</h3>
+                            <button id="btn-close-tracker-modal"
+                                class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <form id="form-tracker" class="mt-4 space-y-4">
+                            <input type="hidden" id="input-tracker-id">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">트래커 이름 *</label>
+                                <input type="text" id="input-tracker-name" required maxlength="50"
+                                    placeholder="예: 서비스 런칭 스프린트, 마케팅 전략"
+                                    class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">설명</label>
+                                <textarea id="input-tracker-desc" rows="3" maxlength="200"
+                                    placeholder="트래커 스페이스에 대한 간단한 역할을 설명해 주세요."
+                                    class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100"></textarea>
+                            </div>
+                            <div class="border-t border-slate-100 pt-4 flex items-center justify-between gap-2">
+                                <button type="button" id="btn-delete-tracker"
+                                    class="hidden rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 hover:bg-rose-100 transition">이
+                                    트래커 삭제</button>
+                                <div class="flex items-center gap-2 ml-auto">
+                                    <button type="button" id="btn-cancel-tracker"
+                                        class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">취소</button>
+                                    <button type="submit"
+                                        class="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition">저장하기</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. 확인(Confirm) 모달 -->
+        <div id="modal-confirm" class="fixed inset-0 z-50 hidden overflow-y-auto" role="dialog" aria-modal="true">
+            <div class="flex min-h-screen items-end justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                <div id="modal-confirm-backdrop" class="fixed inset-0 bg-slate-500 bg-opacity-40 transition-opacity">
+                </div>
+                <span class="hidden sm:inline-block sm:h-screen sm:align-middle">&#8203;</span>
+                <div
+                    class="inline-block transform overflow-hidden rounded-2xl bg-white text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md sm:align-middle">
+                    <div class="p-6">
+                        <div class="flex items-center gap-3">
+                            <span class="rounded-full bg-rose-50 p-2 text-rose-600">
+                                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 9v2m0 4v2m0 4v2m0-16a9 9 0 010 18 9 9 0 010-18z" />
+                                </svg>
+                            </span>
+                            <h3 class="text-base font-bold text-slate-900" id="confirm-title">업무를 삭제하시겠습니까?</h3>
+                        </div>
+                        <p class="mt-2 text-sm text-slate-500 pl-11" id="confirm-message">이 작업은 복구할 수 없습니다.</p>
+                        <div class="mt-6 flex items-center justify-end gap-2 pl-11">
+                            <button id="btn-cancel-confirm"
+                                class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">취소</button>
+                            <button id="btn-action-confirm"
+                                class="rounded-xl bg-rose-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-rose-700 transition">삭제하기</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -495,14 +967,16 @@
     </div>
 
     <!-- 4. 토스트 알림 -->
-    <div id="toast" class="pointer-events-none fixed bottom-5 right-5 z-50 flex transform items-center gap-2.5 rounded-xl bg-slate-900 px-4 py-3 text-sm text-white shadow-lg transition-all duration-300 translate-y-10 opacity-0">
+    <div id="toast"
+        class="pointer-events-none fixed bottom-5 right-5 z-50 flex transform items-center gap-2.5 rounded-xl bg-slate-900 px-4 py-3 text-sm text-white shadow-lg transition-all duration-300 translate-y-10 opacity-0">
         <span id="toast-icon"></span><span id="toast-text"></span>
     </div>
 
     <!-- 스크립트 비즈니스 로직 연동 시작 -->
-    <script type="module" src="./js/firebase.js?v=20260628-v13"></script>
-    <script defer src="./js/state.js?v=20260628-v13"></script>
-    <script defer src="./js/date-risk-utils.js?v=20260628-v13"></script>
+    <script type="module" src="./js/firebase.js?v=20260629-v1"></script>
+    <script defer src="./js/state.js?v=20260629-v2"></script>
+    <script defer src="./js/auth-service.js?v=20260629-v2"></script>
+    <script defer src="./js/date-risk-utils.js?v=20260629-v1"></script>
     <script defer src="./js/schema-service.js?v=20260628-v13"></script>
     <script defer src="./js/calendar-utils.js?v=20260628-v13"></script>
     <script defer src="./js/calendar-day-renderer.js?v=20260629-v1"></script>
@@ -511,10 +985,12 @@
     <script defer src="./js/table-mobile-renderer.js?v=20260628-v13"></script>
     <script defer src="./js/kanban-renderer.js?v=20260629-v1"></script>
     <script defer src="./js/modal-controller.js?v=20260628-v13"></script>
-    <script defer src="./js/event-bindings.js?v=20260628-v13"></script>
-    <script defer src="./js/bootstrap-service.js?v=20260628-v13"></script>
-    <script defer src="./js/app.js?v=20260629-v1"></script>
+    <script defer src="./js/admin-approvals.js?v=20260629-v5"></script>
+    <script defer src="./js/event-bindings.js?v=20260629-v3"></script>
+    <script defer src="./js/bootstrap-service.js?v=20260629-v1"></script>
+    <script defer src="./js/app.js?v=20260629-v4"></script>
     <script defer src="./js/task-service.js?v=20260628-v13"></script>
     <script defer src="./js/export-service.js?v=20260628-v13"></script>
 </body>
+
 </html>

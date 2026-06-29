@@ -111,6 +111,11 @@
         let unsubscribeTasks = null;
         let unsubscribeTrackers = null;
         let isAuthReady = false;
+        let currentUser = null;
+        let currentUserRole = null;
+        let currentUserDoc = null;
+        let approvedUsers = [];
+        window.approvedUsers = approvedUsers;
         let lastSaveState = 'idle';
         let draggedTrackerId = null; 
 

@@ -65,6 +65,13 @@ window.updateSubTaskStatusInModal = function(index, status) {
 window.editSubTaskInModal = function(index) {
   const st = currentSubTasks[index]; if (!st) return;
   editingSubTaskIndex = index;
+  
+  // 하위 업무 수정 시 담당자 드롭다운 갱신
+  const taskAssignee = document.getElementById('input-task-assignee')?.value || '미지정';
+  if (typeof window.populateAssigneeDropdowns === 'function') {
+    window.populateAssigneeDropdowns(taskAssignee, st.assignee || '');
+  }
+  
   document.getElementById('input-subtask-title').value = st.title || '';
   document.getElementById('input-subtask-assignee').value = st.assignee || '';
   document.getElementById('input-subtask-start').value = st.startDate || '';
@@ -79,6 +86,20 @@ window.removeSubTaskFromModal = function(index) {
 };
 function openTaskModal(id = null) {
   document.getElementById('form-task')?.reset();
+  
+  // 모달 열 때 드롭다운 항목 채우기
+  let initialTaskAssignee = '미지정';
+  let initialSubtaskAssignee = '';
+  if (id) {
+    const t = tasks.find(x => x.id === id);
+    if (t) {
+      initialTaskAssignee = t.assignee || '미지정';
+    }
+  }
+  if (typeof window.populateAssigneeDropdowns === 'function') {
+    window.populateAssigneeDropdowns(initialTaskAssignee, initialSubtaskAssignee);
+  }
+  
   const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
   setVal('input-subtask-title', ''); setVal('input-subtask-assignee', ''); setVal('input-subtask-start', getTodayStr()); setVal('input-subtask-due', getFutureDateStr(7));
   editingSubTaskIndex = -1; resetSubTaskButton();
@@ -86,7 +107,7 @@ function openTaskModal(id = null) {
   if (id) {
     const t = tasks.find(x => x.id === id); if (!t) return;
     if (title) title.textContent = '업무 상세 변경';
-    setVal('input-task-id', t.id); setVal('input-task-title', t.title || ''); setVal('input-task-assignee', t.assignee || ''); setVal('input-task-start', t.startDate || ''); setVal('input-task-due', t.dueDate || ''); setVal('input-task-priority', t.priority || 'NORMAL'); setVal('input-task-status', t.status || 'PENDING'); setVal('input-task-industry', t.industry || 'AUTO'); setVal('input-task-type', t.taskType || 'GENERAL'); setVal('input-task-notes', t.notes || '');
+    setVal('input-task-id', t.id); setVal('input-task-title', t.title || ''); setVal('input-task-assignee', t.assignee || '미지정'); setVal('input-task-start', t.startDate || ''); setVal('input-task-due', t.dueDate || ''); setVal('input-task-priority', t.priority || 'NORMAL'); setVal('input-task-status', t.status || 'PENDING'); setVal('input-task-industry', t.industry || 'AUTO'); setVal('input-task-type', t.taskType || 'GENERAL'); setVal('input-task-notes', t.notes || '');
     const subAssignee = document.getElementById('input-subtask-assignee'); if (subAssignee) subAssignee.placeholder = `담당자 (기본: ${t.assignee || '본 업무 담당자'})`;
     currentSubTasks = Array.isArray(t.subTasks) ? JSON.parse(JSON.stringify(t.subTasks)).map(st => ({ ...st, status: normalizeStatus(st.status) })) : [];
   } else {
@@ -171,4 +192,59 @@ window.closeTrackerModal = closeTrackerModal;
 window.handleTrackerSubmit = handleTrackerSubmit;
 window.handleTaskSubmit = handleTaskSubmit;
 window.addSubTaskToModalList = addSubTaskToModalList;
+
+function populateAssigneeDropdowns(currentTaskAssignee = '', currentSubtaskAssignee = '') {
+  const taskAssigneeSelect = document.getElementById('input-task-assignee');
+  const subtaskAssigneeSelect = document.getElementById('input-subtask-assignee');
+  
+  if (taskAssigneeSelect) {
+    taskAssigneeSelect.innerHTML = '<option value="미지정">미지정</option>';
+    
+    const addedUserNames = new Set();
+    if (window.approvedUsers && window.approvedUsers.length > 0) {
+      window.approvedUsers.forEach(user => {
+        const option = document.createElement('option');
+        option.value = user.displayName;
+        option.textContent = `${user.displayName} (${user.email.split('@')[0]})`;
+        taskAssigneeSelect.appendChild(option);
+        addedUserNames.add(user.displayName);
+      });
+    }
+    
+    if (currentTaskAssignee && currentTaskAssignee !== '미지정' && !addedUserNames.has(currentTaskAssignee)) {
+      const option = document.createElement('option');
+      option.value = currentTaskAssignee;
+      option.textContent = `${currentTaskAssignee} (임의)`;
+      taskAssigneeSelect.appendChild(option);
+    }
+    
+    // 현재 선택값 복원
+    taskAssigneeSelect.value = currentTaskAssignee || '미지정';
+  }
+  
+  if (subtaskAssigneeSelect) {
+    subtaskAssigneeSelect.innerHTML = '<option value="">본 업무 담당자</option>';
+    
+    const addedUserNames = new Set();
+    if (window.approvedUsers && window.approvedUsers.length > 0) {
+      window.approvedUsers.forEach(user => {
+        const option = document.createElement('option');
+        option.value = user.displayName;
+        option.textContent = `${user.displayName} (${user.email.split('@')[0]})`;
+        subtaskAssigneeSelect.appendChild(option);
+        addedUserNames.add(user.displayName);
+      });
+    }
+    
+    if (currentSubtaskAssignee && !addedUserNames.has(currentSubtaskAssignee)) {
+      const option = document.createElement('option');
+      option.value = currentSubtaskAssignee;
+      option.textContent = `${currentSubtaskAssignee} (임의)`;
+      subtaskAssigneeSelect.appendChild(option);
+    }
+    
+    subtaskAssigneeSelect.value = currentSubtaskAssignee || '';
+  }
+}
+window.populateAssigneeDropdowns = populateAssigneeDropdowns;
 
