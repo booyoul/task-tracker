@@ -809,7 +809,7 @@ function renderCalendar(filteredTasks) {
   };
 
   if (currentCalMode === 'DAY') {
-    renderCalendarDayView({ weekdayHeader, grid, year, month, todayStr, totalCalLanes, groups, showSubTaskBars, mainClass, dimIfNotCritical });
+    renderCalendarDayView({ weekdayHeader, grid, year, month, todayStr, totalCalLanes, groups, showSubTaskBars, mainClass, dimIfNotCritical, useIndustryColor });
     return;
   }
   if (currentCalMode === 'MONTH') {

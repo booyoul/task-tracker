@@ -4,6 +4,7 @@
   "description": "기존 production enhanced 버전에 트래커 순서 관리 기능을 추가한 버전입니다.",
   "main": "index.js",
   "scripts": {
+    "dev": "npx serve -l 3000",
     "build:css": "npx @tailwindcss/cli -i ./src/input.css -o ./dist/output.css",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

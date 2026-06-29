@@ -1,7 +1,7 @@
 console.info('Smart Task Flow calendar-day-renderer.js v20260626-module-split-phase4b-day-renderer loaded');
 // DAY calendar mini-Gantt renderer. Extracted from app.js in Phase 4B.
 function renderCalendarDayView(ctx) {
-  const { weekdayHeader, grid, year, month, todayStr, totalCalLanes, groups, showSubTaskBars, mainClass, dimIfNotCritical } = ctx;
+  const { weekdayHeader, grid, year, month, todayStr, totalCalLanes, groups, showSubTaskBars, mainClass, dimIfNotCritical, useIndustryColor } = ctx;
     weekdayHeader?.classList.remove('hidden');
     grid.className = 'relative bg-white border border-slate-200 rounded-b-lg overflow-hidden';
     grid.innerHTML = '';
