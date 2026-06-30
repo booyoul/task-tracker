@@ -61,7 +61,8 @@ function renderAdminDashboard(users) {
                         <td class="px-4 py-3 text-slate-400 text-xs">${dateStr}</td>
                         <td class="px-4 py-3 text-right whitespace-nowrap">
                             <button onclick="window.approveUser('${u.uid}')" class="px-2.5 py-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold shadow-sm transition mr-1.5">승인</button>
-                            <button onclick="window.rejectUser('${u.uid}')" class="px-2.5 py-1 text-xs bg-rose-500 hover:bg-rose-600 text-white rounded-lg font-bold shadow-sm transition">거부</button>
+                            <button onclick="window.rejectUser('${u.uid}')" class="px-2.5 py-1 text-xs bg-rose-500 hover:bg-rose-600 text-white rounded-lg font-bold shadow-sm transition mr-1.5">거부</button>
+                            <button onclick="window.deleteUser('${u.uid}', '${escapeHTML(u.displayName)}')" class="px-2.5 py-1 text-xs bg-slate-500 hover:bg-slate-600 text-white rounded-lg font-bold shadow-sm transition">삭제</button>
                         </td>
                     </tr>
                 `;
@@ -88,22 +89,27 @@ function renderAdminDashboard(users) {
                 let statusBadge = '';
                 let actionBtn = '';
                 
+                const loggedInUserUid = window.currentUser?.uid;
+                const isSelf = u.uid === loggedInUserUid;
+                
                 if (u.status === 'approved') {
                     statusBadge = `<span class="px-2 py-0.5 text-xs bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-md font-bold">승인됨</span>`;
-                    const lowerEmail = (u.email || '').toLowerCase().trim();
-                    const isSelf = lowerEmail === 'booyoul.oh@kr.spiraxsarco.com';
                     if (!isSelf) {
-                        actionBtn = `<button onclick="window.rejectUser('${u.uid}')" class="px-2 py-0.5 text-[11px] bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 rounded-md font-semibold transition">거부 처리</button>`;
+                        actionBtn = `<button onclick="window.rejectUser('${u.uid}')" class="px-2 py-0.5 text-[11px] bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 rounded-md font-semibold transition mr-1">거부 처리</button>`;
                     }
                 } else if (u.status === 'pending') {
                     statusBadge = `<span class="px-2 py-0.5 text-xs bg-amber-50 text-amber-700 border border-amber-100 rounded-md font-bold">대기 중</span>`;
                     actionBtn = `
                         <button onclick="window.approveUser('${u.uid}')" class="px-2 py-0.5 text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-100 rounded-md font-semibold transition mr-1">승인</button>
-                        <button onclick="window.rejectUser('${u.uid}')" class="px-2 py-0.5 text-[11px] bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 rounded-md font-semibold transition">거부</button>
+                        <button onclick="window.rejectUser('${u.uid}')" class="px-2 py-0.5 text-[11px] bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 rounded-md font-semibold transition mr-1">거부</button>
                     `;
                 } else if (u.status === 'rejected') {
                     statusBadge = `<span class="px-2 py-0.5 text-xs bg-rose-50 text-rose-700 border border-rose-100 rounded-md font-bold">거부됨</span>`;
-                    actionBtn = `<button onclick="window.approveUser('${u.uid}')" class="px-2 py-0.5 text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-100 rounded-md font-semibold transition">다시 승인</button>`;
+                    actionBtn = `<button onclick="window.approveUser('${u.uid}')" class="px-2 py-0.5 text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-100 rounded-md font-semibold transition mr-1">다시 승인</button>`;
+                }
+                
+                if (!isSelf) {
+                    actionBtn += `<button onclick="window.deleteUser('${u.uid}', '${escapeHTML(u.displayName)}')" class="px-2 py-0.5 text-[11px] bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-md font-semibold transition">삭제</button>`;
                 }
 
                 const isAdminRole = u.role === 'admin';
@@ -179,6 +185,26 @@ async function rejectUser(uid) {
             alert("거부 처리에 실패했습니다: " + e.message + "\n\n[권한 오류 가이드]\n현재 로그인한 계정에 다른 사용자의 문서를 수정할 수 있는 Firestore 보안 규칙(Security Rules)이 적용되어 있지 않은 상태일 가능성이 큽니다.\nFirebase Console에서 보안 규칙을 수정해 주시거나, 프로젝트 루트에 새로 생성된 'firestore.rules' 파일을 적용해 주세요.");
         } else {
             alert("거부 처리에 실패했습니다: " + e.message);
+        }
+    }
+}
+
+// 2.5 가입 신청 및 유저 정보 완전히 삭제
+async function deleteUser(uid, displayName) {
+    if (!confirm(`'${displayName}' 사용자의 가입 신청 및 계정 정보를 완전히 삭제하시겠습니까? (삭제된 데이터는 복구할 수 없습니다)`)) return;
+    if (!window.isFirebaseAvailable || !window.db) return;
+    const usersCol = window.getUsersCollection();
+    if (!usersCol) return;
+
+    try {
+        await window.fs.deleteDoc(window.fs.doc(usersCol, uid));
+        console.log(`사용자 삭제 완료: ${uid}`);
+    } catch (e) {
+        console.error("User deletion failed:", e);
+        if (e.code === 'permission-denied' || (e.message && (e.message.includes('permission') || e.message.includes('Permission')))) {
+            alert("사용자 삭제에 실패했습니다: " + e.message + "\n\n[권한 오류 가이드]\n현재 로그인한 계정에 관리자(Admin) 권한이 없거나, 다른 사용자의 문서를 삭제할 수 있는 Firestore 보안 규칙(Security Rules)이 적용되어 있지 않은 상태일 가능성이 큽니다.");
+        } else {
+            alert("사용자 삭제에 실패했습니다: " + e.message);
         }
     }
 }
@@ -312,160 +338,7 @@ async function setAdminRole(uid, makeAdmin) {
     }
 }
 
-// 5. 데이터 이름 마이그레이션 (오부열(임의) -> 오부열 일괄 수정)
-async function runNameMigration() {
-    if (!window.isFirebaseAvailable || !window.db) {
-        alert('Firebase를 사용할 수 없습니다.');
-        return;
-    }
-    const user = window.auth?.currentUser;
-    if (!user) {
-        alert('로그인이 필요한 기능입니다.');
-        return;
-    }
 
-    const TARGET_NAME = '오부열';
-    function isTargetName(name) {
-        if (!name || typeof name !== 'string') return false;
-        const n = name.trim().toLowerCase();
-        return n.includes('오부열') || n.includes('booyoul') || n.includes('boo youl');
-    }
-
-    const confirmMsg = `모든 트래커, 업무, 하위 업무의 작성자/담당자 이름 중 '오부열' 관련 명칭을 '${TARGET_NAME}'로 일괄 정형화합니다.\n계속하시겠습니까?`;
-    if (!confirm(confirmMsg)) return;
-
-    const btn = document.getElementById('btn-migrate-names');
-    const originalText = btn ? btn.innerHTML : '데이터 이름 정상화';
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = `
-            <svg class="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <span>마이그레이션 진행 중...</span>
-        `;
-    }
-
-    let updated = { users: 0, trackers: 0, tasks: 0, subtasks: 0 };
-    const { db, fs, getUsersCollection, getTrackersCollection, getTasksCollection } = window;
-
-    try {
-        // 1. Firebase Auth displayName 갱신
-        try {
-            if (user.displayName !== TARGET_NAME) {
-                await window.updateProfile(user, { displayName: TARGET_NAME });
-            }
-        } catch (e) {
-            console.warn('Auth Profile Update Error:', e);
-        }
-
-        // 2. Users Collection 업데이트
-        const usersCol = getUsersCollection();
-        if (usersCol) {
-            const userDocRef = fs.doc(usersCol, user.uid);
-            const snap = await fs.getDoc(userDocRef);
-            if (snap.exists()) {
-                const data = snap.data();
-                if (data.displayName !== TARGET_NAME) {
-                    await fs.setDoc(userDocRef, { displayName: TARGET_NAME }, { merge: true });
-                    updated.users++;
-                }
-            } else {
-                await fs.setDoc(userDocRef, {
-                    uid: user.uid,
-                    email: user.email,
-                    displayName: TARGET_NAME,
-                    status: 'approved',
-                    role: 'admin',
-                    createdAt: fs.serverTimestamp()
-                }, { merge: true });
-                updated.users++;
-            }
-        }
-
-        // 3. Trackers Collection 업데이트
-        const trackersColl = getTrackersCollection();
-        if (trackersColl) {
-            const snap = await fs.getDocs(trackersColl);
-            const batch = fs.writeBatch(db);
-            let batchCount = 0;
-            snap.docs.forEach(doc => {
-                const data = doc.data();
-                const updates = {};
-                if (isTargetName(data.createdByName) && data.createdByName !== TARGET_NAME) {
-                    updates.createdByName = TARGET_NAME;
-                }
-                if (Object.keys(updates).length > 0) {
-                    batch.set(doc.ref, updates, { merge: true });
-                    batchCount++;
-                    updated.trackers++;
-                }
-            });
-            if (batchCount > 0) {
-                await batch.commit();
-            }
-        }
-
-        // 4. Tasks & Subtasks 일괄 업데이트
-        const tasksColl = getTasksCollection();
-        if (tasksColl) {
-            const snap = await fs.getDocs(tasksColl);
-            const BATCH_SIZE = 400;
-            let batch = fs.writeBatch(db);
-            let batchCount = 0;
-
-            for (const doc of snap.docs) {
-                const data = doc.data();
-                const updates = {};
-                if (isTargetName(data.assignee) && data.assignee !== TARGET_NAME) {
-                    updates.assignee = TARGET_NAME;
-                    updated.tasks++;
-                }
-                if (isTargetName(data.createdByName) && data.createdByName !== TARGET_NAME) {
-                    updates.createdByName = TARGET_NAME;
-                }
-                if (Array.isArray(data.subTasks) && data.subTasks.length > 0) {
-                    let changed = false;
-                    const newSub = data.subTasks.map(st => {
-                        if (isTargetName(st.assignee) && st.assignee !== TARGET_NAME) {
-                            changed = true;
-                            updated.subtasks++;
-                            return { ...st, assignee: TARGET_NAME };
-                        }
-                        return st;
-                    });
-                    if (changed) {
-                        updates.subTasks = newSub;
-                    }
-                }
-                if (Object.keys(updates).length > 0) {
-                    batch.set(doc.ref, updates, { merge: true });
-                    batchCount++;
-                    if (batchCount >= BATCH_SIZE) {
-                        await batch.commit();
-                        batch = fs.writeBatch(db);
-                        batchCount = 0;
-                    }
-                }
-            }
-            if (batchCount > 0) {
-                await batch.commit();
-            }
-        }
-
-        alert(`이름 정상화 완료!\n\n- 유저 정보: ${updated.users}건\n- 트래커: ${updated.trackers}건\n- 업무: ${updated.tasks}건\n- 하위 업무: ${updated.subtasks}건\n\n확인을 누르면 페이지가 새로고침됩니다.`);
-        window.location.reload();
-
-    } catch (e) {
-        console.error('마이그레이션 실패:', e);
-        alert('마이그레이션 도중 오류가 발생했습니다: ' + e.message);
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = originalText;
-        }
-    }
-}
 
 // 6. 어드민 패널 탭 스위칭 로직
 function initAdminTabEvents() {
@@ -508,9 +381,6 @@ function initAdminModule() {
             window.switchView('ADMIN');
         }
     });
-
-    // 데이터 이름 정상화 버튼 이벤트 연결
-    document.getElementById('btn-migrate-names')?.addEventListener('click', runNameMigration);
 }
 
 // 모듈 진입점 바인딩
@@ -518,9 +388,9 @@ window.listenUsersForAdmin = listenUsersForAdmin;
 window.listenApprovedUsers = listenApprovedUsers;
 window.approveUser = approveUser;
 window.rejectUser = rejectUser;
+window.deleteUser = deleteUser;
 window.editDisplayName = editDisplayName;
 window.setAdminRole = setAdminRole;
-window.runNameMigration = runNameMigration;
 
 // DOM 로딩 직후 또는 즉시 기동
 if (document.readyState === 'loading') {

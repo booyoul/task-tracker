@@ -219,10 +219,10 @@
                         </button>
                         <!-- 드롭다운 팝업 리스트 -->
                         <div id="tracker-dropdown-menu"
-                            class="hidden absolute left-0 mt-2 w-72 origin-top-left rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 focus:outline-none z-50 p-2 border border-slate-100">
+                            class="hidden absolute left-0 mt-2 min-w-[18rem] w-max max-w-md origin-top-left rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 focus:outline-none z-50 p-2 border border-slate-100">
                             <div class="text-[10px] font-bold text-slate-400 px-3 py-1.5 uppercase tracking-wider">트래커
                                 스페이스 전환</div>
-                            <div id="tracker-list-items" class="max-h-56 overflow-y-auto space-y-1"></div>
+                            <div id="tracker-list-items" class="max-h-56 overflow-y-auto overflow-x-hidden space-y-1"></div>
                             <div class="border-t border-slate-100 mt-2 pt-2 flex flex-col gap-1">
                                 <button id="btn-create-tracker-open"
                                     class="w-full text-left inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 transition">
@@ -322,28 +322,34 @@
                 </svg>
             </div>
             <h2 id="auth-title" class="text-xl font-bold text-slate-800 mb-1">사내 협업 트래커 로그인</h2>
-            <p id="auth-desc" class="text-[11px] text-slate-400 mb-6">등록된 이메일 도메인(@kr.spiraxsarco.com, @test.com)만 가입이 가능합니다.</p>
-            
+            <p id="auth-desc" class="text-[11px] text-slate-400 mb-6">등록된 이메일 도메인(@kr.spiraxsarco.com, @test.com)만 가입이
+                가능합니다.</p>
+
             <form id="auth-form" onsubmit="handleAuthSubmit(event)" class="w-full space-y-4">
                 <div class="text-left">
                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">이메일 주소</label>
-                    <input type="email" id="auth-email" required placeholder="name@kr.spiraxsarco.com" class="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" />
+                    <input type="email" id="auth-email" required placeholder="name@kr.spiraxsarco.com"
+                        class="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" />
                 </div>
                 <div id="auth-name-container" class="text-left hidden">
                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">이름 (표시명) *</label>
-                    <input type="text" id="auth-name" placeholder="홍길동" class="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" />
+                    <input type="text" id="auth-name" placeholder="홍길동"
+                        class="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" />
                 </div>
                 <div class="text-left">
                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">비밀번호</label>
-                    <input type="password" id="auth-password" required placeholder="••••••••" class="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" />
+                    <input type="password" id="auth-password" required placeholder="••••••••"
+                        class="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" />
                 </div>
-                <button type="submit" id="btn-auth-submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-xl shadow-md transition">
+                <button type="submit" id="btn-auth-submit"
+                    class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-xl shadow-md transition">
                     로그인
                 </button>
             </form>
-            
+
             <div class="mt-4 text-center">
-                <button onclick="toggleAuthMode()" id="btn-toggle-auth" class="text-xs text-indigo-600 hover:underline font-semibold">
+                <button onclick="toggleAuthMode()" id="btn-toggle-auth"
+                    class="text-xs text-indigo-600 hover:underline font-semibold">
                     계정이 없으신가요? 사내 메일로 회원가입하기
                 </button>
             </div>
@@ -526,7 +532,8 @@
                             <button id="btn-view-kanban"
                                 class="rounded-lg px-4 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition">칸반</button>
                             <button id="btn-view-admin"
-                                class="hidden rounded-lg px-4 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition">승인 관리</button>
+                                class="hidden rounded-lg px-4 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition">승인
+                                관리</button>
                         </div>
                     </div>
                 </div>
@@ -535,23 +542,30 @@
             <!-- 뷰 0: 어드민 승인 관리 -->
             <main id="view-admin-approvals"
                 class="hidden overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm transition-all duration-300 p-6">
-                <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4">
+                <div
+                    class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4">
                     <div>
                         <h2 class="text-lg font-black text-slate-800">가입 승인 관리</h2>
                         <p class="text-xs text-slate-400">사내 트래커 신규 가입 신청자의 승인 상태를 제어합니다.</p>
                     </div>
                     <div class="flex items-center gap-2 self-start sm:self-auto">
                         <!-- 마이그레이션 버튼 -->
-                        <button id="btn-migrate-names" class="inline-flex items-center gap-1.5 rounded-xl border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-bold text-violet-700 hover:bg-violet-100 transition shadow-sm">
+                        <button id="btn-migrate-names"
+                            class="inline-flex items-center gap-1.5 rounded-xl border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-bold text-violet-700 hover:bg-violet-100 transition shadow-sm">
                             <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A9.006 9.006 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.968 8.968 0 01-15.356-2m15.356 2H15" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                    d="M4 4v5h.582m15.356 2A9.006 9.006 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.968 8.968 0 01-15.356-2m15.356 2H15" />
                             </svg>
                             <span>데이터 이름 정상화</span>
                         </button>
                         <!-- 탭 구분 -->
                         <div class="inline-flex rounded-xl bg-slate-100 p-1">
-                            <button id="btn-admin-tab-pending" class="rounded-lg bg-white px-3 py-1 text-xs font-bold text-slate-800 shadow-sm transition">승인 대기자 (<span id="admin-pending-count">0</span>)</button>
-                            <button id="btn-admin-tab-all" class="rounded-lg px-3 py-1 text-xs font-semibold text-slate-500 hover:text-slate-800 transition">전체 가입자</button>
+                            <button id="btn-admin-tab-pending"
+                                class="rounded-lg bg-white px-3 py-1 text-xs font-bold text-slate-800 shadow-sm transition">승인
+                                대기자 (<span id="admin-pending-count">0</span>)</button>
+                            <button id="btn-admin-tab-all"
+                                class="rounded-lg px-3 py-1 text-xs font-semibold text-slate-500 hover:text-slate-800 transition">전체
+                                가입자</button>
                         </div>
                     </div>
                 </div>
@@ -806,7 +820,7 @@
                                     <select id="input-task-industry"
                                         class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
                                         <option value="AUTO" selected>자동 분류</option>
-                                        <option value="FNB">F&B</option>
+                                        <option value="FNB">건F&B</option>
                                         <option value="PHARMA">Healthcare / Pharma / Bio</option>
                                         <option value="SEMI">Semiconductor</option>
                                         <option value="DISPLAY">Display</option>
@@ -980,7 +994,7 @@
     <!-- 스크립트 비즈니스 로직 연동 시작 -->
     <script type="module" src="./js/firebase.js?v=20260629-v1"></script>
     <script defer src="./js/state.js?v=20260629-v3"></script>
-    <script defer src="./js/auth-service.js?v=20260629-v9"></script>
+    <script defer src="./js/auth-service.js?v=20260630-v1"></script>
     <script defer src="./js/date-risk-utils.js?v=20260629-v2"></script>
     <script defer src="./js/schema-service.js?v=20260628-v13"></script>
     <script defer src="./js/calendar-utils.js?v=20260628-v13"></script>
@@ -990,9 +1004,9 @@
     <script defer src="./js/table-mobile-renderer.js?v=20260628-v13"></script>
     <script defer src="./js/kanban-renderer.js?v=20260629-v1"></script>
     <script defer src="./js/modal-controller.js?v=20260628-v13"></script>
-    <script defer src="./js/admin-approvals.js?v=20260629-v5"></script>
+    <script defer src="./js/admin-approvals.js?v=20260630-v1"></script>
     <script defer src="./js/event-bindings.js?v=20260629-v3"></script>
-    <script defer src="./js/bootstrap-service.js?v=20260629-v6"></script>
+    <script defer src="./js/bootstrap-service.js?v=20260630-v1"></script>
     <script defer src="./js/app.js?v=20260629-v6"></script>
     <script defer src="./js/task-service.js?v=20260629-v3"></script>
     <script defer src="./js/export-service.js?v=20260628-v13"></script>

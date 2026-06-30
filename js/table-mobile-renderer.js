@@ -57,7 +57,7 @@ function renderTable(filtered) {
       <td class="px-3 py-4 align-top whitespace-nowrap"><div class="inline-flex items-center gap-2 whitespace-nowrap text-xs font-semibold text-slate-600"><span>${t.startDate ? t.startDate.substring(5) : '미정'} ~ ${(t.dueDate || '').substring(5)}</span><span class="inline-flex shrink-0 rounded-lg border px-2 py-0.5 text-[11px] ${timeline.class}">${timeline.text}</span></div></td>
       <td class="px-2 py-4 text-center align-top"><span class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold">${getPriorityBadge(t.priority)}</span></td>
       <td class="px-3 py-4 text-center align-top whitespace-nowrap"><div class="mb-1 text-[10px] font-bold text-slate-400 whitespace-nowrap">${getStatusKorean(effectiveStatus)}</div><select class="sel-status rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 outline-none focus:border-indigo-500 task-status-compact" data-id="${t.id}"><option value="PENDING" ${t.status === 'PENDING' ? 'selected' : ''}>진행 대기 ⌛</option><option value="PROGRESS" ${t.status === 'PROGRESS' ? 'selected' : ''}>진행 중 ⚙️</option><option value="COMPLETED" ${t.status === 'COMPLETED' ? 'selected' : ''}>완료됨 ⭐️</option></select></td>
-      <td class="px-2 py-4 text-center align-top whitespace-nowrap"><button type="button" class="btn-edit text-slate-400 hover:text-indigo-600 px-2" data-id="${t.id}">✎</button><button type="button" class="btn-delete text-slate-400 hover:text-rose-600 px-2" data-id="${t.id}">🗑</button></td>`;
+      <td class="px-2 py-4 text-center align-top whitespace-nowrap"><button type="button" class="btn-delete text-slate-400 hover:text-rose-600 px-2" data-id="${t.id}">🗑</button></td>`;
     tbody.appendChild(tr);
     if (subTasks.length && isExpanded) {
       subTasks.forEach(st => {
@@ -68,7 +68,7 @@ function renderTable(filtered) {
         sr.className = isSubTaskOverdue(st) ? 'bg-rose-50/70 border-l-2 border-l-rose-500/60 hover:bg-rose-50 transition-colors text-xs' : 'bg-slate-50/70 border-l-2 border-l-indigo-500/40 hover:bg-indigo-50/30 transition-colors text-xs';
         sr.innerHTML = `
           <td colspan="2"></td>
-          <td class="px-4 py-2 text-slate-600"><div class="flex items-center gap-2 pl-8"><span class="text-slate-300">└─</span><span class="font-semibold ${status === 'COMPLETED' ? 'line-through text-slate-400' : isSubTaskOverdue(st) ? 'text-rose-700' : 'text-slate-700'}">${isSubTaskOverdue(st) ? '🚨 ' : ''}${escapeHTML(st.title)}</span><span class="rounded border border-indigo-100 bg-indigo-50 px-1 py-0.5 text-[10px] font-bold text-indigo-700">👤 ${escapeHTML(subAssignee)}</span></div></td>
+          <td class="px-4 py-2 text-slate-600"><div class="flex items-center gap-2 pl-8"><span class="text-slate-300">└─</span><button type="button" class="btn-edit font-semibold text-left ${status === 'COMPLETED' ? 'line-through text-slate-400' : isSubTaskOverdue(st) ? 'text-rose-700' : 'text-slate-700'} hover:text-indigo-600 outline-none" data-id="${t.id}" title="클릭해서 업무 수정">${isSubTaskOverdue(st) ? '🚨 ' : ''}${escapeHTML(st.title)}</button><span class="rounded border border-indigo-100 bg-indigo-50 px-1 py-0.5 text-[10px] font-bold text-indigo-700">👤 ${escapeHTML(subAssignee)}</span></div></td>
           <td class="px-3 py-2 text-center text-slate-400">-</td>
           <td class="px-3 py-2 text-slate-500 whitespace-nowrap"><div class="inline-flex items-center gap-1.5 whitespace-nowrap"><span>📅 ${st.startDate ? st.startDate.substring(5) : '미정'} ~ ${st.dueDate ? st.dueDate.substring(5) : '미정'}</span><span class="inline-flex shrink-0 rounded-lg border px-2 py-0.5 text-[10px] ${stTimeline.class}">${stTimeline.text}</span></div></td>
           <td class="px-4 py-2 text-center text-slate-400">-</td>
@@ -102,7 +102,7 @@ function buildMobileSubTaskHTML(t, subTasks) {
     return `<div class="rounded-xl border ${overdue ? 'border-rose-100 bg-rose-50/70' : 'border-slate-100 bg-slate-50'} px-3 py-2">
       <div class="flex items-start justify-between gap-2">
         <div class="min-w-0">
-          <div class="truncate text-xs font-bold ${status === 'COMPLETED' ? 'line-through text-slate-400' : overdue ? 'text-rose-700' : 'text-slate-700'}">↳ ${overdue ? '🚨 ' : ''}${escapeHTML(st.title || '')}</div>
+          <button type="button" class="btn-edit truncate text-xs font-bold text-left ${status === 'COMPLETED' ? 'line-through text-slate-400' : overdue ? 'text-rose-700' : 'text-slate-700'} hover:text-indigo-600 outline-none" data-id="${t.id}" title="클릭해서 업무 수정">↳ ${overdue ? '🚨 ' : ''}${escapeHTML(st.title || '')}</button>
           <div class="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500">
             <span class="rounded-md bg-white px-1.5 py-0.5 border border-slate-100">👤 ${escapeHTML(st.assignee || t.assignee || '미지정')}</span>
             <span class="inline-flex items-center gap-1 whitespace-nowrap"><span>📅 ${st.startDate ? st.startDate.substring(5) : '미정'} ~ ${st.dueDate ? st.dueDate.substring(5) : '미정'}</span><span class="inline-flex shrink-0 rounded-md border px-1.5 py-0.5 ${stTimeline.class}">${stTimeline.text}</span></span>
@@ -165,7 +165,6 @@ function renderMobileCards(filtered) {
       ${buildMobileSubTaskHTML(t, subTasks)}
       <div class="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
         <button type="button" class="btn-toggle-subtasks ${subTasks.length ? '' : 'invisible'} mobile-touch-btn rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-bold text-slate-600" data-id="${t.id}">${expandedTaskIds.has(t.id) ? '하위 접기' : '하위 펼치기'}</button>
-        <button type="button" class="btn-edit mobile-touch-btn rounded-xl bg-indigo-600 px-3 py-1.5 text-[11px] font-bold text-white" data-id="${t.id}">수정</button>
       </div>`;
     container.appendChild(card);
   });
@@ -350,7 +349,6 @@ function renderMobileCards(filtered) {
             <div class="line-clamp-2 text-[15px] font-black leading-snug text-slate-900">${escapeHTML(t.title || '')}</div>
           </button>
           <div class="flex shrink-0 items-center gap-1">
-            <button type="button" class="btn-edit rounded-xl bg-white/80 px-2 py-1 text-xs font-black text-indigo-600 shadow-sm" data-id="${escapeHTML(t.id)}">수정</button>
             <button type="button" class="btn-delete rounded-xl bg-white/80 px-2 py-1 text-xs font-black text-rose-500 shadow-sm" data-id="${escapeHTML(t.id)}">삭제</button>
           </div>
         </div>

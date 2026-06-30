@@ -409,19 +409,7 @@ async function bulkChangeDueDate() {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dueDate.trim())) return showToast('마감일 형식은 YYYY-MM-DD 이어야 합니다.', false);
   await bulkUpdateSelected({ dueDate: dueDate.trim() }, `선택 업무 마감일이 ${dueDate.trim()}로 변경되었습니다.`);
 }
-async function updateTaskTitleInline(id, title) {
-  const newTitle = String(title || '').trim();
-  const task = tasks.find(t => t.id === id);
-  if (!task || !newTitle || newTitle === task.title) return;
-  await db_updateTask(id, { title: newTitle });
-  showToast('업무명이 빠르게 수정되었습니다.');
-}
-function handleInlineEditKeydown(e) {
-  const el = e.target.closest('.inline-edit-title');
-  if (!el) return;
-  if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
-  if (e.key === 'Escape') { e.preventDefault(); const t = tasks.find(x => x.id === el.dataset.id); if (t) el.textContent = t.title || ''; el.blur(); }
-}
+
 
 function showToast(msg, isSuccess = true) {
   const t = document.getElementById('toast');
@@ -642,7 +630,7 @@ function buildTaskDetailCellHTML(t, subTasks, isExpanded, doneSubs, progressPct,
         </button>
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2">
-            <span class="inline-edit-title block min-w-0 max-w-full rounded px-1 -mx-1 text-base font-black leading-snug text-slate-900 hover:bg-indigo-50 focus:bg-white focus:ring-2 focus:ring-indigo-100 outline-none" contenteditable="true" spellcheck="false" data-id="${t.id}" title="클릭해서 업무명을 바로 수정">${escapeHTML(t.title)}</span>
+            <button type="button" class="btn-edit text-left block min-w-0 max-w-full rounded px-1 -mx-1 text-base font-black leading-snug text-slate-900 hover:text-indigo-600 outline-none" data-id="${t.id}" title="클릭해서 업무 수정">${escapeHTML(t.title)}</button>
           </div>
           <div class="mt-1 text-xs text-slate-400">${escapeHTML(t.notes || '추가 지침 없음')} · 진척 ${progressPct}%${subInfo}</div>
           ${bottleneckHTML}

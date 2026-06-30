@@ -28,8 +28,6 @@ function initEventBindings(){
   document.getElementById('task-card-container')?.addEventListener('change',handleTableChange);
   document.getElementById('kanban-container')?.addEventListener('click',handleTableClick);
   document.getElementById('kanban-container')?.addEventListener('change',handleTableChange);
-  document.getElementById('task-table-body')?.addEventListener('focusout',e=>{const el=e.target.closest('.inline-edit-title');if(el)updateTaskTitleInline(el.dataset.id,el.textContent);});
-  document.getElementById('task-table-body')?.addEventListener('keydown',handleInlineEditKeydown);
   document.getElementById('btn-view-table')?.addEventListener('click',()=>window.switchView?.('TABLE'));
   document.getElementById('btn-view-calendar')?.addEventListener('click',()=>window.switchView?.('CALENDAR'));
   document.getElementById('btn-view-kanban')?.addEventListener('click',()=>window.switchView?.('KANBAN'));

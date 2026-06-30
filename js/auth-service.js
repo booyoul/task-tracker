@@ -34,7 +34,7 @@ async function signUpWithEmail(email, password, displayName) {
         const usersCol = window.getUsersCollection();
         if (usersCol) {
             const lowerEmail = email.toLowerCase().trim();
-            const isAdmin = lowerEmail === 'booyoul.oh@kr.spiraxsarco.com' || lowerEmail === 'booyoul.oh@kr.spiraxsarco.kr' || lowerEmail === 'test.admin@kr.spiraxsarco.com' || lowerEmail === 'test.admin@kr.spiraxsarco.kr';
+            const isAdmin = lowerEmail === 'booyoul.oh@kr.spiraxsarco.com' || lowerEmail === 'test.admin@kr.spiraxsarco.com' || lowerEmail === 'test.admin@kr.spiraxsarco.kr';
             const status = isAdmin ? 'approved' : 'pending';
             
             await window.fs.setDoc(window.fs.doc(usersCol, user.uid), {
@@ -134,7 +134,7 @@ function isAdminUser() {
     if (!window.currentUser) return false;
     // 1. 마스터 어드민 이메일 (하드코딩 백업)
     const email = (window.currentUser.email || '').toLowerCase().trim();
-    if (email === 'booyoul.oh@kr.spiraxsarco.com' || email === 'booyoul.oh@kr.spiraxsarco.kr' || email === 'test.admin@kr.spiraxsarco.com' || email === 'test.admin@kr.spiraxsarco.kr') return true;
+    if (email === 'booyoul.oh@kr.spiraxsarco.com' || email === 'test.admin@kr.spiraxsarco.com' || email === 'test.admin@kr.spiraxsarco.kr') return true;
     // 2. Firestore users 콜렉션의 role 필드가 'admin'인 경우
     return window.currentUserDoc?.role === 'admin';
 }

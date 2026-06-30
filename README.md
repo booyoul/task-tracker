@@ -56,7 +56,7 @@ service cloud.firestore {
     match /trackers/{trackerId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated() && resource.data.createdBy == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (resource.data.createdBy == request.auth.uid || isAdmin());
     }
 
     // 3. 업무(Tasks) 컬렉션 접근 권한
@@ -78,7 +78,7 @@ service cloud.firestore {
     match /artifacts/{envAppId}/public/data/trackers/{trackerId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated() && resource.data.createdBy == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (resource.data.createdBy == request.auth.uid || isEnvAdmin(envAppId));
     }
 
     match /artifacts/{envAppId}/public/data/tasks/{taskId} {

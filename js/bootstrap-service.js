@@ -18,9 +18,9 @@ async function initializeAuthAndData(){
               const docSnap = await window.fs.getDoc(docRef);
               if (docSnap.exists()) {
                 userDoc = docSnap.data();
-                // 마스터 어드민(booyoul.oh@kr.spiraxsarco.com / booyoul.oh@kr.spiraxsarco.kr)인데 DB에 admin으로 등록 안 되었으면 강제 승인 및 어드민 지정
+                // 마스터 어드민(booyoul.oh@kr.spiraxsarco.com)인데 DB에 admin으로 등록 안 되었으면 강제 승인 및 어드민 지정
                 const lowerEmail = (user.email || '').toLowerCase().trim();
-                const isMasterAdmin = lowerEmail === 'booyoul.oh@kr.spiraxsarco.com' || lowerEmail === 'booyoul.oh@kr.spiraxsarco.kr' || lowerEmail === 'test.admin@kr.spiraxsarco.com' || lowerEmail === 'test.admin@kr.spiraxsarco.kr';
+                const isMasterAdmin = lowerEmail === 'booyoul.oh@kr.spiraxsarco.com' || lowerEmail === 'test.admin@kr.spiraxsarco.com' || lowerEmail === 'test.admin@kr.spiraxsarco.kr';
                 if (isMasterAdmin && (userDoc.role !== 'admin' || userDoc.status !== 'approved')) {
                   userDoc.role = 'admin';
                   userDoc.status = 'approved';
@@ -29,7 +29,7 @@ async function initializeAuthAndData(){
               } else {
                 // 문서가 없으면 레거시 유저 혹은 신규 가입 시 누락된 경우이므로 자동으로 생성 (기본 approved)
                 const lowerEmail = (user.email || '').toLowerCase().trim();
-                const isMasterAdmin = lowerEmail === 'booyoul.oh@kr.spiraxsarco.com' || lowerEmail === 'booyoul.oh@kr.spiraxsarco.kr' || lowerEmail === 'test.admin@kr.spiraxsarco.com' || lowerEmail === 'test.admin@kr.spiraxsarco.kr';
+                const isMasterAdmin = lowerEmail === 'booyoul.oh@kr.spiraxsarco.com' || lowerEmail === 'test.admin@kr.spiraxsarco.com' || lowerEmail === 'test.admin@kr.spiraxsarco.kr';
                 const status = 'approved'; // 레거시 유저(문서 없음)는 기본 승인 처리
                 userDoc = {
                   uid: user.uid,
@@ -102,7 +102,7 @@ async function initializeAuthAndData(){
           } catch (e) {
             console.error('사용자 정보 조회 실패:', e);
             const lowerEmail = (user.email || '').toLowerCase().trim();
-            const isMasterAdmin = lowerEmail === 'booyoul.oh@kr.spiraxsarco.com' || lowerEmail === 'booyoul.oh@kr.spiraxsarco.kr' || lowerEmail === 'test.admin@kr.spiraxsarco.com' || lowerEmail === 'test.admin@kr.spiraxsarco.kr';
+            const isMasterAdmin = lowerEmail === 'booyoul.oh@kr.spiraxsarco.com' || lowerEmail === 'test.admin@kr.spiraxsarco.com' || lowerEmail === 'test.admin@kr.spiraxsarco.kr';
             
             window.currentUser = user;
             window.currentUserDoc = isMasterAdmin ? { role: 'admin', status: 'approved' } : null;
