@@ -18,16 +18,25 @@ async function initializeAuthAndData(){
               const docSnap = await window.fs.getDoc(docRef);
               if (docSnap.exists()) {
                 userDoc = docSnap.data();
+                // 마스터 어드민(booyoul.oh@kr.spiraxsarco.com / booyoul.oh@kr.spiraxsarco.kr)인데 DB에 admin으로 등록 안 되었으면 강제 승인 및 어드민 지정
+                const lowerEmail = (user.email || '').toLowerCase().trim();
+                const isMasterAdmin = lowerEmail === 'booyoul.oh@kr.spiraxsarco.com' || lowerEmail === 'booyoul.oh@kr.spiraxsarco.kr' || lowerEmail === 'test.admin@kr.spiraxsarco.com' || lowerEmail === 'test.admin@kr.spiraxsarco.kr';
+                if (isMasterAdmin && (userDoc.role !== 'admin' || userDoc.status !== 'approved')) {
+                  userDoc.role = 'admin';
+                  userDoc.status = 'approved';
+                  await window.fs.setDoc(docRef, { role: 'admin', status: 'approved' }, { merge: true });
+                }
               } else {
                 // 문서가 없으면 레거시 유저 혹은 신규 가입 시 누락된 경우이므로 자동으로 생성 (기본 approved)
                 const lowerEmail = (user.email || '').toLowerCase().trim();
+                const isMasterAdmin = lowerEmail === 'booyoul.oh@kr.spiraxsarco.com' || lowerEmail === 'booyoul.oh@kr.spiraxsarco.kr' || lowerEmail === 'test.admin@kr.spiraxsarco.com' || lowerEmail === 'test.admin@kr.spiraxsarco.kr';
                 const status = 'approved'; // 레거시 유저(문서 없음)는 기본 승인 처리
                 userDoc = {
                   uid: user.uid,
                   email: user.email || '',
                   displayName: user.displayName || user.email.split('@')[0],
                   status: status,
-                  role: 'user', // 레거시 유저 기본 역할
+                  role: isMasterAdmin ? 'admin' : 'user', // 마스터 어드민은 기본 어드민
                   createdAt: window.fs.serverTimestamp()
                 };
                 await window.fs.setDoc(docRef, userDoc);
@@ -36,8 +45,9 @@ async function initializeAuthAndData(){
 
             if (userDoc) {
               if (userDoc.status === 'approved') {
-                currentUser = user;
-                currentUserDoc = userDoc;
+                window.currentUser = user;
+                window.currentUserDoc = userDoc;
+                window.currentUserRole = userDoc.role || 'user';
                 if (typeof window.renderAuthHeader === 'function') {
                   window.renderAuthHeader();
                 }
@@ -52,8 +62,9 @@ async function initializeAuthAndData(){
                 fetchInitialData();
               } else if (userDoc.status === 'pending') {
                 alert('회원가입 승인 대기 중입니다. 관리자의 승인을 기다려 주세요.');
-                currentUser = null;
-                currentUserDoc = null;
+                window.currentUser = null;
+                window.currentUserDoc = null;
+                window.currentUserRole = null;
                 await window.signOut(window.auth);
                 tasks = [];
                 trackers = [];
@@ -65,8 +76,9 @@ async function initializeAuthAndData(){
                 }
               } else if (userDoc.status === 'rejected') {
                 alert('회원가입 신청이 거부되었습니다. 관리자에게 문의하세요.');
-                currentUser = null;
-                currentUserDoc = null;
+                window.currentUser = null;
+                window.currentUserDoc = null;
+                window.currentUserRole = null;
                 await window.signOut(window.auth);
                 tasks = [];
                 trackers = [];
@@ -79,7 +91,9 @@ async function initializeAuthAndData(){
               }
             } else {
               // No document found – treat as signed‑in user without extra metadata
-              currentUser = user;
+              window.currentUser = user;
+              window.currentUserDoc = null;
+              window.currentUserRole = 'user';
               if (typeof window.renderAuthHeader === 'function') {
                 window.renderAuthHeader();
               }
@@ -87,7 +101,13 @@ async function initializeAuthAndData(){
             }
           } catch (e) {
             console.error('사용자 정보 조회 실패:', e);
-            currentUser = user;
+            const lowerEmail = (user.email || '').toLowerCase().trim();
+            const isMasterAdmin = lowerEmail === 'booyoul.oh@kr.spiraxsarco.com' || lowerEmail === 'booyoul.oh@kr.spiraxsarco.kr' || lowerEmail === 'test.admin@kr.spiraxsarco.com' || lowerEmail === 'test.admin@kr.spiraxsarco.kr';
+            
+            window.currentUser = user;
+            window.currentUserDoc = isMasterAdmin ? { role: 'admin', status: 'approved' } : null;
+            window.currentUserRole = isMasterAdmin ? 'admin' : 'user';
+            
             if (typeof window.renderAuthHeader === 'function') {
               window.renderAuthHeader();
             }
@@ -96,8 +116,9 @@ async function initializeAuthAndData(){
         })();
       } else {
         // No authenticated user – clear UI state
-        currentUser = null;
-        currentUserDoc = null;
+        window.currentUser = null;
+        window.currentUserDoc = null;
+        window.currentUserRole = null;
         if (typeof window.renderAuthHeader === 'function') {
           window.renderAuthHeader();
         }

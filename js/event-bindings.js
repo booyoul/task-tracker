@@ -127,7 +127,17 @@ function initEventBindings(){
     }
   });
 
-  window.addEventListener('resize',()=>setViewVisibility(currentViewMode==='CALENDAR'?'CALENDAR':currentViewMode==='KANBAN'?'KANBAN':'TABLE'));
+  let lastIsMobile = (window.matchMedia ? window.matchMedia('(max-width: 1023px)').matches : window.innerWidth < 1024);
+  window.addEventListener('resize',()=>{
+    setViewVisibility(currentViewMode==='CALENDAR'?'CALENDAR':currentViewMode==='KANBAN'?'KANBAN':'TABLE');
+    const isMobile = (window.matchMedia ? window.matchMedia('(max-width: 1023px)').matches : window.innerWidth < 1024);
+    if (isMobile !== lastIsMobile) {
+      lastIsMobile = isMobile;
+      if (typeof renderActiveViews === 'function') {
+        renderActiveViews();
+      }
+    }
+  });
   window.addEventListener('beforeunload',()=>{if(typeof unsubscribeTasks==='function')unsubscribeTasks();if(typeof unsubscribeTrackers==='function')unsubscribeTrackers();});
 }
 window.initEventBindings=initEventBindings;

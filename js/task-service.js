@@ -11,9 +11,11 @@ async function db_addTask(taskData) {
     deleted: false,
     createdAt: getServerTimestamp(),
     updatedAt: getServerTimestamp(),
-    createdBy: currentUser ? currentUser.uid : 'anonymous',
-    createdByName: currentUser ? (currentUser.displayName || currentUser.email) : 'anonymous'
+    createdBy: window.currentUser ? window.currentUser.uid : 'anonymous',
+    createdByName: window.currentUser ? (window.currentUser.displayName || window.currentUser.email) : 'anonymous',
+    ownerId: window.currentUser ? window.currentUser.uid : 'anonymous'
   });
+  console.info('db_addTask - 생성할 payload:', payload);
   markSaving();
   if (canWriteToFirestore() && coll) {
     try { await window.fs.setDoc(window.fs.doc(coll, id), payload, { merge: true }); markSaved(); }
@@ -34,7 +36,11 @@ async function db_updateTask(id, taskData) {
   markSaving();
   if (canWriteToFirestore() && coll) {
     try { await window.fs.setDoc(window.fs.doc(coll, id), payload, { merge: true }); markSaved(); }
-    catch (e) { markSaveError(); console.warn('업무 수정 실패', e); showToast('Firebase 수정 실패', false); }
+    catch (e) { 
+      markSaveError(); 
+      console.error('업무 수정 실패 상세 에러:', e); 
+      showToast(`Firebase 수정 실패: ${e.message || e}`, false); 
+    }
   }
   const idx = tasks.findIndex(t => t.id === id);
   if (idx !== -1) tasks[idx] = { ...tasks[idx], ...payload };
@@ -91,8 +97,9 @@ async function db_addTracker(data) {
     deleted: false,
     createdAt: getServerTimestamp(),
     updatedAt: getServerTimestamp(),
-    createdBy: currentUser ? currentUser.uid : 'anonymous',
-    createdByName: currentUser ? (currentUser.displayName || currentUser.email) : 'anonymous'
+    createdBy: window.currentUser ? window.currentUser.uid : 'anonymous',
+    createdByName: window.currentUser ? (window.currentUser.displayName || window.currentUser.email) : 'anonymous',
+    ownerId: window.currentUser ? window.currentUser.uid : 'anonymous'
   };
   if (canWriteToFirestore() && coll) {
     try { await window.fs.setDoc(window.fs.doc(coll, id), payload, { merge: true }); markSaved(); }

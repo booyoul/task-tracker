@@ -524,7 +524,6 @@ function getFilteredTasks() {
   const search = (document.getElementById('filter-search')?.value || '').toLowerCase().trim();
   const status = document.getElementById('filter-status')?.value || 'ALL';
   const priority = document.getElementById('filter-priority')?.value || 'ALL';
-  const assignee = document.getElementById('filter-assignee')?.value || 'ALL';
   const startMonthVal = document.getElementById('filter-start-month')?.value || '';
   const endMonthVal = document.getElementById('filter-end-month')?.value || '';
   
@@ -557,7 +556,6 @@ function getFilteredTasks() {
       if (getTaskRiskInfo(t, today).level !== 'CRITICAL') return false;
     } else if (status !== 'ALL' && getEffectiveStatus(t, today) !== status) return false;
     if (priority !== 'ALL' && t.priority !== priority) return false;
-    if (assignee !== 'ALL' && t.assignee !== assignee) return false;
     if (focusState.riskOnly && !isTaskOverdueEffective(t, today)) return false;
     if (focusState.mineOnly && !isMineTask(t)) return false;
     if (focusState.highOnly && t.priority !== 'HIGH') return false;
@@ -566,15 +564,6 @@ function getFilteredTasks() {
     if (filterEndDate && (t.startDate || today) > filterEndDate) return false;
     return true;
   });
-}
-function buildAssigneeDropdownFilter() {
-  const select = document.getElementById('filter-assignee');
-  if (!select) return;
-  const currentVal = select.value;
-  const assignees = [...new Set(tasks.filter(t => t.trackerId === currentTrackerId && !t.deleted).map(t => t.assignee).filter(Boolean))];
-  select.innerHTML = '<option value="ALL">담당자: 전체</option>';
-  assignees.forEach(n => { const opt = document.createElement('option'); opt.value = n; opt.textContent = n; select.appendChild(opt); });
-  if (assignees.includes(currentVal)) select.value = currentVal;
 }
 function updateTrackerUI() {
   const listContainer = document.getElementById('tracker-list-items');
@@ -754,7 +743,7 @@ function updateUI() {
   const gateway = document.getElementById('auth-gateway-view');
   const mainContent = document.getElementById('app-main-content');
   if (gateway && mainContent) {
-    if (isAuthReady && !currentUser) {
+    if (isAuthReady && !window.currentUser) {
       gateway.classList.remove('hidden');
       mainContent.classList.add('hidden');
       return;
@@ -764,7 +753,6 @@ function updateUI() {
     }
   }
   renderStats();
-  buildAssigneeDropdownFilter();
   renderActiveViews();
   updateUndoButton();
 }
@@ -846,7 +834,10 @@ function updateBatchButton() { const btn = document.getElementById('btn-batch-de
 function updateUndoButton() { const btn = document.getElementById('btn-undo'); if (btn) deletionHistory.length ? btn.classList.remove('hidden') : btn.classList.add('hidden'); }
 function resetFilters() {
   ['filter-search', 'filter-start-month', 'filter-end-month'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-  ['filter-status', 'filter-priority', 'filter-assignee'].forEach(id => { const el = document.getElementById(id); if (el) el.value = 'ALL'; });
+  ['filter-status', 'filter-priority'].forEach(id => { const el = document.getElementById(id); if (el) el.value = 'ALL'; });
+  selectedAssigneeFilters.clear();
+  window.selectedAssigneeFilters = selectedAssigneeFilters;
+  updateAssigneeButton();
   renderActiveViews();
 }
 function handleDeleteTrackerClick() {
@@ -1019,8 +1010,6 @@ function ensureUXToolbar() {
           <span class="text-[11px] font-bold uppercase tracking-wide text-slate-400">Focus Mode</span>
           <button type="button" id="btn-focus-risk" class="ux-focus-btn rounded-xl border px-3 py-1.5 text-xs font-bold transition">🚨 Risk Only</button>
           <button type="button" id="btn-focus-high" class="ux-focus-btn rounded-xl border px-3 py-1.5 text-xs font-bold transition">🔥 High Priority</button>
-          <button type="button" id="btn-open-assignee-modal" class="rounded-xl border border-indigo-100 bg-white px-3 py-1.5 text-xs font-bold text-indigo-700 shadow-sm hover:bg-indigo-50 transition">👤 담당자: 전체</button>
-          <button type="button" id="btn-clear-assignee-filter" class="rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[11px] font-bold text-slate-500 hover:bg-white transition">담당자 해제</button>
         </div>
         <div id="ux-action-host" class="control-hub-actions flex flex-wrap items-center gap-2 lg:justify-end"></div>
       </div>

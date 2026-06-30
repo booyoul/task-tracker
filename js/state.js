@@ -111,9 +111,9 @@
         let unsubscribeTasks = null;
         let unsubscribeTrackers = null;
         let isAuthReady = false;
-        let currentUser = null;
-        let currentUserRole = null;
-        let currentUserDoc = null;
+        window.currentUser = null;
+        window.currentUserRole = null;
+        window.currentUserDoc = null;
         let approvedUsers = [];
         window.approvedUsers = approvedUsers;
         let lastSaveState = 'idle';

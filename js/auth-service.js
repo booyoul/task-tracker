@@ -2,7 +2,7 @@
 console.info('Smart Task Flow auth-service.js loaded');
 
 // 가입을 허용할 사내 이메일 도메인 설정 (필요시 도메인 추가 가능)
-const ALLOWED_DOMAINS = ['@kr.spiraxsarco.com', '@test.com'];
+const ALLOWED_DOMAINS = ['@kr.spiraxsarco.com', '@kr.spiraxsarco.kr', '@test.com'];
 
 function validateEmailDomain(email) {
     if (!email) return false;
@@ -34,7 +34,7 @@ async function signUpWithEmail(email, password, displayName) {
         const usersCol = window.getUsersCollection();
         if (usersCol) {
             const lowerEmail = email.toLowerCase().trim();
-            const isAdmin = lowerEmail === 'booyoul.oh@kr.spiraxsarco.com';
+            const isAdmin = lowerEmail === 'booyoul.oh@kr.spiraxsarco.com' || lowerEmail === 'booyoul.oh@kr.spiraxsarco.kr' || lowerEmail === 'test.admin@kr.spiraxsarco.com' || lowerEmail === 'test.admin@kr.spiraxsarco.kr';
             const status = isAdmin ? 'approved' : 'pending';
             
             await window.fs.setDoc(window.fs.doc(usersCol, user.uid), {
@@ -80,9 +80,9 @@ async function logout() {
     if (!window.isFirebaseAvailable || !window.auth) return;
     try {
         await window.signOut(window.auth);
-        currentUser = null;
-        currentUserDoc = null;
-        currentUserRole = null;
+        window.currentUser = null;
+        window.currentUserDoc = null;
+        window.currentUserRole = null;
         if (typeof updateUI === 'function') {
             updateUI();
         }
@@ -95,8 +95,8 @@ function renderAuthHeader() {
     const userMenuContainer = document.getElementById('user-menu-container');
     if (!userMenuContainer) return;
 
-    if (currentUser) {
-        const displayName = currentUser.displayName || currentUser.email || '사용자';
+    if (window.currentUser) {
+        const displayName = window.currentUser.displayName || window.currentUser.email || '사용자';
         const initial = displayName.charAt(0).toUpperCase();
         
         // 이메일 기반 로그인 사용자를 위한 텍스트 아바타 렌더링
@@ -107,7 +107,7 @@ function renderAuthHeader() {
                 </div>
                 <div class="hidden md:flex flex-col text-left">
                     <span class="text-xs font-semibold text-slate-700">${displayName.split('@')[0]}</span>
-                    <span class="text-[10px] text-slate-400">${currentUser.email || ''}</span>
+                    <span class="text-[10px] text-slate-400">${window.currentUser.email || ''}</span>
                 </div>
                 <button id="btn-logout" class="px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded transition font-medium">로그아웃</button>
             </div>
@@ -122,7 +122,7 @@ function renderAuthHeader() {
     // 어드민 뷰 토글 버튼 노출 관리
     const btnViewAdmin = document.getElementById('btn-view-admin');
     if (btnViewAdmin) {
-        if (currentUser && isAdminUser()) {
+        if (window.currentUser && isAdminUser()) {
             btnViewAdmin.classList.remove('hidden');
         } else {
             btnViewAdmin.classList.add('hidden');
@@ -131,18 +131,28 @@ function renderAuthHeader() {
 }
 
 function isAdminUser() {
-    if (!currentUser) return false;
+    if (!window.currentUser) return false;
     // 1. 마스터 어드민 이메일 (하드코딩 백업)
-    const email = (currentUser.email || '').toLowerCase().trim();
-    if (email === 'booyoul.oh@kr.spiraxsarco.com') return true;
+    const email = (window.currentUser.email || '').toLowerCase().trim();
+    if (email === 'booyoul.oh@kr.spiraxsarco.com' || email === 'booyoul.oh@kr.spiraxsarco.kr' || email === 'test.admin@kr.spiraxsarco.com' || email === 'test.admin@kr.spiraxsarco.kr') return true;
     // 2. Firestore users 콜렉션의 role 필드가 'admin'인 경우
-    return currentUserDoc?.role === 'admin';
+    return window.currentUserDoc?.role === 'admin';
 }
 
 function hasWritePermission(item) {
-    if (!currentUser) return false;
-    if (!item || !item.createdBy) return true; // 레거시 데이터 허용
-    return item.createdBy === currentUser.uid;
+    if (!window.currentUser) {
+        console.warn('hasWritePermission 거부: 로그인된 사용자가 없습니다.');
+        return false;
+    }
+    if (typeof isAdminUser === 'function' && isAdminUser()) return true; // 관리자는 전체 권한 허용
+    if (!item) return true;
+    if (!item.createdBy || item.createdBy === 'anonymous') return true; // 레거시 및 anonymous 데이터 허용
+    
+    const hasPermission = item.createdBy === window.currentUser.uid;
+    if (!hasPermission) {
+        console.warn(`hasWritePermission 거부: 데이터 작성자(${item.createdBy})와 현재 사용자(${window.currentUser.uid})가 일치하지 않습니다.`);
+    }
+    return hasPermission;
 }
 
 window.signUpWithEmail = signUpWithEmail;

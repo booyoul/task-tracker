@@ -196,8 +196,10 @@ function getMobileDuePill(t, todayStr) {
   const risk = getTaskRiskInfo(t, todayStr);
   const isRisk = risk.level !== 'NONE' || getEffectiveStatus(t, todayStr) === 'OVERDUE';
   const cls = isRisk ? 'bg-rose-50 text-rose-700 border-rose-100' : 'bg-slate-50 text-slate-600 border-slate-100';
+  const start = t.startDate ? t.startDate.substring(5) : '';
   const due = (t.dueDate || '').substring(5) || '미정';
-  return `<span class="inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-bold ${cls}">📅 ${due}<span class="font-semibold opacity-80">${timeline.text || ''}</span></span>`;
+  const dateText = start ? `${start}~${due}` : due;
+  return `<span class="inline-flex flex-wrap items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-bold ${cls}">📅 ${dateText}<span class="font-semibold opacity-80">${timeline.text || ''}</span></span>`;
 }
 
 function getMobileProgressBar(progressPct, status) {
@@ -294,6 +296,22 @@ function renderMobileCards(filtered) {
   const riskyCount = filtered.filter(t => isTaskOverdueEffective(t, todayStr) || ['HIGH','CRITICAL'].includes(getTaskRiskInfo(t, todayStr).level)).length;
   const completedCount = filtered.filter(t => getEffectiveStatus(t, todayStr) === 'COMPLETED').length;
 
+  const isRiskActive = typeof focusState !== 'undefined' && focusState.riskOnly;
+  const isHighActive = typeof focusState !== 'undefined' && focusState.highOnly;
+  const isAssigneeActive = typeof selectedAssigneeFilters !== 'undefined' && selectedAssigneeFilters.size > 0;
+
+  const riskClass = isRiskActive 
+    ? 'rounded-2xl border border-rose-600 bg-rose-600 px-3 py-2 text-xs font-black text-white transition shadow-sm' 
+    : 'rounded-2xl border border-rose-100 bg-rose-50 px-3 py-2 text-xs font-black text-rose-700 transition';
+
+  const highClass = isHighActive 
+    ? 'rounded-2xl border border-amber-600 bg-amber-600 px-3 py-2 text-xs font-black text-white transition shadow-sm' 
+    : 'rounded-2xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs font-black text-amber-700 transition';
+
+  const assigneeClass = isAssigneeActive 
+    ? 'rounded-2xl border border-indigo-600 bg-indigo-600 px-3 py-2 text-xs font-black text-white transition shadow-sm' 
+    : 'rounded-2xl border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs font-black text-indigo-700 transition';
+
   const header = document.createElement('section');
   header.className = 'mobile-command-deck sticky top-0 z-20 -mx-1 mb-3 rounded-b-3xl border border-slate-100 bg-white/90 p-3 shadow-sm backdrop-blur lg:hidden';
   header.innerHTML = `<div class="flex items-center justify-between gap-3">
@@ -304,9 +322,9 @@ function renderMobileCards(filtered) {
     </div>
   </div>
   <div class="mt-3 grid grid-cols-3 gap-2">
-    <button type="button" id="mobile-focus-risk" class="rounded-2xl border border-rose-100 bg-rose-50 px-3 py-2 text-xs font-black text-rose-700">Risk</button>
-    <button type="button" id="mobile-focus-high" class="rounded-2xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs font-black text-amber-700">High</button>
-    <button type="button" id="mobile-open-assignee" class="rounded-2xl border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs font-black text-indigo-700">담당자</button>
+    <button type="button" id="mobile-focus-risk" class="${riskClass}">Risk</button>
+    <button type="button" id="mobile-focus-high" class="${highClass}">High</button>
+    <button type="button" id="mobile-open-assignee" class="${assigneeClass}">담당자</button>
   </div>`;
   container.appendChild(header);
   header.querySelector('#mobile-focus-risk')?.addEventListener('click', () => toggleFocusMode('riskOnly'));

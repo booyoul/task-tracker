@@ -51,6 +51,7 @@
 | **기본 UI 구조 및 모달 창 HTML 마크업** | [index.html](file:///home/booyoul/projects/task-tracker-main/index.html) |
 | **전역 상태, 더미 데이터, DOMPurify 보안 설정** | [state.js](file:///home/booyoul/projects/task-tracker-main/js/state.js) |
 | **가입 신청 및 어드민 가입 승인/거부 관리** | [admin-approvals.js](file:///home/booyoul/projects/task-tracker-main/js/admin-approvals.js) / [auth-service.js](file:///home/booyoul/projects/task-tracker-main/js/auth-service.js) |
+| **Firebase DB 보안 규칙 설정** | [firestore.rules](file:///home/booyoul/projects/task-tracker-main/firestore.rules) |
 | **로그인 인증 상태 관리 및 소유자 기반 권한 판단** | [auth-service.js](file:///home/booyoul/projects/task-tracker-main/js/auth-service.js) |
 | **Firestore 데이터 쓰기/수정/삭제 및 리스너 등록** | [task-service.js](file:///home/booyoul/projects/task-tracker-main/js/task-service.js) / [firebase.js](file:///home/booyoul/projects/task-tracker-main/js/firebase.js) |
 | **화면 모드 토글, 필터 검색, 통계 및 요약 요약 계산** | [app.js](file:///home/booyoul/projects/task-tracker-main/js/app.js) |

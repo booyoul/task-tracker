@@ -156,7 +156,11 @@ async function approveUser(uid) {
         console.log(`사용자 승인 완료: ${uid}`);
     } catch (e) {
         console.error("User approval update failed:", e);
-        alert("승인 처리에 실패했습니다: " + e.message);
+        if (e.code === 'permission-denied' || (e.message && (e.message.includes('permission') || e.message.includes('Permission')))) {
+            alert("승인 처리에 실패했습니다: " + e.message + "\n\n[권한 오류 가이드]\n현재 로그인한 계정에 다른 사용자의 문서를 수정할 수 있는 Firestore 보안 규칙(Security Rules)이 적용되어 있지 않은 상태일 가능성이 큽니다.\nFirebase Console에서 보안 규칙을 수정해 주시거나, 프로젝트 루트에 새로 생성된 'firestore.rules' 파일을 적용해 주세요.");
+        } else {
+            alert("승인 처리에 실패했습니다: " + e.message);
+        }
     }
 }
 
@@ -171,7 +175,11 @@ async function rejectUser(uid) {
         console.log(`사용자 거부 완료: ${uid}`);
     } catch (e) {
         console.error("User rejection update failed:", e);
-        alert("거부 처리에 실패했습니다: " + e.message);
+        if (e.code === 'permission-denied' || (e.message && (e.message.includes('permission') || e.message.includes('Permission')))) {
+            alert("거부 처리에 실패했습니다: " + e.message + "\n\n[권한 오류 가이드]\n현재 로그인한 계정에 다른 사용자의 문서를 수정할 수 있는 Firestore 보안 규칙(Security Rules)이 적용되어 있지 않은 상태일 가능성이 큽니다.\nFirebase Console에서 보안 규칙을 수정해 주시거나, 프로젝트 루트에 새로 생성된 'firestore.rules' 파일을 적용해 주세요.");
+        } else {
+            alert("거부 처리에 실패했습니다: " + e.message);
+        }
     }
 }
 

@@ -500,10 +500,15 @@
                             <option value="NORMAL">보통</option>
                             <option value="LOW">낮음</option>
                         </select>
-                        <select id="filter-assignee"
-                            class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 outline-none transition focus:border-indigo-500 focus:bg-indigo-50">
-                            <option value="ALL">담당자: 전체</option>
-                        </select>
+                        <!-- 담당자 멀티 셀렉트 버튼 -->
+                        <button type="button" id="btn-open-assignee-modal"
+                            class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50 hover:border-indigo-500 transition">
+                            👤 담당자: 전체
+                        </button>
+                        <button type="button" id="btn-clear-assignee-filter"
+                            class="rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-2 text-[11px] font-bold text-slate-500 hover:bg-white transition">
+                            담당자 해제
+                        </button>
                         <button type="button" id="btn-reset-filters"
                             class="rounded-xl bg-slate-100 p-2 text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition"
                             title="필터 초기화">
@@ -974,9 +979,9 @@
 
     <!-- 스크립트 비즈니스 로직 연동 시작 -->
     <script type="module" src="./js/firebase.js?v=20260629-v1"></script>
-    <script defer src="./js/state.js?v=20260629-v2"></script>
-    <script defer src="./js/auth-service.js?v=20260629-v2"></script>
-    <script defer src="./js/date-risk-utils.js?v=20260629-v1"></script>
+    <script defer src="./js/state.js?v=20260629-v3"></script>
+    <script defer src="./js/auth-service.js?v=20260629-v9"></script>
+    <script defer src="./js/date-risk-utils.js?v=20260629-v2"></script>
     <script defer src="./js/schema-service.js?v=20260628-v13"></script>
     <script defer src="./js/calendar-utils.js?v=20260628-v13"></script>
     <script defer src="./js/calendar-day-renderer.js?v=20260629-v1"></script>
@@ -987,9 +992,9 @@
     <script defer src="./js/modal-controller.js?v=20260628-v13"></script>
     <script defer src="./js/admin-approvals.js?v=20260629-v5"></script>
     <script defer src="./js/event-bindings.js?v=20260629-v3"></script>
-    <script defer src="./js/bootstrap-service.js?v=20260629-v1"></script>
-    <script defer src="./js/app.js?v=20260629-v4"></script>
-    <script defer src="./js/task-service.js?v=20260628-v13"></script>
+    <script defer src="./js/bootstrap-service.js?v=20260629-v6"></script>
+    <script defer src="./js/app.js?v=20260629-v6"></script>
+    <script defer src="./js/task-service.js?v=20260629-v3"></script>
     <script defer src="./js/export-service.js?v=20260628-v13"></script>
 </body>
 
