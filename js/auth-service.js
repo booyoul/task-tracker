@@ -1,5 +1,5 @@
 // js/auth-service.js
-console.info('Smart Task Flow auth-service.js loaded');
+console.info('Smart Task Flow auth-service.js v20260701-v2 loaded');
 
 // 가입을 허용할 사내 이메일 도메인 설정 (필요시 도메인 추가 가능)
 const ALLOWED_DOMAINS = ['@kr.spiraxsarco.com', '@kr.spiraxsarco.kr', '@test.com'];
@@ -155,9 +155,30 @@ function hasWritePermission(item) {
     return hasPermission;
 }
 
+function hasTrackerWritePermission(tracker) {
+    if (!window.currentUser) {
+        console.warn('hasTrackerWritePermission 거부: 로그인된 사용자가 없습니다.');
+        return false;
+    }
+    if (typeof isAdminUser === 'function' && isAdminUser()) return true; // 관리자는 전체 권한 허용
+    if (!tracker) return true; // 신규 생성 등
+    
+    // 기본 트래커 및 소유자가 지정되지 않은 레거시 트래커는 관리자 외 수정/삭제 차단
+    if (!tracker.createdBy || tracker.createdBy === 'anonymous') {
+        return false;
+    }
+    
+    const hasPermission = tracker.createdBy === window.currentUser.uid;
+    if (!hasPermission) {
+        console.warn(`hasTrackerWritePermission 거부: 트래커 작성자(${tracker.createdBy})와 현재 사용자(${window.currentUser.uid})가 일치하지 않습니다.`);
+    }
+    return hasPermission;
+}
+
 window.signUpWithEmail = signUpWithEmail;
 window.loginWithEmail = loginWithEmail;
 window.logout = logout;
 window.renderAuthHeader = renderAuthHeader;
 window.hasWritePermission = hasWritePermission;
+window.hasTrackerWritePermission = hasTrackerWritePermission;
 window.isAdminUser = isAdminUser;

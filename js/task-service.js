@@ -1,4 +1,4 @@
-console.info('Smart Task Flow task-service.js v20260626-module-split-phase4b-day-renderer-fix loaded');
+console.info('Smart Task Flow task-service.js v20260701-v2 loaded');
 // Task / tracker CRUD and Firebase realtime listener helpers.
 async function db_addTask(taskData) {
   const coll = getTasksCollection();
@@ -113,7 +113,7 @@ async function db_addTracker(data) {
 }
 async function db_updateTracker(id, data) {
   const original = trackers.find(t => t.id === id);
-  if (!window.hasWritePermission(original)) {
+  if (!window.hasTrackerWritePermission(original)) {
     showToast('트래커 수정 권한이 없습니다.', false);
     return;
   }
@@ -130,7 +130,7 @@ async function db_updateTracker(id, data) {
 }
 async function db_deleteTracker(id) {
   const original = trackers.find(t => t.id === id);
-  if (!window.hasWritePermission(original)) {
+  if (!window.hasTrackerWritePermission(original)) {
     showToast('트래커 삭제 권한이 없습니다.', false);
     return;
   }

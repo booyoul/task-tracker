@@ -5,15 +5,13 @@ var focusState = window.focusState || { riskOnly: false, mineOnly: false, highOn
 window.focusState = focusState;
 var UX_STORAGE_KEYS = window.UX_STORAGE_KEYS || { myAssignee: 'flow_my_assignee_name' };
 window.UX_STORAGE_KEYS = UX_STORAGE_KEYS;
-var isDashboardCollapsed = window.isDashboardCollapsed;
-if (typeof isDashboardCollapsed !== 'boolean') isDashboardCollapsed = safeLocalStorageGet('flow_kpi_collapsed', 'true') !== 'false';
+var isDashboardCollapsed = true;
 window.isDashboardCollapsed = isDashboardCollapsed;
-var isRiskPanelCollapsed = window.isRiskPanelCollapsed;
-if (typeof isRiskPanelCollapsed !== 'boolean') isRiskPanelCollapsed = true;
+var isRiskPanelCollapsed = true;
 window.isRiskPanelCollapsed = isRiskPanelCollapsed;
 var selectedAssigneeFilters = window.selectedAssigneeFilters || new Set();
 window.selectedAssigneeFilters = selectedAssigneeFilters;
-var calendarUxState = window.calendarUxState || { subtasksExpanded: true, criticalOnly: false, colorByIndustry: false, groupByAssignee: false };
+var calendarUxState = window.calendarUxState || { subtasksExpanded: true, criticalOnly: false, colorByIndustry: false, groupByAssignee: false, duplicateMultiAssignee: true };
 window.calendarUxState = calendarUxState;
 function safeLocalStorageGet(key, fallback = '') {
   try { return window.localStorage ? (localStorage.getItem(key) || fallback) : fallback; }
@@ -30,7 +28,7 @@ function loadCalendarUxState() {
     const raw = safeLocalStorageGet(CALENDAR_UX_STORAGE_KEY, '');
     if (!raw) return;
     const parsed = JSON.parse(raw);
-    calendarUxState = { subtasksExpanded: true, criticalOnly: false, colorByIndustry: false, groupByAssignee: false, ...calendarUxState, ...parsed };
+    calendarUxState = { subtasksExpanded: true, criticalOnly: false, colorByIndustry: false, groupByAssignee: false, duplicateMultiAssignee: true, ...calendarUxState, ...parsed };
     window.calendarUxState = calendarUxState;
   } catch (e) { console.warn('calendar UX state load failed', e); }
 }
@@ -48,6 +46,7 @@ function updateCalendarUxButtons() {
   const riskBtn = document.getElementById('btn-cal-ux-risk');
   const industryBtn = document.getElementById('btn-cal-ux-industry');
   const assigneeBtn = document.getElementById('btn-cal-ux-assignee');
+  const duplicateBtn = document.getElementById('btn-cal-ux-duplicate-assignee');
   if (subBtn) {
     subBtn.textContent = calendarUxState.subtasksExpanded ? '하위 펼침' : '하위 접힘';
     subBtn.className = getCalendarUxButtonClass(calendarUxState.subtasksExpanded);
@@ -64,6 +63,15 @@ function updateCalendarUxButtons() {
     assigneeBtn.textContent = calendarUxState.groupByAssignee ? '담당자 보기 ON' : '담당자 보기';
     assigneeBtn.className = getCalendarUxButtonClass(calendarUxState.groupByAssignee);
   }
+  if (duplicateBtn) {
+    duplicateBtn.textContent = calendarUxState.duplicateMultiAssignee ? '공동 개별표시 ON' : '공동 개별표시';
+    duplicateBtn.className = getCalendarUxButtonClass(calendarUxState.duplicateMultiAssignee);
+    if (calendarUxState.groupByAssignee) {
+      duplicateBtn.classList.remove('hidden');
+    } else {
+      duplicateBtn.classList.add('hidden');
+    }
+  }
 }
 function ensureCalendarUxControls() {
   loadCalendarUxState();
@@ -77,7 +85,8 @@ function ensureCalendarUxControls() {
     <button type="button" id="btn-cal-ux-subtasks"></button>
     <button type="button" id="btn-cal-ux-risk"></button>
     <button type="button" id="btn-cal-ux-industry"></button>
-    <button type="button" id="btn-cal-ux-assignee"></button>`;
+    <button type="button" id="btn-cal-ux-assignee"></button>
+    <button type="button" id="btn-cal-ux-duplicate-assignee" class="hidden"></button>`;
   anchor.insertAdjacentElement('afterend', controls);
   document.getElementById('btn-cal-ux-subtasks')?.addEventListener('click', e => {
     e.preventDefault(); e.stopPropagation();
@@ -100,6 +109,12 @@ function ensureCalendarUxControls() {
   document.getElementById('btn-cal-ux-assignee')?.addEventListener('click', e => {
     e.preventDefault(); e.stopPropagation();
     calendarUxState.groupByAssignee = !calendarUxState.groupByAssignee;
+    window.calendarUxState = calendarUxState;
+    saveCalendarUxState(); updateCalendarUxButtons(); renderActiveViews();
+  });
+  document.getElementById('btn-cal-ux-duplicate-assignee')?.addEventListener('click', e => {
+    e.preventDefault(); e.stopPropagation();
+    calendarUxState.duplicateMultiAssignee = !calendarUxState.duplicateMultiAssignee;
     window.calendarUxState = calendarUxState;
     saveCalendarUxState(); updateCalendarUxButtons(); renderActiveViews();
   });
@@ -136,30 +151,7 @@ function ensureRiskDashboardPanel() {
 }
 
 
-function updateDashboardCompactControls() {
-  const riskBtn = document.getElementById('btn-toggle-risk-panel');
-  const dashBtn = document.getElementById('btn-toggle-dashboard');
-  if (riskBtn) riskBtn.textContent = isRiskPanelCollapsed ? 'Risk 펼치기' : 'Risk 접기';
-  if (dashBtn) dashBtn.textContent = isDashboardCollapsed ? 'KPI 펼치기' : 'KPI 접기';
-}
-function toggleRiskPanelCompact() {
-  window.isRiskPanelCollapsed = !(window.isRiskPanelCollapsed === true);
-  isRiskPanelCollapsed = window.isRiskPanelCollapsed;
-  updateDashboardCompactControls();
-  const scope = tasks.filter(t => t.trackerId === currentTrackerId && !t.deleted);
-  renderRiskDashboard(scope);
-}
-function toggleDashboardCompact() {
-  window.isDashboardCollapsed = !window.isDashboardCollapsed;
-  isDashboardCollapsed = window.isDashboardCollapsed;
-  safeLocalStorageSet('flow_kpi_collapsed', String(isDashboardCollapsed));
-  applyCompactDashboardStyles();
-  updateDashboardCompactControls();
-  renderActiveViews();
-}
-
 function renderRiskDashboard(scope) {
-  isRiskPanelCollapsed = window.isRiskPanelCollapsed === true;
   const panel = ensureRiskDashboardPanel();
   if (!panel) return;
   const today = getTodayStr();
@@ -167,48 +159,26 @@ function renderRiskDashboard(scope) {
   const critical = risky.filter(t => getTaskRiskInfo(t, today).level === 'CRITICAL').length;
   const high = risky.filter(t => getTaskRiskInfo(t, today).level === 'HIGH').length;
   const dueSoon = scope.filter(t => hasDueSoonRisk(t, today)).length;
-  const byAssignee = {};
-  risky.forEach(t => {
-    const name = t.assignee || '미지정';
-    byAssignee[name] = (byAssignee[name] || 0) + countTaskOverdueUnits(t, today);
-  });
-  const assigneeRows = Object.entries(byAssignee).sort((a,b) => b[1] - a[1]).slice(0, 3);
+  
   const topRisk = risky[0];
   const topRiskInfo = topRisk ? getTaskRiskInfo(topRisk, today) : null;
   const bottleneck = topRisk ? getBottleneckSubTask(topRisk, today) : null;
   const topSummary = topRisk ? `${escapeHTML(topRisk.title)} · ${topRiskInfo.label} D+${topRiskInfo.delay}` : '현재 중대 지연 없음';
   const bottleneckSummary = bottleneck ? `병목: ${escapeHTML(bottleneck.title)} · ${bottleneck.dueDate || '마감 미정'}` : '병목 없음';
-  if (isRiskPanelCollapsed) {
-    panel.className = 'mb-3';
-    panel.innerHTML = `
-      <div class="rounded-xl border border-rose-100 bg-white px-3 py-2 shadow-sm">
-        <div class="flex flex-col gap-1 lg:flex-row lg:items-center lg:justify-between">
-          <div class="flex flex-wrap items-center gap-2 text-xs">
-            <span class="font-black text-slate-700">Risk</span>
-            <span class="rounded-lg bg-rose-50 px-2 py-0.5 font-black text-rose-600">${risky.length}</span>
-            <span class="text-slate-400">Critical ${critical}</span>
-            <span class="text-slate-400">High ${high}</span>
-            <span class="text-slate-400">3일 내 ${dueSoon}</span>
-          </div>
-          <div class="min-w-0 truncate text-[11px] font-semibold text-slate-500">Top: ${topSummary}${topRisk ? ` / ${bottleneckSummary}` : ''}</div>
-        </div>
-      </div>`;
-    return;
-  }
-  panel.className = 'mb-3 grid grid-cols-1 gap-2 lg:grid-cols-3';
+  
+  panel.className = 'mb-3';
   panel.innerHTML = `
     <div class="rounded-xl border border-rose-100 bg-white px-3 py-2 shadow-sm">
-      <div class="text-[10px] font-bold uppercase text-slate-400">Risk Monitor</div>
-      <div class="mt-1 flex items-baseline gap-2"><span class="text-xl font-black text-rose-600">${risky.length}</span><span class="text-[11px] text-slate-400">위험 업무</span></div>
-      <div class="text-[10px] text-slate-500">Critical ${critical} · High ${high} · 3일 내 마감 ${dueSoon}</div>
-    </div>
-    <div class="rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-sm">
-      <div class="text-[10px] font-bold uppercase text-slate-400">Top Bottleneck</div>
-      ${topRisk ? `<div class="mt-1 truncate text-xs font-bold text-slate-800">${escapeHTML(topRisk.title)}</div><div class="truncate text-[11px] text-slate-500">${bottleneckSummary} · ${topRiskInfo.label} D+${topRiskInfo.delay}</div>` : '<div class="mt-1 text-xs font-semibold text-emerald-600">현재 중대 지연 없음</div>'}
-    </div>
-    <div class="rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-sm">
-      <div class="text-[10px] font-bold uppercase text-slate-400">Assignee Risk</div>
-      <div class="mt-1 space-y-0.5">${assigneeRows.length ? assigneeRows.map(([name, cnt]) => `<div class="flex items-center justify-between text-[11px]"><span class="truncate text-slate-600">${escapeHTML(name)}</span><span class="font-bold text-rose-600">${cnt}항목</span></div>`).join('') : '<div class="text-xs font-semibold text-emerald-600">담당자별 지연 없음</div>'}</div>
+      <div class="flex flex-col gap-1 lg:flex-row lg:items-center lg:justify-between">
+        <div class="flex flex-wrap items-center gap-2 text-xs">
+          <span class="font-black text-slate-700">Risk</span>
+          <span class="rounded-lg bg-rose-50 px-2 py-0.5 font-black text-rose-600">${risky.length}</span>
+          <span class="text-slate-400">Critical ${critical}</span>
+          <span class="text-slate-400">High ${high}</span>
+          <span class="text-slate-400">3일 내 ${dueSoon}</span>
+        </div>
+        <div class="min-w-0 truncate text-[11px] font-semibold text-slate-500">Top: ${topSummary}${topRisk ? ` / ${bottleneckSummary}` : ''}</div>
+      </div>
     </div>`;
 }
 
@@ -232,9 +202,12 @@ function setMyAssigneeName() {
 function isMineTask(task) {
   const mine = normalizeAssigneeName(getMyAssigneeName());
   if (!mine) return true; // 담당자명이 없으면 전체를 유지해서 빈 화면이 되지 않도록 함
-  const match = name => {
-    const n = normalizeAssigneeName(name);
-    return !!n && (n === mine || n.includes(mine) || mine.includes(n));
+  const match = val => {
+    const list = Array.isArray(val) ? val : [val];
+    return list.some(name => {
+      const n = normalizeAssigneeName(name);
+      return !!n && (n === mine || n.includes(mine) || mine.includes(n));
+    });
   };
   return match(task?.assignee) || (Array.isArray(task?.subTasks) ? task.subTasks : []).some(st => match(st.assignee));
 }
@@ -242,14 +215,27 @@ function isMineTask(task) {
 function getTrackerAssignees() {
   const set = new Set();
   tasks.filter(t => t.trackerId === currentTrackerId && !t.deleted).forEach(t => {
-    if (t.assignee) set.add(t.assignee);
-    (Array.isArray(t.subTasks) ? t.subTasks : []).forEach(st => { if (st.assignee) set.add(st.assignee); });
+    if (Array.isArray(t.assignee)) {
+      t.assignee.forEach(a => { if (a) set.add(a); });
+    } else if (t.assignee) {
+      set.add(t.assignee);
+    }
+    (Array.isArray(t.subTasks) ? t.subTasks : []).forEach(st => {
+      if (Array.isArray(st.assignee)) {
+        st.assignee.forEach(a => { if (a) set.add(a); });
+      } else if (st.assignee) {
+        set.add(st.assignee);
+      }
+    });
   });
   return Array.from(set).sort((a, b) => String(a).localeCompare(String(b)));
 }
 function isAssigneeFilterMatched(task) {
   if (!selectedAssigneeFilters || selectedAssigneeFilters.size === 0) return true;
-  const match = name => !!name && selectedAssigneeFilters.has(String(name));
+  const match = val => {
+    const list = Array.isArray(val) ? val : [val];
+    return list.some(name => !!name && selectedAssigneeFilters.has(String(name)));
+  };
   return match(task?.assignee) || (Array.isArray(task?.subTasks) ? task.subTasks : []).some(st => match(st.assignee));
 }
 
@@ -399,9 +385,11 @@ async function bulkChangeStatus() {
   await bulkUpdateSelected({ status }, `선택 업무 상태가 ${getStatusKorean(status)}로 변경되었습니다.`);
 }
 async function bulkChangeAssignee() {
-  const assignee = prompt('변경할 담당자명을 입력하세요.', '');
-  if (!assignee || !assignee.trim()) return;
-  await bulkUpdateSelected({ assignee: assignee.trim() }, `선택 업무 담당자가 ${assignee.trim()}로 변경되었습니다.`);
+  const assignee = prompt('변경할 담당자명을 입력하세요. (복수인 경우 쉼표로 구분)', '');
+  if (assignee === null) return;
+  const assignees = assignee.split(',').map(s => s.trim()).filter(Boolean);
+  const finalAssignees = assignees.length ? assignees : ['미지정'];
+  await bulkUpdateSelected({ assignee: finalAssignees }, `선택 업무 담당자가 변경되었습니다.`);
 }
 async function bulkChangeDueDate() {
   const dueDate = prompt('변경할 마감일을 입력하세요. 예: 2026-07-31', getTodayStr());
@@ -615,10 +603,8 @@ function renderStats() {
     lbl.textContent = overdue ? `하위 포함 ${overdueUnits}항목` : '매우 양호';
     lbl.className = `text-xs font-medium ${overdue ? 'text-rose-500 font-semibold' : 'text-emerald-500'}`;
   }
-  ensureDashboardCompactControls();
   applyCompactDashboardStyles();
   renderRiskDashboard(scope);
-  updateDashboardCompactControls();
 }
 
 function buildTaskDetailCellHTML(t, subTasks, isExpanded, doneSubs, progressPct, bottleneckHTML) {
@@ -667,13 +653,15 @@ function renderCalendar(filteredTasks) {
   const groups = filteredTasks.map(t => {
     const start = t.startDate || t.dueDate || todayStr;
     const end = t.dueDate || todayStr;
+    const taskAssignees = Array.isArray(t.assignee) ? [...t.assignee] : [t.assignee || '미지정'];
     const g = {
       id: t.id, title: t.title, startDate: start > end ? end : start, dueDate: end, status: t.status || 'PENDING',
-      priority: t.priority || 'NORMAL', industry: t.industry || 'AUTO', taskType: t.taskType || 'GENERAL', assignee: t.assignee || '미지정', notes: t.notes || '', order: t.order ?? 999,
+      priority: t.priority || 'NORMAL', industry: t.industry || 'AUTO', taskType: t.taskType || 'GENERAL', assignee: taskAssignees, notes: t.notes || '', order: t.order ?? 999,
       subTasks: (t.subTasks || []).map(st => {
         const ss = st.startDate || st.dueDate || end;
         const dd = st.dueDate || end;
-        return { id: st.id, title: st.title, startDate: ss > dd ? dd : ss, dueDate: dd, status: normalizeStatus(st.status), assignee: st.assignee || t.assignee || '미지정', parentId: t.id, parentTitle: t.title, industry: t.industry || 'AUTO', taskType: t.taskType || 'GENERAL' };
+        const subAssignees = Array.isArray(st.assignee) ? [...st.assignee] : (st.assignee ? [st.assignee] : [...taskAssignees]);
+        return { id: st.id, title: st.title, startDate: ss > dd ? dd : ss, dueDate: dd, status: normalizeStatus(st.status), assignee: subAssignees, parentId: t.id, parentTitle: t.title, industry: t.industry || 'AUTO', taskType: t.taskType || 'GENERAL' };
       })
     };
     // Calendar lane calculation must use only the sub tasks relevant to the current view.
@@ -686,9 +674,10 @@ function renderCalendar(filteredTasks) {
     return g;
   }).sort((a, b) => a.order - b.order || a.rangeStart.localeCompare(b.rangeStart));
 
-  const laneLayout = calendarComputeLaneLayout(groups, { currentCalMode, showSubTaskBars, groupByAssignee: calendarUxState.groupByAssignee, todayStr });
+  const laneLayout = calendarComputeLaneLayout(groups, { currentCalMode, showSubTaskBars, groupByAssignee: calendarUxState.groupByAssignee, duplicateMultiAssignee: calendarUxState.duplicateMultiAssignee, todayStr });
   const lines = laneLayout.lines;
   const totalCalLanes = laneLayout.totalCalLanes;
+  const layoutGroups = laneLayout.layoutGroups || groups;
   const forceTextOnFirstDay = day => day === 1;
   const shouldShowCalendarText = (item, dateStr, isWeekStart, day) => dateStr === item.start || dateStr === item.end || isWeekStart || forceTextOnFirstDay(day) || dateStr === todayStr;
   const addInvisibleCalendarSpacer = container => { const sp = document.createElement('div'); sp.className = 'calendar-lane-spacer min-h-[17px] invisible'; container.appendChild(sp); };
@@ -714,11 +703,11 @@ function renderCalendar(filteredTasks) {
   };
 
   if (currentCalMode === 'DAY') {
-    renderCalendarDayView({ weekdayHeader, grid, year, month, todayStr, totalCalLanes, groups, showSubTaskBars, mainClass, dimIfNotCritical, useIndustryColor });
+    renderCalendarDayView({ weekdayHeader, grid, year, month, todayStr, totalCalLanes, groups: layoutGroups, showSubTaskBars, mainClass, dimIfNotCritical, useIndustryColor });
     return;
   }
   if (currentCalMode === 'MONTH') {
-    renderCalendarMonthView({ weekdayHeader, grid, year, groups, lines, mainClass, subClass, dimIfNotCritical, showSubTaskBars, todayStr });
+    renderCalendarMonthView({ weekdayHeader, grid, year, groups: layoutGroups, lines, mainClass, subClass, dimIfNotCritical, showSubTaskBars, todayStr });
     return;
   }
 
@@ -927,62 +916,20 @@ function applyCompactDashboardStyles() {
   section.id = section.id || 'kpi-dashboard-section';
   const summary = ensureKpiCollapsedSummary(section);
 
-  if (isDashboardCollapsed) {
-    const k = getKpiCompactValues();
-    section.className = 'hidden';
-    summary.className = 'mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-sm';
-    
-    const currentStatus = document.getElementById('filter-status')?.value || 'ALL';
-    const activeClass = (status) => currentStatus === status ? 'ring-2 ring-indigo-600 ring-offset-1 scale-[1.02]' : '';
+  const k = getKpiCompactValues();
+  section.className = 'hidden';
+  summary.className = 'mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-sm';
+  
+  const currentStatus = document.getElementById('filter-status')?.value || 'ALL';
+  const activeClass = (status) => currentStatus === status ? 'ring-2 ring-indigo-600 ring-offset-1 scale-[1.02]' : '';
 
-    summary.innerHTML = `
-      <span class="text-[11px] font-black uppercase tracking-wide text-slate-400 mr-1">KPI</span>
-      <span data-status="ALL" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-700 border border-slate-200 cursor-pointer hover:bg-slate-100 transition duration-150 ${activeClass('ALL')}">전체 <b class="text-slate-900">${k.total}</b></span>
-      <span data-status="PENDING" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700 border border-amber-200 cursor-pointer hover:bg-amber-100 transition duration-150 ${activeClass('PENDING')}">대기 <b>${k.pending}</b></span>
-      <span data-status="PROGRESS" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700 border border-blue-200 cursor-pointer hover:bg-blue-100 transition duration-150 ${activeClass('PROGRESS')}">진행 <b>${k.progress}</b></span>
-      <span data-status="COMPLETED" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700 border border-emerald-200 cursor-pointer hover:bg-emerald-100 transition duration-150 ${activeClass('COMPLETED')}">완료 <b>${k.completed}</b></span>
-      <span data-status="OVERDUE" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-rose-700 border border-rose-200 cursor-pointer hover:bg-rose-100 transition duration-150 ${activeClass('OVERDUE')}">지연 <b>${k.overdue}</b></span>`;
-    return;
-  }
-  summary.className = 'hidden';
-  summary.innerHTML = '';
-  section.className = 'mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5';
-  document.querySelectorAll('.filter-card').forEach(card => {
-    const active = card.classList.contains('ring-2');
-    card.className = `filter-card rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-sm cursor-pointer transition-all duration-150 hover:bg-slate-50 ${active ? 'ring-2 ring-indigo-600 bg-indigo-50/10' : ''}`;
-    const label = (card.querySelector('.text-xs.font-semibold') || card.querySelector('.font-bold'));
-    if (label) label.className = 'text-[10px] font-bold text-slate-500 uppercase tracking-tight';
-    const value = card.querySelector('[id^="stat-"]:not([id$="pct"]):not([id$="lbl"])');
-    if (value) value.className = value.id === 'stat-overdue' ? 'text-lg font-black text-rose-600' : 'text-lg font-black text-slate-900';
-    card.querySelectorAll('svg').forEach(svg => { svg.classList.remove('h-5','w-5'); svg.classList.add('h-4','w-4'); });
-    const numberRow = (card.querySelector('.mt-2.flex') || card.querySelector('.mt-1.flex'));
-    if (numberRow) numberRow.className = 'mt-1 flex items-baseline gap-1.5';
-  });
-}
-function ensureDashboardCompactControls() {
-  const tracker = document.getElementById('tracker-dropdown-container');
-  const section = document.getElementById('card-ALL')?.parentElement;
-  if (!tracker || !section) return;
-  let controls = document.getElementById('dashboard-compact-controls');
-  if (!controls) {
-    controls = document.createElement('div');
-    controls.id = 'dashboard-compact-controls';
-    controls.innerHTML = `
-      <span class="hidden sm:inline text-[11px] font-black uppercase tracking-wide text-slate-400">Insight</span>
-      <button type="button" id="btn-toggle-risk-panel" class="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-600 hover:bg-white whitespace-nowrap">Risk 펼치기</button>
-      <button type="button" id="btn-toggle-dashboard" class="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-600 hover:bg-white whitespace-nowrap">KPI 접기</button>`;
-    tracker.insertAdjacentElement('afterend', controls);
-  } else if (controls.previousElementSibling !== tracker) {
-    tracker.insertAdjacentElement('afterend', controls);
-  }
-  controls.className = 'ml-2 mb-1 inline-flex align-middle items-center gap-1.5 rounded-xl border border-slate-100 bg-white px-2 py-1 shadow-sm';
-  const riskBtn = document.getElementById('btn-toggle-risk-panel');
-  const dashBtn = document.getElementById('btn-toggle-dashboard');
-  riskBtn?.replaceWith(riskBtn.cloneNode(true));
-  dashBtn?.replaceWith(dashBtn.cloneNode(true));
-  document.getElementById('btn-toggle-risk-panel')?.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); toggleRiskPanelCompact(); });
-  document.getElementById('btn-toggle-dashboard')?.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); toggleDashboardCompact(); });
-  updateDashboardCompactControls();
+  summary.innerHTML = `
+    <span class="text-[11px] font-black uppercase tracking-wide text-slate-400 mr-1">KPI</span>
+    <span data-status="ALL" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-700 border border-slate-200 cursor-pointer hover:bg-slate-100 transition duration-150 ${activeClass('ALL')}">전체 <b class="text-slate-900">${k.total}</b></span>
+    <span data-status="PENDING" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700 border border-amber-200 cursor-pointer hover:bg-amber-100 transition duration-150 ${activeClass('PENDING')}">대기 <b>${k.pending}</b></span>
+    <span data-status="PROGRESS" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700 border border-blue-200 cursor-pointer hover:bg-blue-100 transition duration-150 ${activeClass('PROGRESS')}">진행 <b>${k.progress}</b></span>
+    <span data-status="COMPLETED" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700 border border-emerald-200 cursor-pointer hover:bg-emerald-100 transition duration-150 ${activeClass('COMPLETED')}">완료 <b>${k.completed}</b></span>
+    <span data-status="OVERDUE" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-rose-700 border border-rose-200 cursor-pointer hover:bg-rose-100 transition duration-150 ${activeClass('OVERDUE')}">지연 <b>${k.overdue}</b></span>`;
 }
 function ensureUXToolbar() {
   const filterBox = document.getElementById('btn-reset-filters')?.closest('.mb-4');

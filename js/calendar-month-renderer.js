@@ -70,7 +70,8 @@ function renderCalendarMonthView(ctx) {
       bar.style.top = `${g.globalLineStart * rowHeight + 10}px`;
       bar.onclick = () => openTaskModal(g.id);
       bar.innerHTML = `${getEffectiveStatus(g, todayStr) === 'OVERDUE' ? '🚨' : getEffectiveStatus(g, todayStr) === 'COMPLETED' ? '⭐️' : getEffectiveStatus(g, todayStr) === 'PROGRESS' ? '⚙️' : '⌛'} ${escapeHTML(g.title)}`;
-      bindGanttTooltip(bar, g.title, `담당자: ${escapeHTML(g.assignee)}<br>기간: ${g.startDate} ~ ${g.dueDate}<br>설명: ${escapeHTML(g.notes || '없음')}`);
+      const mainAssignees = Array.isArray(g.assignee) ? g.assignee.join(', ') : (g.assignee || '미지정');
+      bindGanttTooltip(bar, g.title, `담당자: ${escapeHTML(mainAssignees)}<br>기간: ${g.startDate} ~ ${g.dueDate}<br>설명: ${escapeHTML(g.notes || '없음')}`);
       overlay.appendChild(bar);
       if (showSubTaskBars) {
         g.subTasks.forEach((st, idx) => {
@@ -85,8 +86,9 @@ function renderCalendarMonthView(ctx) {
           sb.style.width = `calc(${(em - sm + 1) / 12 * 100}% - 8px)`;
           sb.style.top = `${(g.globalLineStart + 1 + idx) * rowHeight + 10}px`;
           sb.onclick = () => openTaskModal(g.id);
-          sb.innerHTML = `${isSubTaskOverdue(st, todayStr) ? '🚨' : getStatusIcon(st.status)} ↳ 👤 ${escapeHTML(st.assignee)} | ${escapeHTML(st.title)}`;
-          bindGanttTooltip(sb, st.title, `상위 업무: ${escapeHTML(g.title)}<br>담당자: ${escapeHTML(st.assignee)}<br>기간: ${st.startDate} ~ ${st.dueDate}<br>상태: ${getStatusKorean(st.status)}`);
+          const subAssignees = Array.isArray(st.assignee) ? st.assignee.join(', ') : (st.assignee || '미지정');
+          sb.innerHTML = `${isSubTaskOverdue(st, todayStr) ? '🚨' : getStatusIcon(st.status)} ↳ 👤 ${escapeHTML(subAssignees)} | ${escapeHTML(st.title)}`;
+          bindGanttTooltip(sb, st.title, `상위 업무: ${escapeHTML(g.title)}<br>담당자: ${escapeHTML(subAssignees)}<br>기간: ${st.startDate} ~ ${st.dueDate}<br>상태: ${getStatusKorean(st.status)}`);
           overlay.appendChild(sb);
         });
       }

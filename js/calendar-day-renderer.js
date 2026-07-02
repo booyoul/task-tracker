@@ -48,9 +48,12 @@ function renderCalendarDayView(ctx) {
       return v;
     };
     const dayNumber = dateStr => Number(String(dateStr).slice(8, 10));
-    const barLabel = item => item.isSub
-      ? `${isSubTaskOverdue(item, todayStr) ? '🚨' : getStatusIcon(item.status)} ↳ 👤 ${escapeHTML(item.assignee)} | ${escapeHTML(item.title)}`
-      : `${getEffectiveStatus(item, todayStr) === 'OVERDUE' ? '🚨' : getEffectiveStatus(item, todayStr) === 'COMPLETED' ? '⭐️' : getEffectiveStatus(item, todayStr) === 'PROGRESS' ? '⚙️' : '⌛'} ${escapeHTML(item.title)}${item.subCount && !showSubTaskBars ? ` · 하위 ${item.subCount}` : ''}`;
+    const barLabel = item => {
+      const labelAssignees = Array.isArray(item.assignee) ? item.assignee.join(', ') : (item.assignee || '미지정');
+      return item.isSub
+        ? `${isSubTaskOverdue(item, todayStr) ? '🚨' : getStatusIcon(item.status)} ↳ 👤 ${escapeHTML(labelAssignees)} | ${escapeHTML(item.title)}`
+        : `${getEffectiveStatus(item, todayStr) === 'OVERDUE' ? '🚨' : getEffectiveStatus(item, todayStr) === 'COMPLETED' ? '⭐️' : getEffectiveStatus(item, todayStr) === 'PROGRESS' ? '⚙️' : '⌛'} ${escapeHTML(item.title)}${item.subCount && !showSubTaskBars ? ` · 하위 ${item.subCount}` : ''}`;
+    };
     const polishedSubClass = item => normalizeStatus(item.status) === 'COMPLETED'
       ? 'bg-emerald-100/90 text-emerald-800 border border-emerald-200'
       : isSubTaskOverdue(item, todayStr)
@@ -100,9 +103,10 @@ function renderCalendarDayView(ctx) {
         bar.style.paddingLeft = item.isSub ? '10px' : '8px';
         bar.style.paddingRight = '8px';
         bar.onclick = () => openTaskModal(item.parentId);
+        const detailAssignees = Array.isArray(item.assignee) ? item.assignee.join(', ') : (item.assignee || '미지정');
         bindGanttTooltip(bar, item.title, item.isSub
-          ? `[하위업무] 상위: ${escapeHTML(item.parentTitle)}<br>담당자: ${escapeHTML(item.assignee)}<br>기간: ${item.start} ~ ${item.end}<br>상태: ${getStatusKorean(item.status)}<br>산업: ${escapeHTML(item.industry || 'AUTO')} · 유형: ${escapeHTML(item.taskType || 'GENERAL')}`
-          : `[본업무] 담당자: ${escapeHTML(item.assignee)}<br>기간: ${item.start} ~ ${item.end}<br>진척: ${item.progressPct ?? 0}% · 하위 ${item.subDone ?? 0}/${item.subCount ?? 0}<br>Risk: ${getTaskRiskInfo(item, todayStr).label}${getTaskRiskInfo(item, todayStr).delay ? ' D+' + getTaskRiskInfo(item, todayStr).delay : ''}<br>산업: ${escapeHTML(item.industry || 'AUTO')} · 유형: ${escapeHTML(item.taskType || 'GENERAL')}<br>메모: ${escapeHTML(item.notes || '없음')}`);
+          ? `[하위업무] 상위: ${escapeHTML(item.parentTitle)}<br>담당자: ${escapeHTML(detailAssignees)}<br>기간: ${item.start} ~ ${item.end}<br>상태: ${getStatusKorean(item.status)}<br>산업: ${escapeHTML(item.industry || 'AUTO')} · 유형: ${escapeHTML(item.taskType || 'GENERAL')}`
+          : `[본업무] 담당자: ${escapeHTML(detailAssignees)}<br>기간: ${item.start} ~ ${item.end}<br>진척: ${item.progressPct ?? 0}% · 하위 ${item.subDone ?? 0}/${item.subCount ?? 0}<br>Risk: ${getTaskRiskInfo(item, todayStr).label}${getTaskRiskInfo(item, todayStr).delay ? ' D+' + getTaskRiskInfo(item, todayStr).delay : ''}<br>산업: ${escapeHTML(item.industry || 'AUTO')} · 유형: ${escapeHTML(item.taskType || 'GENERAL')}<br>메모: ${escapeHTML(item.notes || '없음')}`);
         if (showText) bar.innerHTML = `<span class="truncate">${barLabel(item)}</span>`;
         overlay.appendChild(bar);
       }

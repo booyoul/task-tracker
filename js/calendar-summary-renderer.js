@@ -173,7 +173,7 @@ function renderCalendarSummaryView({ weekdayHeader, grid, year, month, filteredT
                     </div>
                     <div class="mt-2 flex items-center justify-between text-[11px] text-slate-400 font-medium">
                         <span class="flex items-center gap-1">🗓️ ${t.startDate ? t.startDate.substring(5) : '미정'} ~ ${(t.dueDate || '').substring(5)}</span>
-                        <span class="font-bold bg-slate-50 text-slate-600 px-1.5 py-0.5 border rounded">${escapeHTML(t.assignee)}</span>
+                        <span class="font-bold bg-slate-50 text-slate-600 px-1.5 py-0.5 border rounded">${escapeHTML(Array.isArray(t.assignee) ? t.assignee.join(', ') : (t.assignee || '미지정'))}</span>
                     </div>
                     <div class="mt-2 flex items-center justify-between gap-2">
                         ${subBadgeMarkup}

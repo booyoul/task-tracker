@@ -321,6 +321,9 @@
   .top-0 {
     top: 0;
   }
+  .right-0 {
+    right: 0;
+  }
   .right-5 {
     right: calc(var(--spacing) * 5);
   }
@@ -441,6 +444,9 @@
   .mb-8 {
     margin-bottom: calc(var(--spacing) * 8);
   }
+  .ml-0\.5 {
+    margin-left: calc(var(--spacing) * 0.5);
+  }
   .ml-1 {
     margin-left: var(--spacing);
   }
@@ -501,9 +507,6 @@
   .h-6 {
     height: calc(var(--spacing) * 6);
   }
-  .h-7 {
-    height: calc(var(--spacing) * 7);
-  }
   .h-8 {
     height: calc(var(--spacing) * 8);
   }
@@ -521,6 +524,9 @@
   }
   .max-h-36 {
     max-height: calc(var(--spacing) * 36);
+  }
+  .max-h-52 {
+    max-height: calc(var(--spacing) * 52);
   }
   .max-h-56 {
     max-height: calc(var(--spacing) * 56);
@@ -558,9 +564,6 @@
   .w-6 {
     width: calc(var(--spacing) * 6);
   }
-  .w-7 {
-    width: calc(var(--spacing) * 7);
-  }
   .w-8 {
     width: calc(var(--spacing) * 8);
   }
@@ -573,14 +576,20 @@
   .w-16 {
     width: calc(var(--spacing) * 16);
   }
-  .w-24 {
-    width: calc(var(--spacing) * 24);
-  }
   .w-28 {
     width: calc(var(--spacing) * 28);
   }
   .w-32 {
     width: calc(var(--spacing) * 32);
+  }
+  .w-36 {
+    width: calc(var(--spacing) * 36);
+  }
+  .w-48 {
+    width: calc(var(--spacing) * 48);
+  }
+  .w-72 {
+    width: calc(var(--spacing) * 72);
   }
   .w-\[3\%\] {
     width: 3%;
@@ -611,6 +620,12 @@
   }
   .max-w-7xl {
     max-width: var(--container-7xl);
+  }
+  .max-w-\[80px\] {
+    max-width: 80px;
+  }
+  .max-w-\[120px\] {
+    max-width: 120px;
   }
   .max-w-full {
     max-width: 100%;
@@ -737,13 +752,6 @@
   .gap-px {
     gap: 1px;
   }
-  .space-y-0\.5 {
-    :where(& > :not(:last-child)) {
-      --tw-space-y-reverse: 0;
-      margin-block-start: calc(calc(var(--spacing) * 0.5) * var(--tw-space-y-reverse));
-      margin-block-end: calc(calc(var(--spacing) * 0.5) * calc(1 - var(--tw-space-y-reverse)));
-    }
-  }
   .space-y-1 {
     :where(& > :not(:last-child)) {
       --tw-space-y-reverse: 0;
@@ -777,6 +785,13 @@
       --tw-space-y-reverse: 0;
       margin-block-start: calc(calc(var(--spacing) * 4) * var(--tw-space-y-reverse));
       margin-block-end: calc(calc(var(--spacing) * 4) * calc(1 - var(--tw-space-y-reverse)));
+    }
+  }
+  .-space-x-1\.5 {
+    :where(& > :not(:last-child)) {
+      --tw-space-x-reverse: 0;
+      margin-inline-start: calc(calc(var(--spacing) * -1.5) * var(--tw-space-x-reverse));
+      margin-inline-end: calc(calc(var(--spacing) * -1.5) * calc(1 - var(--tw-space-x-reverse)));
     }
   }
   .divide-y {
@@ -1479,9 +1494,6 @@
   .align-bottom {
     vertical-align: bottom;
   }
-  .align-middle {
-    vertical-align: middle;
-  }
   .align-top {
     vertical-align: top;
   }
@@ -1552,10 +1564,6 @@
   .font-semibold {
     --tw-font-weight: var(--font-weight-semibold);
     font-weight: var(--font-weight-semibold);
-  }
-  .tracking-tight {
-    --tw-tracking: var(--tracking-tight);
-    letter-spacing: var(--tracking-tight);
   }
   .tracking-wide {
     --tw-tracking: var(--tracking-wide);
@@ -1792,6 +1800,9 @@
   .ring-slate-200 {
     --tw-ring-color: var(--color-slate-200);
   }
+  .ring-white {
+    --tw-ring-color: var(--color-white);
+  }
   .ring-offset-1 {
     --tw-ring-offset-width: 1px;
     --tw-ring-offset-shadow: var(--tw-ring-inset,) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
@@ -1853,6 +1864,10 @@
   .outline-none {
     --tw-outline-style: none;
     outline-style: none;
+  }
+  .select-none {
+    -webkit-user-select: none;
+    user-select: none;
   }
   .group-hover\:text-slate-600 {
     &:is(:where(.group):hover *) {
@@ -2188,11 +2203,6 @@
       display: flex;
     }
   }
-  .sm\:inline {
-    @media (width >= 40rem) {
-      display: inline;
-    }
-  }
   .sm\:inline-block {
     @media (width >= 40rem) {
       display: inline-block;
@@ -2203,9 +2213,9 @@
       height: 100vh;
     }
   }
-  .sm\:w-32 {
+  .sm\:w-48 {
     @media (width >= 40rem) {
-      width: calc(var(--spacing) * 32);
+      width: calc(var(--spacing) * 48);
     }
   }
   .sm\:w-auto {
@@ -2251,6 +2261,11 @@
   .sm\:justify-between {
     @media (width >= 40rem) {
       justify-content: space-between;
+    }
+  }
+  .sm\:gap-2 {
+    @media (width >= 40rem) {
+      gap: calc(var(--spacing) * 2);
     }
   }
   .sm\:self-auto {
@@ -2517,6 +2532,11 @@ body {
   inherits: false;
   initial-value: 0;
 }
+@property --tw-space-x-reverse {
+  syntax: "*";
+  inherits: false;
+  initial-value: 0;
+}
 @property --tw-divide-y-reverse {
   syntax: "*";
   inherits: false;
@@ -2713,6 +2733,7 @@ body {
       --tw-skew-x: initial;
       --tw-skew-y: initial;
       --tw-space-y-reverse: 0;
+      --tw-space-x-reverse: 0;
       --tw-divide-y-reverse: 0;
       --tw-border-style: solid;
       --tw-leading: initial;

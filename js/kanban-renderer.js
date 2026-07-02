@@ -26,13 +26,14 @@ function buildKanbanCard(t,today){
   const subs=Array.isArray(t.subTasks)?t.subTasks:[];
   const done=subs.filter(st=>normalizeStatus(st.status)==='COMPLETED').length;
   const accent=['HIGH','CRITICAL'].includes(risk.level)?'border-rose-200':eff==='OVERDUE'?'border-amber-200':'border-slate-100';
+  const labelAssignee = Array.isArray(t.assignee) ? t.assignee.join(', ') : (t.assignee || '미지정');
   return `<article class="rounded-2xl border ${accent} bg-white p-3 shadow-sm">
     <div class="flex items-start justify-between gap-2">
       <button type="button" class="btn-edit min-w-0 text-left" data-id="${escapeHTML(t.id)}"><div class="line-clamp-2 text-sm font-black leading-snug text-slate-900">${escapeHTML(t.title||'')}</div></button>
       <input type="checkbox" class="cb-task mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600" data-id="${escapeHTML(t.id)}" ${selectedTaskIds.has(t.id)?'checked':''}>
     </div>
     <div class="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] font-bold">
-      <span class="rounded-full bg-slate-50 px-2 py-1 text-slate-500">👤 ${escapeHTML(t.assignee||'미지정')}</span>
+      <span class="rounded-full bg-slate-50 px-2 py-1 text-slate-500">👤 ${escapeHTML(labelAssignee)}</span>
       <span class="rounded-full bg-slate-50 px-2 py-1 text-slate-500">📅 ${(t.dueDate||'').substring(5)||'미정'}</span>
       <span class="rounded-full ${(t.priority==='HIGH')?'bg-rose-50 text-rose-700':'bg-amber-50 text-amber-700'} px-2 py-1">${t.priority==='HIGH'?'높음':'보통'}</span>
     </div>

@@ -24,3 +24,20 @@ function hasDueSoonRisk(task, todayStr = getTodayStr(), days = 3) { const inRang
 function getEffectiveStatusBadge(status) { const s = status === 'OVERDUE' ? 'OVERDUE' : normalizeStatus(status); const cls = s === 'OVERDUE' ? 'bg-rose-50 text-rose-700 border-rose-100' : s === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : s === 'PROGRESS' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-amber-50 text-amber-700 border-amber-100'; return `<span class="rounded-lg border px-2 py-1 text-[10px] font-bold ${cls}">운영상태: ${getStatusKorean(s)}</span>`; }
 function detectIndustryKey(item) { if (item?.industry && item.industry !== 'AUTO') return String(item.industry).toUpperCase(); const s = `${item?.title || ''} ${item?.notes || ''} ${item?.parentTitle || ''}`.toLowerCase(); if (/pharma|bio|healthcare|제약|바이오|헬스케어/.test(s)) return 'PHARMA'; if (/f&b|food|beverage|식품|음료/.test(s)) return 'FNB'; if (/semi|semiconductor|반도체/.test(s)) return 'SEMI'; if (/display|디스플레이/.test(s)) return 'DISPLAY'; if (/oil|gas|o&g|정유|가스/.test(s)) return 'OILGAS'; if (/chemical|petrochemical|화학|석유화학/.test(s)) return 'CHEM'; if (/ship|marine|조선|선박/.test(s)) return 'SHIP'; if (/building|commercial|빌딩|건물/.test(s)) return 'BUILDING'; return 'GENERAL'; }
 function getIndustryBarClass(item, isSub = false) { const map = { PHARMA: isSub ? 'bg-violet-50 text-violet-800 border border-violet-200' : 'bg-violet-100 text-violet-900 border border-violet-200', FNB: isSub ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-emerald-100 text-emerald-900 border border-emerald-200', SEMI: isSub ? 'bg-sky-50 text-sky-800 border border-sky-200' : 'bg-sky-100 text-sky-900 border border-sky-200', DISPLAY: isSub ? 'bg-cyan-50 text-cyan-800 border border-cyan-200' : 'bg-cyan-100 text-cyan-900 border border-cyan-200', OILGAS: isSub ? 'bg-orange-50 text-orange-800 border border-orange-200' : 'bg-orange-100 text-orange-900 border border-orange-200', CHEM: isSub ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-amber-100 text-amber-900 border border-amber-200', SHIP: isSub ? 'bg-blue-50 text-blue-800 border border-blue-200' : 'bg-blue-100 text-blue-900 border border-blue-200', BUILDING: isSub ? 'bg-slate-50 text-slate-700 border border-slate-200' : 'bg-slate-200 text-slate-800 border border-slate-300', GENERAL: isSub ? 'bg-indigo-50 text-indigo-800 border border-indigo-200' : 'bg-indigo-100 text-indigo-900 border border-indigo-200' }; return map[detectIndustryKey(item)] || map.GENERAL; }
+
+function renderAssignees(assignee) {
+  const list = Array.isArray(assignee) ? assignee : [assignee || '미지정'];
+  let avatarStack = '<div class="flex -space-x-1.5 overflow-hidden">';
+  list.slice(0, 3).forEach(name => {
+    const avatarClass = typeof getAvatarStyle === 'function' ? getAvatarStyle(name) : 'bg-slate-100 text-slate-700';
+    avatarStack += `<span class="inline-flex h-6 w-6 items-center justify-center rounded-full ring-2 ring-white ${avatarClass} text-[10px] font-bold" title="${escapeHTML(name)}">${escapeHTML(name.charAt(0))}</span>`;
+  });
+  if (list.length > 3) {
+    avatarStack += `<span class="inline-flex h-6 w-6 items-center justify-center rounded-full ring-2 ring-white bg-slate-100 text-slate-500 text-[9px] font-bold">+${list.length - 3}</span>`;
+  }
+  avatarStack += '</div>';
+  
+  const label = list.join(', ');
+  return `<div class="inline-flex items-center gap-1.5 whitespace-nowrap">${avatarStack}<span class="font-semibold text-xs text-slate-700 truncate max-w-[80px]" title="${escapeHTML(label)}">${escapeHTML(label)}</span></div>`;
+}
+window.renderAssignees = renderAssignees;

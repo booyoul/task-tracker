@@ -777,10 +777,16 @@
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-slate-500 mb-1">담당자 *</label>
-                                <select id="input-task-assignee" required
-                                    class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
-                                    <option value="미지정">미지정</option>
-                                </select>
+                                <div id="task-assignee-dropdown" class="relative">
+                                    <button type="button" id="btn-task-assignee-trigger"
+                                        class="flex items-center justify-between w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100 text-left">
+                                        <span id="text-task-assignee-value" class="truncate text-slate-700">미지정</span>
+                                        <span class="text-slate-400 text-xs ml-1 select-none">▼</span>
+                                    </button>
+                                    <div id="list-task-assignee-menu" class="hidden absolute left-0 right-0 z-50 mt-1 max-h-52 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-lg space-y-1">
+                                        <!-- JS에서 동적으로 체크박스 목록 생성 -->
+                                    </div>
+                                </div>
                             </div>
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
@@ -820,7 +826,7 @@
                                     <select id="input-task-industry"
                                         class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
                                         <option value="AUTO" selected>자동 분류</option>
-                                        <option value="FNB">건F&B</option>
+                                        <option value="FNB">F&B</option>
                                         <option value="PHARMA">Healthcare / Pharma / Bio</option>
                                         <option value="SEMI">Semiconductor</option>
                                         <option value="DISPLAY">Display</option>
@@ -858,10 +864,16 @@
                                     <div class="flex gap-2">
                                         <input type="text" id="input-subtask-title" placeholder="하위 세부 실행 과제명"
                                             class="flex-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs outline-none transition focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100">
-                                        <select id="input-subtask-assignee"
-                                            class="w-24 sm:w-32 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs outline-none transition focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100">
-                                            <option value="">본 업무 담당자</option>
-                                        </select>
+                                        <div id="subtask-assignee-dropdown" class="relative w-36 sm:w-48 shrink-0">
+                                            <button type="button" id="btn-subtask-assignee-trigger"
+                                                class="flex items-center justify-between w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs outline-none transition focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100 text-left">
+                                                <span id="text-subtask-assignee-value" class="truncate text-slate-700">본 업무 담당자</span>
+                                                <span class="text-slate-400 text-[9px] ml-0.5 select-none">▼</span>
+                                            </button>
+                                            <div id="list-subtask-assignee-menu" class="hidden absolute left-0 z-50 mt-1 w-48 max-h-52 overflow-y-auto rounded-lg border border-slate-200 bg-white p-2 shadow-lg space-y-1">
+                                                <!-- JS에서 동적으로 체크박스 목록 생성 -->
+                                            </div>
+                                        </div>
                                     </div>
                                     <div class="flex flex-wrap items-center justify-between gap-2">
                                         <div class="flex items-center gap-3">
@@ -944,7 +956,7 @@
                                 <div class="flex items-center gap-2 ml-auto">
                                     <button type="button" id="btn-cancel-tracker"
                                         class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">취소</button>
-                                    <button type="submit"
+                                    <button type="submit" id="btn-save-tracker"
                                         class="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition">저장하기</button>
                                 </div>
                             </div>
@@ -994,21 +1006,21 @@
     <!-- 스크립트 비즈니스 로직 연동 시작 -->
     <script type="module" src="./js/firebase.js?v=20260629-v1"></script>
     <script defer src="./js/state.js?v=20260629-v3"></script>
-    <script defer src="./js/auth-service.js?v=20260630-v1"></script>
+    <script defer src="./js/auth-service.js?v=20260701-v2"></script>
     <script defer src="./js/date-risk-utils.js?v=20260629-v2"></script>
     <script defer src="./js/schema-service.js?v=20260628-v13"></script>
-    <script defer src="./js/calendar-utils.js?v=20260628-v13"></script>
+    <script defer src="./js/calendar-utils.js?v=20260702-v1"></script>
     <script defer src="./js/calendar-day-renderer.js?v=20260629-v1"></script>
     <script defer src="./js/calendar-month-renderer.js?v=20260628-v13"></script>
     <script defer src="./js/calendar-summary-renderer.js?v=20260628-v13"></script>
     <script defer src="./js/table-mobile-renderer.js?v=20260628-v13"></script>
     <script defer src="./js/kanban-renderer.js?v=20260629-v1"></script>
-    <script defer src="./js/modal-controller.js?v=20260628-v13"></script>
+    <script defer src="./js/modal-controller.js?v=20260701-v2"></script>
     <script defer src="./js/admin-approvals.js?v=20260630-v1"></script>
-    <script defer src="./js/event-bindings.js?v=20260629-v3"></script>
+    <script defer src="./js/event-bindings.js?v=20260701-v1"></script>
     <script defer src="./js/bootstrap-service.js?v=20260630-v1"></script>
-    <script defer src="./js/app.js?v=20260629-v6"></script>
-    <script defer src="./js/task-service.js?v=20260629-v3"></script>
+    <script defer src="./js/app.js?v=20260702-v1"></script>
+    <script defer src="./js/task-service.js?v=20260701-v2"></script>
     <script defer src="./js/export-service.js?v=20260628-v13"></script>
 </body>
 
