@@ -113,8 +113,7 @@ function renderAdminDashboard(users) {
                 }
 
                 const isAdminRole = u.role === 'admin';
-                const lowerEmail = (u.email || '').toLowerCase().trim();
-                const isMasterAdmin = lowerEmail === 'booyoul.oh@kr.spiraxsarco.com';
+                const isMasterAdmin = window.isMasterAdmin(u.email);
 
                 let roleCell = '';
                 if (isMasterAdmin) {
@@ -383,9 +382,22 @@ function initAdminModule() {
     });
 }
 
+// 리스너 해제 함수
+function stopAdminListeners() {
+    if (unsubscribeAdminUsers) {
+        try { unsubscribeAdminUsers(); } catch (e) { console.warn("unsubscribeAdminUsers failed:", e); }
+        unsubscribeAdminUsers = null;
+    }
+    if (unsubscribeApprovedUsers) {
+        try { unsubscribeApprovedUsers(); } catch (e) { console.warn("unsubscribeApprovedUsers failed:", e); }
+        unsubscribeApprovedUsers = null;
+    }
+}
+
 // 모듈 진입점 바인딩
 window.listenUsersForAdmin = listenUsersForAdmin;
 window.listenApprovedUsers = listenApprovedUsers;
+window.stopAdminListeners = stopAdminListeners;
 window.approveUser = approveUser;
 window.rejectUser = rejectUser;
 window.deleteUser = deleteUser;

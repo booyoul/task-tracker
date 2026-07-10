@@ -18,7 +18,11 @@ async function db_addTask(taskData) {
   console.info('db_addTask - 생성할 payload:', payload);
   markSaving();
   if (canWriteToFirestore() && coll) {
-    try { await window.fs.setDoc(window.fs.doc(coll, id), payload, { merge: true }); markSaved(); }
+    try { 
+      await window.fs.setDoc(window.fs.doc(coll, id), payload, { merge: true }); 
+      markSaved(); 
+      await db_recordActivity(id, 'CREATE');
+    }
     catch (e) { markSaveError(); console.warn('업무 추가 실패', e); showToast('Firebase 저장 실패', false); }
   }
   if (!tasks.some(t => t.id === id)) tasks.push({ id, ...payload });
@@ -30,12 +34,30 @@ async function db_updateTask(id, taskData) {
     showToast('수정 권한이 없습니다.', false);
     return;
   }
+  
+  // Calculate field changes
+  const changes = {};
+  const fields = ['title', 'status', 'priority', 'assignee', 'startDate', 'dueDate', 'notes'];
+  fields.forEach(f => {
+    const oldVal = originalTask[f];
+    const newVal = taskData[f];
+    if (newVal !== undefined && JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
+      changes[f] = { old: oldVal || '', new: newVal || '' };
+    }
+  });
+
   const coll = getTasksCollection();
   const tracker = trackers.find(t => t.id === (taskData.trackerId || currentTrackerId));
   const payload = normalizeTaskForSchema({ ...originalTask, ...taskData, trackerName: tracker ? tracker.name : taskData.trackerName, updatedAt: getServerTimestamp() });
   markSaving();
   if (canWriteToFirestore() && coll) {
-    try { await window.fs.setDoc(window.fs.doc(coll, id), payload, { merge: true }); markSaved(); }
+    try { 
+      await window.fs.setDoc(window.fs.doc(coll, id), payload, { merge: true }); 
+      markSaved(); 
+      if (Object.keys(changes).length > 0) {
+        await db_recordActivity(id, 'UPDATE', changes);
+      }
+    }
     catch (e) { 
       markSaveError(); 
       console.error('업무 수정 실패 상세 에러:', e); 
@@ -55,7 +77,11 @@ async function db_deleteTask(id) {
   const coll = getTasksCollection();
   const payload = { deleted: true, deletedAt: getServerTimestamp(), updatedAt: getServerTimestamp() };
   if (canWriteToFirestore() && coll) {
-    try { await window.fs.setDoc(window.fs.doc(coll, id), payload, { merge: true }); markSaved(); }
+    try { 
+      await window.fs.setDoc(window.fs.doc(coll, id), payload, { merge: true }); 
+      markSaved(); 
+      await db_recordActivity(id, 'DELETE');
+    }
     catch (e) { markSaveError(); console.warn('업무 삭제 실패', e); showToast('Firebase 삭제 실패', false); }
   }
   tasks = tasks.filter(t => t.id !== id);
@@ -79,6 +105,9 @@ async function db_batchDelete(idsSet) {
       myIds.forEach(id => batch.set(window.fs.doc(coll, id), { deleted: true, deletedAt: getServerTimestamp(), updatedAt: getServerTimestamp() }, { merge: true }));
       await batch.commit();
       markSaved();
+      for (const id of myIds) {
+        await db_recordActivity(id, 'DELETE');
+      }
     } catch (e) { markSaveError(); showToast('Firebase 일괄 삭제 실패', false); }
   }
   tasks = tasks.filter(t => !myIds.includes(t.id));
@@ -205,5 +234,47 @@ function stopRealtimeListeners() {
   }
 }
 
+// 변경 이력(Activity Log) 기록 헬퍼 함수
+async function db_recordActivity(taskId, action, changes = null) {
+  const coll = window.getActivityLogsCollection?.();
+  if (!coll || !canWriteToFirestore()) return;
+  const id = 'log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+  const payload = {
+    taskId,
+    trackerId: currentTrackerId,
+    action,
+    changedBy: window.currentUser ? window.currentUser.uid : 'anonymous',
+    changedByName: window.currentUser ? (window.currentUser.displayName || window.currentUser.email) : 'anonymous',
+    timestamp: getServerTimestamp(),
+    changes: changes
+  };
+  try {
+    await window.fs.setDoc(window.fs.doc(coll, id), payload);
+    console.info('db_recordActivity 성공:', payload);
+  } catch (e) {
+    console.warn('db_recordActivity 실패:', e);
+  }
+}
+
+// 특정 태스크 ID의 변경 이력(Activity Logs) 가져오기
+async function db_fetchActivityLogs(taskId) {
+  const coll = window.getActivityLogsCollection?.();
+  if (!coll || !canWriteToFirestore()) return [];
+  try {
+    const q = window.fs.query(
+      coll,
+      window.fs.where('taskId', '==', taskId),
+      window.fs.orderBy('timestamp', 'desc')
+    );
+    const snap = await window.fs.getDocs(q);
+    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (e) {
+    console.error('db_fetchActivityLogs 실패:', e);
+    return [];
+  }
+}
+
 // 전역으로 노출
 window.stopRealtimeListeners = stopRealtimeListeners;
+window.db_recordActivity = db_recordActivity;
+window.db_fetchActivityLogs = db_fetchActivityLogs;

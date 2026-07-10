@@ -95,6 +95,17 @@ window.getUsersCollection = function () {
     return null;
 };
 
+window.getActivityLogsCollection = function () {
+    if (isFirebaseAvailable && db) {
+        if (useEnvFirebase) {
+            return collection(db, 'artifacts', envAppId, 'public', 'data', 'activity_logs');
+        } else {
+            return collection(db, 'activity_logs');
+        }
+    }
+    return null;
+};
+
 // Execute checkAuth explicitly if it was waiting
 if (typeof checkAuth === 'function') {
     checkAuth();

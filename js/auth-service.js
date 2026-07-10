@@ -33,8 +33,7 @@ async function signUpWithEmail(email, password, displayName) {
         // 2. Firestore 'users' 컬렉션에 사용자 등록 신청 정보 저장
         const usersCol = window.getUsersCollection();
         if (usersCol) {
-            const lowerEmail = email.toLowerCase().trim();
-            const isAdmin = lowerEmail === 'booyoul.oh@kr.spiraxsarco.com' || lowerEmail === 'test.admin@kr.spiraxsarco.com' || lowerEmail === 'test.admin@kr.spiraxsarco.kr';
+            const isAdmin = window.isMasterAdmin(email);
             const status = isAdmin ? 'approved' : 'pending';
             
             await window.fs.setDoc(window.fs.doc(usersCol, user.uid), {
@@ -48,7 +47,7 @@ async function signUpWithEmail(email, password, displayName) {
         }
         
         console.log("회원가입 성공:", user);
-        if (email.toLowerCase().trim() === 'booyoul.oh@kr.spiraxsarco.com') {
+        if (window.isMasterAdmin(email)) {
             alert("관리자 계정 회원가입에 성공했습니다! 자동으로 로그인됩니다.");
         } else {
             alert("회원가입 신청이 완료되었습니다! 관리자의 승인 후 사용하실 수 있습니다.");
@@ -79,6 +78,12 @@ async function loginWithEmail(email, password) {
 async function logout() {
     if (!window.isFirebaseAvailable || !window.auth) return;
     try {
+        if (typeof window.stopAdminListeners === 'function') {
+            window.stopAdminListeners();
+        }
+        if (typeof window.stopRealtimeListeners === 'function') {
+            window.stopRealtimeListeners();
+        }
         await window.signOut(window.auth);
         window.currentUser = null;
         window.currentUserDoc = null;
@@ -132,9 +137,8 @@ function renderAuthHeader() {
 
 function isAdminUser() {
     if (!window.currentUser) return false;
-    // 1. 마스터 어드민 이메일 (하드코딩 백업)
-    const email = (window.currentUser.email || '').toLowerCase().trim();
-    if (email === 'booyoul.oh@kr.spiraxsarco.com' || email === 'test.admin@kr.spiraxsarco.com' || email === 'test.admin@kr.spiraxsarco.kr') return true;
+    // 1. 마스터 어드민 이메일 (공통 판정)
+    if (window.isMasterAdmin(window.currentUser.email)) return true;
     // 2. Firestore users 콜렉션의 role 필드가 'admin'인 경우
     return window.currentUserDoc?.role === 'admin';
 }

@@ -115,6 +115,85 @@ function openTaskModal(id = null) {
     currentSubTasks = [];
   }
   renderModalSubTasks();
+
+  // Load and render Task Activity Logs (Timeline)
+  const activitySection = document.getElementById('task-activity-log-section');
+  const activityContainer = document.getElementById('task-activity-log-container');
+  if (activitySection) {
+    if (id) {
+      activitySection.classList.remove('hidden');
+      if (activityContainer) {
+        activityContainer.innerHTML = '<div class="text-slate-400 text-center py-2">변경 이력을 로드하는 중...</div>';
+        if (typeof window.db_fetchActivityLogs === 'function') {
+          window.db_fetchActivityLogs(id).then(logs => {
+            if (!logs || logs.length === 0) {
+              activityContainer.innerHTML = '<div class="text-slate-400 text-center py-2">변경 이력이 없습니다.</div>';
+              return;
+            }
+            activityContainer.innerHTML = logs.map(log => {
+              const dateStr = log.timestamp && typeof log.timestamp.toDate === 'function' 
+                ? log.timestamp.toDate().toLocaleString('ko-KR')
+                : '방금 전';
+              
+              let actionText = '';
+              if (log.action === 'CREATE') {
+                actionText = '업무를 <strong>생성</strong>했습니다.';
+              } else if (log.action === 'DELETE') {
+                actionText = '업무를 <strong>삭제</strong>했습니다.';
+              } else if (log.action === 'UPDATE' && log.changes) {
+                const changes = log.changes;
+                const changeDetails = [];
+                Object.keys(changes).forEach(field => {
+                  let fieldName = field;
+                  if (field === 'title') fieldName = '업무명';
+                  else if (field === 'status') fieldName = '상태';
+                  else if (field === 'priority') fieldName = '우선순위';
+                  else if (field === 'assignee') fieldName = '담당자';
+                  else if (field === 'startDate') fieldName = '시작일';
+                  else if (field === 'dueDate') fieldName = '마감일';
+                  else if (field === 'notes') fieldName = '메모';
+                  
+                  const oldVal = changes[field].old;
+                  const newVal = changes[field].new;
+                  
+                  const translateVal = (val) => {
+                    if (val === 'PENDING') return '진행 대기';
+                    if (val === 'PROGRESS') return '진행 중';
+                    if (val === 'COMPLETED') return '완료됨';
+                    return val;
+                  };
+                  
+                  const oldLabel = translateVal(oldVal);
+                  const newLabel = translateVal(newVal);
+                  changeDetails.push(`<strong>${fieldName}</strong>을(를) '${oldLabel}'에서 '${newLabel}'(으)로 변경`);
+                });
+                actionText = changeDetails.join(', ') + '했습니다.';
+              }
+              
+              return `
+                <div class="flex items-start gap-2 border-b border-slate-100 pb-2 last:border-0 last:pb-0 dark:border-slate-800">
+                  <span class="text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded font-bold shrink-0 dark:bg-slate-800 dark:text-slate-300">
+                    👤 ${escapeHTML(log.changedByName?.split('@')[0] || '알 수 없음')}
+                  </span>
+                  <div class="flex-1 min-w-0">
+                    <p class="leading-relaxed text-slate-750 dark:text-slate-200">${actionText}</p>
+                    <span class="text-[9px] text-slate-400 font-semibold block mt-0.5">${dateStr}</span>
+                  </div>
+                </div>
+              `;
+            }).join('');
+          }).catch(err => {
+            console.error(err);
+            activityContainer.innerHTML = '<div class="text-rose-500 text-center py-2">변경 이력을 로드하지 못했습니다.</div>';
+          });
+        }
+      }
+    } else {
+      activitySection.classList.add('hidden');
+      if (activityContainer) activityContainer.innerHTML = '';
+    }
+  }
+
   document.getElementById('modal-task')?.classList.remove('hidden');
 }
 function closeModal() { document.getElementById('modal-task')?.classList.add('hidden'); }

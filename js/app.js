@@ -638,6 +638,20 @@ function renderCalendar(filteredTasks) {
   const year = currentCalDate.getFullYear();
   const month = currentCalDate.getMonth();
   const grid = document.getElementById('calendar-grid');
+  
+  // Sync calendar date back to top month filters to keep them unified
+  const filterStartEl = document.getElementById('filter-start-month');
+  const filterEndEl = document.getElementById('filter-end-month');
+  if (filterStartEl && filterEndEl) {
+    if (currentCalMode === 'MONTH') {
+      filterStartEl.value = `${year}-01`;
+      filterEndEl.value = `${year}-12`;
+    } else {
+      const currentMonthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
+      filterStartEl.value = currentMonthStr;
+      filterEndEl.value = currentMonthStr;
+    }
+  }
   const weekdayHeader = document.getElementById('calendar-weekday-header');
   const titleEl = document.getElementById('calendar-month-year');
   const todayStr = getTodayStr();
@@ -968,6 +982,20 @@ function ensureUXToolbar() {
 function renderActiveViews(){
   ensureAdvancedFilterOptions();
   ensureUXToolbar();
+  
+  // If in CALENDAR mode, sync top month filter changes back to currentCalDate
+  if (window.currentViewMode === 'CALENDAR') {
+    const startVal = document.getElementById('filter-start-month')?.value;
+    if (startVal) {
+      const [yr, mn] = startVal.split('-').map(Number);
+      if (!isNaN(yr) && !isNaN(mn)) {
+        if (currentCalDate.getFullYear() !== yr || currentCalDate.getMonth() !== (mn - 1)) {
+          currentCalDate.setFullYear(yr);
+          currentCalDate.setMonth(mn - 1);
+        }
+      }
+    }
+  }
   if(typeof focusState==='undefined')window.focusState=focusState={riskOnly:false,mineOnly:false,highOnly:false};
   if(typeof UX_STORAGE_KEYS==='undefined')window.UX_STORAGE_KEYS=UX_STORAGE_KEYS={myAssignee:'flow_my_assignee_name'};
   updateFocusButtons();

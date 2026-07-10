@@ -123,3 +123,18 @@
             'bg-indigo-100 text-indigo-700', 'bg-emerald-100 text-emerald-700', 'bg-sky-100 text-sky-700', 
             'bg-amber-100 text-amber-700', 'bg-rose-100 text-rose-700', 'bg-violet-100 text-violet-700', 'bg-teal-100 text-teal-700'
         ];
+
+        // --- Master Admin Logic ---
+        const MASTER_ADMIN_EMAILS = [
+            'booyoul.oh@kr.spiraxsarco.com',
+            'test.admin@kr.spiraxsarco.com',
+            'test.admin@kr.spiraxsarco.kr'
+        ];
+        const isMasterAdmin = (email) => {
+            if (!email) return false;
+            const lowerEmail = email.toLowerCase().trim();
+            return MASTER_ADMIN_EMAILS.includes(lowerEmail);
+        };
+        window.MASTER_ADMIN_EMAILS = MASTER_ADMIN_EMAILS;
+        window.isMasterAdmin = isMasterAdmin;
+

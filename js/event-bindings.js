@@ -4,6 +4,37 @@ console.info('Smart Task Flow event-bindings.js v20260626-final-stable loaded');
 function initEventBindings(){
   if(window.__eventBindingsInitialized)return;
   window.__eventBindingsInitialized=true;
+
+  // Theme toggle initialization and binding
+  const themeToggleBtn = document.getElementById('btn-theme-toggle');
+  const lightIcon = document.getElementById('theme-toggle-light-icon');
+  const darkIcon = document.getElementById('theme-toggle-dark-icon');
+
+  function updateToggleIcons(theme) {
+    if (theme === 'dark') {
+      lightIcon?.classList.remove('hidden');
+      darkIcon?.classList.add('hidden');
+    } else {
+      lightIcon?.classList.add('hidden');
+      darkIcon?.classList.remove('hidden');
+    }
+  }
+
+  if (window.ThemeService) {
+    updateToggleIcons(window.ThemeService.getCurrentTheme());
+  }
+
+  themeToggleBtn?.addEventListener('click', () => {
+    if (window.ThemeService) {
+      const newTheme = window.ThemeService.toggleTheme();
+      updateToggleIcons(newTheme);
+    }
+  });
+
+  window.addEventListener('themeChanged', e => {
+    updateToggleIcons(e.detail.theme);
+  });
+
   document.getElementById('btn-add-task')?.addEventListener('click',()=>window.openTaskModal?.());
   document.getElementById('btn-export-csv')?.addEventListener('click',exportToCSV);
   document.getElementById('btn-export-excel')?.addEventListener('click',exportToExcel);
