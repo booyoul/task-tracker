@@ -961,7 +961,7 @@ function ensureUXToolbar() {
   if (!bar) {
     bar = document.createElement('div');
     bar.id = 'ux-toolbar';
-    bar.className = 'mb-3 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm';
+    bar.className = 'mt-1.5';
     bar.innerHTML = `
       <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
         <div class="flex flex-wrap items-center gap-2">
@@ -978,7 +978,7 @@ function ensureUXToolbar() {
         <button type="button" id="bulk-change-due" class="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50">마감일 변경</button>
         <button type="button" id="bulk-clear-selection" class="rounded-lg px-3 py-1.5 text-xs font-bold text-slate-505 hover:bg-white">선택 해제</button>
       </div>`;
-    filterBox.parentNode.insertBefore(bar, filterBox.nextSibling);
+    filterBox.appendChild(bar);
   }
   relocateHeaderActionsToToolbar();
   updateFocusButtons();
