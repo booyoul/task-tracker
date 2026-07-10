@@ -523,9 +523,13 @@ function initKpiSettingsEvents() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    initKpiSettingsEvents();
+  });
+} else {
   initKpiSettingsEvents();
-});
+}
 
 window.openKpiSettingsModal = openKpiSettingsModal;
 window.closeKpiSettingsModal = closeKpiSettingsModal;

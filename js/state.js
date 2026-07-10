@@ -18,6 +18,7 @@
             if (!str) return '';
             return str.toString().replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
         };
+        window.escapeHTML = escapeHTML;
 
         const safeHTML = (html) => {
             if (typeof DOMPurify !== 'undefined') {
