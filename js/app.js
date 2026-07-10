@@ -822,8 +822,8 @@ function updateSelectAllState(totalVisible, totalSelected) {
   cb.indeterminate = totalSelected > 0 && totalSelected < totalVisible;
   updateBatchButton();
 }
-function updateBatchButton() { const btn = document.getElementById('btn-batch-delete'); if (btn) selectedTaskIds.size ? btn.classList.remove('hidden') : btn.classList.add('hidden'); updateBulkActionBar(); }
-function updateUndoButton() { const btn = document.getElementById('btn-undo'); if (btn) deletionHistory.length ? btn.classList.remove('hidden') : btn.classList.add('hidden'); }
+function updateBatchButton() { const btn = document.getElementById('btn-batch-delete'); if (btn) { if (selectedTaskIds.size) { btn.classList.remove('hidden'); btn.classList.add('flex'); } else { btn.classList.add('hidden'); btn.classList.remove('flex'); } } updateBulkActionBar(); }
+function updateUndoButton() { const btn = document.getElementById('btn-undo'); if (btn) { if (deletionHistory.length) { btn.classList.remove('hidden'); btn.classList.add('flex'); } else { btn.classList.add('hidden'); btn.classList.remove('flex'); } } }
 function resetFilters() {
   ['filter-search', 'filter-start-month', 'filter-end-month', 'mobile-filter-start-month', 'mobile-filter-end-month'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   ['filter-status', 'filter-priority', 'mobile-filter-status', 'mobile-filter-priority'].forEach(id => { const el = document.getElementById(id); if (el) el.value = 'ALL'; });
@@ -921,7 +921,7 @@ function relocateHeaderActionsToToolbar() {
     actionHost.appendChild(el);
   });
   const originalToolbar = document.querySelector('header .flex.flex-wrap.items-center.gap-2');
-  if (originalToolbar && !Array.from(originalToolbar.children).some(ch => ch.id && ['btn-export-csv','btn-export-excel','btn-export-powerbi','btn-export-json','btn-import-trigger','btn-add-task','btn-undo','btn-batch-delete'].includes(ch.id))) {
+  if (originalToolbar && !Array.from(originalToolbar.children).some(ch => ch.id && ['btn-export-csv','btn-export-excel','btn-export-powerbi','btn-export-json','btn-import-trigger','btn-add-task'].includes(ch.id))) {
     originalToolbar.classList.add('hidden');
   }
 }
