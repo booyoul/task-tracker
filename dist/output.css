@@ -546,6 +546,9 @@
   .h-full {
     height: 100%;
   }
+  .max-h-24 {
+    max-height: calc(var(--spacing) * 24);
+  }
   .max-h-36 {
     max-height: calc(var(--spacing) * 36);
   }
@@ -560,6 +563,9 @@
   }
   .max-h-72 {
     max-height: calc(var(--spacing) * 72);
+  }
+  .max-h-\[380px\] {
+    max-height: 380px;
   }
   .min-h-\[17px\] {
     min-height: 17px;
@@ -1519,6 +1525,9 @@
   }
   .pt-6 {
     padding-top: calc(var(--spacing) * 6);
+  }
+  .pr-0\.5 {
+    padding-right: calc(var(--spacing) * 0.5);
   }
   .pr-1 {
     padding-right: var(--spacing);

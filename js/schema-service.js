@@ -13,7 +13,24 @@ function normalizeAssignee(val) {
   }
   return ['미지정'];
 }
-function normalizeSubTaskForSchema(st = {}, parent = {}) { const start = st.startDate || st.dueDate || parent.dueDate || getTodayStr(); const due = st.dueDate || st.startDate || parent.dueDate || start; return { id: st.id || 'sub_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7), title: String(st.title || '').trim() || '하위 업무', assignee: normalizeAssignee(st.assignee || (Array.isArray(parent.assignee) ? parent.assignee : [parent.assignee || '미지정'])), startDate: start > due ? due : start, dueDate: due, status: normalizeStatus(st.status), industry: parent.industry || st.industry || 'AUTO', taskType: parent.taskType || st.taskType || 'GENERAL' }; }
+function normalizeSubTaskForSchema(st = {}, parent = {}) {
+  // 날짜가 명시적으로 존재할 때만 정규화. 없으면 빈 문자열 유지.
+  // (날짜가 없는 서브태스크에 오늘 날짜를 강제 주입하면 월별 요약 필터링이 오염됨)
+  const rawStart = st.startDate || st.dueDate || '';
+  const rawDue   = st.dueDate   || st.startDate || '';
+  const start = rawStart > rawDue && rawDue ? rawDue : rawStart;
+  const due   = rawDue   || rawStart;
+  return {
+    id: st.id || 'sub_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+    title: String(st.title || '').trim() || '하위 업무',
+    assignee: normalizeAssignee(st.assignee || (Array.isArray(parent.assignee) ? parent.assignee : [parent.assignee || '미지정'])),
+    startDate: start,
+    dueDate: due,
+    status: normalizeStatus(st.status),
+    industry: parent.industry || st.industry || 'AUTO',
+    taskType: parent.taskType || st.taskType || 'GENERAL'
+  };
+}
 function normalizeTaskForSchema(task = {}) { const start = task.startDate || task.dueDate || getTodayStr(); const due = task.dueDate || task.startDate || start; const normalized = { ...task, title: String(task.title || '').trim() || '업무', assignee: normalizeAssignee(task.assignee), startDate: start > due ? due : start, dueDate: due, priority: ['HIGH','NORMAL','LOW'].includes(task.priority) ? task.priority : 'NORMAL', status: normalizeStatus(task.status), industry: task.industry || 'AUTO', taskType: task.taskType || 'GENERAL', notes: task.notes || '', deleted: task.deleted === true ? true : false, schemaVersion: CURRENT_TASK_SCHEMA_VERSION }; normalized.subTasks = (Array.isArray(task.subTasks) ? task.subTasks : []).map(st => normalizeSubTaskForSchema(st, normalized)); return normalized; }
 function taskNeedsSchemaMigration(task = {}) { return task.schemaVersion !== CURRENT_TASK_SCHEMA_VERSION || !task.industry || !task.taskType || !Array.isArray(task.subTasks) || (task.subTasks || []).some(st => !st.id || !st.status || !st.startDate || !st.dueDate); }
 async function migrateExistingTasksToCurrentSchema(scopeTasks = tasks) { if (schemaMigrationInProgress || !isFirebaseAvailable || !db) return; const coll = getTasksCollection(); if (!coll) return; const candidates = (scopeTasks || []).filter(t => t && t.id && t.deleted !== true && taskNeedsSchemaMigration(t)); if (!candidates.length) return; schemaMigrationInProgress = true; try { const batch = window.fs.writeBatch(window.db); candidates.forEach(t => batch.set(window.fs.doc(coll, t.id), normalizeTaskForSchema(t), { merge: true })); await batch.commit(); markSaved(); } catch (e) { markSaveError(); console.warn('Schema migration failed', e); } finally { schemaMigrationInProgress = false; } }

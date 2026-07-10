@@ -57,7 +57,8 @@ function buildMonthlySubTaskHTML(task, monthStart, monthEnd) {
     const summary = getMonthlySubTaskSummary(task, monthStart, monthEnd);
     if (summary.totalAll === 0) return '';
 
-    let html = '<div class="mt-2.5 pt-2.5 border-t border-slate-100/80 space-y-1.5">';
+    // 서브태스크 목록이 많아도 카드 높이가 무한정 늘어나지 않도록 스크롤 영역 제한
+    let html = '<div class="mt-2.5 pt-2.5 border-t border-slate-100/80 space-y-1.5 max-h-24 overflow-y-auto pr-0.5">';
 
     if (summary.totalInMonth > 0) {
         summary.inMonthSubTasks.forEach(st => {
@@ -86,9 +87,14 @@ function buildMonthlySubTaskHTML(task, monthStart, monthEnd) {
     return html;
 }
 
+let _summaryRenderInProgress = false;
 async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, filteredTasks, todayStr }) {
     if (!grid) return;
+    // 연속 호출(onSnapshot 중복 트리거) 방지: 이미 렌더링 중이면 스킵
+    if (_summaryRenderInProgress) return;
+    _summaryRenderInProgress = true;
 
+    try {
     document.getElementById('calendar-month-year').textContent = `${year}년 ${month + 1}월`;
     if (weekdayHeader) weekdayHeader.classList.add('hidden');
     grid.className = 'flex flex-col gap-4 bg-slate-50 border border-slate-100 p-5 rounded-xl min-h-[250px]';
@@ -100,6 +106,7 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
 
     if (currentMonthTasks.length === 0) {
         grid.innerHTML = `<div class="text-center py-16 text-sm text-slate-400 font-semibold">현재 조건 혹은 조회 기간 중 해당 월(${month + 1}월)의 업무 정보가 존재하지 않습니다.</div>`;
+        _summaryRenderInProgress = false;
         return;
     }
 
@@ -186,7 +193,8 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
             </h3>
         `;
         const notesGrid = document.createElement('div');
-        notesGrid.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5';
+        // 메모가 많아도 월별 요약 레이아웃이 무한 확장되지 않도록 최대 높이 + 스크롤 적용
+        notesGrid.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-[380px] overflow-y-auto pr-0.5';
 
         monthNotes.forEach(note => {
             let taskTitle = '알 수 없는 업무';
@@ -333,4 +341,10 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
         sec.appendChild(subGrid);
         grid.appendChild(sec);
     });
+
+    } catch(e) {
+        console.error('[CalendarSummary] 렌더링 중 오류:', e);
+    } finally {
+        _summaryRenderInProgress = false;
+    }
 }
