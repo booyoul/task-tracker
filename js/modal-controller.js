@@ -878,4 +878,7 @@ if (document.readyState === 'loading') {
   initProgressNotesEvents();
 }
 
+window.openNoteDetailPanel = openNoteDetailPanel;
+window.closeNoteDetailPanel = closeNoteDetailPanel;
+
 

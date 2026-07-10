@@ -1,5 +1,11 @@
 console.info('Smart Task Flow calendar-summary-renderer.js v20260628-v8 loaded');
 
+function formatSummaryNoteDate(ts) {
+    if (!ts) return '';
+    const d = typeof ts.toDate === 'function' ? ts.toDate() : new Date(ts);
+    return d.toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
 // Helper functions for monthly calculations
 function parseDateOnly(dateStr) {
     if (!dateStr) return null;
@@ -155,6 +161,82 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
         </div>
     `;
     grid.appendChild(kpiPanel);
+
+    // 📌 월간 진행 메모 리스트 렌더링
+    const monthNotes = trackerNotes.filter(note => {
+        const ts = note.createdAt;
+        if (!ts) return false;
+        const d = typeof ts.toDate === 'function' ? ts.toDate() : new Date(ts);
+        return d >= monthStart && d <= monthEnd;
+    });
+
+    if (monthNotes.length > 0) {
+        monthNotes.sort((a, b) => {
+            const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt || 0).getTime();
+            const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt || 0).getTime();
+            return timeB - timeA;
+        });
+
+        const notesSec = document.createElement('div');
+        notesSec.className = 'rounded-xl border border-amber-250 bg-amber-50/20 p-4 mb-4 dark:bg-amber-950/10 dark:border-amber-900/50';
+        notesSec.innerHTML = `
+            <h3 class="text-xs font-bold mb-3 text-amber-800 dark:text-amber-400 uppercase tracking-wider flex items-center justify-between">
+                <span>📌 이번 달 작성된 진행 상황 메모 목록</span>
+                <span class="rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-bold shadow-sm text-amber-700 dark:bg-slate-900">${monthNotes.length}건</span>
+            </h3>
+        `;
+        const notesGrid = document.createElement('div');
+        notesGrid.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5';
+
+        monthNotes.forEach(note => {
+            let taskTitle = '알 수 없는 업무';
+            let subTaskLabel = '';
+            if (note.taskId) {
+                const baseTaskId = note.taskId.split('__sub_')[0];
+                const t = filteredTasks.find(x => x.id === baseTaskId);
+                if (t) {
+                    taskTitle = t.title;
+                    if (note.taskId.includes('__sub_')) {
+                        const subId = note.taskId.split('__sub_')[1];
+                        const st = t.subTasks?.find(x => x.id === subId);
+                        subTaskLabel = st ? `[하위: ${st.title}] ` : '[하위] ';
+                    } else {
+                        subTaskLabel = '[본 업무] ';
+                    }
+                }
+            }
+
+            const dateStr = formatSummaryNoteDate(note.createdAt);
+            const author = escapeHTML((note.createdByName || '').split('@')[0] || '알 수 없음');
+            const bodyPreview = escapeHTML((note.body || '').slice(0, 80)) + ((note.body || '').length > 80 ? '...' : '');
+            const noteTitleText = subTaskLabel + (note.title || '(제목 없음)');
+
+            const card = document.createElement('div');
+            card.className = 'group flex flex-col justify-between rounded-xl border border-slate-200 bg-white hover:border-amber-400 hover:shadow-md p-3 cursor-pointer transition dark:bg-slate-900 dark:border-slate-800';
+            card.innerHTML = `
+                <div>
+                    <div class="flex items-center justify-between gap-1 mb-1">
+                        <span class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">${escapeHTML(noteTitleText)}</span>
+                        <span class="text-[10px] text-slate-400 shrink-0">${dateStr}</span>
+                    </div>
+                    <p class="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-3 mb-2">${bodyPreview || '<span class="italic text-slate-400">(내용 없음)</span>'}</p>
+                </div>
+                <div class="flex items-center justify-between text-[9px] text-slate-450 font-semibold border-t border-slate-50 pt-1.5 mt-1 dark:border-slate-800">
+                    <span class="truncate text-slate-500">업무: ${escapeHTML(taskTitle)}</span>
+                    <span class="shrink-0 text-slate-400">👤 ${author}</span>
+                </div>
+            `;
+            card.addEventListener('click', () => {
+                if (typeof window.openNoteDetailPanel === 'function') {
+                    window.openNoteDetailPanel(note);
+                }
+            });
+            notesGrid.appendChild(card);
+        });
+
+        notesSec.appendChild(notesGrid);
+        grid.appendChild(notesSec);
+    }
 
     const categories = [
         { key: 'OVERDUE', label: '🚨 일정 초과 및 지연 상태', style: 'bg-rose-50/60 border-rose-100 text-rose-800', list: groups.OVERDUE },
