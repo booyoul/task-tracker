@@ -488,8 +488,8 @@
                 </div>
             </section>
 
-            <!-- 모바일 전용 뷰 전환 토글 -->
-            <div id="mobile-view-toggle-container" class="mb-3 flex lg:hidden rounded-xl bg-slate-100 p-1 w-full text-center">
+            <!-- 모바일 전용 뷰 전환 토글 (포커스 모드 아래의 view-toggle-bar로 통합) -->
+            <div id="mobile-view-toggle-container" class="hidden">
                 <button id="btn-view-table-mobile"
                     class="flex-1 rounded-lg bg-white py-2 text-xs font-semibold text-slate-800 shadow-sm transition">목록</button>
                 <button id="btn-view-calendar-mobile"
@@ -581,8 +581,8 @@
                     </div>
                 </div>
             </div>
-            <!-- 뷰 전환 토글 (포커스 모드 박스 아래에 위치, 데스크톱 표시) -->
-            <div id="view-toggle-bar" class="hidden lg:flex items-center mb-3">
+            <!-- 뷰 전환 토글 (포커스 모드 박스 아래에 위치, 모바일/데스크톱 모두 표시) -->
+            <div id="view-toggle-bar" class="flex items-center mb-3">
                 <div class="inline-flex rounded-xl bg-slate-100 p-1">
                     <button id="btn-view-table"
                         class="rounded-lg bg-white px-4 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition">목록</button>
