@@ -497,7 +497,8 @@ async function moveTaskOrder(id, direction) {
 // Task and tracker CRUD helpers moved to js/task-service.js
 
 function getFilteredTasks() {
-  const search = (document.getElementById('filter-search')?.value || '').toLowerCase().trim();
+  const searchVal = (document.getElementById('filter-search')?.value || '').trim() || (document.getElementById('filter-search-desktop')?.value || '').trim();
+  const search = searchVal.toLowerCase();
   const status = document.getElementById('filter-status')?.value || 'ALL';
   const priority = document.getElementById('filter-priority')?.value || 'ALL';
   const startMonthVal = document.getElementById('filter-start-month')?.value || '';
@@ -825,7 +826,7 @@ function updateSelectAllState(totalVisible, totalSelected) {
 function updateBatchButton() { const btn = document.getElementById('btn-batch-delete'); if (btn) selectedTaskIds.size ? btn.classList.remove('hidden') : btn.classList.add('hidden'); updateBulkActionBar(); }
 function updateUndoButton() { const btn = document.getElementById('btn-undo'); if (btn) deletionHistory.length ? btn.classList.remove('hidden') : btn.classList.add('hidden'); }
 function resetFilters() {
-  ['filter-search', 'filter-start-month', 'filter-end-month', 'mobile-filter-start-month', 'mobile-filter-end-month'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['filter-search', 'filter-search-desktop', 'filter-start-month', 'filter-end-month', 'mobile-filter-start-month', 'mobile-filter-end-month'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   ['filter-status', 'filter-priority', 'mobile-filter-status', 'mobile-filter-priority'].forEach(id => { const el = document.getElementById(id); if (el) el.value = 'ALL'; });
   selectedAssigneeFilters.clear();
   window.selectedAssigneeFilters = selectedAssigneeFilters;

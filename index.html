@@ -487,8 +487,8 @@
             <!-- 필터 및 뷰 토글 -->
             <div class="mb-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
                 <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <!-- 검색 영역 (모바일 w-full, 데스크톱 lg:max-w-sm) -->
-                    <div class="relative w-full lg:flex-1 lg:max-w-sm">
+                    <!-- 검색 영역 (모바일 w-full, 데스크톱에서는 숨김) -->
+                    <div class="relative w-full lg:hidden">
                         <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
                             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -577,6 +577,19 @@
                     <button id="btn-view-admin"
                         class="hidden rounded-lg px-4 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition">승인 관리</button>
                 </div>
+                
+                <!-- 데스크톱용 검색창 (뷰 토글과 되돌리기 버튼 사이, 데스크톱에서만 노출) -->
+                <div class="hidden lg:relative lg:block lg:flex-1 lg:max-w-xs mx-4">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </span>
+                    <input type="text" id="filter-search-desktop" placeholder="업무명 또는 담당자 검색..."
+                        class="w-full rounded-xl border border-slate-200 bg-slate-50 py-1.5 pl-9 pr-3 text-xs outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
+                </div>
+
                 <!-- 되돌리기 · 일괄 삭제 버튼 (뷰 토글 오른쪽) -->
                 <div class="flex items-center gap-2">
                     <button id="btn-undo"
@@ -1377,19 +1390,19 @@
     <script defer src="./js/date-risk-utils.js?v=20260629-v2"></script>
     <script defer src="./js/schema-service.js?v=20260628-v13"></script>
     <script defer src="./js/calendar-utils.js?v=20260702-v1"></script>
-    <script defer src="./js/calendar-day-renderer.js?v=20260711-v2"></script>
-    <script defer src="./js/calendar-month-renderer.js?v=20260711-v2"></script>
-    <script defer src="./js/calendar-summary-renderer.js?v=20260711-v2"></script>
-    <script defer src="./js/calendar-mobile-renderer.js?v=20260711-v2"></script>
-    <script defer src="./js/table-mobile-renderer.js?v=20260711-v2"></script>
-    <script defer src="./js/kanban-renderer.js?v=20260711-v2"></script>
-    <script defer src="./js/modal-controller.js?v=20260711-v2"></script>
-    <script defer src="./js/admin-approvals.js?v=20260711-v2"></script>
-    <script defer src="./js/event-bindings.js?v=20260711-v2"></script>
-    <script defer src="./js/bootstrap-service.js?v=20260711-v2"></script>
-    <script defer src="./js/app.js?v=20260711-v2"></script>
-    <script defer src="./js/task-service.js?v=20260711-v2"></script>
-    <script defer src="./js/export-service.js?v=20260711-v2"></script>
+    <script defer src="./js/calendar-day-renderer.js?v=20260711-v3"></script>
+    <script defer src="./js/calendar-month-renderer.js?v=20260711-v3"></script>
+    <script defer src="./js/calendar-summary-renderer.js?v=20260711-v3"></script>
+    <script defer src="./js/calendar-mobile-renderer.js?v=20260711-v3"></script>
+    <script defer src="./js/table-mobile-renderer.js?v=20260711-v3"></script>
+    <script defer src="./js/kanban-renderer.js?v=20260711-v3"></script>
+    <script defer src="./js/modal-controller.js?v=20260711-v3"></script>
+    <script defer src="./js/admin-approvals.js?v=20260711-v3"></script>
+    <script defer src="./js/event-bindings.js?v=20260711-v3"></script>
+    <script defer src="./js/bootstrap-service.js?v=20260711-v3"></script>
+    <script defer src="./js/app.js?v=20260711-v3"></script>
+    <script defer src="./js/task-service.js?v=20260711-v3"></script>
+    <script defer src="./js/export-service.js?v=20260711-v3"></script>
 </body>
 
 </html>
