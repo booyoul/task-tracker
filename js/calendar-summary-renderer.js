@@ -32,9 +32,8 @@ function isTaskOverlappingMonth(item, monthStart, monthEnd, fallbackDate) {
 function isSubTaskInMonth(item, monthStart, monthEnd) {
     const start = parseDateOnly(item.startDate);
     const end = parseDateOnly(item.dueDate);
-    const isStartInMonth = isDateInMonth(start, monthStart, monthEnd);
-    const isEndInMonth = isDateInMonth(end, monthStart, monthEnd);
-    return isStartInMonth || isEndInMonth;
+    if (!start || !end) return false;
+    return start <= monthEnd && end >= monthStart;
 }
 
 function getMonthlySubTaskSummary(task, monthStart, monthEnd) {
@@ -55,33 +54,45 @@ function getMonthlySubTaskSummary(task, monthStart, monthEnd) {
 
 function buildMonthlySubTaskHTML(task, monthStart, monthEnd) {
     const summary = getMonthlySubTaskSummary(task, monthStart, monthEnd);
-    if (summary.totalAll === 0) return '';
+    if (summary.totalInMonth === 0) return '';
 
     // 서브태스크 목록이 많아도 카드 높이가 무한정 늘어나지 않도록 스크롤 영역 제한
-    let html = '<div class="mt-2.5 pt-2.5 border-t border-slate-100/80 space-y-1.5 max-h-24 overflow-y-auto pr-0.5">';
+    let html = '<div class="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2 max-h-36 overflow-y-auto pr-0.5">';
 
-    if (summary.totalInMonth > 0) {
-        summary.inMonthSubTasks.forEach(st => {
-            const stIcon = st.status === 'COMPLETED' ? '✅' : '⌛';
-            const stColor = st.status === 'COMPLETED' ? 'text-slate-400 line-through' : 'text-slate-600';
-            html += `
-                <div class="text-[10px] flex items-center justify-between gap-2">
-                    <div class="flex items-center gap-1.5 truncate ${stColor}">
-                        <span>${stIcon}</span>
+    summary.inMonthSubTasks.forEach(st => {
+        const status = normalizeStatus(st.status);
+        const statusKorean = getStatusKorean(status);
+        const assigneeNames = Array.isArray(st.assignee) ? st.assignee.join(', ') : (st.assignee || '미지정');
+        
+        let statusClass = '';
+        let textClass = 'text-slate-700 dark:text-slate-350';
+        if (status === 'COMPLETED') {
+            statusClass = 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50';
+            textClass = 'text-slate-400 line-through dark:text-slate-500';
+        } else if (status === 'PROGRESS') {
+            statusClass = 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/50';
+        } else {
+            statusClass = 'bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800/80 dark:text-slate-300 dark:border-slate-700';
+        }
+
+        html += `
+            <div class="text-[10px] flex flex-col gap-1.5 p-2 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20">
+                <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-1.5 truncate ${textClass} font-semibold">
                         <span class="truncate">${escapeHTML(st.title)}</span>
                     </div>
-                    <span class="shrink-0 font-medium text-[9px] bg-slate-50 px-1.5 py-0.5 rounded text-slate-400 border border-slate-200">
-                        ${st.dueDate ? st.dueDate.substring(5) : ''}
+                    <span class="shrink-0 px-1.5 py-0.5 rounded text-[8px] font-bold border ${statusClass} scale-95 origin-right">
+                        ${statusKorean}
                     </span>
-                </div>`;
-        });
-    } else {
-        html += '<div class="text-[10px] text-slate-400">해당 월 하위 업무 없음</div>';
-    }
-
-    if (summary.hiddenOutsideMonth > 0) {
-        html += `<div class="text-[10px] text-slate-400 bg-slate-50 border border-slate-100 rounded-lg px-2 py-1">외 ${summary.hiddenOutsideMonth}건 숨김 (해당 월 외)</div>`;
-    }
+                </div>
+                <div class="flex items-center justify-between text-[9px] text-slate-500 dark:text-slate-400">
+                    <span class="truncate">👤 ${escapeHTML(assigneeNames)}</span>
+                    <span class="shrink-0 text-slate-400 dark:text-slate-500">
+                        ${st.dueDate ? '📅 ' + st.dueDate.substring(5) : ''}
+                    </span>
+                </div>
+            </div>`;
+    });
 
     html += '</div>';
     return html;
