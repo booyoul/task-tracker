@@ -122,6 +122,7 @@ async function db_addTracker(data) {
   const nextOrder = trackers.length ? Math.max(...trackers.map(t => typeof t.order === 'number' ? t.order : 0)) + 1 : 1;
   const payload = {
     ...data,
+    targetKpi: typeof data.targetKpi === 'number' ? data.targetKpi : 80,
     order: nextOrder,
     deleted: false,
     createdAt: getServerTimestamp(),
@@ -204,7 +205,10 @@ function setupRealtimeListeners() {
   if (typeof unsubscribeTrackers === 'function') unsubscribeTrackers();
   if (typeof unsubscribeTasks === 'function') unsubscribeTasks();
   unsubscribeTrackers = window.fs.onSnapshot(trackerColl, snapshot => {
-    const incoming = sortTrackersByOrder(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(t => t.deleted !== true));
+    const incoming = sortTrackersByOrder(snapshot.docs.map(doc => {
+      const d = doc.data();
+      return { id: doc.id, targetKpi: typeof d.targetKpi === 'number' ? d.targetKpi : 80, ...d };
+    }).filter(t => t.deleted !== true));
     if (incoming.length) trackers = incoming;
     const saved = localStorage.getItem('flow_current_tracker');
     if (saved && trackers.some(t => t.id === saved)) currentTrackerId = saved;

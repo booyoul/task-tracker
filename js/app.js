@@ -746,6 +746,7 @@ function updateUI() {
   renderStats();
   renderActiveViews();
   updateUndoButton();
+  renderTrackerKpiBadge();
 }
 
 // Task/tracker modal controller moved to js/modal-controller.js
@@ -1019,6 +1020,76 @@ function renderActiveViews(){
   if(mode==='KANBAN'){if(typeof renderKanbanView==='function')renderKanbanView(filtered);else console.warn('renderKanbanView is not available');return;}
   renderTable(filtered);
   renderMobileCards(filtered);
+}
+
+function renderTrackerKpiBadge() {
+  const container = document.getElementById('tracker-kpi-badge-container');
+  if (!container) return;
+
+  const tracker = trackers.find(t => t.id === currentTrackerId);
+  if (!tracker) {
+    container.classList.add('hidden');
+    return;
+  }
+
+  const trackerTasks = tasks.filter(t => t.trackerId === currentTrackerId && !t.deleted);
+  const totalCount = trackerTasks.length;
+  const today = getTodayStr();
+  
+  const doneCount = trackerTasks.filter(t => getEffectiveStatus(t, today) === 'COMPLETED').length;
+  const overdueCount = trackerTasks.filter(t => getEffectiveStatus(t, today) === 'OVERDUE').length;
+  
+  const donePct = totalCount ? Math.round((doneCount / totalCount) * 100) : 0;
+  const overduePct = totalCount ? Math.round((overdueCount / totalCount) * 100) : 0;
+  
+  const targetKpi = typeof tracker.targetKpi === 'number' ? tracker.targetKpi : 80;
+  
+  let badgeColor = '';
+  let statusText = '';
+  
+  if (donePct >= targetKpi) {
+    badgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/60';
+    statusText = 'On Track';
+  } else if (overduePct < 20) {
+    badgeColor = 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60';
+    statusText = 'At Risk';
+  } else {
+    badgeColor = 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60';
+    statusText = 'Off Track';
+  }
+  
+  container.className = `inline-flex items-center gap-2 cursor-pointer select-none rounded-xl border px-2.5 py-1.5 text-xs font-semibold shadow-sm transition hover:scale-[1.02] ${badgeColor}`;
+  container.innerHTML = `
+    <span class="relative flex h-5 w-5 items-center justify-center shrink-0">
+      <svg class="h-5 w-5 -rotate-90" viewBox="0 0 36 36">
+        <circle class="text-slate-200 dark:text-slate-800" stroke-width="3" stroke="currentColor" fill="none" r="16" cx="18" cy="18"/>
+        <circle class="text-current" stroke-width="3.5" stroke-dasharray="100.5" stroke-dashoffset="${100.5 - (donePct * 1.005)}" stroke-linecap="round" stroke="currentColor" fill="none" r="16" cx="18" cy="18"/>
+      </svg>
+      <span class="absolute text-[8px] font-black tracking-tighter">${donePct}%</span>
+    </span>
+    <span class="h-1.5 w-1.5 rounded-full bg-current"></span>
+    <span class="truncate">목표: ${targetKpi}%</span>
+    <span class="font-bold shrink-0 uppercase tracking-wide text-[10px] bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded border border-current/20">${statusText}</span>
+  `;
+  container.classList.remove('hidden');
+
+  // Bind edit action
+  container.onclick = async (e) => {
+    e.stopPropagation();
+    const currentKpi = tracker.targetKpi || 80;
+    const val = prompt(`[${tracker.name}] 의 새로운 KPI 목표 완료율(%)을 입력하세요 (0 ~ 100):`, currentKpi);
+    if (val === null) return;
+    const num = parseInt(val, 10);
+    if (isNaN(num) || num < 0 || num > 100) {
+      showToast('0에서 100 사이의 숫자를 입력해 주세요.', false);
+      return;
+    }
+    if (num === currentKpi) return;
+    if (typeof window.db_updateTracker === 'function') {
+      showToast(`목표 완료율을 ${num}%로 변경하는 중...`);
+      await window.db_updateTracker(currentTrackerId, { targetKpi: num });
+    }
+  };
 }
 
 document.addEventListener('DOMContentLoaded', () => {

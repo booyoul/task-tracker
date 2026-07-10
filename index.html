@@ -207,34 +207,41 @@
                             d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012 2h2a2 2 0 012-2m-3 7h3m-3 4h3m-6-4h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
                 </span>
-                <div>
+                <div class="flex flex-col gap-1">
                     <!-- 멀티 트래커 스위처 및 드롭다운 컨트롤 -->
-                    <div class="relative inline-block text-left mb-1" id="tracker-dropdown-container">
-                        <button id="btn-tracker-dropdown"
-                            class="group inline-flex items-center gap-2 rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-1.5 text-sm font-bold text-slate-800 hover:bg-slate-100 transition shadow-sm outline-none">
-                            <span id="current-tracker-name" class="text-base text-indigo-700">기본 트래커</span>
-                            <svg class="h-4 w-4 text-slate-400 group-hover:text-slate-600 transition" fill="none"
-                                viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
-                                    d="M19 9l-7 7-7-7" />
-                            </svg>
-                        </button>
-                        <!-- 드롭다운 팝업 리스트 -->
-                        <div id="tracker-dropdown-menu"
-                            class="hidden absolute left-0 mt-2 min-w-[18rem] w-max max-w-md origin-top-left rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 focus:outline-none z-50 p-2 border border-slate-100">
-                            <div class="text-[10px] font-bold text-slate-400 px-3 py-1.5 uppercase tracking-wider">트래커
-                                스페이스 전환</div>
-                            <div id="tracker-list-items" class="max-h-56 overflow-y-auto overflow-x-hidden space-y-1"></div>
-                            <div class="border-t border-slate-100 mt-2 pt-2 flex flex-col gap-1">
-                                <button id="btn-create-tracker-open"
-                                    class="w-full text-left inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 transition">
-                                    <span>➕</span> 새 트래커 추가
-                                </button>
-                                <button id="btn-edit-tracker-open"
-                                    class="w-full text-left inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">
-                                    <span>⚙️</span> 현재 트래커 정보 편집
-                                </button>
+                    <div class="flex items-center gap-2.5 flex-wrap">
+                        <div class="relative inline-block text-left" id="tracker-dropdown-container">
+                            <button id="btn-tracker-dropdown"
+                                class="group inline-flex items-center gap-2 rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-1.5 text-sm font-bold text-slate-800 hover:bg-slate-100 transition shadow-sm outline-none">
+                                <span id="current-tracker-name" class="text-base text-indigo-700">기본 트래커</span>
+                                <svg class="h-4 w-4 text-slate-400 group-hover:text-slate-600 transition" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                        d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+                            <!-- 드롭다운 팝업 리스트 -->
+                            <div id="tracker-dropdown-menu"
+                                class="hidden absolute left-0 mt-2 min-w-[18rem] w-max max-w-md origin-top-left rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 focus:outline-none z-50 p-2 border border-slate-100">
+                                <div class="text-[10px] font-bold text-slate-400 px-3 py-1.5 uppercase tracking-wider">트래커
+                                    스페이스 전환</div>
+                                <div id="tracker-list-items" class="max-h-56 overflow-y-auto overflow-x-hidden space-y-1"></div>
+                                <div class="border-t border-slate-100 mt-2 pt-2 flex flex-col gap-1">
+                                    <button id="btn-create-tracker-open"
+                                        class="w-full text-left inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 transition">
+                                        <span>➕</span> 새 트래커 스페이스 생성
+                                    </button>
+                                    <button id="btn-edit-tracker-open"
+                                        class="w-full text-left inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">
+                                        <span>⚙️</span> 현재 트래커 정보 편집
+                                    </button>
+                                </div>
                             </div>
+                        </div>
+
+                        <!-- Option A: Minimal KPI Goal Badge Container -->
+                        <div id="tracker-kpi-badge-container" class="hidden inline-flex items-center gap-2 cursor-pointer select-none rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold shadow-sm hover:bg-slate-50 transition dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300 dark:hover:bg-slate-800" title="목표 완료율 설정 변경">
+                            <!-- JS에서 원형 SVG 및 배지 로드 -->
                         </div>
                     </div>
                     <p id="current-tracker-desc" class="text-xs text-slate-500 font-medium">실시간 업무 배정, 기한 관리 및 진척도 모니터링
