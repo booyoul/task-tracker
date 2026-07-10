@@ -102,6 +102,7 @@
     --color-slate-700: oklch(37.2% 0.044 257.287);
     --color-slate-800: oklch(27.9% 0.041 260.031);
     --color-slate-900: oklch(20.8% 0.042 265.755);
+    --color-slate-950: oklch(12.9% 0.042 264.695);
     --color-white: #fff;
     --spacing: 0.25rem;
     --container-xs: 20rem;
@@ -638,6 +639,9 @@
   }
   .max-w-\[120px\] {
     max-width: 120px;
+  }
+  .max-w-\[150px\] {
+    max-width: 150px;
   }
   .max-w-full {
     max-width: 100%;
@@ -1551,6 +1555,9 @@
     font-size: var(--text-xs);
     line-height: var(--tw-leading, var(--text-xs--line-height));
   }
+  .text-\[7\.5px\] {
+    font-size: 7.5px;
+  }
   .text-\[8px\] {
     font-size: 8px;
   }
@@ -2439,6 +2446,12 @@
       padding-inline: calc(var(--spacing) * 8);
     }
   }
+  .dark\:border {
+    @media (prefers-color-scheme: dark) {
+      border-style: var(--tw-border-style);
+      border-width: 1px;
+    }
+  }
   .dark\:border-amber-900\/60 {
     @media (prefers-color-scheme: dark) {
       border-color: color-mix(in srgb, oklch(41.4% 0.112 45.904) 60%, transparent);
@@ -2518,6 +2531,11 @@
       }
     }
   }
+  .dark\:bg-slate-950 {
+    @media (prefers-color-scheme: dark) {
+      background-color: var(--color-slate-950);
+    }
+  }
   .dark\:text-amber-300 {
     @media (prefers-color-scheme: dark) {
       color: var(--color-amber-300);
@@ -2543,9 +2561,24 @@
       color: var(--color-slate-300);
     }
   }
+  .dark\:text-slate-400 {
+    @media (prefers-color-scheme: dark) {
+      color: var(--color-slate-400);
+    }
+  }
+  .dark\:text-slate-500 {
+    @media (prefers-color-scheme: dark) {
+      color: var(--color-slate-500);
+    }
+  }
   .dark\:text-slate-800 {
     @media (prefers-color-scheme: dark) {
       color: var(--color-slate-800);
+    }
+  }
+  .dark\:text-white {
+    @media (prefers-color-scheme: dark) {
+      color: var(--color-white);
     }
   }
   .dark\:hover\:bg-slate-800 {
@@ -2553,6 +2586,15 @@
       &:hover {
         @media (hover: hover) {
           background-color: var(--color-slate-800);
+        }
+      }
+    }
+  }
+  .dark\:hover\:text-slate-200 {
+    @media (prefers-color-scheme: dark) {
+      &:hover {
+        @media (hover: hover) {
+          color: var(--color-slate-200);
         }
       }
     }

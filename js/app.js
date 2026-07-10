@@ -1036,58 +1036,100 @@ function renderTrackerKpiBadge() {
   const totalCount = trackerTasks.length;
   const today = getTodayStr();
   
-  const doneCount = trackerTasks.filter(t => getEffectiveStatus(t, today) === 'COMPLETED').length;
-  const overdueCount = trackerTasks.filter(t => getEffectiveStatus(t, today) === 'OVERDUE').length;
+  // Custom KPI configuration from tracker
+  const kpiTitle = tracker.kpiTitle || '업무 완료율';
+  const kpiTarget = typeof tracker.kpiTarget === 'number' ? tracker.kpiTarget : 80;
+  const kpiUnit = tracker.kpiUnit || '%';
+  const kpiType = tracker.kpiType || 'AUTO_DONE_PCT';
   
-  const donePct = totalCount ? Math.round((doneCount / totalCount) * 100) : 0;
-  const overduePct = totalCount ? Math.round((overdueCount / totalCount) * 100) : 0;
-  
-  const targetKpi = typeof tracker.targetKpi === 'number' ? tracker.targetKpi : 80;
-  
+  let currentVal = 0;
+  let donePct = 0;
+  let overdueCount = 0;
+  let overduePct = 0;
+
+  if (totalCount > 0) {
+    const doneCount = trackerTasks.filter(t => getEffectiveStatus(t, today) === 'COMPLETED').length;
+    overdueCount = trackerTasks.filter(t => getEffectiveStatus(t, today) === 'OVERDUE').length;
+    donePct = Math.round((doneCount / totalCount) * 100);
+    overduePct = Math.round((overdueCount / totalCount) * 100);
+  }
+
+  // Calculate current value based on kpiType
+  if (kpiType === 'AUTO_DONE_PCT') {
+    currentVal = donePct;
+  } else if (kpiType === 'AUTO_OVERDUE_COUNT') {
+    currentVal = overdueCount;
+  } else if (kpiType === 'MANUAL') {
+    currentVal = typeof tracker.kpiCurrent === 'number' ? tracker.kpiCurrent : 0;
+  }
+
+  // Determine progress percent for circular SVG gauge
+  let progressPct = 0;
+  if (kpiType === 'AUTO_OVERDUE_COUNT') {
+    progressPct = kpiTarget > 0 ? Math.min(Math.round((currentVal / kpiTarget) * 100), 100) : (currentVal > 0 ? 100 : 0);
+  } else {
+    progressPct = kpiTarget > 0 ? Math.min(Math.round((currentVal / kpiTarget) * 100), 100) : 0;
+  }
+
+  // Determine Status health state
   let badgeColor = '';
   let statusText = '';
-  
-  if (donePct >= targetKpi) {
-    badgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/60';
-    statusText = 'On Track';
-  } else if (overduePct < 20) {
-    badgeColor = 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60';
-    statusText = 'At Risk';
-  } else {
-    badgeColor = 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60';
-    statusText = 'Off Track';
+
+  if (kpiType === 'AUTO_DONE_PCT') {
+    if (currentVal >= kpiTarget) {
+      badgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/60';
+      statusText = 'On Track';
+    } else if (overduePct < 20) {
+      badgeColor = 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60';
+      statusText = 'At Risk';
+    } else {
+      badgeColor = 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60';
+      statusText = 'Off Track';
+    }
+  } else if (kpiType === 'AUTO_OVERDUE_COUNT') {
+    if (currentVal <= kpiTarget) {
+      badgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/60';
+      statusText = 'On Track';
+    } else {
+      badgeColor = 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60';
+      statusText = 'Off Track';
+    }
+  } else { // MANUAL
+    if (currentVal >= kpiTarget) {
+      badgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/60';
+      statusText = 'On Track';
+    } else if (currentVal >= kpiTarget * 0.8) {
+      badgeColor = 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60';
+      statusText = 'At Risk';
+    } else {
+      badgeColor = 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60';
+      statusText = 'Off Track';
+    }
   }
-  
-  container.className = `inline-flex items-center gap-2 cursor-pointer select-none rounded-xl border px-2.5 py-1.5 text-xs font-semibold shadow-sm transition hover:scale-[1.02] ${badgeColor}`;
+
+  // Renders the mini badge HTML with custom KPI info
+  container.className = `inline-flex items-center gap-2.5 cursor-pointer select-none rounded-xl border px-3 py-1.5 text-xs font-semibold shadow-sm transition hover:scale-[1.02] ${badgeColor}`;
   container.innerHTML = `
     <span class="relative flex h-5 w-5 items-center justify-center shrink-0">
       <svg class="h-5 w-5 -rotate-90" viewBox="0 0 36 36">
         <circle class="text-slate-200 dark:text-slate-800" stroke-width="3" stroke="currentColor" fill="none" r="16" cx="18" cy="18"/>
-        <circle class="text-current" stroke-width="3.5" stroke-dasharray="100.5" stroke-dashoffset="${100.5 - (donePct * 1.005)}" stroke-linecap="round" stroke="currentColor" fill="none" r="16" cx="18" cy="18"/>
+        <circle class="text-current" stroke-width="3.5" stroke-dasharray="100.5" stroke-dashoffset="${100.5 - (progressPct * 1.005)}" stroke-linecap="round" stroke="currentColor" fill="none" r="16" cx="18" cy="18"/>
       </svg>
-      <span class="absolute text-[8px] font-black tracking-tighter">${donePct}%</span>
+      <span class="absolute text-[7.5px] font-black tracking-tighter" style="line-height: 1;">${currentVal}</span>
     </span>
     <span class="h-1.5 w-1.5 rounded-full bg-current"></span>
-    <span class="truncate">목표: ${targetKpi}%</span>
-    <span class="font-bold shrink-0 uppercase tracking-wide text-[10px] bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded border border-current/20">${statusText}</span>
+    <span class="truncate max-w-[150px] font-semibold text-slate-700 dark:text-slate-350" title="${escapeHTML(kpiTitle)}: ${currentVal}${kpiUnit} / 목표 ${kpiTarget}${kpiUnit}">
+      ${escapeHTML(kpiTitle)}: ${currentVal}${kpiUnit} <span class="text-slate-400 dark:text-slate-500 font-medium">/ 목표 ${kpiTarget}${kpiUnit}</span>
+    </span>
+    <span class="font-bold shrink-0 uppercase tracking-wide text-[9px] bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded border border-current/20">${statusText}</span>
   `;
   container.classList.remove('hidden');
 
-  // Bind edit action
-  container.onclick = async (e) => {
+  // Bind click to open custom KPI settings modal
+  container.onclick = (e) => {
     e.stopPropagation();
-    const currentKpi = tracker.targetKpi || 80;
-    const val = prompt(`[${tracker.name}] 의 새로운 KPI 목표 완료율(%)을 입력하세요 (0 ~ 100):`, currentKpi);
-    if (val === null) return;
-    const num = parseInt(val, 10);
-    if (isNaN(num) || num < 0 || num > 100) {
-      showToast('0에서 100 사이의 숫자를 입력해 주세요.', false);
-      return;
-    }
-    if (num === currentKpi) return;
-    if (typeof window.db_updateTracker === 'function') {
-      showToast(`목표 완료율을 ${num}%로 변경하는 중...`);
-      await window.db_updateTracker(currentTrackerId, { targetKpi: num });
+    if (typeof window.openKpiSettingsModal === 'function') {
+      window.openKpiSettingsModal();
     }
   };
 }

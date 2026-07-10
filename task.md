@@ -43,6 +43,13 @@
 - [x] **설정 수정 팝업 바인딩**: 배지 클릭 시 Prompt를 띄워 목표치를 수정하고 Firestore에 실시간 저장하는 핸들러 연결 완료
 - [x] **로컬 검증**: 목표치 수정에 따라 실시간으로 배지 상태(On Track 등)가 변하는지 검증 완료 (성공적인 연동 확인)
 
+### 4. 트래커별 커스텀 KPI 매니저 및 전용 입력 모달창 구현
+- [x] **데이터 스키마 고도화**: 트래커 데이터 로드 시 `kpiTitle`, `kpiTarget`, `kpiUnit`, `kpiType`, `kpiCurrent` 기본값 주입 연동 완료
+- [x] **전용 KPI 설정 모달 마크업**: `index.html`에 세련된 `#modal-kpi-settings` 모달창 마크업 주입 완료
+- [x] **모달 컨트롤러 구현**: `modal-controller.js` 내 모달 노출/바인딩 및 저장 기능 (`saveKpiSettings`) 개발 완료
+- [x] **KPI 타입별 자동 판정 렌더러 보완**: `app.js` 내 배지 렌더링 로직을 커스텀 KPI 타입에 맞춰 분기 리팩토링 완료
+- [x] **로컬 검증**: 수동/자동 KPI 종류별로 배지 수치와 상태(On Track 등)가 부드럽게 갱신되는지 최종 검증 완료 (완벽한 양방향 동기화)
+
 ### 2. 코드 품질 및 기술 부채 개선 백로그 (에이전트 권장)
 - [x] **마스터 어드민(Master Admin) 판정 로직 일관성 개선**
   * `bootstrap-service.js`, `auth-service.js`, `admin-approvals.js`에 흩어져 하드코딩된 마스터 어드민 이메일 검사 로직을 공통 함수(`isMasterAdmin`)로 `state.js` 또는 `auth-service.js`로 단일화 및 모듈화.

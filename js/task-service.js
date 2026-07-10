@@ -122,7 +122,11 @@ async function db_addTracker(data) {
   const nextOrder = trackers.length ? Math.max(...trackers.map(t => typeof t.order === 'number' ? t.order : 0)) + 1 : 1;
   const payload = {
     ...data,
-    targetKpi: typeof data.targetKpi === 'number' ? data.targetKpi : 80,
+    kpiTitle: data.kpiTitle || '업무 완료율',
+    kpiTarget: typeof data.kpiTarget === 'number' ? data.kpiTarget : (typeof data.targetKpi === 'number' ? data.targetKpi : 80),
+    kpiUnit: data.kpiUnit || '%',
+    kpiType: data.kpiType || 'AUTO_DONE_PCT',
+    kpiCurrent: typeof data.kpiCurrent === 'number' ? data.kpiCurrent : 0,
     order: nextOrder,
     deleted: false,
     createdAt: getServerTimestamp(),
@@ -207,7 +211,16 @@ function setupRealtimeListeners() {
   unsubscribeTrackers = window.fs.onSnapshot(trackerColl, snapshot => {
     const incoming = sortTrackersByOrder(snapshot.docs.map(doc => {
       const d = doc.data();
-      return { id: doc.id, targetKpi: typeof d.targetKpi === 'number' ? d.targetKpi : 80, ...d };
+      const targetVal = typeof d.kpiTarget === 'number' ? d.kpiTarget : (typeof d.targetKpi === 'number' ? d.targetKpi : 80);
+      return { 
+        id: doc.id, 
+        kpiTitle: d.kpiTitle || '업무 완료율',
+        kpiTarget: targetVal,
+        kpiUnit: d.kpiUnit || '%',
+        kpiType: d.kpiType || 'AUTO_DONE_PCT',
+        kpiCurrent: typeof d.kpiCurrent === 'number' ? d.kpiCurrent : 0,
+        ...d 
+      };
     }).filter(t => t.deleted !== true));
     if (incoming.length) trackers = incoming;
     const saved = localStorage.getItem('flow_current_tracker');

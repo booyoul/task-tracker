@@ -441,3 +441,92 @@ document.addEventListener('click', (e) => {
 
 window.populateAssigneeDropdowns = populateAssigneeDropdowns;
 
+// === Custom KPI Settings Modal Logic ===
+function openKpiSettingsModal() {
+  const tracker = trackers.find(t => t.id === currentTrackerId);
+  if (!tracker) return;
+
+  const kpiTitle = tracker.kpiTitle || '업무 완료율';
+  const kpiTarget = typeof tracker.kpiTarget === 'number' ? tracker.kpiTarget : 80;
+  const kpiUnit = tracker.kpiUnit || '%';
+  const kpiType = tracker.kpiType || 'AUTO_DONE_PCT';
+  const kpiCurrent = typeof tracker.kpiCurrent === 'number' ? tracker.kpiCurrent : 0;
+
+  const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+  setVal('input-kpi-title', kpiTitle);
+  setVal('input-kpi-target', kpiTarget);
+  setVal('input-kpi-unit', kpiUnit);
+  setVal('select-kpi-type', kpiType);
+  setVal('input-kpi-current', kpiCurrent);
+
+  const wrapper = document.getElementById('kpi-manual-input-wrapper');
+  if (wrapper) {
+    if (kpiType === 'MANUAL') {
+      wrapper.classList.remove('hidden');
+    } else {
+      wrapper.classList.add('hidden');
+    }
+  }
+
+  document.getElementById('modal-kpi-settings')?.classList.remove('hidden');
+}
+
+function closeKpiSettingsModal() {
+  document.getElementById('modal-kpi-settings')?.classList.add('hidden');
+}
+
+function initKpiSettingsEvents() {
+  const selectType = document.getElementById('select-kpi-type');
+  const wrapper = document.getElementById('kpi-manual-input-wrapper');
+  if (selectType && wrapper) {
+    selectType.addEventListener('change', () => {
+      if (selectType.value === 'MANUAL') {
+        wrapper.classList.remove('hidden');
+      } else {
+        wrapper.classList.add('hidden');
+      }
+    });
+  }
+
+  const closeIds = ['btn-close-kpi-settings', 'btn-cancel-kpi-settings', 'modal-kpi-backdrop'];
+  closeIds.forEach(id => {
+    document.getElementById(id)?.addEventListener('click', closeKpiSettingsModal);
+  });
+
+  const form = document.getElementById('form-kpi-settings');
+  if (form) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const getVal = (id) => document.getElementById(id)?.value || '';
+      const getNum = (id) => {
+        const val = document.getElementById(id)?.value;
+        return val !== undefined && val !== '' ? Number(val) : 0;
+      };
+
+      const payload = {
+        kpiTitle: getVal('input-kpi-title'),
+        kpiTarget: getNum('input-kpi-target'),
+        kpiUnit: getVal('input-kpi-unit'),
+        kpiType: getVal('select-kpi-type'),
+        kpiCurrent: getNum('input-kpi-current'),
+        targetKpi: getNum('input-kpi-target')
+      };
+
+      if (typeof window.db_updateTracker === 'function') {
+        showToast('KPI 설정을 저장하는 중...');
+        await window.db_updateTracker(currentTrackerId, payload);
+      }
+
+      closeKpiSettingsModal();
+    });
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initKpiSettingsEvents();
+});
+
+window.openKpiSettingsModal = openKpiSettingsModal;
+window.closeKpiSettingsModal = closeKpiSettingsModal;
+
