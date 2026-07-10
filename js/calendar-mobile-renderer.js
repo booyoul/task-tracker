@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-mobile-renderer.js v20260710-v1 loaded');
+console.info('Smart Task Flow calendar-mobile-renderer.js v20260711-v1 loaded');
 
 // ============================================================
 //  모바일 전용 캘린더 렌더러
@@ -34,7 +34,7 @@ function renderMobileCalendar(filtered) {
     _renderMobileMonthView(content, filtered, year, todayStr);
   } else if (mode === 'SUMMARY') {
     if (typeof renderCalendarSummaryView === 'function') {
-      renderCalendarSummaryView({ grid: content, year, month, filtered, todayStr });
+      renderCalendarSummaryView({ grid: content, year, month, filteredTasks: filtered, todayStr });
     } else {
       content.innerHTML = '<p class="text-slate-400 text-sm text-center py-8">요약 뷰를 불러올 수 없습니다.</p>';
     }

@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-summary-renderer.js v20260628-v8 loaded');
+console.info('Smart Task Flow calendar-summary-renderer.js v20260711-v1 loaded');
 
 function formatSummaryNoteDate(ts) {
     if (!ts) return '';
@@ -95,7 +95,8 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
     _summaryRenderInProgress = true;
 
     try {
-    document.getElementById('calendar-month-year').textContent = `${year}년 ${month + 1}월`;
+    const calMonthYearEl = document.getElementById('calendar-month-year');
+    if (calMonthYearEl) calMonthYearEl.textContent = `${year}년 ${month + 1}월`;
     if (weekdayHeader) weekdayHeader.classList.add('hidden');
     grid.className = 'flex flex-col gap-4 bg-slate-50 border border-slate-100 p-5 rounded-xl min-h-[250px]';
     grid.innerHTML = '';
