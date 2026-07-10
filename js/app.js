@@ -822,8 +822,8 @@ function updateSelectAllState(totalVisible, totalSelected) {
   cb.indeterminate = totalSelected > 0 && totalSelected < totalVisible;
   updateBatchButton();
 }
-function updateBatchButton() { const btn = document.getElementById('btn-batch-delete'); if (btn) { if (selectedTaskIds.size) { btn.classList.remove('hidden'); btn.classList.add('flex'); } else { btn.classList.add('hidden'); btn.classList.remove('flex'); } } updateBulkActionBar(); }
-function updateUndoButton() { const btn = document.getElementById('btn-undo'); if (btn) { if (deletionHistory.length) { btn.classList.remove('hidden'); btn.classList.add('flex'); } else { btn.classList.add('hidden'); btn.classList.remove('flex'); } } }
+function updateBatchButton() { const btn = document.getElementById('btn-batch-delete'); if (btn) selectedTaskIds.size ? btn.classList.remove('hidden') : btn.classList.add('hidden'); updateBulkActionBar(); }
+function updateUndoButton() { const btn = document.getElementById('btn-undo'); if (btn) deletionHistory.length ? btn.classList.remove('hidden') : btn.classList.add('hidden'); }
 function resetFilters() {
   ['filter-search', 'filter-start-month', 'filter-end-month', 'mobile-filter-start-month', 'mobile-filter-end-month'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   ['filter-status', 'filter-priority', 'mobile-filter-status', 'mobile-filter-priority'].forEach(id => { const el = document.getElementById(id); if (el) el.value = 'ALL'; });
