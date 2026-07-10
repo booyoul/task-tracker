@@ -122,12 +122,21 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
         notesByTaskId[baseTaskId].push(note);
     });
 
-    // 이번 달 작성된 메모 필터링
+    // 이번 달 작성된 메모 필터링 (+ 현재 필터링된 활성 업무에 달린 메모만 포함)
+    const activeTaskIds = new Set((filteredTasks || []).map(t => t.id));
     const monthNotes = trackerNotes.filter(note => {
         const ts = note.createdAt;
         if (!ts) return false;
+        
+        // 1) 날짜 범위 검사
         const d = typeof ts.toDate === 'function' ? ts.toDate() : new Date(ts);
-        return d >= monthStart && d <= monthEnd;
+        const inMonth = d >= monthStart && d <= monthEnd;
+        if (!inMonth) return false;
+        
+        // 2) 소속 업무 검사 (현재 필터링된 활성 업무 목록에 포함되는지)
+        if (!note.taskId) return false;
+        const baseTaskId = note.taskId.split('__sub_')[0];
+        return activeTaskIds.has(baseTaskId);
     });
     const monthNotesCount = monthNotes.length;
 
