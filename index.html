@@ -772,10 +772,10 @@
         <div id="modal-task" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title"
             role="dialog" aria-modal="true">
             <div class="flex min-h-screen items-end justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-                <div id="modal-task-backdrop" class="fixed inset-0 bg-slate-500 bg-opacity-40 transition-opacity"></div>
+                <div id="modal-task-backdrop" class="fixed inset-0 z-0 bg-slate-500 bg-opacity-40 transition-opacity"></div>
                 <span class="hidden sm:inline-block sm:h-screen sm:align-middle" aria-hidden="true">&#8203;</span>
                 <div
-                    class="inline-block transform overflow-hidden rounded-2xl bg-white text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:align-middle">
+                    class="relative z-10 inline-block transform overflow-hidden rounded-2xl bg-white text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:align-middle">
                     <div class="bg-white px-6 pt-6 pb-4">
                         <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                             <h3 class="text-lg font-bold text-slate-900" id="modal-title">새로운 업무 배정</h3>
@@ -980,11 +980,11 @@
         <div id="modal-tracker" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-tracker-title"
             role="dialog" aria-modal="true">
             <div class="flex min-h-screen items-end justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-                <div id="modal-tracker-backdrop" class="fixed inset-0 bg-slate-500 bg-opacity-40 transition-opacity">
+                <div id="modal-tracker-backdrop" class="fixed inset-0 z-0 bg-slate-500 bg-opacity-40 transition-opacity">
                 </div>
                 <span class="hidden sm:inline-block sm:h-screen sm:align-middle" aria-hidden="true">&#8203;</span>
                 <div
-                    class="inline-block transform overflow-hidden rounded-2xl bg-white text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md sm:align-middle">
+                    class="relative z-10 inline-block transform overflow-hidden rounded-2xl bg-white text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md sm:align-middle">
                     <div class="bg-white p-6">
                         <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                             <h3 class="text-lg font-bold text-slate-900" id="modal-tracker-title">새 트래커 스페이스 추가</h3>
@@ -1030,11 +1030,11 @@
         <!-- 3. 확인(Confirm) 모달 -->
         <div id="modal-confirm" class="fixed inset-0 z-50 hidden overflow-y-auto" role="dialog" aria-modal="true">
             <div class="flex min-h-screen items-end justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-                <div id="modal-confirm-backdrop" class="fixed inset-0 bg-slate-500 bg-opacity-40 transition-opacity">
+                <div id="modal-confirm-backdrop" class="fixed inset-0 z-0 bg-slate-500 bg-opacity-40 transition-opacity">
                 </div>
                 <span class="hidden sm:inline-block sm:h-screen sm:align-middle">&#8203;</span>
                 <div
-                    class="inline-block transform overflow-hidden rounded-2xl bg-white text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md sm:align-middle">
+                    class="relative z-10 inline-block transform overflow-hidden rounded-2xl bg-white text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md sm:align-middle">
                     <div class="p-6">
                         <div class="flex items-center gap-3">
                             <span class="rounded-full bg-rose-50 p-2 text-rose-600">
