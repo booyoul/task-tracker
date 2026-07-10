@@ -80,7 +80,7 @@ function buildMonthlySubTaskHTML(task, monthStart, monthEnd) {
     return html;
 }
 
-function renderCalendarSummaryView({ weekdayHeader, grid, year, month, filteredTasks, todayStr }) {
+async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, filteredTasks, todayStr }) {
     if (!grid) return;
 
     document.getElementById('calendar-month-year').textContent = `${year}년 ${month + 1}월`;
@@ -96,6 +96,31 @@ function renderCalendarSummaryView({ weekdayHeader, grid, year, month, filteredT
         grid.innerHTML = `<div class="text-center py-16 text-sm text-slate-400 font-semibold">현재 조건 혹은 조회 기간 중 해당 월(${month + 1}월)의 업무 정보가 존재하지 않습니다.</div>`;
         return;
     }
+
+    // 트래커 전체 메모 가져오기
+    let trackerNotes = [];
+    if (typeof window.db_fetchTrackerProgressNotes === 'function' && window.currentTrackerId) {
+        trackerNotes = await window.db_fetchTrackerProgressNotes(window.currentTrackerId);
+    }
+
+    // 태스크 ID 기준(서브태스크 포함)으로 메모 분류
+    const notesByTaskId = {};
+    trackerNotes.forEach(note => {
+        if (!note.taskId) return;
+        const baseTaskId = note.taskId.split('__sub_')[0];
+        if (!notesByTaskId[baseTaskId]) {
+            notesByTaskId[baseTaskId] = [];
+        }
+        notesByTaskId[baseTaskId].push(note);
+    });
+
+    // 월별 작성된 총 메모 건수 계산
+    const monthNotesCount = trackerNotes.filter(note => {
+        const ts = note.createdAt;
+        if (!ts) return false;
+        const d = typeof ts.toDate === 'function' ? ts.toDate() : new Date(ts);
+        return d >= monthStart && d <= monthEnd;
+    }).length;
 
     const groups = { OVERDUE: [], PROGRESS: [], PENDING: [], COMPLETED: [] };
     currentMonthTasks.forEach(t => {
@@ -123,8 +148,10 @@ function renderCalendarSummaryView({ weekdayHeader, grid, year, month, filteredT
             <span class="rounded bg-blue-50 px-2 py-0.5 font-semibold text-blue-700 border border-blue-100">진행 <b>${monthlyProgress}</b></span>
             <span class="rounded bg-rose-50 px-2 py-0.5 font-semibold text-rose-700 border border-rose-100">지연 <b>${monthlyOverdue}</b></span>
         </div>
-        <div class="flex items-center gap-3 text-slate-500 font-medium shrink-0">
+        <div class="flex items-center gap-3 text-slate-500 font-medium shrink-0 flex-wrap">
             <span>⏱️ 하위 업무 <b class="text-indigo-600">${monthlySubTotal}</b>건 (완료 ${monthlySubCompleted})</span>
+            <span class="text-slate-300">|</span>
+            <span>📌 이번 달 메모 <b class="text-amber-600">${monthNotesCount}</b>건</span>
         </div>
     `;
     grid.appendChild(kpiPanel);
@@ -152,6 +179,28 @@ function renderCalendarSummaryView({ weekdayHeader, grid, year, month, filteredT
             const subProgressMarkup = subSummary.totalInMonth > 0
                 ? `<span class="text-[10px] text-slate-400">월내 하위 완료 ${subSummary.completedInMonth}/${subSummary.totalInMonth}</span>`
                 : (subSummary.totalAll > 0 ? `<span class="text-[10px] text-slate-400">해당 월 하위 업무 없음</span>` : '');
+            
+            // 태스크의 메모 수 배지
+            const noteCount = notesByTaskId[t.id]?.length || 0;
+            const noteBadgeMarkup = noteCount > 0
+                ? `<span class="text-[10px] bg-amber-50 text-amber-700 border border-amber-100 px-1.5 py-0.5 rounded font-bold">메모 ${noteCount}건</span>`
+                : '';
+
+            // 최신 메모 1줄 미리보기
+            const latestNote = notesByTaskId[t.id]?.[0];
+            let latestNoteMarkup = '';
+            if (latestNote) {
+                const noteTitle = latestNote.title ? `[${latestNote.title}] ` : '';
+                const noteBody = escapeHTML(latestNote.body || '').slice(0, 50) + ((latestNote.body || '').length > 50 ? '...' : '');
+                const noteAuthor = latestNote.createdByName ? ` (${latestNote.createdByName.split('@')[0]})` : '';
+                latestNoteMarkup = `
+                    <div class="mt-2 text-[10px] bg-amber-50/50 border border-amber-100 rounded-lg p-2 text-slate-600 dark:bg-amber-950/20 dark:border-amber-900/50 dark:text-slate-350">
+                        <span class="font-semibold text-amber-800 dark:text-amber-400">📌 최신 진행 상황:</span>
+                        <span>${escapeHTML(noteTitle)}${noteBody}${noteAuthor}</span>
+                    </div>
+                `;
+            }
+
             const subTasksHtml = buildMonthlySubTaskHTML(t, monthStart, monthEnd);
             const progressPct = typeof getTaskProgress === 'function' ? getTaskProgress(t) : 0;
 
@@ -163,30 +212,36 @@ function renderCalendarSummaryView({ weekdayHeader, grid, year, month, filteredT
             };
 
             const box = document.createElement('div');
-            box.className = 'bg-white rounded-xl p-3 border border-slate-200/60 shadow-sm cursor-pointer transition hover:border-indigo-400 hover:shadow-md flex flex-col justify-between h-full';
+            box.className = 'bg-white rounded-xl p-3 border border-slate-200/60 shadow-sm cursor-pointer transition hover:border-indigo-400 hover:shadow-md flex flex-col justify-between h-full dark:bg-slate-900 dark:border-slate-800';
             box.onclick = () => openTaskModal(t.id);
             box.innerHTML = `
                 <div class="flex-grow">
                     <div class="flex items-start justify-between gap-2 mb-1.5">
-                        <h4 class="text-xs font-bold text-slate-800 line-clamp-2 flex-1">${escapeHTML(t.title)}</h4>
-                        <span class="px-1.5 py-0.5 rounded text-[8px] font-black border uppercase tracking-wider shrink-0 ${priorityColors[t.priority] || priorityColors.NORMAL}">${t.priority || 'NORMAL'}</span>
+                        <h4 class="text-xs font-bold text-slate-800 dark:text-white line-clamp-2 flex-1">${escapeHTML(t.title)}</h4>
+                        <div class="flex items-center gap-1 shrink-0">
+                            <span class="px-1.5 py-0.5 rounded text-[8px] font-black border uppercase tracking-wider ${priorityColors[t.priority] || priorityColors.NORMAL}">${t.priority || 'NORMAL'}</span>
+                        </div>
                     </div>
                     <div class="mt-2 flex items-center justify-between text-[11px] text-slate-400 font-medium">
                         <span class="flex items-center gap-1">🗓️ ${t.startDate ? t.startDate.substring(5) : '미정'} ~ ${(t.dueDate || '').substring(5)}</span>
-                        <span class="font-bold bg-slate-50 text-slate-600 px-1.5 py-0.5 border rounded">${escapeHTML(Array.isArray(t.assignee) ? t.assignee.join(', ') : (t.assignee || '미지정'))}</span>
+                        <span class="font-bold bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-350 px-1.5 py-0.5 border dark:border-slate-700 rounded">${escapeHTML(Array.isArray(t.assignee) ? t.assignee.join(', ') : (t.assignee || '미정'))}</span>
                     </div>
-                    <div class="mt-2 flex items-center justify-between gap-2">
-                        ${subBadgeMarkup}
+                    <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
+                        <div class="flex items-center gap-1.5">
+                            ${subBadgeMarkup}
+                            ${noteBadgeMarkup}
+                        </div>
                         ${subProgressMarkup}
                     </div>
+                    ${latestNoteMarkup}
                     ${subTasksHtml}
                 </div>
                 <div class="mt-3">
                     <div class="flex items-center justify-between text-[9px] text-slate-400 mb-1">
                         <span>진척도</span>
-                        <span class="font-bold text-slate-700">${progressPct}%</span>
+                        <span class="font-bold text-slate-700 dark:text-slate-300">${progressPct}%</span>
                     </div>
-                    <div class="w-full bg-slate-100 rounded-full h-1">
+                    <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1">
                         <div class="bg-indigo-600 h-1 rounded-full" style="width: ${progressPct}%"></div>
                     </div>
                 </div>`;

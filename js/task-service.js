@@ -366,7 +366,25 @@ async function db_deleteProgressNote(noteId, taskId) {
   }
 }
 
+async function db_fetchTrackerProgressNotes(trackerId) {
+  const coll = window.getProgressNotesCollection?.();
+  if (!coll) return [];
+  try {
+    const q = window.fs.query(
+      coll,
+      window.fs.where('trackerId', '==', trackerId),
+      window.fs.orderBy('createdAt', 'desc')
+    );
+    const snap = await window.fs.getDocs(q);
+    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (e) {
+    console.error('db_fetchTrackerProgressNotes 실패:', e);
+    return [];
+  }
+}
+
 window.db_addProgressNote    = db_addProgressNote;
 window.db_fetchProgressNotes = db_fetchProgressNotes;
 window.db_updateProgressNote = db_updateProgressNote;
 window.db_deleteProgressNote = db_deleteProgressNote;
+window.db_fetchTrackerProgressNotes = db_fetchTrackerProgressNotes;

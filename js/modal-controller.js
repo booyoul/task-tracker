@@ -43,11 +43,20 @@ function renderModalSubTasks() {
     const li = document.createElement('li');
     li.className = 'flex flex-col gap-2 rounded-xl border border-slate-200/60 bg-slate-50 p-2 text-xs hover:bg-slate-100/50 sm:flex-row sm:items-center sm:justify-between';
     const subAssigneeLabel = Array.isArray(st.assignee) ? st.assignee.join(', ') : (st.assignee || '미정');
-    li.innerHTML = `<div class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 sm:gap-2"><span class="shrink-0 font-bold ${status === 'COMPLETED' ? 'text-emerald-600' : overdue ? 'text-rose-600' : status === 'PROGRESS' ? 'text-blue-600' : 'text-amber-500'}">${overdue ? '🚨 기한 초과' : getStatusIcon(status) + ' ' + getStatusKorean(status).replace('됨', '')}</span><span class="min-w-0 flex-1 truncate font-medium text-slate-700 ${status === 'COMPLETED' ? 'line-through opacity-50' : ''}" title="${escapeHTML(st.title)}">${escapeHTML(st.title)}</span><span class="shrink-0 text-[10px] text-slate-400 font-semibold">📅 ${st.startDate ? st.startDate.substring(5) : '미정'} ~ ${st.dueDate ? st.dueDate.substring(5) : '미정'}</span><span class="shrink-0 max-w-[120px] truncate bg-indigo-50 text-indigo-700 border border-indigo-100 px-1 py-0.2 rounded text-[9px] font-bold" title="${escapeHTML(subAssigneeLabel)}">👤 ${escapeHTML(subAssigneeLabel)}</span></div><div class="flex shrink-0 items-center justify-end gap-1.5"><select class="sel-modal-subtask-status rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 outline-none focus:border-indigo-500" data-index="${idx}"><option value="PENDING" ${status === 'PENDING' ? 'selected' : ''}>진행 대기</option><option value="PROGRESS" ${status === 'PROGRESS' ? 'selected' : ''}>진행 중</option><option value="COMPLETED" ${status === 'COMPLETED' ? 'selected' : ''}>완료</option></select><button type="button" class="btn-modal-edit-subtask px-1 font-bold text-indigo-600 hover:text-indigo-800" data-index="${idx}">수정</button><span class="text-slate-300">|</span><button type="button" class="btn-modal-delete-subtask px-1 font-semibold text-rose-500 hover:text-rose-700" data-index="${idx}">삭제</button></div>`;
+    const noteBtnHtml = _currentNoteTaskId 
+      ? `<button type="button" class="btn-modal-note-subtask px-1 font-bold text-slate-500 hover:text-indigo-600 transition" data-index="${idx}" title="진행 메모 관리">📌</button><span class="text-slate-300">|</span>` 
+      : '';
+    li.innerHTML = `<div class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 sm:gap-2"><span class="shrink-0 font-bold ${status === 'COMPLETED' ? 'text-emerald-600' : overdue ? 'text-rose-600' : status === 'PROGRESS' ? 'text-blue-600' : 'text-amber-500'}">${overdue ? '🚨 기한 초과' : getStatusIcon(status) + ' ' + getStatusKorean(status).replace('됨', '')}</span><span class="min-w-0 flex-1 truncate font-medium text-slate-700 ${status === 'COMPLETED' ? 'line-through opacity-50' : ''}" title="${escapeHTML(st.title)}">${escapeHTML(st.title)}</span><span class="shrink-0 text-[10px] text-slate-400 font-semibold">📅 ${st.startDate ? st.startDate.substring(5) : '미정'} ~ ${st.dueDate ? st.dueDate.substring(5) : '미정'}</span><span class="shrink-0 max-w-[120px] truncate bg-indigo-50 text-indigo-700 border border-indigo-100 px-1 py-0.2 rounded text-[9px] font-bold" title="${escapeHTML(subAssigneeLabel)}">👤 ${escapeHTML(subAssigneeLabel)}</span></div><div class="flex shrink-0 items-center justify-end gap-1.5">${noteBtnHtml}<select class="sel-modal-subtask-status rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 outline-none focus:border-indigo-500" data-index="${idx}"><option value="PENDING" ${status === 'PENDING' ? 'selected' : ''}>진행 대기</option><option value="PROGRESS" ${status === 'PROGRESS' ? 'selected' : ''}>진행 중</option><option value="COMPLETED" ${status === 'COMPLETED' ? 'selected' : ''}>완료</option></select><button type="button" class="btn-modal-edit-subtask px-1 font-bold text-indigo-600 hover:text-indigo-800" data-index="${idx}">수정</button><span class="text-slate-300">|</span><button type="button" class="btn-modal-delete-subtask px-1 font-semibold text-rose-500 hover:text-rose-700" data-index="${idx}">삭제</button></div>`;
     container.appendChild(li);
   });
   
   // Attach event listeners after DOM update
+  container.querySelectorAll('.btn-modal-note-subtask').forEach(el => {
+    el.addEventListener('click', (e) => {
+      const idx = parseInt(e.currentTarget.dataset.index, 10);
+      window.openSubTaskNoteModal(idx);
+    });
+  });
   container.querySelectorAll('.sel-modal-subtask-status').forEach(el => {
     el.addEventListener('change', (e) => window.updateSubTaskStatusInModal(e.target.dataset.index, e.target.value));
   });
@@ -759,4 +768,220 @@ if (document.readyState === 'loading') {
 }
 
 window.closeKpiSettingsModal = closeKpiSettingsModal;
+
+// ──────────────────────────────────────────────────────
+// 하위 업무 진행 메모(Sub-task Progress Notes) 컨트롤러
+// ──────────────────────────────────────────────────────
+let _currentSubTaskId = null;
+let _currentSubTaskTitle = "";
+let _currentSubNotePanelNote = null;
+
+window.openSubTaskNoteModal = async function(index) {
+  const st = currentSubTasks[index];
+  if (!st || !_currentNoteTaskId) {
+    showToast('신규 업무는 먼저 저장한 후에 메모를 등록할 수 있습니다.', false);
+    return;
+  }
+  _currentSubTaskId = st.id;
+  _currentSubTaskTitle = st.title;
+  
+  const panel = document.getElementById('subtask-notes-panel');
+  const backdrop = document.getElementById('subnote-panel-backdrop');
+  const titleHeader = document.getElementById('subnote-panel-header-title');
+  if (titleHeader) titleHeader.textContent = `하위 업무: ${st.title}`;
+
+  // Reset to list mode
+  setSubNotePanel_listMode();
+  await loadSubtaskNotes();
+
+  panel.classList.remove('translate-x-full');
+  panel.classList.add('translate-x-0');
+  if (backdrop) backdrop.classList.remove('hidden');
+};
+
+function closeSubtaskNotesPanel() {
+  const panel = document.getElementById('subtask-notes-panel');
+  const backdrop = document.getElementById('subnote-panel-backdrop');
+  if (panel) { panel.classList.add('translate-x-full'); panel.classList.remove('translate-x-0'); }
+  if (backdrop) backdrop.classList.add('hidden');
+  _currentSubTaskId = null;
+  _currentSubNotePanelNote = null;
+}
+
+function setSubNotePanel_listMode() {
+  document.getElementById('subnote-list-view')?.classList.remove('hidden');
+  document.getElementById('subnote-detail-view')?.classList.add('hidden');
+  document.getElementById('subnote-edit-view')?.classList.add('hidden');
+  document.getElementById('subnote-add-form')?.classList.add('hidden');
+}
+
+function setSubNotePanel_readMode(note) {
+  _currentSubNotePanelNote = note;
+  document.getElementById('subnote-list-view')?.classList.add('hidden');
+  document.getElementById('subnote-detail-view')?.classList.remove('hidden');
+  document.getElementById('subnote-edit-view')?.classList.add('hidden');
+
+  const meta = document.getElementById('subnote-detail-meta');
+  const body = document.getElementById('subnote-detail-body');
+  if (meta) meta.textContent = `${(note.createdByName || '').split('@')[0] || '알 수 없음'} · ${formatNoteDate(note.createdAt)}`;
+  if (body) body.textContent = note.body || '';
+}
+
+function setSubNotePanel_editMode(note) {
+  document.getElementById('subnote-list-view')?.classList.add('hidden');
+  document.getElementById('subnote-detail-view')?.classList.add('hidden');
+  document.getElementById('subnote-edit-view')?.classList.remove('hidden');
+
+  const editTitle = document.getElementById('input-subnote-edit-title');
+  const editBody = document.getElementById('input-subnote-edit-body');
+  if (editTitle) editTitle.value = note.title || '';
+  if (editBody) editBody.value = note.body || '';
+}
+
+async function loadSubtaskNotes() {
+  if (!_currentNoteTaskId || !_currentSubTaskId) return;
+  const compositeId = `${_currentNoteTaskId}__sub_${_currentSubTaskId}`;
+  const container = document.getElementById('subnote-cards-container');
+  const empty = document.getElementById('subnote-list-empty');
+  if (!container) return;
+
+  container.innerHTML = '<p class="text-center text-xs text-slate-400 py-3">로드 중...</p>';
+  if (empty) empty.classList.add('hidden');
+
+  const notes = typeof window.db_fetchProgressNotes === 'function'
+    ? await window.db_fetchProgressNotes(compositeId)
+    : [];
+
+  container.innerHTML = '';
+  if (notes.length === 0) {
+    if (empty) empty.classList.remove('hidden');
+    return;
+  }
+
+  notes.forEach(note => {
+    const card = renderSubNoteCard(note);
+    container.appendChild(card);
+  });
+}
+
+function renderSubNoteCard(note) {
+  const title = note.title ? escapeHTML(note.title) : '<span class="text-slate-400 italic">(제목 없음)</span>';
+  const bodyPreview = escapeHTML((note.body || '').slice(0, 80)) + ((note.body || '').length > 80 ? '...' : '');
+  const dateStr = formatNoteDate(note.createdAt);
+  const author = escapeHTML((note.createdByName || '').split('@')[0] || '알 수 없음');
+
+  const card = document.createElement('div');
+  card.className = 'group flex items-start gap-2.5 rounded-xl border border-slate-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/40 p-3 cursor-pointer transition dark:bg-slate-900/50 dark:border-slate-800 dark:hover:border-indigo-700';
+  card.innerHTML = `
+    <span class="text-sm mt-0.5 shrink-0">📌</span>
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center justify-between gap-1 mb-0.5">
+        <span class="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">${title}</span>
+        <span class="text-[10px] text-slate-400 shrink-0">${dateStr}</span>
+      </div>
+      <p class="text-[11px] text-slate-500 leading-relaxed line-clamp-2">${bodyPreview || '<span class="italic">(내용 없음)</span>'}</p>
+      <span class="text-[10px] text-slate-400">${author}</span>
+    </div>
+  `;
+  card.addEventListener('click', () => setSubNotePanel_readMode(note));
+  return card;
+}
+
+function initSubTaskNotesEvents() {
+  document.getElementById('btn-close-subnote-panel')?.addEventListener('click', closeSubtaskNotesPanel);
+  document.getElementById('subnote-panel-backdrop')?.addEventListener('click', closeSubtaskNotesPanel);
+
+  // Add Note Button Toggle
+  document.getElementById('btn-add-subnote')?.addEventListener('click', () => {
+    const form = document.getElementById('subnote-add-form');
+    if (!form) return;
+    form.classList.toggle('hidden');
+    if (!form.classList.contains('hidden')) {
+      document.getElementById('input-subnote-title').value = '';
+      document.getElementById('input-subnote-body').value = '';
+      document.getElementById('input-subnote-body').focus();
+    }
+  });
+
+  // Cancel Add Note
+  document.getElementById('btn-cancel-subnote-add')?.addEventListener('click', () => {
+    document.getElementById('subnote-add-form')?.classList.add('hidden');
+  });
+
+  // Save Note
+  document.getElementById('btn-save-subnote')?.addEventListener('click', async () => {
+    if (!_currentNoteTaskId || !_currentSubTaskId) return;
+    const compositeId = `${_currentNoteTaskId}__sub_${_currentSubTaskId}`;
+    const titleEl = document.getElementById('input-subnote-title');
+    const bodyEl = document.getElementById('input-subnote-body');
+    const body = bodyEl?.value?.trim() || '';
+    if (!body) { showToast('메모 내용을 입력해 주세요.', false); return; }
+    const title = titleEl?.value?.trim() || '';
+
+    const saveBtn = document.getElementById('btn-save-subnote');
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '저장 중...'; }
+    const result = await window.db_addProgressNote?.(compositeId, { 
+      title: title || `[하위 업무] ${_currentSubTaskTitle}`, 
+      body 
+    });
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '저장'; }
+
+    if (result) {
+      showToast('하위 업무 메모가 저장되었습니다.');
+      document.getElementById('subnote-add-form')?.classList.add('hidden');
+      await loadSubtaskNotes();
+    } else {
+      showToast('저장 실패. 다시 시도해 주세요.', false);
+    }
+  });
+
+  // Back to list
+  document.getElementById('btn-back-to-subnote-list')?.addEventListener('click', setSubNotePanel_listMode);
+
+  // Edit Button
+  document.getElementById('btn-subnote-edit')?.addEventListener('click', () => {
+    if (_currentSubNotePanelNote) setSubNotePanel_editMode(_currentSubNotePanelNote);
+  });
+
+  // Cancel Edit
+  document.getElementById('btn-subnote-edit-cancel')?.addEventListener('click', () => {
+    if (_currentSubNotePanelNote) setSubNotePanel_readMode(_currentSubNotePanelNote);
+  });
+
+  // Save Edit
+  document.getElementById('btn-subnote-edit-save')?.addEventListener('click', async () => {
+    if (!_currentSubNotePanelNote) return;
+    const title = document.getElementById('input-subnote-edit-title')?.value?.trim() || '';
+    const body = document.getElementById('input-subnote-edit-body')?.value?.trim() || '';
+    if (!body) { showToast('메모 내용을 입력해 주세요.', false); return; }
+
+    await window.db_updateProgressNote?.(_currentSubNotePanelNote.id, { title, body });
+    _currentSubNotePanelNote = { ..._currentSubNotePanelNote, title, body };
+    setSubNotePanel_readMode(_currentSubNotePanelNote);
+    showToast('메모가 수정되었습니다.');
+    await loadSubtaskNotes();
+  });
+
+  // Delete Button
+  document.getElementById('btn-subnote-delete')?.addEventListener('click', async () => {
+    if (!_currentSubNotePanelNote || !_currentNoteTaskId || !_currentSubTaskId) return;
+    if (!confirm('이 메모를 삭제하시겠습니까?')) return;
+    const compositeId = `${_currentNoteTaskId}__sub_${_currentSubTaskId}`;
+    await window.db_deleteProgressNote?.(_currentSubNotePanelNote.id, compositeId);
+    setSubNotePanel_listMode();
+    showToast('메모가 삭제되었습니다.');
+    await loadSubtaskNotes();
+  });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    initProgressNotesEvents();
+    initSubTaskNotesEvents();
+  });
+} else {
+  initProgressNotesEvents();
+  initSubTaskNotesEvents();
+}
+
 
