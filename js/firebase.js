@@ -106,6 +106,17 @@ window.getActivityLogsCollection = function () {
     return null;
 };
 
+window.getProgressNotesCollection = function () {
+    if (isFirebaseAvailable && db) {
+        if (useEnvFirebase) {
+            return collection(db, 'artifacts', envAppId, 'public', 'data', 'progress_notes');
+        } else {
+            return collection(db, 'progress_notes');
+        }
+    }
+    return null;
+};
+
 // Execute checkAuth explicitly if it was waiting
 if (typeof checkAuth === 'function') {
     checkAuth();

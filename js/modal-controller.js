@@ -194,6 +194,21 @@ function openTaskModal(id = null) {
     }
   }
 
+  // Load and render Progress Notes
+  const notesSection = document.getElementById('task-progress-notes-section');
+  if (notesSection) {
+    if (id) {
+      notesSection.classList.remove('hidden');
+      loadProgressNotes(id);
+    } else {
+      notesSection.classList.add('hidden');
+      const list = document.getElementById('progress-notes-list');
+      if (list) list.innerHTML = '';
+      const addForm = document.getElementById('progress-note-add-form');
+      if (addForm) addForm.classList.add('hidden');
+    }
+  }
+
   document.getElementById('modal-task')?.classList.remove('hidden');
 }
 function closeModal() { document.getElementById('modal-task')?.classList.add('hidden'); }
@@ -535,5 +550,213 @@ if (document.readyState === 'loading') {
 }
 
 window.openKpiSettingsModal = openKpiSettingsModal;
+
+// ══════════════════════════════════════════════════════════
+// 진행 메모(Progress Notes) 컨트롤러
+// ══════════════════════════════════════════════════════════
+
+let _currentNotePanelNote = null; // 현재 패널에 표시 중인 메모 객체
+let _currentNoteTaskId = null;    // 현재 메모가 속한 태스크 ID
+
+// ─── 날짜 포맷 헬퍼 ───────────────────────────────────────
+function formatNoteDate(ts) {
+  if (!ts) return '';
+  const d = typeof ts.toDate === 'function' ? ts.toDate() : new Date(ts);
+  return d.toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+// ─── 메모 카드 렌더러 ─────────────────────────────────────
+function renderNoteCard(note) {
+  const title = note.title ? escapeHTML(note.title) : '<span class="text-slate-400 italic">(제목 없음)</span>';
+  const bodyPreview = escapeHTML((note.body || '').slice(0, 80)) + ((note.body || '').length > 80 ? '...' : '');
+  const dateStr = formatNoteDate(note.createdAt);
+  const author = escapeHTML((note.createdByName || '').split('@')[0] || '알 수 없음');
+
+  const card = document.createElement('div');
+  card.className = 'group flex items-start gap-2.5 rounded-xl border border-slate-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/40 p-3 cursor-pointer transition dark:bg-slate-900/50 dark:border-slate-800 dark:hover:border-indigo-700';
+  card.dataset.noteId = note.id;
+  card.innerHTML = `
+    <span class="text-sm mt-0.5 shrink-0">📌</span>
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center justify-between gap-1 mb-0.5">
+        <span class="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">${title}</span>
+        <span class="text-[10px] text-slate-400 shrink-0">${dateStr}</span>
+      </div>
+      <p class="text-[11px] text-slate-500 leading-relaxed line-clamp-2">${bodyPreview || '<span class="italic">(내용 없음)</span>'}</p>
+      <span class="text-[10px] text-slate-400">${author}</span>
+    </div>
+  `;
+  card.addEventListener('click', () => openNoteDetailPanel(note));
+  return card;
+}
+
+// ─── 메모 목록 로드 ───────────────────────────────────────
+async function loadProgressNotes(taskId) {
+  _currentNoteTaskId = taskId;
+  const list = document.getElementById('progress-notes-list');
+  const empty = document.getElementById('progress-notes-empty');
+  if (!list) return;
+
+  list.innerHTML = '<p class="text-center text-xs text-slate-400 py-3">로드 중...</p>';
+  if (empty) empty.classList.add('hidden');
+
+  const notes = typeof window.db_fetchProgressNotes === 'function'
+    ? await window.db_fetchProgressNotes(taskId)
+    : [];
+
+  list.innerHTML = '';
+  if (notes.length === 0) {
+    if (empty) empty.classList.remove('hidden');
+    return;
+  }
+  notes.forEach(note => list.appendChild(renderNoteCard(note)));
+}
+
+// ─── 슬라이드오버 패널 열기 ──────────────────────────────
+function openNoteDetailPanel(note) {
+  _currentNotePanelNote = note;
+  const panel = document.getElementById('note-detail-panel');
+  const backdrop = document.getElementById('note-panel-backdrop');
+  if (!panel) return;
+
+  // 읽기 모드로 초기화
+  setNotePanel_readMode(note);
+
+  panel.classList.remove('translate-x-full');
+  panel.classList.add('translate-x-0');
+  if (backdrop) backdrop.classList.remove('hidden');
+}
+
+function closeNoteDetailPanel() {
+  const panel = document.getElementById('note-detail-panel');
+  const backdrop = document.getElementById('note-panel-backdrop');
+  if (panel) { panel.classList.add('translate-x-full'); panel.classList.remove('translate-x-0'); }
+  if (backdrop) backdrop.classList.add('hidden');
+  _currentNotePanelNote = null;
+}
+
+function setNotePanel_readMode(note) {
+  const title = document.getElementById('note-panel-title');
+  const meta  = document.getElementById('note-panel-meta');
+  const body  = document.getElementById('note-panel-body');
+  const readMode = document.getElementById('note-panel-read-mode');
+  const editMode = document.getElementById('note-panel-edit-mode');
+  const readActions = document.getElementById('note-panel-read-actions');
+  const editActions = document.getElementById('note-panel-edit-actions');
+
+  if (title) title.textContent = note.title || '(제목 없음)';
+  if (meta)  meta.textContent  = `${(note.createdByName || '').split('@')[0] || '알 수 없음'} · ${formatNoteDate(note.createdAt)}`;
+  if (body)  body.textContent  = note.body || '';
+
+  readMode?.classList.remove('hidden');
+  editMode?.classList.add('hidden');
+  readActions?.classList.remove('hidden');
+  editActions?.classList.add('hidden');
+}
+
+function setNotePanel_editMode(note) {
+  const readMode   = document.getElementById('note-panel-read-mode');
+  const editMode   = document.getElementById('note-panel-edit-mode');
+  const readActions= document.getElementById('note-panel-read-actions');
+  const editActions= document.getElementById('note-panel-edit-actions');
+  const editTitle  = document.getElementById('input-note-edit-title');
+  const editBody   = document.getElementById('input-note-edit-body');
+
+  if (editTitle) editTitle.value = note.title || '';
+  if (editBody)  editBody.value  = note.body  || '';
+
+  readMode?.classList.add('hidden');
+  editMode?.classList.remove('hidden');
+  readActions?.classList.add('hidden');
+  editActions?.classList.remove('hidden');
+}
+
+// ─── 이벤트 바인딩 ───────────────────────────────────────
+function initProgressNotesEvents() {
+  // 메모 추가 버튼 (폼 토글)
+  document.getElementById('btn-add-progress-note')?.addEventListener('click', () => {
+    const form = document.getElementById('progress-note-add-form');
+    if (!form) return;
+    form.classList.toggle('hidden');
+    if (!form.classList.contains('hidden')) {
+      document.getElementById('input-note-title').value = '';
+      document.getElementById('input-note-body').value  = '';
+      document.getElementById('input-note-body').focus();
+    }
+  });
+
+  // 메모 추가 취소
+  document.getElementById('btn-cancel-note-add')?.addEventListener('click', () => {
+    document.getElementById('progress-note-add-form')?.classList.add('hidden');
+  });
+
+  // 메모 저장
+  document.getElementById('btn-save-progress-note')?.addEventListener('click', async () => {
+    if (!_currentNoteTaskId) return;
+    const titleEl = document.getElementById('input-note-title');
+    const bodyEl  = document.getElementById('input-note-body');
+    const body = bodyEl?.value?.trim() || '';
+    if (!body) { showToast('메모 내용을 입력해 주세요.', false); return; }
+    const title = titleEl?.value?.trim() || '';
+
+    const saveBtn = document.getElementById('btn-save-progress-note');
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '저장 중...'; }
+    const result = await window.db_addProgressNote?.(_currentNoteTaskId, { title, body });
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '저장'; }
+
+    if (result) {
+      showToast('진행 메모가 저장되었습니다.');
+      document.getElementById('progress-note-add-form')?.classList.add('hidden');
+      await loadProgressNotes(_currentNoteTaskId);
+    } else {
+      showToast('저장 실패. 다시 시도해 주세요.', false);
+    }
+  });
+
+  // 슬라이드오버 닫기
+  document.getElementById('btn-close-note-panel')?.addEventListener('click', closeNoteDetailPanel);
+  document.getElementById('note-panel-backdrop')?.addEventListener('click', closeNoteDetailPanel);
+
+  // 수정 버튼
+  document.getElementById('btn-note-edit')?.addEventListener('click', () => {
+    if (_currentNotePanelNote) setNotePanel_editMode(_currentNotePanelNote);
+  });
+
+  // 수정 취소
+  document.getElementById('btn-note-edit-cancel')?.addEventListener('click', () => {
+    if (_currentNotePanelNote) setNotePanel_readMode(_currentNotePanelNote);
+  });
+
+  // 수정 저장
+  document.getElementById('btn-note-edit-save')?.addEventListener('click', async () => {
+    if (!_currentNotePanelNote) return;
+    const title = document.getElementById('input-note-edit-title')?.value?.trim() || '';
+    const body  = document.getElementById('input-note-edit-body')?.value?.trim()  || '';
+    if (!body) { showToast('메모 내용을 입력해 주세요.', false); return; }
+
+    await window.db_updateProgressNote?.(_currentNotePanelNote.id, { title, body });
+    _currentNotePanelNote = { ..._currentNotePanelNote, title, body };
+    setNotePanel_readMode(_currentNotePanelNote);
+    showToast('메모가 수정되었습니다.');
+    if (_currentNoteTaskId) await loadProgressNotes(_currentNoteTaskId);
+  });
+
+  // 삭제 버튼
+  document.getElementById('btn-note-delete')?.addEventListener('click', async () => {
+    if (!_currentNotePanelNote || !_currentNoteTaskId) return;
+    if (!confirm('이 메모를 삭제하시겠습니까?')) return;
+    await window.db_deleteProgressNote?.(_currentNotePanelNote.id, _currentNoteTaskId);
+    closeNoteDetailPanel();
+    showToast('메모가 삭제되었습니다.');
+    await loadProgressNotes(_currentNoteTaskId);
+  });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initProgressNotesEvents);
+} else {
+  initProgressNotesEvents();
+}
+
 window.closeKpiSettingsModal = closeKpiSettingsModal;
 

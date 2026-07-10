@@ -295,3 +295,78 @@ async function db_fetchActivityLogs(taskId) {
 window.stopRealtimeListeners = stopRealtimeListeners;
 window.db_recordActivity = db_recordActivity;
 window.db_fetchActivityLogs = db_fetchActivityLogs;
+
+// ──────────────────────────────────────────────────────
+// 진행 메모(Progress Notes) CRUD
+// ──────────────────────────────────────────────────────
+
+async function db_addProgressNote(taskId, { title, body }) {
+  const coll = window.getProgressNotesCollection?.();
+  if (!coll || !canWriteToFirestore()) return null;
+  const id = 'note_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+  const payload = {
+    taskId,
+    trackerId: currentTrackerId,
+    title: title || '',
+    body: body || '',
+    createdBy: window.currentUser ? window.currentUser.uid : 'anonymous',
+    createdByName: window.currentUser ? (window.currentUser.displayName || window.currentUser.email) : 'anonymous',
+    createdAt: getServerTimestamp(),
+    updatedAt: getServerTimestamp()
+  };
+  try {
+    await window.fs.setDoc(window.fs.doc(coll, id), payload);
+    await db_recordActivity(taskId, 'NOTE_ADD', { title: title || '(제목 없음)' });
+    return { id, ...payload };
+  } catch (e) {
+    console.warn('db_addProgressNote 실패:', e);
+    return null;
+  }
+}
+
+async function db_fetchProgressNotes(taskId) {
+  const coll = window.getProgressNotesCollection?.();
+  if (!coll) return [];
+  try {
+    const q = window.fs.query(
+      coll,
+      window.fs.where('taskId', '==', taskId),
+      window.fs.orderBy('createdAt', 'desc')
+    );
+    const snap = await window.fs.getDocs(q);
+    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (e) {
+    console.error('db_fetchProgressNotes 실패:', e);
+    return [];
+  }
+}
+
+async function db_updateProgressNote(noteId, { title, body }) {
+  const coll = window.getProgressNotesCollection?.();
+  if (!coll || !canWriteToFirestore()) return;
+  try {
+    await window.fs.updateDoc(window.fs.doc(coll, noteId), {
+      title: title || '',
+      body: body || '',
+      updatedAt: getServerTimestamp()
+    });
+  } catch (e) {
+    console.warn('db_updateProgressNote 실패:', e);
+  }
+}
+
+async function db_deleteProgressNote(noteId, taskId) {
+  const coll = window.getProgressNotesCollection?.();
+  if (!coll || !canWriteToFirestore()) return;
+  try {
+    await window.fs.deleteDoc(window.fs.doc(coll, noteId));
+    if (taskId) await db_recordActivity(taskId, 'NOTE_DELETE', null);
+  } catch (e) {
+    console.warn('db_deleteProgressNote 실패:', e);
+  }
+}
+
+window.db_addProgressNote    = db_addProgressNote;
+window.db_fetchProgressNotes = db_fetchProgressNotes;
+window.db_updateProgressNote = db_updateProgressNote;
+window.db_deleteProgressNote = db_deleteProgressNote;
