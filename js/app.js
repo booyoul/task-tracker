@@ -954,13 +954,13 @@ function ensureUXToolbar() {
   if (!bar) {
     bar = document.createElement('div');
     bar.id = 'ux-toolbar';
-    bar.className = 'mt-2.5 border-t border-slate-100 pt-2.5';
+    bar.className = 'mb-3 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm';
     bar.innerHTML = `
       <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
         <div class="flex flex-wrap items-center gap-2">
           <span class="text-[11px] font-bold uppercase tracking-wide text-slate-400">Focus Mode</span>
-          <button type="button" id="btn-focus-risk" class="ux-focus-btn rounded-xl border px-3 py-1.5 text-xs font-bold transition">🚨 Risk Only</button>
-          <button type="button" id="btn-focus-high" class="ux-focus-btn rounded-xl border px-3 py-1.5 text-xs font-bold transition">🔥 High Priority</button>
+          <button type="button" id="btn-focus-risk" class="ux-focus-btn rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold transition hover:bg-slate-50">🚨 Risk Only</button>
+          <button type="button" id="btn-focus-high" class="ux-focus-btn rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold transition hover:bg-slate-50">🔥 High Priority</button>
         </div>
         <div id="ux-action-host" class="control-hub-actions flex flex-wrap items-center gap-2 lg:justify-end"></div>
       </div>
@@ -969,9 +969,9 @@ function ensureUXToolbar() {
         <button type="button" id="bulk-change-status" class="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50">상태 변경</button>
         <button type="button" id="bulk-change-assignee" class="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50">담당자 변경</button>
         <button type="button" id="bulk-change-due" class="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50">마감일 변경</button>
-        <button type="button" id="bulk-clear-selection" class="rounded-lg px-3 py-1.5 text-xs font-bold text-slate-500 hover:bg-white">선택 해제</button>
+        <button type="button" id="bulk-clear-selection" class="rounded-lg px-3 py-1.5 text-xs font-bold text-slate-505 hover:bg-white">선택 해제</button>
       </div>`;
-    filterBox.appendChild(bar);
+    filterBox.parentNode.insertBefore(bar, filterBox.nextSibling);
   }
   relocateHeaderActionsToToolbar();
   updateFocusButtons();
