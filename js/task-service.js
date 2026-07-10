@@ -280,11 +280,16 @@ async function db_fetchActivityLogs(taskId) {
   try {
     const q = window.fs.query(
       coll,
-      window.fs.where('taskId', '==', taskId),
-      window.fs.orderBy('timestamp', 'desc')
+      window.fs.where('taskId', '==', taskId)
     );
     const snap = await window.fs.getDocs(q);
-    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const logs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    logs.sort((a, b) => {
+      const timeA = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : new Date(a.timestamp || 0).getTime();
+      const timeB = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : new Date(b.timestamp || 0).getTime();
+      return timeB - timeA;
+    });
+    return logs;
   } catch (e) {
     console.error('db_fetchActivityLogs 실패:', e);
     return [];
@@ -330,11 +335,16 @@ async function db_fetchProgressNotes(taskId) {
   try {
     const q = window.fs.query(
       coll,
-      window.fs.where('taskId', '==', taskId),
-      window.fs.orderBy('createdAt', 'desc')
+      window.fs.where('taskId', '==', taskId)
     );
     const snap = await window.fs.getDocs(q);
-    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const notes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    notes.sort((a, b) => {
+      const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt || 0).getTime();
+      const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt || 0).getTime();
+      return timeB - timeA;
+    });
+    return notes;
   } catch (e) {
     console.error('db_fetchProgressNotes 실패:', e);
     return [];
@@ -376,11 +386,16 @@ async function db_fetchTrackerProgressNotes(trackerId) {
   try {
     const q = window.fs.query(
       coll,
-      window.fs.where('trackerId', '==', trackerId),
-      window.fs.orderBy('createdAt', 'desc')
+      window.fs.where('trackerId', '==', trackerId)
     );
     const snap = await window.fs.getDocs(q);
-    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const notes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    notes.sort((a, b) => {
+      const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt || 0).getTime();
+      const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt || 0).getTime();
+      return timeB - timeA;
+    });
+    return notes;
   } catch (e) {
     console.error('db_fetchTrackerProgressNotes 실패:', e);
     return [];
