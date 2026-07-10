@@ -278,35 +278,40 @@ async function handleTrackerSubmit(e) {
 }
 async function handleTaskSubmit(e) {
   e.preventDefault();
-  const id = document.getElementById('input-task-id').value;
-  const start = document.getElementById('input-task-start').value;
-  const due = document.getElementById('input-task-due').value;
-  if (start && due && start > due) return showToast('시작일은 마감일보다 늦을 수 없습니다.', false);
-  let order = 1;
-  if (!id) {
-    const scoped = tasks.filter(t => t.trackerId === currentTrackerId);
-    if (scoped.length) order = Math.max(...scoped.map(t => t.order ?? 0)) + 1;
+  try {
+    const id = document.getElementById('input-task-id').value;
+    const start = document.getElementById('input-task-start').value;
+    const due = document.getElementById('input-task-due').value;
+    if (start && due && start > due) return showToast('시작일은 마감일보다 늦을 수 없습니다.', false);
+    let order = 1;
+    if (!id) {
+      const scoped = tasks.filter(t => t.trackerId === currentTrackerId);
+      if (scoped.length) order = Math.max(...scoped.map(t => t.order ?? 0)) + 1;
+    }
+    const taskAssignees = Array.from(document.querySelectorAll('.task-assignee-checkbox:checked')).map(cb => cb.value);
+    const data = {
+      trackerId: currentTrackerId,
+      title: document.getElementById('input-task-title').value.trim(),
+      assignee: taskAssignees.length ? taskAssignees : ['미지정'],
+      startDate: start,
+      dueDate: due,
+      priority: document.getElementById('input-task-priority').value,
+      status: document.getElementById('input-task-status').value,
+      industry: document.getElementById('input-task-industry')?.value || 'AUTO',
+      taskType: document.getElementById('input-task-type')?.value || 'GENERAL',
+      notes: document.getElementById('input-task-notes').value.trim(),
+      subTasks: currentSubTasks.map(st => ({ ...st, status: normalizeStatus(st.status) }))
+    };
+    const validationMessage = validateTaskPayload(data);
+    if (validationMessage) return showToast(validationMessage, false);
+    if (!id) data.order = order;
+    if (id) { await db_updateTask(id, data); showToast('수정되었습니다.'); }
+    else { await db_addTask(data); showToast('추가되었습니다.'); }
+    closeModal();
+  } catch (err) {
+    console.error('handleTaskSubmit 에러 발생:', err);
+    showToast(`저장 실패: ${err.message || String(err)}`, false);
   }
-  const taskAssignees = Array.from(document.querySelectorAll('.task-assignee-checkbox:checked')).map(cb => cb.value);
-  const data = {
-    trackerId: currentTrackerId,
-    title: document.getElementById('input-task-title').value.trim(),
-    assignee: taskAssignees.length ? taskAssignees : ['미지정'],
-    startDate: start,
-    dueDate: due,
-    priority: document.getElementById('input-task-priority').value,
-    status: document.getElementById('input-task-status').value,
-    industry: document.getElementById('input-task-industry')?.value || 'AUTO',
-    taskType: document.getElementById('input-task-type')?.value || 'GENERAL',
-    notes: document.getElementById('input-task-notes').value.trim(),
-    subTasks: currentSubTasks.map(st => ({ ...st, status: normalizeStatus(st.status) }))
-  };
-  const validationMessage = validateTaskPayload(data);
-  if (validationMessage) return showToast(validationMessage, false);
-  if (!id) data.order = order;
-  if (id) { await db_updateTask(id, data); showToast('수정되었습니다.'); }
-  else { await db_addTask(data); showToast('추가되었습니다.'); }
-  closeModal();
 }
 
 // === Phase 8 fix: expose modal/controller functions for non-module script files ===
