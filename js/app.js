@@ -987,19 +987,7 @@ function renderActiveViews(){
     syncMobileFiltersFromDesktop();
   }
   
-  // If in CALENDAR mode, sync top month filter changes back to currentCalDate
-  if (window.currentViewMode === 'CALENDAR') {
-    const startVal = document.getElementById('filter-start-month')?.value;
-    if (startVal) {
-      const [yr, mn] = startVal.split('-').map(Number);
-      if (!isNaN(yr) && !isNaN(mn)) {
-        if (currentCalDate.getFullYear() !== yr || currentCalDate.getMonth() !== (mn - 1)) {
-          currentCalDate.setFullYear(yr);
-          currentCalDate.setMonth(mn - 1);
-        }
-      }
-    }
-  }
+
   if(typeof focusState==='undefined')window.focusState=focusState={riskOnly:false,mineOnly:false,highOnly:false};
   if(typeof UX_STORAGE_KEYS==='undefined')window.UX_STORAGE_KEYS=UX_STORAGE_KEYS={myAssignee:'flow_my_assignee_name'};
   updateFocusButtons();

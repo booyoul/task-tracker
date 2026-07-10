@@ -4,6 +4,52 @@ console.info('Smart Task Flow admin-approvals.js loaded');
 let unsubscribeAdminUsers = null;
 let unsubscribeApprovedUsers = null;
 let currentAdminTab = 'PENDING'; // PENDING 또는 ALL
+let currentPendingPage = 1;
+let currentAllPage = 1;
+const ITEMS_PER_PAGE = 5;
+
+// 페이지네이션 렌더러
+function renderPagination(containerId, totalItems, currentPage, onPageChange) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = '';
+    
+    const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+    if (totalPages <= 1) return;
+    
+    const wrapper = document.createElement('div');
+    wrapper.className = 'flex items-center justify-center gap-1.5 py-3';
+    
+    // 이전 버튼
+    const prevBtn = document.createElement('button');
+    prevBtn.type = 'button';
+    prevBtn.className = `px-2.5 py-1.5 rounded-xl border text-xs font-bold transition ${currentPage > 1 ? 'bg-white text-slate-700 hover:bg-slate-50 border-slate-200 shadow-sm' : 'bg-slate-50 text-slate-350 cursor-not-allowed border-slate-100'}`;
+    prevBtn.textContent = '이전';
+    prevBtn.disabled = currentPage === 1;
+    prevBtn.addEventListener('click', () => onPageChange(currentPage - 1));
+    wrapper.appendChild(prevBtn);
+    
+    // 페이지 번호들
+    for (let i = 1; i <= totalPages; i++) {
+        const pageBtn = document.createElement('button');
+        pageBtn.type = 'button';
+        pageBtn.className = `w-7 h-7 rounded-xl border text-xs font-bold transition ${i === currentPage ? 'bg-indigo-650 text-white border-indigo-650 shadow-sm' : 'bg-white text-slate-650 border-slate-200 hover:bg-slate-50'}`;
+        pageBtn.textContent = i;
+        pageBtn.addEventListener('click', () => onPageChange(i));
+        wrapper.appendChild(pageBtn);
+    }
+    
+    // 다음 버튼
+    const nextBtn = document.createElement('button');
+    nextBtn.type = 'button';
+    nextBtn.className = `px-2.5 py-1.5 rounded-xl border text-xs font-bold transition ${currentPage < totalPages ? 'bg-white text-slate-700 hover:bg-slate-50 border-slate-200 shadow-sm' : 'bg-slate-50 text-slate-350 cursor-not-allowed border-slate-100'}`;
+    nextBtn.textContent = '다음';
+    nextBtn.disabled = currentPage === totalPages;
+    nextBtn.addEventListener('click', () => onPageChange(currentPage + 1));
+    wrapper.appendChild(nextBtn);
+    
+    container.appendChild(wrapper);
+}
 
 // 1. 관리자 전용 사용자 구독 및 렌더링
 function listenUsersForAdmin() {
@@ -33,8 +79,21 @@ function renderAdminDashboard(users) {
     const countEl = document.getElementById('admin-pending-count');
     if (countEl) countEl.textContent = pendingUsers.length;
 
-    // 1) 승인 대기자 렌더링
+    // 안전 범위를 초과하는 페이지가 세팅되지 않도록 가드
+    const maxPendingPage = Math.max(1, Math.ceil(pendingUsers.length / ITEMS_PER_PAGE));
+    if (currentPendingPage > maxPendingPage) currentPendingPage = maxPendingPage;
+
+    const maxAllPage = Math.max(1, Math.ceil(users.length / ITEMS_PER_PAGE));
+    if (currentAllPage > maxAllPage) currentAllPage = maxAllPage;
+
+    // 페이지네이션 슬라이싱
+    const slicedPending = pendingUsers.slice((currentPendingPage - 1) * ITEMS_PER_PAGE, currentPendingPage * ITEMS_PER_PAGE);
+    const slicedAll = users.slice((currentAllPage - 1) * ITEMS_PER_PAGE, currentAllPage * ITEMS_PER_PAGE);
+
+    // 1) 승인 대기자 렌더링 (데스크톱 테이블 & 모바일 카드)
     const pendingTbody = document.getElementById('admin-pending-tbody');
+    const pendingCards = document.getElementById('admin-pending-cards');
+    
     if (pendingTbody) {
         if (pendingUsers.length === 0) {
             pendingTbody.innerHTML = `
@@ -42,8 +101,16 @@ function renderAdminDashboard(users) {
                     <td colspan="4" class="px-4 py-8 text-center text-slate-400 font-medium">대기 중인 가입 신청자가 없습니다.</td>
                 </tr>
             `;
+            if (pendingCards) {
+                pendingCards.innerHTML = `
+                    <div class="text-center py-8 text-slate-400 text-xs font-semibold bg-slate-50/50 rounded-2xl border border-dashed border-slate-100">
+                        대기 중인 가입 신청자가 없습니다.
+                    </div>
+                `;
+            }
         } else {
-            pendingTbody.innerHTML = pendingUsers.map(u => {
+            // 데스크톱 테이블 렌더링
+            pendingTbody.innerHTML = slicedPending.map(u => {
                 const dateStr = u.createdAt && typeof u.createdAt.toDate === 'function' 
                     ? u.createdAt.toDate().toLocaleDateString('ko-KR') 
                     : '미정';
@@ -68,11 +135,43 @@ function renderAdminDashboard(users) {
                 `;
             }).join('');
 
+            // 모바일 카드 렌더링 (가로 스크롤 제거)
+            if (pendingCards) {
+                pendingCards.innerHTML = slicedPending.map(u => {
+                    const dateStr = u.createdAt && typeof u.createdAt.toDate === 'function' 
+                        ? u.createdAt.toDate().toLocaleDateString('ko-KR') 
+                        : '미정';
+                    return `
+                        <div class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm hover:shadow-md transition">
+                            <div class="flex items-center justify-between border-b border-slate-100 pb-2 mb-3">
+                                <div class="flex items-center gap-1.5 min-w-0">
+                                    <span class="font-bold text-slate-800 truncate admin-name-display" data-uid="${escapeHTML(u.uid)}">${escapeHTML(u.displayName)}</span>
+                                    <button onclick="window.editDisplayName('${escapeHTML(u.uid)}', this)" class="text-indigo-400 hover:text-indigo-650 transition shrink-0">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg>
+                                    </button>
+                                </div>
+                                <span class="px-2 py-0.5 text-[10px] bg-amber-50 text-amber-700 border border-amber-100 rounded-md font-black shadow-sm shrink-0">승인 대기</span>
+                            </div>
+                            <div class="space-y-1.5 text-xs mb-4">
+                                <div class="flex justify-between items-center"><span class="text-slate-400">이메일</span><span class="text-slate-650 font-mono">${escapeHTML(u.email)}</span></div>
+                                <div class="flex justify-between items-center"><span class="text-slate-400">신청일</span><span class="text-slate-500">${dateStr}</span></div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="window.approveUser('${u.uid}')" class="flex-1 py-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-sm transition">승인</button>
+                                <button onclick="window.rejectUser('${u.uid}')" class="flex-1 py-2 text-xs bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-bold shadow-sm transition">거부</button>
+                                <button onclick="window.deleteUser('${u.uid}', '${escapeHTML(u.displayName)}')" class="flex-1 py-2 text-xs bg-slate-500 hover:bg-slate-600 text-white rounded-xl font-bold shadow-sm transition">삭제</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
         }
     }
 
-    // 2) 전체 사용자 렌더링
+    // 2) 전체 사용자 렌더링 (데스크톱 테이블 & 모바일 카드)
     const allTbody = document.getElementById('admin-all-tbody');
+    const allCards = document.getElementById('admin-all-cards');
+    
     if (allTbody) {
         if (users.length === 0) {
             allTbody.innerHTML = `
@@ -80,8 +179,16 @@ function renderAdminDashboard(users) {
                     <td colspan="5" class="px-4 py-8 text-center text-slate-400 font-medium">가입된 사용자가 없습니다.</td>
                 </tr>
             `;
+            if (allCards) {
+                allCards.innerHTML = `
+                    <div class="text-center py-8 text-slate-400 text-xs font-semibold bg-slate-50/50 rounded-2xl border border-dashed border-slate-100">
+                        가입된 사용자가 없습니다.
+                    </div>
+                `;
+            }
         } else {
-            allTbody.innerHTML = users.map(u => {
+            // 데스크톱 테이블 렌더링
+            allTbody.innerHTML = slicedAll.map(u => {
                 const dateStr = u.createdAt && typeof u.createdAt.toDate === 'function' 
                     ? u.createdAt.toDate().toLocaleDateString('ko-KR') 
                     : '미정';
@@ -146,8 +253,88 @@ function renderAdminDashboard(users) {
                 `;
             }).join('');
 
+            // 모바일 카드 렌더링 (가로 스크롤 제거)
+            if (allCards) {
+                allCards.innerHTML = slicedAll.map(u => {
+                    const dateStr = u.createdAt && typeof u.createdAt.toDate === 'function' 
+                        ? u.createdAt.toDate().toLocaleDateString('ko-KR') 
+                        : '미정';
+                    
+                    let statusBadge = '';
+                    let actionButtons = '';
+                    
+                    const loggedInUserUid = window.currentUser?.uid;
+                    const isSelf = u.uid === loggedInUserUid;
+                    
+                    if (u.status === 'approved') {
+                        statusBadge = `<span class="px-2 py-0.5 text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-md font-black shadow-sm shrink-0">승인됨</span>`;
+                        if (!isSelf) {
+                            actionButtons = `<button onclick="window.rejectUser('${u.uid}')" class="flex-1 py-1.5 text-xs bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-150 rounded-lg font-semibold transition">거부 처리</button>`;
+                        }
+                    } else if (u.status === 'pending') {
+                        statusBadge = `<span class="px-2 py-0.5 text-[10px] bg-amber-50 text-amber-700 border border-amber-100 rounded-md font-black shadow-sm shrink-0">대기 중</span>`;
+                        actionButtons = `
+                            <button onclick="window.approveUser('${u.uid}')" class="flex-1 py-1.5 text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-150 rounded-lg font-semibold transition">승인</button>
+                            <button onclick="window.rejectUser('${u.uid}')" class="flex-1 py-1.5 text-xs bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-150 rounded-lg font-semibold transition">거부</button>
+                        `;
+                    } else if (u.status === 'rejected') {
+                        statusBadge = `<span class="px-2 py-0.5 text-[10px] bg-rose-50 text-rose-700 border border-rose-100 rounded-md font-black shadow-sm shrink-0">거부됨</span>`;
+                        actionButtons = `<button onclick="window.approveUser('${u.uid}')" class="flex-1 py-1.5 text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-150 rounded-lg font-semibold transition">다시 승인</button>`;
+                    }
+                    
+                    if (!isSelf) {
+                        actionButtons += `<button onclick="window.deleteUser('${u.uid}', '${escapeHTML(u.displayName)}')" class="flex-1 py-1.5 text-xs bg-slate-100 hover:bg-slate-200 text-slate-650 border border-slate-200 rounded-lg font-semibold transition">삭제</button>`;
+                    }
+
+                    const isAdminRole = u.role === 'admin';
+                    const isMasterAdmin = window.isMasterAdmin(u.email);
+
+                    let roleCell = '';
+                    if (isMasterAdmin) {
+                        roleCell = `<span class="px-2 py-0.5 text-[10px] bg-violet-50 text-violet-750 border border-violet-200 rounded-md font-black shadow-sm">최고 관리자</span>`;
+                    } else {
+                        roleCell = `
+                            <button onclick="window.setAdminRole('${escapeHTML(u.uid)}', ${!isAdminRole})"
+                                class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg border transition ${isAdminRole ? 'bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'}">
+                                <span class="w-1.5 h-1.5 rounded-full ${isAdminRole ? 'bg-violet-500' : 'bg-slate-300'}"></span>
+                                ${isAdminRole ? '관리자 권한' : '일반 권한'}
+                            </button>`;
+                    }
+
+                    return `
+                        <div class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm hover:shadow-md transition">
+                            <div class="flex items-center justify-between border-b border-slate-100 pb-2 mb-3">
+                                <div class="flex items-center gap-1.5 min-w-0">
+                                    <span class="font-bold text-slate-800 truncate admin-name-display" data-uid="${escapeHTML(u.uid)}">${escapeHTML(u.displayName)}</span>
+                                    <button onclick="window.editDisplayName('${escapeHTML(u.uid)}', this)" class="text-indigo-400 hover:text-indigo-650 transition shrink-0">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg>
+                                    </button>
+                                </div>
+                                ${statusBadge}
+                            </div>
+                            <div class="space-y-1.5 text-xs mb-4">
+                                <div class="flex justify-between items-center"><span class="text-slate-400">이메일</span><span class="text-slate-650 font-mono">${escapeHTML(u.email)}</span></div>
+                                <div class="flex justify-between items-center"><span class="text-slate-400">가입일</span><span class="text-slate-500">${dateStr}</span></div>
+                                <div class="flex justify-between items-center"><span class="text-slate-400">권한</span><span>${roleCell}</span></div>
+                            </div>
+                            ${actionButtons ? `<div class="flex gap-2">${actionButtons}</div>` : ''}
+                        </div>
+                    `;
+                }).join('');
+            }
         }
     }
+
+    // 3) 페이지네이션 컨트롤러 렌더링 호출
+    renderPagination('admin-pending-pagination', pendingUsers.length, currentPendingPage, (newPage) => {
+        currentPendingPage = newPage;
+        renderAdminDashboard(users);
+    });
+
+    renderPagination('admin-all-pagination', users.length, currentAllPage, (newPage) => {
+        currentAllPage = newPage;
+        renderAdminDashboard(users);
+    });
 }
 
 // 2. 가입 상태 업데이트 처리

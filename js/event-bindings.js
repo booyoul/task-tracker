@@ -51,6 +51,16 @@ function initEventBindings(){
   document.querySelectorAll('.filter-card').forEach(card=>card.addEventListener('click',()=>{const status=card.getAttribute('data-status');const el=document.getElementById('filter-status');if(el)el.value=status;renderActiveViews();}));
   ['filter-search','filter-start-month','filter-end-month'].forEach(id=>document.getElementById(id)?.addEventListener('input',renderActiveViews));
   ['filter-status','filter-priority','filter-assignee','filter-start-month','filter-end-month'].forEach(id=>document.getElementById(id)?.addEventListener('change',renderActiveViews));
+  document.getElementById('filter-start-month')?.addEventListener('change', (e) => {
+    const val = e.target.value;
+    if (val) {
+      const [yr, mn] = val.split('-').map(Number);
+      if (!isNaN(yr) && !isNaN(mn)) {
+        currentCalDate.setFullYear(yr);
+        currentCalDate.setMonth(mn - 1);
+      }
+    }
+  });
   document.getElementById('btn-reset-filters')?.addEventListener('click',resetFilters);
   document.getElementById('checkbox-select-all')?.addEventListener('change',toggleSelectAll);
   document.getElementById('task-table-body')?.addEventListener('click',handleTableClick);
@@ -238,7 +248,7 @@ function initEventBindings(){
 
   let lastIsMobile = (window.matchMedia ? window.matchMedia('(max-width: 1023px)').matches : window.innerWidth < 1024);
   window.addEventListener('resize',()=>{
-    setViewVisibility(currentViewMode==='CALENDAR'?'CALENDAR':currentViewMode==='KANBAN'?'KANBAN':'TABLE');
+    setViewVisibility(currentViewMode);
     const isMobile = (window.matchMedia ? window.matchMedia('(max-width: 1023px)').matches : window.innerWidth < 1024);
     if (isMobile !== lastIsMobile) {
       lastIsMobile = isMobile;

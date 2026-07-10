@@ -634,7 +634,8 @@
 
                 <!-- 탭 1: 승인 대기자 목록 -->
                 <div id="admin-panel-pending" class="block">
-                    <div class="overflow-x-auto">
+                    <!-- 데스크톱용 테이블 -->
+                    <div class="hidden lg:block overflow-x-auto">
                         <table class="w-full min-w-[600px] divide-y divide-slate-100 text-left">
                             <thead class="bg-slate-50 text-xs font-bold text-slate-500 uppercase tracking-wider">
                                 <tr>
@@ -651,11 +652,16 @@
                             </tbody>
                         </table>
                     </div>
+                    <!-- 모바일용 카드 리스트 -->
+                    <div class="block lg:hidden space-y-3" id="admin-pending-cards"></div>
+                    <!-- 페이지네이션 컨트롤러 -->
+                    <div id="admin-pending-pagination" class="mt-4 flex justify-center"></div>
                 </div>
 
                 <!-- 탭 2: 전체 가입자 목록 -->
                 <div id="admin-panel-all" class="hidden">
-                    <div class="overflow-x-auto">
+                    <!-- 데스크톱용 테이블 -->
+                    <div class="hidden lg:block overflow-x-auto">
                         <table class="w-full min-w-[600px] divide-y divide-slate-100 text-left">
                             <thead class="bg-slate-50 text-xs font-bold text-slate-500 uppercase tracking-wider">
                                 <tr>
@@ -674,6 +680,10 @@
                             </tbody>
                         </table>
                     </div>
+                    <!-- 모바일용 카드 리스트 -->
+                    <div class="block lg:hidden space-y-3" id="admin-all-cards"></div>
+                    <!-- 페이지네이션 컨트롤러 -->
+                    <div id="admin-all-pagination" class="mt-4 flex justify-center"></div>
                 </div>
             </main>
 
@@ -1367,19 +1377,19 @@
     <script defer src="./js/date-risk-utils.js?v=20260629-v2"></script>
     <script defer src="./js/schema-service.js?v=20260628-v13"></script>
     <script defer src="./js/calendar-utils.js?v=20260702-v1"></script>
-    <script defer src="./js/calendar-day-renderer.js?v=20260711-v1"></script>
-    <script defer src="./js/calendar-month-renderer.js?v=20260711-v1"></script>
-    <script defer src="./js/calendar-summary-renderer.js?v=20260711-v1"></script>
-    <script defer src="./js/calendar-mobile-renderer.js?v=20260711-v1"></script>
-    <script defer src="./js/table-mobile-renderer.js?v=20260711-v1"></script>
-    <script defer src="./js/kanban-renderer.js?v=20260711-v1"></script>
-    <script defer src="./js/modal-controller.js?v=20260711-v1"></script>
-    <script defer src="./js/admin-approvals.js?v=20260711-v1"></script>
-    <script defer src="./js/event-bindings.js?v=20260711-v1"></script>
-    <script defer src="./js/bootstrap-service.js?v=20260711-v1"></script>
-    <script defer src="./js/app.js?v=20260711-v1"></script>
-    <script defer src="./js/task-service.js?v=20260711-v1"></script>
-    <script defer src="./js/export-service.js?v=20260711-v1"></script>
+    <script defer src="./js/calendar-day-renderer.js?v=20260711-v2"></script>
+    <script defer src="./js/calendar-month-renderer.js?v=20260711-v2"></script>
+    <script defer src="./js/calendar-summary-renderer.js?v=20260711-v2"></script>
+    <script defer src="./js/calendar-mobile-renderer.js?v=20260711-v2"></script>
+    <script defer src="./js/table-mobile-renderer.js?v=20260711-v2"></script>
+    <script defer src="./js/kanban-renderer.js?v=20260711-v2"></script>
+    <script defer src="./js/modal-controller.js?v=20260711-v2"></script>
+    <script defer src="./js/admin-approvals.js?v=20260711-v2"></script>
+    <script defer src="./js/event-bindings.js?v=20260711-v2"></script>
+    <script defer src="./js/bootstrap-service.js?v=20260711-v2"></script>
+    <script defer src="./js/app.js?v=20260711-v2"></script>
+    <script defer src="./js/task-service.js?v=20260711-v2"></script>
+    <script defer src="./js/export-service.js?v=20260711-v2"></script>
 </body>
 
 </html>
