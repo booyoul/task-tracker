@@ -927,9 +927,10 @@
                             </div>
 
                             <!-- 진행 메모(Progress Notes) 섹션 (기존 태스크 수정 시에만 로드) -->
-                            <div id="task-progress-notes-section" class="border-t border-slate-100 pt-3 hidden">
+                            <!-- 통합 진행 상황 및 활동 이력 섹션 (기존 태스크 수정 시에만 로드) -->
+                            <div id="task-history-section" class="border-t border-slate-100 pt-3 hidden">
                                 <div class="flex items-center justify-between mb-2">
-                                    <label class="block text-xs font-semibold text-slate-500">📌 진행 메모</label>
+                                    <label class="block text-xs font-semibold text-slate-500">📌 진행 상황 및 활동 이력</label>
                                     <button type="button" id="btn-add-progress-note"
                                         class="flex items-center gap-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-2.5 py-1 text-xs font-semibold transition">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
@@ -938,6 +939,12 @@
                                 </div>
                                 <!-- 인라인 메모 추가 폼 (토글) -->
                                 <div id="progress-note-add-form" class="hidden mb-3 rounded-xl border border-indigo-200 bg-indigo-50/60 p-3 space-y-2">
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-indigo-700 dark:text-indigo-400 mb-1">기록 대상 (업무 선택) *</label>
+                                        <select id="input-note-scope" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100">
+                                            <!-- JS에서 동적으로 채움 -->
+                                        </select>
+                                    </div>
                                     <input type="text" id="input-note-title" maxlength="80" placeholder="제목 (선택사항)"
                                         class="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs outline-none transition focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100">
                                     <textarea id="input-note-body" rows="3" maxlength="2000" placeholder="진행 상황, 결과, 이슈 등을 자유롭게 기록하세요."
@@ -949,18 +956,14 @@
                                             class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 transition">저장</button>
                                     </div>
                                 </div>
-                                <!-- 메모 카드 목록 -->
-                                <div id="progress-notes-list" class="space-y-2 max-h-48 overflow-y-auto pr-1">
-                                    <!-- JS에서 동적으로 메모 카드 생성 -->
+                                <!-- 통합 활동 피드 목록 -->
+                                <div id="task-history-feed" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+                                    <!-- JS에서 동적으로 메모 및 활동 이력 카드 생성 -->
                                 </div>
-                                <p id="progress-notes-empty" class="hidden text-center text-xs text-slate-400 py-3">아직 진행 메모가 없습니다.</p>
-                            </div>
-
-                            <!-- 변경 이력 타임라인 영역 (기존 태스크 수정 시에만 로드) -->
-                            <div id="task-activity-log-section" class="border-t border-slate-100 pt-3 hidden">
-                                <label class="block text-xs font-semibold text-slate-500 mb-2">변경 이력 (Timeline)</label>
-                                <div id="task-activity-log-container" class="max-h-40 overflow-y-auto space-y-2.5 text-xs text-slate-600 bg-slate-50 rounded-xl p-3 border border-slate-200/50 dark:bg-slate-900/40 dark:border-slate-800">
-                                    <!-- JS에서 변경 이력 동적 추가 -->
+                                <p id="task-history-empty" class="hidden text-center text-xs text-slate-400 py-3">아직 등록된 활동이나 메모가 없습니다.</p>
+                                <!-- 페이지네이션 컨트롤 -->
+                                <div id="task-history-pagination" class="flex items-center justify-center gap-1 mt-3">
+                                    <!-- JS에서 페이지 버튼 동적 렌더링 -->
                                 </div>
                             </div>
 
@@ -1180,99 +1183,7 @@
     <!-- Slide-over 백드롭 -->
     <div id="note-panel-backdrop" class="fixed inset-0 z-[59] hidden bg-black/30"></div>
 
-    <!-- 6. 하위 업무 진행 메모 Slide-over 패널 -->
-    <div id="subtask-notes-panel"
-        class="fixed inset-y-0 right-0 z-[60] w-full max-w-md transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col bg-white shadow-2xl dark:bg-slate-900 dark:border-l dark:border-slate-800"
-        role="dialog" aria-modal="true">
-        <!-- 패널 헤더 -->
-        <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
-            <div class="flex items-center gap-2 min-w-0">
-                <span class="text-base" id="subnote-header-icon">📋</span>
-                <h3 id="subnote-panel-header-title" class="text-sm font-bold text-slate-900 dark:text-white truncate">하위 업무 메모</h3>
-            </div>
-            <button id="btn-close-subnote-panel" type="button"
-                class="ml-2 shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition dark:hover:bg-slate-800">
-                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
-            </button>
-        </div>
 
-        <!-- 1. 리스트 모드 뷰 -->
-        <div id="subnote-list-view" class="flex-grow flex flex-col min-h-0 overflow-hidden">
-            <!-- 메모 추가 헤더/버튼 -->
-            <div class="px-5 py-3 border-b border-slate-50 dark:border-slate-805 shrink-0 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
-                <span class="text-xs font-semibold text-slate-500">메모 목록</span>
-                <button type="button" id="btn-add-subnote"
-                    class="flex items-center gap-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-2.5 py-1 text-xs font-semibold transition">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
-                    메모 추가
-                </button>
-            </div>
-            <!-- 인라인 추가 폼 -->
-            <div id="subnote-add-form" class="hidden px-5 py-3 border-b border-slate-100 dark:border-slate-800 bg-indigo-50/40 dark:bg-indigo-950/20 space-y-2 shrink-0">
-                <input type="text" id="input-subnote-title" maxlength="80" placeholder="제목 (선택사항)"
-                    class="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs outline-none transition focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
-                <textarea id="input-subnote-body" rows="3" maxlength="2000" placeholder="진행 상황, 결과, 이슈 등을 자유롭게 기록하세요."
-                    class="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs outline-none transition focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white resize-none"></textarea>
-                <div class="flex items-center justify-end gap-2">
-                    <button type="button" id="btn-cancel-subnote-add"
-                        class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-50 transition dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">취소</button>
-                    <button type="button" id="btn-save-subnote"
-                        class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 transition">저장</button>
-                </div>
-            </div>
-            <!-- 리스트 스크롤 영역 -->
-            <div class="flex-1 overflow-y-auto px-5 py-4 space-y-2" id="subnote-cards-container">
-                <!-- 동적 렌더링 -->
-            </div>
-            <p id="subnote-list-empty" class="hidden text-center text-xs text-slate-400 py-8">등록된 진행 메모가 없습니다.</p>
-        </div>
-
-        <!-- 2. 상세 정보 뷰 (읽기 모드) -->
-        <div id="subnote-detail-view" class="hidden flex-grow flex flex-col min-h-0">
-            <div class="px-5 py-2 border-b border-slate-50 dark:border-slate-800/50 shrink-0 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between">
-                <button type="button" id="btn-back-to-subnote-list" class="flex items-center gap-1 text-xs text-indigo-600 font-bold hover:text-indigo-800 transition">
-                    ← 목록으로 돌아가기
-                </button>
-                <p id="subnote-detail-meta" class="text-[10px] text-slate-400 font-semibold"></p>
-            </div>
-            <div class="flex-1 overflow-y-auto px-5 py-4">
-                <p id="subnote-detail-body" class="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed"></p>
-            </div>
-            <!-- 상세 뷰 하단 액션 버튼 -->
-            <div class="px-5 py-4 border-t border-slate-100 dark:border-slate-800 shrink-0 flex items-center gap-2">
-                <button id="btn-subnote-edit" type="button"
-                    class="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                    수정
-                </button>
-                <button id="btn-subnote-delete" type="button"
-                    class="flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-100 transition">
-                    삭제
-                </button>
-            </div>
-        </div>
-
-        <!-- 3. 수정 모드 뷰 -->
-        <div id="subnote-edit-view" class="hidden flex-grow flex flex-col min-h-0">
-            <div class="px-5 py-2 border-b border-slate-50 dark:border-slate-800/50 shrink-0 bg-slate-50/50 dark:bg-slate-900/50">
-                <span class="text-xs font-semibold text-slate-500">메모 수정</span>
-            </div>
-            <div class="flex-1 overflow-y-auto px-5 py-4 space-y-3">
-                <input type="text" id="input-subnote-edit-title" maxlength="80" placeholder="제목 (선택사항)"
-                    class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
-                <textarea id="input-subnote-edit-body" rows="10" maxlength="2000" placeholder="메모 내용"
-                    class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white resize-none"></textarea>
-            </div>
-            <!-- 수정 뷰 하단 액션 버튼 -->
-            <div class="px-5 py-4 border-t border-slate-100 dark:border-slate-800 shrink-0 flex items-center gap-2">
-                <button id="btn-subnote-edit-cancel" type="button"
-                    class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">취소</button>
-                <button id="btn-subnote-edit-save" type="button"
-                    class="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700 transition">저장하기</button>
-            </div>
-        </div>
-    </div>
-    <!-- Slide-over 백드롭 -->
-    <div id="subnote-panel-backdrop" class="fixed inset-0 z-[59] hidden bg-black/30"></div>
 
     <!-- 4. 토스트 알림 -->
     <div id="toast"

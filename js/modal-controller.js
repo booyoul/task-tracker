@@ -130,98 +130,23 @@ function openTaskModal(id = null) {
   }
   renderModalSubTasks();
 
-  // Load and render Task Activity Logs (Timeline)
-  const activitySection = document.getElementById('task-activity-log-section');
-  const activityContainer = document.getElementById('task-activity-log-container');
-  if (activitySection) {
+  // Load and render Unified Task History (Progress Notes & Activity Logs)
+  const historySection = document.getElementById('task-history-section');
+  if (historySection) {
     if (id) {
-      activitySection.classList.remove('hidden');
-      if (activityContainer) {
-        activityContainer.innerHTML = '<div class="text-slate-400 text-center py-2">변경 이력을 로드하는 중...</div>';
-        if (typeof window.db_fetchActivityLogs === 'function') {
-          window.db_fetchActivityLogs(id).then(logs => {
-            if (!logs || logs.length === 0) {
-              activityContainer.innerHTML = '<div class="text-slate-400 text-center py-2">변경 이력이 없습니다.</div>';
-              return;
-            }
-            activityContainer.innerHTML = logs.map(log => {
-              const dateStr = log.timestamp && typeof log.timestamp.toDate === 'function' 
-                ? log.timestamp.toDate().toLocaleString('ko-KR')
-                : '방금 전';
-              
-              let actionText = '';
-              if (log.action === 'CREATE') {
-                actionText = '업무를 <strong>생성</strong>했습니다.';
-              } else if (log.action === 'DELETE') {
-                actionText = '업무를 <strong>삭제</strong>했습니다.';
-              } else if (log.action === 'UPDATE' && log.changes) {
-                const changes = log.changes;
-                const changeDetails = [];
-                Object.keys(changes).forEach(field => {
-                  let fieldName = field;
-                  if (field === 'title') fieldName = '업무명';
-                  else if (field === 'status') fieldName = '상태';
-                  else if (field === 'priority') fieldName = '우선순위';
-                  else if (field === 'assignee') fieldName = '담당자';
-                  else if (field === 'startDate') fieldName = '시작일';
-                  else if (field === 'dueDate') fieldName = '마감일';
-                  else if (field === 'notes') fieldName = '메모';
-                  
-                  const oldVal = changes[field].old;
-                  const newVal = changes[field].new;
-                  
-                  const translateVal = (val) => {
-                    if (val === 'PENDING') return '진행 대기';
-                    if (val === 'PROGRESS') return '진행 중';
-                    if (val === 'COMPLETED') return '완료됨';
-                    return val;
-                  };
-                  
-                  const oldLabel = translateVal(oldVal);
-                  const newLabel = translateVal(newVal);
-                  changeDetails.push(`<strong>${fieldName}</strong>을(를) '${oldLabel}'에서 '${newLabel}'(으)로 변경`);
-                });
-                actionText = changeDetails.join(', ') + '했습니다.';
-              }
-              
-              return `
-                <div class="flex items-start gap-2 border-b border-slate-100 pb-2 last:border-0 last:pb-0 dark:border-slate-800">
-                  <span class="text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded font-bold shrink-0 dark:bg-slate-800 dark:text-slate-300">
-                    👤 ${escapeHTML(log.changedByName?.split('@')[0] || '알 수 없음')}
-                  </span>
-                  <div class="flex-1 min-w-0">
-                    <p class="leading-relaxed text-slate-750 dark:text-slate-200">${actionText}</p>
-                    <span class="text-[9px] text-slate-400 font-semibold block mt-0.5">${dateStr}</span>
-                  </div>
-                </div>
-              `;
-            }).join('');
-          }).catch(err => {
-            console.error(err);
-            activityContainer.innerHTML = '<div class="text-rose-500 text-center py-2">변경 이력을 로드하지 못했습니다.</div>';
-          });
-        }
-      }
+      historySection.classList.remove('hidden');
+      loadTaskHistory(id, 1);
     } else {
-      activitySection.classList.add('hidden');
-      if (activityContainer) activityContainer.innerHTML = '';
-    }
-  }
-
-  // Load and render Progress Notes
-  const notesSection = document.getElementById('task-progress-notes-section');
-  if (notesSection) {
-    if (id) {
-      notesSection.classList.remove('hidden');
-      loadProgressNotes(id);
-    } else {
-      notesSection.classList.add('hidden');
-      const list = document.getElementById('progress-notes-list');
-      if (list) list.innerHTML = '';
+      historySection.classList.add('hidden');
+      const feed = document.getElementById('task-history-feed');
+      if (feed) feed.innerHTML = '';
+      const pagination = document.getElementById('task-history-pagination');
+      if (pagination) pagination.innerHTML = '';
       const addForm = document.getElementById('progress-note-add-form');
       if (addForm) addForm.classList.add('hidden');
     }
   }
+
 
   document.getElementById('modal-task')?.classList.remove('hidden');
 }
@@ -325,6 +250,30 @@ window.closeTrackerModal = closeTrackerModal;
 window.handleTrackerSubmit = handleTrackerSubmit;
 window.handleTaskSubmit = handleTaskSubmit;
 window.addSubTaskToModalList = addSubTaskToModalList;
+
+function populateNoteScopeDropdown() {
+  const scopeSelect = document.getElementById('input-note-scope');
+  if (!scopeSelect) return;
+  scopeSelect.innerHTML = '';
+  
+  if (!_currentNoteTaskId) return;
+  const t = tasks.find(x => x.id === _currentNoteTaskId);
+  if (!t) return;
+  
+  // 1. Parent Task option
+  const parentOpt = document.createElement('option');
+  parentOpt.value = _currentNoteTaskId;
+  parentOpt.textContent = `[본 업무] ${t.title || '업무명 없음'}`;
+  scopeSelect.appendChild(parentOpt);
+  
+  // 2. Subtasks options
+  currentSubTasks.forEach(st => {
+    const opt = document.createElement('option');
+    opt.value = `${_currentNoteTaskId}__sub_${st.id}`;
+    opt.textContent = `[하위] ${st.title || '업무명 없음'}`;
+    scopeSelect.appendChild(opt);
+  });
+}
 
 function populateAssigneeDropdowns(currentTaskAssignee = ['미지정'], currentSubtaskAssignee = []) {
   const taskMenu = document.getElementById('list-task-assignee-menu');
@@ -577,6 +526,9 @@ window.openKpiSettingsModal = openKpiSettingsModal;
 let _currentNotePanelNote = null; // 현재 패널에 표시 중인 메모 객체
 let _currentNoteTaskId = null;    // 현재 메모가 속한 태스크 ID
 let _currentSubNoteCounts = {};  // 서브태스크별 메모 개수 캐시
+let _currentFeedPage = 1;         // 현재 피드 페이지
+const FEED_PAGE_SIZE = 5;         // 페이지당 아이템 개수
+let _cachedFeedItems = [];        // 머지된 타임라인 데이터 캐시
 
 // ─── 날짜 포맷 헬퍼 ───────────────────────────────────────
 function formatNoteDate(ts) {
@@ -618,38 +570,180 @@ function renderNoteCard(note) {
   return card;
 }
 
-// ─── 메모 목록 로드 ───────────────────────────────────────
-async function loadProgressNotes(taskId) {
+// ─── 통합 활동 히스토리 로드 (메모 + 변경 이력) ───────────────
+function formatActivityLogText(log) {
+  let actionText = '';
+  if (log.action === 'CREATE') {
+    actionText = '업무를 <strong>생성</strong>했습니다.';
+  } else if (log.action === 'DELETE') {
+    actionText = '업무를 <strong>삭제</strong>했습니다.';
+  } else if (log.action === 'NOTE_ADD') {
+    const noteTitle = log.changes?.title || '(제목 없음)';
+    actionText = `진행 메모를 <strong>추가</strong>했습니다: '${escapeHTML(noteTitle)}'`;
+  } else if (log.action === 'NOTE_DELETE') {
+    actionText = '진행 메모를 <strong>삭제</strong>했습니다.';
+  } else if (log.action === 'UPDATE' && log.changes) {
+    const changes = log.changes;
+    const changeDetails = [];
+    Object.keys(changes).forEach(field => {
+      let fieldName = field;
+      if (field === 'title') fieldName = '업무명';
+      else if (field === 'status') fieldName = '상태';
+      else if (field === 'priority') fieldName = '우선순위';
+      else if (field === 'assignee') fieldName = '담당자';
+      else if (field === 'startDate') fieldName = '시작일';
+      else if (field === 'dueDate') fieldName = '마감일';
+      else if (field === 'notes') fieldName = '메모';
+      
+      const oldVal = changes[field].old;
+      const newVal = changes[field].new;
+      
+      const translateVal = (val) => {
+        if (val === 'PENDING') return '진행 대기';
+        if (val === 'PROGRESS') return '진행 중';
+        if (val === 'COMPLETED') return '완료됨';
+        if (Array.isArray(val)) return val.join(', ');
+        return val;
+      };
+      
+      const oldLabel = translateVal(oldVal);
+      const newLabel = translateVal(newVal);
+      changeDetails.push(`<strong>${fieldName}</strong>을(를) '${oldLabel}'에서 '${newLabel}'(으)로 변경`);
+    });
+    actionText = changeDetails.join(', ') + '했습니다.';
+  }
+  return actionText;
+}
+
+function renderActivityFeedItem(log) {
+  const dateStr = formatNoteDate(log.timestamp);
+  const author = escapeHTML((log.changedByName || '').split('@')[0] || '알 수 없음');
+  const actionText = formatActivityLogText(log);
+
+  const el = document.createElement('div');
+  el.className = 'flex items-start gap-2 rounded-xl bg-slate-50/70 border border-slate-100 p-2.5 text-[11px] text-slate-600 dark:bg-slate-900/30 dark:border-slate-800/80';
+  el.innerHTML = `
+    <span class="text-xs shrink-0 select-none">⚙️</span>
+    <div class="flex-1 min-w-0">
+      <p class="leading-relaxed text-slate-700 dark:text-slate-350">${actionText}</p>
+      <div class="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-400">
+        <span>${author}</span>
+        <span>·</span>
+        <span>${dateStr}</span>
+      </div>
+    </div>
+  `;
+  return el;
+}
+
+async function loadTaskHistory(taskId, page = 1) {
   _currentNoteTaskId = taskId;
-  const list = document.getElementById('progress-notes-list');
-  const empty = document.getElementById('progress-notes-empty');
-  if (!list) return;
+  _currentFeedPage = page;
+  
+  const feedContainer = document.getElementById('task-history-feed');
+  const emptyMsg = document.getElementById('task-history-empty');
+  const paginationContainer = document.getElementById('task-history-pagination');
+  if (!feedContainer) return;
 
-  list.innerHTML = '<p class="text-center text-xs text-slate-400 py-3">로드 중...</p>';
-  if (empty) empty.classList.add('hidden');
+  if (page === 1 || _cachedFeedItems.length === 0) {
+    feedContainer.innerHTML = '<p class="text-center text-xs text-slate-400 py-4">로드 중...</p>';
+    if (emptyMsg) emptyMsg.classList.add('hidden');
+    if (paginationContainer) paginationContainer.innerHTML = '';
 
-  const notes = typeof window.db_fetchProgressNotes === 'function'
-    ? await window.db_fetchProgressNotes(taskId)
-    : [];
+    const notes = typeof window.db_fetchProgressNotes === 'function'
+      ? await window.db_fetchProgressNotes(taskId)
+      : [];
+      
+    const logs = typeof window.db_fetchActivityLogs === 'function'
+      ? await window.db_fetchActivityLogs(taskId)
+      : [];
 
-  // Group subtask note counts
-  _currentSubNoteCounts = {};
-  notes.forEach(n => {
-    if (n.taskId && n.taskId.includes('__sub_')) {
-      const subId = n.taskId.split('__sub_')[1];
-      _currentSubNoteCounts[subId] = (_currentSubNoteCounts[subId] || 0) + 1;
+    const items = [
+      ...notes.map(n => ({ ...n, feedType: 'NOTE', sortDate: n.createdAt })),
+      ...logs.map(l => ({ ...l, feedType: 'ACTIVITY', sortDate: l.timestamp }))
+    ];
+
+    items.sort((a, b) => {
+      const timeA = a.sortDate?.toDate ? a.sortDate.toDate().getTime() : new Date(a.sortDate || 0).getTime();
+      const timeB = b.sortDate?.toDate ? b.sortDate.toDate().getTime() : new Date(b.sortDate || 0).getTime();
+      return timeB - timeA;
+    });
+
+    _cachedFeedItems = items;
+
+    _currentSubNoteCounts = {};
+    notes.forEach(n => {
+      if (n.taskId && n.taskId.includes('__sub_')) {
+        const subId = n.taskId.split('__sub_')[1];
+        _currentSubNoteCounts[subId] = (_currentSubNoteCounts[subId] || 0) + 1;
+      }
+    });
+
+    renderModalSubTasks();
+  }
+
+  feedContainer.innerHTML = '';
+  const totalItems = _cachedFeedItems.length;
+
+  if (totalItems === 0) {
+    if (emptyMsg) emptyMsg.classList.remove('hidden');
+    if (paginationContainer) paginationContainer.innerHTML = '';
+    return;
+  }
+
+  if (emptyMsg) emptyMsg.classList.add('hidden');
+
+  const startIdx = (page - 1) * FEED_PAGE_SIZE;
+  const endIdx = page * FEED_PAGE_SIZE;
+  const pageItems = _cachedFeedItems.slice(startIdx, endIdx);
+
+  pageItems.forEach(item => {
+    if (item.feedType === 'NOTE') {
+      feedContainer.appendChild(renderNoteCard(item));
+    } else {
+      feedContainer.appendChild(renderActivityFeedItem(item));
     }
   });
 
-  // Update note counts on subtask row buttons
-  renderModalSubTasks();
+  renderHistoryPagination(totalItems);
+}
 
-  list.innerHTML = '';
-  if (notes.length === 0) {
-    if (empty) empty.classList.remove('hidden');
-    return;
+function renderHistoryPagination(totalItems) {
+  const container = document.getElementById('task-history-pagination');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const totalPages = Math.ceil(totalItems / FEED_PAGE_SIZE);
+  if (totalPages <= 1) return;
+
+  const prevBtn = document.createElement('button');
+  prevBtn.type = 'button';
+  prevBtn.className = `px-2 py-1 rounded-lg border border-slate-200 bg-white text-[11px] font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 disabled:opacity-40 disabled:pointer-events-none`;
+  prevBtn.textContent = '이전';
+  prevBtn.disabled = _currentFeedPage === 1;
+  prevBtn.addEventListener('click', () => loadTaskHistory(_currentNoteTaskId, _currentFeedPage - 1));
+  container.appendChild(prevBtn);
+
+  for (let i = 1; i <= totalPages; i++) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `w-6 h-6 flex items-center justify-center rounded-lg text-[11px] font-bold transition ${
+      i === _currentFeedPage
+        ? 'bg-indigo-600 text-white'
+        : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+    }`;
+    btn.textContent = i;
+    btn.addEventListener('click', () => loadTaskHistory(_currentNoteTaskId, i));
+    container.appendChild(btn);
   }
-  notes.forEach(note => list.appendChild(renderNoteCard(note)));
+
+  const nextBtn = document.createElement('button');
+  nextBtn.type = 'button';
+  nextBtn.className = `px-2 py-1 rounded-lg border border-slate-200 bg-white text-[11px] font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 disabled:opacity-40 disabled:pointer-events-none`;
+  nextBtn.textContent = '다음';
+  nextBtn.disabled = _currentFeedPage === totalPages;
+  nextBtn.addEventListener('click', () => loadTaskHistory(_currentNoteTaskId, _currentFeedPage + 1));
+  container.appendChild(nextBtn);
 }
 
 // ─── 슬라이드오버 패널 열기 ──────────────────────────────
@@ -733,6 +827,9 @@ function initProgressNotesEvents() {
   // 메모 저장
   document.getElementById('btn-save-progress-note')?.addEventListener('click', async () => {
     if (!_currentNoteTaskId) return;
+    const scopeSelect = document.getElementById('input-note-scope');
+    const targetTaskId = scopeSelect?.value || _currentNoteTaskId;
+
     const titleEl = document.getElementById('input-note-title');
     const bodyEl  = document.getElementById('input-note-body');
     const body = bodyEl?.value?.trim() || '';
@@ -741,13 +838,13 @@ function initProgressNotesEvents() {
 
     const saveBtn = document.getElementById('btn-save-progress-note');
     if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '저장 중...'; }
-    const result = await window.db_addProgressNote?.(_currentNoteTaskId, { title, body });
+    const result = await window.db_addProgressNote?.(targetTaskId, { title, body });
     if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '저장'; }
 
     if (result && result.success) {
       showToast('진행 메모가 저장되었습니다.');
       document.getElementById('progress-note-add-form')?.classList.add('hidden');
-      await loadProgressNotes(_currentNoteTaskId);
+      await loadTaskHistory(_currentNoteTaskId, 1);
     } else {
       const errMsg = result?.error || '알 수 없는 오류';
       showToast(`저장 실패: ${errMsg}`, false);
@@ -780,7 +877,7 @@ function initProgressNotesEvents() {
       _currentNotePanelNote = { ..._currentNotePanelNote, title, body };
       setNotePanel_readMode(_currentNotePanelNote);
       showToast('메모가 수정되었습니다.');
-      if (_currentNoteTaskId) await loadProgressNotes(_currentNoteTaskId);
+      if (_currentNoteTaskId) await loadTaskHistory(_currentNoteTaskId, _currentFeedPage);
     } else {
       const errMsg = result?.error || '알 수 없는 오류';
       showToast(`수정 실패: ${errMsg}`, false);
@@ -791,11 +888,12 @@ function initProgressNotesEvents() {
   document.getElementById('btn-note-delete')?.addEventListener('click', async () => {
     if (!_currentNotePanelNote || !_currentNoteTaskId) return;
     if (!confirm('이 메모를 삭제하시겠습니까?')) return;
-    const result = await window.db_deleteProgressNote?.(_currentNotePanelNote.id, _currentNoteTaskId);
+    const noteTaskId = _currentNotePanelNote.taskId || _currentNoteTaskId;
+    const result = await window.db_deleteProgressNote?.(_currentNotePanelNote.id, noteTaskId);
     if (result && result.success) {
       closeNoteDetailPanel();
       showToast('메모가 삭제되었습니다.');
-      await loadProgressNotes(_currentNoteTaskId);
+      await loadTaskHistory(_currentNoteTaskId, 1);
     } else {
       const errMsg = result?.error || '알 수 없는 오류';
       showToast(`삭제 실패: ${errMsg}`, false);
@@ -807,229 +905,48 @@ function initProgressNotesEvents() {
 window.closeKpiSettingsModal = closeKpiSettingsModal;
 
 // ──────────────────────────────────────────────────────
-// 하위 업무 진행 메모(Sub-task Progress Notes) 컨트롤러
+// 하위 업무 진행 메모(Sub-task Progress Notes) 통합 라우터
 // ──────────────────────────────────────────────────────
-let _currentSubTaskId = null;
-let _currentSubTaskTitle = "";
-let _currentSubNotePanelNote = null;
-
 window.openSubTaskNoteModal = async function(index) {
   const st = currentSubTasks[index];
   if (!st || !_currentNoteTaskId) {
     showToast('신규 업무는 먼저 저장한 후에 메모를 등록할 수 있습니다.', false);
     return;
   }
-  _currentSubTaskId = st.id;
-  _currentSubTaskTitle = st.title;
   
-  const panel = document.getElementById('subtask-notes-panel');
-  const backdrop = document.getElementById('subnote-panel-backdrop');
-  const titleHeader = document.getElementById('subnote-panel-header-title');
-  if (titleHeader) titleHeader.textContent = `하위 업무: ${st.title}`;
-
-  // Reset to list mode
-  setSubNotePanel_listMode();
-  await loadSubtaskNotes();
-
-  panel.classList.remove('translate-x-full');
-  panel.classList.add('translate-x-0');
-  if (backdrop) backdrop.classList.remove('hidden');
-};
-
-function closeSubtaskNotesPanel() {
-  const panel = document.getElementById('subtask-notes-panel');
-  const backdrop = document.getElementById('subnote-panel-backdrop');
-  if (panel) { panel.classList.add('translate-x-full'); panel.classList.remove('translate-x-0'); }
-  if (backdrop) backdrop.classList.add('hidden');
-  _currentSubTaskId = null;
-  _currentSubNotePanelNote = null;
-}
-
-function setSubNotePanel_listMode() {
-  document.getElementById('subnote-list-view')?.classList.remove('hidden');
-  document.getElementById('subnote-detail-view')?.classList.add('hidden');
-  document.getElementById('subnote-edit-view')?.classList.add('hidden');
-  document.getElementById('subnote-add-form')?.classList.add('hidden');
-}
-
-function setSubNotePanel_readMode(note) {
-  _currentSubNotePanelNote = note;
-  document.getElementById('subnote-list-view')?.classList.add('hidden');
-  document.getElementById('subnote-detail-view')?.classList.remove('hidden');
-  document.getElementById('subnote-edit-view')?.classList.add('hidden');
-
-  const meta = document.getElementById('subnote-detail-meta');
-  const body = document.getElementById('subnote-detail-body');
-  if (meta) meta.textContent = `${(note.createdByName || '').split('@')[0] || '알 수 없음'} · ${formatNoteDate(note.createdAt)}`;
-  if (body) body.textContent = note.body || '';
-}
-
-function setSubNotePanel_editMode(note) {
-  document.getElementById('subnote-list-view')?.classList.add('hidden');
-  document.getElementById('subnote-detail-view')?.classList.add('hidden');
-  document.getElementById('subnote-edit-view')?.classList.remove('hidden');
-
-  const editTitle = document.getElementById('input-subnote-edit-title');
-  const editBody = document.getElementById('input-subnote-edit-body');
-  if (editTitle) editTitle.value = note.title || '';
-  if (editBody) editBody.value = note.body || '';
-}
-
-async function loadSubtaskNotes() {
-  if (!_currentNoteTaskId || !_currentSubTaskId) return;
-  const compositeId = `${_currentNoteTaskId}__sub_${_currentSubTaskId}`;
-  const container = document.getElementById('subnote-cards-container');
-  const empty = document.getElementById('subnote-list-empty');
-  if (!container) return;
-
-  container.innerHTML = '<p class="text-center text-xs text-slate-400 py-3">로드 중...</p>';
-  if (empty) empty.classList.add('hidden');
-
-  const notes = typeof window.db_fetchProgressNotes === 'function'
-    ? await window.db_fetchProgressNotes(compositeId)
-    : [];
-
-  container.innerHTML = '';
-  if (notes.length === 0) {
-    if (empty) empty.classList.remove('hidden');
-    return;
+  // 1. 메모 작성 폼 활성화
+  const form = document.getElementById('progress-note-add-form');
+  if (form && form.classList.contains('hidden')) {
+    form.classList.remove('hidden');
   }
 
-  notes.forEach(note => {
-    const card = renderSubNoteCard(note);
-    container.appendChild(card);
-  });
-}
+  // 2. 기록 대상 자동 세팅
+  const scopeSelect = document.getElementById('input-note-scope');
+  if (scopeSelect) {
+    scopeSelect.value = `${_currentNoteTaskId}__sub_${st.id}`;
+  }
 
-function renderSubNoteCard(note) {
-  const title = note.title ? escapeHTML(note.title) : '<span class="text-slate-400 italic">(제목 없음)</span>';
-  const bodyPreview = escapeHTML((note.body || '').slice(0, 80)) + ((note.body || '').length > 80 ? '...' : '');
-  const dateStr = formatNoteDate(note.createdAt);
-  const author = escapeHTML((note.createdByName || '').split('@')[0] || '알 수 없음');
+  // 3. 필드 클리어 및 포커스
+  const titleEl = document.getElementById('input-note-title');
+  const bodyEl = document.getElementById('input-note-body');
+  if (titleEl) titleEl.value = '';
+  if (bodyEl) {
+    bodyEl.value = '';
+    bodyEl.focus();
+  }
 
-  const card = document.createElement('div');
-  card.className = 'group flex items-start gap-2.5 rounded-xl border border-slate-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/40 p-3 cursor-pointer transition dark:bg-slate-900/50 dark:border-slate-800 dark:hover:border-indigo-700';
-  card.innerHTML = `
-    <span class="text-sm mt-0.5 shrink-0">📌</span>
-    <div class="flex-1 min-w-0">
-      <div class="flex items-center justify-between gap-1 mb-0.5">
-        <span class="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">${title}</span>
-        <span class="text-[10px] text-slate-400 shrink-0">${dateStr}</span>
-      </div>
-      <p class="text-[11px] text-slate-500 leading-relaxed line-clamp-2">${bodyPreview || '<span class="italic">(내용 없음)</span>'}</p>
-      <span class="text-[10px] text-slate-400">${author}</span>
-    </div>
-  `;
-  card.addEventListener('click', () => setSubNotePanel_readMode(note));
-  return card;
-}
-
-function initSubTaskNotesEvents() {
-  document.getElementById('btn-close-subnote-panel')?.addEventListener('click', closeSubtaskNotesPanel);
-  document.getElementById('subnote-panel-backdrop')?.addEventListener('click', closeSubtaskNotesPanel);
-
-  // Add Note Button Toggle
-  document.getElementById('btn-add-subnote')?.addEventListener('click', () => {
-    const form = document.getElementById('subnote-add-form');
-    if (!form) return;
-    form.classList.toggle('hidden');
-    if (!form.classList.contains('hidden')) {
-      document.getElementById('input-subnote-title').value = '';
-      document.getElementById('input-subnote-body').value = '';
-      document.getElementById('input-subnote-body').focus();
-    }
-  });
-
-  // Cancel Add Note
-  document.getElementById('btn-cancel-subnote-add')?.addEventListener('click', () => {
-    document.getElementById('subnote-add-form')?.classList.add('hidden');
-  });
-
-  // Save Note
-  document.getElementById('btn-save-subnote')?.addEventListener('click', async () => {
-    if (!_currentNoteTaskId || !_currentSubTaskId) return;
-    const compositeId = `${_currentNoteTaskId}__sub_${_currentSubTaskId}`;
-    const titleEl = document.getElementById('input-subnote-title');
-    const bodyEl = document.getElementById('input-subnote-body');
-    const body = bodyEl?.value?.trim() || '';
-    if (!body) { showToast('메모 내용을 입력해 주세요.', false); return; }
-    const title = titleEl?.value?.trim() || '';
-
-    const saveBtn = document.getElementById('btn-save-subnote');
-    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '저장 중...'; }
-    const result = await window.db_addProgressNote?.(compositeId, { 
-      title: title || `[하위 업무] ${_currentSubTaskTitle}`, 
-      body 
-    });
-    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '저장'; }
-
-    if (result && result.success) {
-      showToast('하위 업무 메모가 저장되었습니다.');
-      document.getElementById('subnote-add-form')?.classList.add('hidden');
-      await loadSubtaskNotes();
-    } else {
-      const errMsg = result?.error || '알 수 없는 오류';
-      showToast(`저장 실패: ${errMsg}`, false);
-    }
-  });
-
-  // Back to list
-  document.getElementById('btn-back-to-subnote-list')?.addEventListener('click', setSubNotePanel_listMode);
-
-  // Edit Button
-  document.getElementById('btn-subnote-edit')?.addEventListener('click', () => {
-    if (_currentSubNotePanelNote) setSubNotePanel_editMode(_currentSubNotePanelNote);
-  });
-
-  // Cancel Edit
-  document.getElementById('btn-subnote-edit-cancel')?.addEventListener('click', () => {
-    if (_currentSubNotePanelNote) setSubNotePanel_readMode(_currentSubNotePanelNote);
-  });
-
-  // Save Edit
-  document.getElementById('btn-subnote-edit-save')?.addEventListener('click', async () => {
-    if (!_currentSubNotePanelNote) return;
-    const title = document.getElementById('input-subnote-edit-title')?.value?.trim() || '';
-    const body = document.getElementById('input-subnote-edit-body')?.value?.trim() || '';
-    if (!body) { showToast('메모 내용을 입력해 주세요.', false); return; }
-
-    const result = await window.db_updateProgressNote?.(_currentSubNotePanelNote.id, { title, body });
-    if (result && result.success) {
-      _currentSubNotePanelNote = { ..._currentSubNotePanelNote, title, body };
-      setSubNotePanel_readMode(_currentSubNotePanelNote);
-      showToast('메모가 수정되었습니다.');
-      await loadSubtaskNotes();
-    } else {
-      const errMsg = result?.error || '알 수 없는 오류';
-      showToast(`수정 실패: ${errMsg}`, false);
-    }
-  });
-
-  // Delete Button
-  document.getElementById('btn-subnote-delete')?.addEventListener('click', async () => {
-    if (!_currentSubNotePanelNote || !_currentNoteTaskId || !_currentSubTaskId) return;
-    if (!confirm('이 메모를 삭제하시겠습니까?')) return;
-    const compositeId = `${_currentNoteTaskId}__sub_${_currentSubTaskId}`;
-    const result = await window.db_deleteProgressNote?.(_currentSubNotePanelNote.id, compositeId);
-    if (result && result.success) {
-      setSubNotePanel_listMode();
-      showToast('메모가 삭제되었습니다.');
-      await loadSubtaskNotes();
-    } else {
-      const errMsg = result?.error || '알 수 없는 오류';
-      showToast(`삭제 실패: ${errMsg}`, false);
-    }
-  });
-}
+  // 4. 작성 폼으로 부드러운 스크롤 이동
+  if (form) {
+    form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+};
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
     initProgressNotesEvents();
-    initSubTaskNotesEvents();
   });
 } else {
   initProgressNotesEvents();
-  initSubTaskNotesEvents();
 }
 
 
