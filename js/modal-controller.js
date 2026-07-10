@@ -94,6 +94,8 @@ window.removeSubTaskFromModal = function(index) {
 };
 function openTaskModal(id = null) {
   document.getElementById('form-task')?.reset();
+  _currentNoteTaskId = id; // Set task ID immediately for subtask notes visibility
+
   
   let initialTaskAssignee = ['미지정'];
   let initialSubtaskAssignee = [];
@@ -761,11 +763,6 @@ function initProgressNotesEvents() {
   });
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initProgressNotesEvents);
-} else {
-  initProgressNotesEvents();
-}
 
 window.closeKpiSettingsModal = closeKpiSettingsModal;
 
