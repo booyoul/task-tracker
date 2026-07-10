@@ -302,7 +302,7 @@ window.db_fetchActivityLogs = db_fetchActivityLogs;
 
 async function db_addProgressNote(taskId, { title, body }) {
   const coll = window.getProgressNotesCollection?.();
-  if (!coll || !canWriteToFirestore()) return null;
+  if (!coll || !canWriteToFirestore()) return { success: false, error: '인증 실패 또는 DB 접근 불가' };
   const id = 'note_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
   const payload = {
     taskId,
@@ -317,10 +317,10 @@ async function db_addProgressNote(taskId, { title, body }) {
   try {
     await window.fs.setDoc(window.fs.doc(coll, id), payload);
     await db_recordActivity(taskId, 'NOTE_ADD', { title: title || '(제목 없음)' });
-    return { id, ...payload };
+    return { success: true, note: { id, ...payload } };
   } catch (e) {
     console.warn('db_addProgressNote 실패:', e);
-    return null;
+    return { success: false, error: e.message || String(e) };
   }
 }
 
@@ -343,26 +343,30 @@ async function db_fetchProgressNotes(taskId) {
 
 async function db_updateProgressNote(noteId, { title, body }) {
   const coll = window.getProgressNotesCollection?.();
-  if (!coll || !canWriteToFirestore()) return;
+  if (!coll || !canWriteToFirestore()) return { success: false, error: '인증 실패 또는 DB 접근 불가' };
   try {
     await window.fs.updateDoc(window.fs.doc(coll, noteId), {
       title: title || '',
       body: body || '',
       updatedAt: getServerTimestamp()
     });
+    return { success: true };
   } catch (e) {
     console.warn('db_updateProgressNote 실패:', e);
+    return { success: false, error: e.message || String(e) };
   }
 }
 
 async function db_deleteProgressNote(noteId, taskId) {
   const coll = window.getProgressNotesCollection?.();
-  if (!coll || !canWriteToFirestore()) return;
+  if (!coll || !canWriteToFirestore()) return { success: false, error: '인증 실패 또는 DB 접근 불가' };
   try {
     await window.fs.deleteDoc(window.fs.doc(coll, noteId));
     if (taskId) await db_recordActivity(taskId, 'NOTE_DELETE', null);
+    return { success: true };
   } catch (e) {
     console.warn('db_deleteProgressNote 실패:', e);
+    return { success: false, error: e.message || String(e) };
   }
 }
 

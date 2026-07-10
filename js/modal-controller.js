@@ -715,12 +715,13 @@ function initProgressNotesEvents() {
     const result = await window.db_addProgressNote?.(_currentNoteTaskId, { title, body });
     if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '저장'; }
 
-    if (result) {
+    if (result && result.success) {
       showToast('진행 메모가 저장되었습니다.');
       document.getElementById('progress-note-add-form')?.classList.add('hidden');
       await loadProgressNotes(_currentNoteTaskId);
     } else {
-      showToast('저장 실패. 다시 시도해 주세요.', false);
+      const errMsg = result?.error || '알 수 없는 오류';
+      showToast(`저장 실패: ${errMsg}`, false);
     }
   });
 
@@ -745,21 +746,31 @@ function initProgressNotesEvents() {
     const body  = document.getElementById('input-note-edit-body')?.value?.trim()  || '';
     if (!body) { showToast('메모 내용을 입력해 주세요.', false); return; }
 
-    await window.db_updateProgressNote?.(_currentNotePanelNote.id, { title, body });
-    _currentNotePanelNote = { ..._currentNotePanelNote, title, body };
-    setNotePanel_readMode(_currentNotePanelNote);
-    showToast('메모가 수정되었습니다.');
-    if (_currentNoteTaskId) await loadProgressNotes(_currentNoteTaskId);
+    const result = await window.db_updateProgressNote?.(_currentNotePanelNote.id, { title, body });
+    if (result && result.success) {
+      _currentNotePanelNote = { ..._currentNotePanelNote, title, body };
+      setNotePanel_readMode(_currentNotePanelNote);
+      showToast('메모가 수정되었습니다.');
+      if (_currentNoteTaskId) await loadProgressNotes(_currentNoteTaskId);
+    } else {
+      const errMsg = result?.error || '알 수 없는 오류';
+      showToast(`수정 실패: ${errMsg}`, false);
+    }
   });
 
   // 삭제 버튼
   document.getElementById('btn-note-delete')?.addEventListener('click', async () => {
     if (!_currentNotePanelNote || !_currentNoteTaskId) return;
     if (!confirm('이 메모를 삭제하시겠습니까?')) return;
-    await window.db_deleteProgressNote?.(_currentNotePanelNote.id, _currentNoteTaskId);
-    closeNoteDetailPanel();
-    showToast('메모가 삭제되었습니다.');
-    await loadProgressNotes(_currentNoteTaskId);
+    const result = await window.db_deleteProgressNote?.(_currentNotePanelNote.id, _currentNoteTaskId);
+    if (result && result.success) {
+      closeNoteDetailPanel();
+      showToast('메모가 삭제되었습니다.');
+      await loadProgressNotes(_currentNoteTaskId);
+    } else {
+      const errMsg = result?.error || '알 수 없는 오류';
+      showToast(`삭제 실패: ${errMsg}`, false);
+    }
   });
 }
 
@@ -923,12 +934,13 @@ function initSubTaskNotesEvents() {
     });
     if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '저장'; }
 
-    if (result) {
+    if (result && result.success) {
       showToast('하위 업무 메모가 저장되었습니다.');
       document.getElementById('subnote-add-form')?.classList.add('hidden');
       await loadSubtaskNotes();
     } else {
-      showToast('저장 실패. 다시 시도해 주세요.', false);
+      const errMsg = result?.error || '알 수 없는 오류';
+      showToast(`저장 실패: ${errMsg}`, false);
     }
   });
 
@@ -952,11 +964,16 @@ function initSubTaskNotesEvents() {
     const body = document.getElementById('input-subnote-edit-body')?.value?.trim() || '';
     if (!body) { showToast('메모 내용을 입력해 주세요.', false); return; }
 
-    await window.db_updateProgressNote?.(_currentSubNotePanelNote.id, { title, body });
-    _currentSubNotePanelNote = { ..._currentSubNotePanelNote, title, body };
-    setSubNotePanel_readMode(_currentSubNotePanelNote);
-    showToast('메모가 수정되었습니다.');
-    await loadSubtaskNotes();
+    const result = await window.db_updateProgressNote?.(_currentSubNotePanelNote.id, { title, body });
+    if (result && result.success) {
+      _currentSubNotePanelNote = { ..._currentSubNotePanelNote, title, body };
+      setSubNotePanel_readMode(_currentSubNotePanelNote);
+      showToast('메모가 수정되었습니다.');
+      await loadSubtaskNotes();
+    } else {
+      const errMsg = result?.error || '알 수 없는 오류';
+      showToast(`수정 실패: ${errMsg}`, false);
+    }
   });
 
   // Delete Button
@@ -964,10 +981,15 @@ function initSubTaskNotesEvents() {
     if (!_currentSubNotePanelNote || !_currentNoteTaskId || !_currentSubTaskId) return;
     if (!confirm('이 메모를 삭제하시겠습니까?')) return;
     const compositeId = `${_currentNoteTaskId}__sub_${_currentSubTaskId}`;
-    await window.db_deleteProgressNote?.(_currentSubNotePanelNote.id, compositeId);
-    setSubNotePanel_listMode();
-    showToast('메모가 삭제되었습니다.');
-    await loadSubtaskNotes();
+    const result = await window.db_deleteProgressNote?.(_currentSubNotePanelNote.id, compositeId);
+    if (result && result.success) {
+      setSubNotePanel_listMode();
+      showToast('메모가 삭제되었습니다.');
+      await loadSubtaskNotes();
+    } else {
+      const errMsg = result?.error || '알 수 없는 오류';
+      showToast(`삭제 실패: ${errMsg}`, false);
+    }
   });
 }
 
