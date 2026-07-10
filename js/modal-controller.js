@@ -444,7 +444,10 @@ window.populateAssigneeDropdowns = populateAssigneeDropdowns;
 // === Custom KPI Settings Modal Logic ===
 function openKpiSettingsModal() {
   const tracker = trackers.find(t => t.id === currentTrackerId);
-  if (!tracker) return;
+  if (!tracker) {
+    console.warn('[KPI Modal] 트래커를 찾을 수 없습니다. currentTrackerId =', currentTrackerId, '/ trackers =', trackers);
+    return;
+  }
 
   const kpiTitle = tracker.kpiTitle || '업무 완료율';
   const kpiTarget = typeof tracker.kpiTarget === 'number' ? tracker.kpiTarget : 80;
