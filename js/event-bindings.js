@@ -117,17 +117,17 @@ function initEventBindings(){
     }
   });
   
-  // Backdrop click listeners to close modals
-  document.getElementById('modal-task')?.addEventListener('click', e => {
-    if (e.target.closest('#modal-task .inline-block') === null && document.contains(e.target)) {
-      window.closeModal?.();
-    }
-  });
-  document.getElementById('modal-tracker')?.addEventListener('click', e => {
-    if (e.target.closest('#modal-tracker .inline-block') === null && document.contains(e.target)) {
-      window.closeTrackerModal?.();
-    }
-  });
+  // Backdrop click listeners to close modals (Disabled for task & tracker to prevent accidental data loss)
+  // document.getElementById('modal-task')?.addEventListener('click', e => {
+  //   if (e.target.closest('#modal-task .inline-block') === null && document.contains(e.target)) {
+  //     window.closeModal?.();
+  //   }
+  // });
+  // document.getElementById('modal-tracker')?.addEventListener('click', e => {
+  //   if (e.target.closest('#modal-tracker .inline-block') === null && document.contains(e.target)) {
+  //     window.closeTrackerModal?.();
+  //   }
+  // });
   document.getElementById('modal-confirm')?.addEventListener('click', e => {
     if (e.target.closest('#modal-confirm .inline-block') === null && document.contains(e.target)) {
       window.closeConfirmModal?.();
