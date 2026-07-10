@@ -30,6 +30,9 @@ function addSubTaskToModalList() {
   renderModalSubTasks();
 }
 function renderModalSubTasks() {
+  // Populate the dropdown to keep it synchronized with the latest subtask list!
+  populateNoteScopeDropdown();
+
   const container = document.getElementById('subtask-list-container');
   if (!container) return;
   container.innerHTML = '';
