@@ -2559,14 +2559,6 @@
       border-color: var(--color-slate-800);
     }
   }
-  .dark\:border-slate-800\/80 {
-    @media (prefers-color-scheme: dark) {
-      border-color: color-mix(in srgb, oklch(27.9% 0.041 260.031) 80%, transparent);
-      @supports (color: color-mix(in lab, red, red)) {
-        border-color: color-mix(in oklab, var(--color-slate-800) 80%, transparent);
-      }
-    }
-  }
   .dark\:bg-amber-950\/20 {
     @media (prefers-color-scheme: dark) {
       background-color: color-mix(in srgb, oklch(27.9% 0.077 45.635) 20%, transparent);
@@ -2607,14 +2599,6 @@
   .dark\:bg-slate-900 {
     @media (prefers-color-scheme: dark) {
       background-color: var(--color-slate-900);
-    }
-  }
-  .dark\:bg-slate-900\/30 {
-    @media (prefers-color-scheme: dark) {
-      background-color: color-mix(in srgb, oklch(20.8% 0.042 265.755) 30%, transparent);
-      @supports (color: color-mix(in lab, red, red)) {
-        background-color: color-mix(in oklab, var(--color-slate-900) 30%, transparent);
-      }
     }
   }
   .dark\:bg-slate-900\/50 {

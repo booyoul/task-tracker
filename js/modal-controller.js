@@ -573,71 +573,7 @@ function renderNoteCard(note) {
   return card;
 }
 
-// ─── 통합 활동 히스토리 로드 (메모 + 변경 이력) ───────────────
-function formatActivityLogText(log) {
-  let actionText = '';
-  if (log.action === 'CREATE') {
-    actionText = '업무를 <strong>생성</strong>했습니다.';
-  } else if (log.action === 'DELETE') {
-    actionText = '업무를 <strong>삭제</strong>했습니다.';
-  } else if (log.action === 'NOTE_ADD') {
-    const noteTitle = log.changes?.title || '(제목 없음)';
-    actionText = `진행 메모를 <strong>추가</strong>했습니다: '${escapeHTML(noteTitle)}'`;
-  } else if (log.action === 'NOTE_DELETE') {
-    actionText = '진행 메모를 <strong>삭제</strong>했습니다.';
-  } else if (log.action === 'UPDATE' && log.changes) {
-    const changes = log.changes;
-    const changeDetails = [];
-    Object.keys(changes).forEach(field => {
-      let fieldName = field;
-      if (field === 'title') fieldName = '업무명';
-      else if (field === 'status') fieldName = '상태';
-      else if (field === 'priority') fieldName = '우선순위';
-      else if (field === 'assignee') fieldName = '담당자';
-      else if (field === 'startDate') fieldName = '시작일';
-      else if (field === 'dueDate') fieldName = '마감일';
-      else if (field === 'notes') fieldName = '메모';
-      
-      const oldVal = changes[field].old;
-      const newVal = changes[field].new;
-      
-      const translateVal = (val) => {
-        if (val === 'PENDING') return '진행 대기';
-        if (val === 'PROGRESS') return '진행 중';
-        if (val === 'COMPLETED') return '완료됨';
-        if (Array.isArray(val)) return val.join(', ');
-        return val;
-      };
-      
-      const oldLabel = translateVal(oldVal);
-      const newLabel = translateVal(newVal);
-      changeDetails.push(`<strong>${fieldName}</strong>을(를) '${oldLabel}'에서 '${newLabel}'(으)로 변경`);
-    });
-    actionText = changeDetails.join(', ') + '했습니다.';
-  }
-  return actionText;
-}
-
-function renderActivityFeedItem(log) {
-  const dateStr = formatNoteDate(log.timestamp);
-  const author = escapeHTML((log.changedByName || '').split('@')[0] || '알 수 없음');
-  const actionText = formatActivityLogText(log);
-
-  const el = document.createElement('div');
-  el.className = 'flex items-start gap-2 rounded-xl bg-slate-50/70 border border-slate-100 p-2.5 text-[11px] text-slate-600 dark:bg-slate-900/30 dark:border-slate-800/80';
-  el.innerHTML = `
-    <span class="text-xs shrink-0 select-none">⚙️</span>
-    <div class="flex-1 min-w-0">
-      <p class="leading-relaxed text-slate-700 dark:text-slate-350">${actionText}</p>
-      <div class="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-400">
-        <span>${author}</span>
-        <span>·</span>
-        <span>${dateStr}</span>
-      </div>
-    </div>
-  `;
-  return el;
-}
+// ─── 통합 진행 메모 로드 ───────────────────────────────────────
 
 async function loadTaskHistory(taskId, page = 1) {
   _currentNoteTaskId = taskId;
@@ -657,14 +593,8 @@ async function loadTaskHistory(taskId, page = 1) {
       ? await window.db_fetchProgressNotes(taskId)
       : [];
       
-    const logs = typeof window.db_fetchActivityLogs === 'function'
-      ? await window.db_fetchActivityLogs(taskId)
-      : [];
-
-    const items = [
-      ...notes.map(n => ({ ...n, feedType: 'NOTE', sortDate: n.createdAt })),
-      ...logs.map(l => ({ ...l, feedType: 'ACTIVITY', sortDate: l.timestamp }))
-    ];
+    // 활동 이력(system log)을 제외하고 사용자가 작성한 진행 메모만 노출
+    const items = notes.map(n => ({ ...n, feedType: 'NOTE', sortDate: n.createdAt }));
 
     items.sort((a, b) => {
       const timeA = a.sortDate?.toDate ? a.sortDate.toDate().getTime() : new Date(a.sortDate || 0).getTime();
@@ -701,11 +631,7 @@ async function loadTaskHistory(taskId, page = 1) {
   const pageItems = _cachedFeedItems.slice(startIdx, endIdx);
 
   pageItems.forEach(item => {
-    if (item.feedType === 'NOTE') {
-      feedContainer.appendChild(renderNoteCard(item));
-    } else {
-      feedContainer.appendChild(renderActivityFeedItem(item));
-    }
+    feedContainer.appendChild(renderNoteCard(item));
   });
 
   renderHistoryPagination(totalItems);
