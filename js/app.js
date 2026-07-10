@@ -825,8 +825,8 @@ function updateSelectAllState(totalVisible, totalSelected) {
 function updateBatchButton() { const btn = document.getElementById('btn-batch-delete'); if (btn) selectedTaskIds.size ? btn.classList.remove('hidden') : btn.classList.add('hidden'); updateBulkActionBar(); }
 function updateUndoButton() { const btn = document.getElementById('btn-undo'); if (btn) deletionHistory.length ? btn.classList.remove('hidden') : btn.classList.add('hidden'); }
 function resetFilters() {
-  ['filter-search', 'filter-start-month', 'filter-end-month'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-  ['filter-status', 'filter-priority'].forEach(id => { const el = document.getElementById(id); if (el) el.value = 'ALL'; });
+  ['filter-search', 'filter-start-month', 'filter-end-month', 'mobile-filter-start-month', 'mobile-filter-end-month'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['filter-status', 'filter-priority', 'mobile-filter-status', 'mobile-filter-priority'].forEach(id => { const el = document.getElementById(id); if (el) el.value = 'ALL'; });
   selectedAssigneeFilters.clear();
   window.selectedAssigneeFilters = selectedAssigneeFilters;
   updateAssigneeButton();
@@ -983,6 +983,9 @@ function ensureUXToolbar() {
 function renderActiveViews(){
   ensureAdvancedFilterOptions();
   ensureUXToolbar();
+  if (typeof syncMobileFiltersFromDesktop === 'function') {
+    syncMobileFiltersFromDesktop();
+  }
   
   // If in CALENDAR mode, sync top month filter changes back to currentCalDate
   if (window.currentViewMode === 'CALENDAR') {
@@ -1016,7 +1019,15 @@ function renderActiveViews(){
   const mode=currentViewMode==='CALENDAR'?'CALENDAR':currentViewMode==='KANBAN'?'KANBAN':'TABLE';
   setViewVisibility(mode);
   updateViewToggleButtons(mode);
-  if(mode==='CALENDAR'){renderCalendar(filtered);return;}
+  if(mode==='CALENDAR'){
+    const isMobile = window.matchMedia ? window.matchMedia('(max-width: 1023px)').matches : window.innerWidth < 1024;
+    if (isMobile && typeof renderMobileCalendar === 'function') {
+      renderMobileCalendar(filtered);
+    } else {
+      renderCalendar(filtered);
+    }
+    return;
+  }
   if(mode==='KANBAN'){if(typeof renderKanbanView==='function')renderKanbanView(filtered);else console.warn('renderKanbanView is not available');return;}
   renderTable(filtered);
   renderMobileCards(filtered);
@@ -1142,3 +1153,44 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof updateUI === 'function') updateUI();
   }
 });
+
+function syncMobileFiltersFromDesktop() {
+  const statusVal = document.getElementById('filter-status')?.value || 'ALL';
+  const priorityVal = document.getElementById('filter-priority')?.value || 'ALL';
+  const startMonthVal = document.getElementById('filter-start-month')?.value || '';
+  const endMonthVal = document.getElementById('filter-end-month')?.value || '';
+
+  const mStatus = document.getElementById('mobile-filter-status');
+  const mPriority = document.getElementById('mobile-filter-priority');
+  const mStartMonth = document.getElementById('mobile-filter-start-month');
+  const mEndMonth = document.getElementById('mobile-filter-end-month');
+
+  if (mStatus && mStatus.value !== statusVal) mStatus.value = statusVal;
+  if (mPriority && mPriority.value !== priorityVal) mPriority.value = priorityVal;
+  if (mStartMonth && mStartMonth.value !== startMonthVal) mStartMonth.value = startMonthVal;
+  if (mEndMonth && mEndMonth.value !== endMonthVal) mEndMonth.value = endMonthVal;
+
+  const dAssigneeBtn = document.getElementById('btn-open-assignee-modal');
+  const mAssigneeBtn = document.getElementById('mobile-btn-open-assignee-modal');
+  if (dAssigneeBtn && mAssigneeBtn) {
+    mAssigneeBtn.textContent = dAssigneeBtn.textContent;
+  }
+
+  let activeFilterCount = 0;
+  if (statusVal !== 'ALL') activeFilterCount++;
+  if (priorityVal !== 'ALL') activeFilterCount++;
+  if (startMonthVal !== '') activeFilterCount++;
+  if (endMonthVal !== '') activeFilterCount++;
+  if (window.selectedAssigneeFilters && window.selectedAssigneeFilters.size > 0) activeFilterCount++;
+
+  const mFilterCountBadge = document.getElementById('mobile-filter-count');
+  if (mFilterCountBadge) {
+    mFilterCountBadge.textContent = activeFilterCount;
+    if (activeFilterCount > 0) {
+      mFilterCountBadge.classList.remove('hidden');
+    } else {
+      mFilterCountBadge.classList.add('hidden');
+    }
+  }
+}
+window.syncMobileFiltersFromDesktop = syncMobileFiltersFromDesktop;

@@ -116,6 +116,86 @@ function initEventBindings(){
       }
     }
   });
+
+  // --- Mobile Filter Dialog Control ---
+  const mobileFilterDialog = document.getElementById('mobile-filter-dialog');
+  const btnOpenMobileFilter = document.getElementById('btn-open-mobile-filter');
+  const btnCloseMobileFilter = document.getElementById('btn-close-mobile-filter');
+  const btnApplyMobileFilter = document.getElementById('mobile-btn-apply-filters');
+
+  function openMobileFilter() {
+    if (!mobileFilterDialog) return;
+    mobileFilterDialog.showModal();
+    // 부드러운 하단 슬라이드 업 효과
+    setTimeout(() => {
+      mobileFilterDialog.classList.remove('translate-y-full');
+      mobileFilterDialog.classList.add('translate-y-0');
+    }, 10);
+  }
+
+  function closeMobileFilter() {
+    if (!mobileFilterDialog) return;
+    mobileFilterDialog.classList.remove('translate-y-0');
+    mobileFilterDialog.classList.add('translate-y-full');
+    // transition 완료 후 close 실행
+    setTimeout(() => {
+      mobileFilterDialog.close();
+    }, 300);
+  }
+
+  btnOpenMobileFilter?.addEventListener('click', openMobileFilter);
+  btnCloseMobileFilter?.addEventListener('click', closeMobileFilter);
+  btnApplyMobileFilter?.addEventListener('click', closeMobileFilter);
+
+  // 모바일 다이얼로그 바깥(backdrop) 클릭 시 닫기
+  mobileFilterDialog?.addEventListener('click', (e) => {
+    if (e.target === mobileFilterDialog) {
+      closeMobileFilter();
+    }
+  });
+
+  // 모바일 뷰 전환 버튼 이벤트 바인딩
+  document.getElementById('btn-view-table-mobile')?.addEventListener('click',()=>window.switchView?.('TABLE'));
+  document.getElementById('btn-view-calendar-mobile')?.addEventListener('click',()=>window.switchView?.('CALENDAR'));
+  document.getElementById('btn-view-kanban-mobile')?.addEventListener('click',()=>window.switchView?.('KANBAN'));
+  document.getElementById('btn-view-admin-mobile')?.addEventListener('click',()=>window.switchView?.('ADMIN'));
+
+  // 모바일 필터 요소를 데스크톱 필터 요소와 양방향 동기화
+  const filterSyncMappings = [
+    ['mobile-filter-start-month', 'filter-start-month', 'input'],
+    ['mobile-filter-end-month', 'filter-end-month', 'input'],
+    ['mobile-filter-status', 'filter-status', 'change'],
+    ['mobile-filter-priority', 'filter-priority', 'change']
+  ];
+
+  filterSyncMappings.forEach(([mobileId, desktopId, eventType]) => {
+    const mobileEl = document.getElementById(mobileId);
+    const desktopEl = document.getElementById(desktopId);
+    if (mobileEl && desktopEl) {
+      mobileEl.addEventListener(eventType, () => {
+        desktopEl.value = mobileEl.value;
+        // 데스크톱 요소의 change/input 이벤트를 강제로 발생시켜 renderActiveViews 가 구동되게 합니다.
+        desktopEl.dispatchEvent(new Event(eventType));
+      });
+    }
+  });
+
+  // 모바일 팝업 내 담당자 버튼 이벤트 위임
+  document.getElementById('mobile-btn-open-assignee-modal')?.addEventListener('click', () => {
+    if (typeof openAssigneeModal === 'function') openAssigneeModal();
+  });
+  document.getElementById('mobile-btn-clear-assignee-filter')?.addEventListener('click', () => {
+    if (typeof clearAssigneeMultiSelect === 'function') clearAssigneeMultiSelect();
+  });
+  
+  // 모바일 리셋 버튼 바인딩
+  document.getElementById('mobile-btn-reset-filters')?.addEventListener('click', () => {
+    if (typeof resetFilters === 'function') resetFilters();
+  });
+  document.getElementById('btn-mobile-reset-filters')?.addEventListener('click', () => {
+    if (typeof resetFilters === 'function') resetFilters();
+  });
+
   
   // Backdrop click listeners to close modals (Disabled for task & tracker to prevent accidental data loss)
   // document.getElementById('modal-task')?.addEventListener('click', e => {

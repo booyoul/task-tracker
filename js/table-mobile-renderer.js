@@ -383,23 +383,50 @@ function setViewVisibility(mode) {
   const table = document.getElementById('view-table');
   const mobile = document.getElementById('view-mobile');
   const calendar = document.getElementById('view-calendar');
+  const calendarMobile = document.getElementById('view-calendar-mobile');
   const kanban = document.getElementById('view-kanban');
   const adminView = document.getElementById('view-admin-approvals');
   const isMobile = window.matchMedia ? window.matchMedia('(max-width: 1023px)').matches : window.innerWidth < 1024;
-  [table, mobile, calendar, kanban, adminView].forEach(el => { if (el) { el.classList.add('hidden'); el.style.display = 'none'; } });
+  [table, mobile, calendar, calendarMobile, kanban, adminView].forEach(el => { if (el) { el.classList.add('hidden'); el.style.display = 'none'; } });
   if (mode === 'ADMIN') { if (adminView) { adminView.classList.remove('hidden'); adminView.style.display = ''; } return; }
-  if (mode === 'CALENDAR') { if (calendar) { calendar.classList.remove('hidden'); calendar.style.display = ''; } return; }
+  if (mode === 'CALENDAR') {
+    if (isMobile) {
+      // 모바일: 모바일 전용 캘린더 뷰 표시
+      if (calendarMobile) { calendarMobile.classList.remove('hidden'); calendarMobile.style.display = ''; }
+    } else {
+      // 데스크탑: 기존 간트 캘린더 뷰 표시
+      if (calendar) { calendar.classList.remove('hidden'); calendar.style.display = ''; }
+    }
+    return;
+  }
   if (mode === 'KANBAN') { if (kanban) { kanban.classList.remove('hidden'); kanban.style.display = ''; } return; }
   if (isMobile) { if (mobile) { mobile.classList.remove('hidden'); mobile.style.display = ''; } }
   else { if (table) { table.classList.remove('hidden'); table.style.display = ''; } }
 }
 function updateViewToggleButtons(mode) {
-  [['btn-view-table', 'TABLE'], ['btn-view-calendar', 'CALENDAR'], ['btn-view-kanban', 'KANBAN'], ['btn-view-admin', 'ADMIN']].forEach(([id, key]) => {
+  const mappings = [
+    ['btn-view-table', 'TABLE'],
+    ['btn-view-calendar', 'CALENDAR'],
+    ['btn-view-kanban', 'KANBAN'],
+    ['btn-view-admin', 'ADMIN'],
+    ['btn-view-table-mobile', 'TABLE'],
+    ['btn-view-calendar-mobile', 'CALENDAR'],
+    ['btn-view-kanban-mobile', 'KANBAN'],
+    ['btn-view-admin-mobile', 'ADMIN']
+  ];
+  mappings.forEach(([id, key]) => {
     const btn = document.getElementById(id);
     if (!btn) return;
-    btn.className = mode === key
-      ? 'rounded-lg bg-white px-4 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition'
-      : 'rounded-lg px-4 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition';
+    const isActive = mode === key;
+    if (id.endsWith('-mobile')) {
+      btn.className = isActive
+        ? 'flex-1 rounded-lg bg-white py-2 text-xs font-semibold text-slate-800 shadow-sm transition'
+        : 'flex-1 rounded-lg py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 transition';
+    } else {
+      btn.className = isActive
+        ? 'rounded-lg bg-white px-4 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition'
+        : 'rounded-lg px-4 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition';
+    }
   });
 }
 function switchView(mode) {
