@@ -954,7 +954,7 @@ function ensureUXToolbar() {
   if (!bar) {
     bar = document.createElement('div');
     bar.id = 'ux-toolbar';
-    bar.className = 'mt-3 border-t border-slate-100 pt-3';
+    bar.className = 'mt-2.5 border-t border-slate-100 pt-2.5';
     bar.innerHTML = `
       <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
         <div class="flex flex-wrap items-center gap-2">

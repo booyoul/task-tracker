@@ -388,6 +388,17 @@ function setViewVisibility(mode) {
   const adminView = document.getElementById('view-admin-approvals');
   const isMobile = window.matchMedia ? window.matchMedia('(max-width: 1023px)').matches : window.innerWidth < 1024;
   [table, mobile, calendar, calendarMobile, kanban, adminView].forEach(el => { if (el) { el.classList.add('hidden'); el.style.display = 'none'; } });
+  
+  // 어드민 승인 관리 뷰에서는 불필요한 필터 박스 감추기
+  const filterBox = document.getElementById('btn-reset-filters')?.closest('.mb-3');
+  if (filterBox) {
+    if (mode === 'ADMIN') {
+      filterBox.classList.add('hidden');
+    } else {
+      filterBox.classList.remove('hidden');
+    }
+  }
+
   if (mode === 'ADMIN') { if (adminView) { adminView.classList.remove('hidden'); adminView.style.display = ''; } return; }
   if (mode === 'CALENDAR') {
     if (isMobile) {
