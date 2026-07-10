@@ -333,10 +333,19 @@ async function db_fetchProgressNotes(taskId) {
   const coll = window.getProgressNotesCollection?.();
   if (!coll) return [];
   try {
-    const q = window.fs.query(
-      coll,
-      window.fs.where('taskId', '==', taskId)
-    );
+    let q;
+    if (taskId.includes('__sub_')) {
+      q = window.fs.query(
+        coll,
+        window.fs.where('taskId', '==', taskId)
+      );
+    } else {
+      q = window.fs.query(
+        coll,
+        window.fs.where('taskId', '>=', taskId),
+        window.fs.where('taskId', '<=', taskId + '\uf8ff')
+      );
+    }
     const snap = await window.fs.getDocs(q);
     const notes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     notes.sort((a, b) => {

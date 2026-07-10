@@ -43,8 +43,10 @@ function renderModalSubTasks() {
     const li = document.createElement('li');
     li.className = 'flex flex-col gap-2 rounded-xl border border-slate-200/60 bg-slate-50 p-2 text-xs hover:bg-slate-100/50 sm:flex-row sm:items-center sm:justify-between';
     const subAssigneeLabel = Array.isArray(st.assignee) ? st.assignee.join(', ') : (st.assignee || '미정');
+    const subNoteCount = _currentSubNoteCounts[st.id] || 0;
+    const noteBtnText = subNoteCount > 0 ? `📌 ${subNoteCount}` : '📌';
     const noteBtnHtml = _currentNoteTaskId 
-      ? `<button type="button" class="btn-modal-note-subtask px-1 font-bold text-slate-500 hover:text-indigo-600 transition" data-index="${idx}" title="진행 메모 관리">📌</button><span class="text-slate-300">|</span>` 
+      ? `<button type="button" class="btn-modal-note-subtask px-1.5 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold transition flex items-center gap-1" data-index="${idx}" title="진행 메모 관리">${noteBtnText}</button><span class="text-slate-300">|</span>` 
       : '';
     li.innerHTML = `<div class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 sm:gap-2"><span class="shrink-0 font-bold ${status === 'COMPLETED' ? 'text-emerald-600' : overdue ? 'text-rose-600' : status === 'PROGRESS' ? 'text-blue-600' : 'text-amber-500'}">${overdue ? '🚨 기한 초과' : getStatusIcon(status) + ' ' + getStatusKorean(status).replace('됨', '')}</span><span class="min-w-0 flex-1 truncate font-medium text-slate-700 ${status === 'COMPLETED' ? 'line-through opacity-50' : ''}" title="${escapeHTML(st.title)}">${escapeHTML(st.title)}</span><span class="shrink-0 text-[10px] text-slate-400 font-semibold">📅 ${st.startDate ? st.startDate.substring(5) : '미정'} ~ ${st.dueDate ? st.dueDate.substring(5) : '미정'}</span><span class="shrink-0 max-w-[120px] truncate bg-indigo-50 text-indigo-700 border border-indigo-100 px-1 py-0.2 rounded text-[9px] font-bold" title="${escapeHTML(subAssigneeLabel)}">👤 ${escapeHTML(subAssigneeLabel)}</span></div><div class="flex shrink-0 items-center justify-end gap-1.5">${noteBtnHtml}<select class="sel-modal-subtask-status rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 outline-none focus:border-indigo-500" data-index="${idx}"><option value="PENDING" ${status === 'PENDING' ? 'selected' : ''}>진행 대기</option><option value="PROGRESS" ${status === 'PROGRESS' ? 'selected' : ''}>진행 중</option><option value="COMPLETED" ${status === 'COMPLETED' ? 'selected' : ''}>완료</option></select><button type="button" class="btn-modal-edit-subtask px-1 font-bold text-indigo-600 hover:text-indigo-800" data-index="${idx}">수정</button><span class="text-slate-300">|</span><button type="button" class="btn-modal-delete-subtask px-1 font-semibold text-rose-500 hover:text-rose-700" data-index="${idx}">삭제</button></div>`;
     container.appendChild(li);
@@ -95,6 +97,7 @@ window.removeSubTaskFromModal = function(index) {
 function openTaskModal(id = null) {
   document.getElementById('form-task')?.reset();
   _currentNoteTaskId = id; // Set task ID immediately for subtask notes visibility
+  _currentSubNoteCounts = {}; // Reset subtask notes counts cache
 
   
   let initialTaskAssignee = ['미지정'];
@@ -568,6 +571,7 @@ window.openKpiSettingsModal = openKpiSettingsModal;
 
 let _currentNotePanelNote = null; // 현재 패널에 표시 중인 메모 객체
 let _currentNoteTaskId = null;    // 현재 메모가 속한 태스크 ID
+let _currentSubNoteCounts = {};  // 서브태스크별 메모 개수 캐시
 
 // ─── 날짜 포맷 헬퍼 ───────────────────────────────────────
 function formatNoteDate(ts) {
@@ -578,7 +582,15 @@ function formatNoteDate(ts) {
 
 // ─── 메모 카드 렌더러 ─────────────────────────────────────
 function renderNoteCard(note) {
-  const title = note.title ? escapeHTML(note.title) : '<span class="text-slate-400 italic">(제목 없음)</span>';
+  let subTaskLabel = '';
+  if (note.taskId && note.taskId.includes('__sub_')) {
+    const subId = note.taskId.split('__sub_')[1];
+    const st = currentSubTasks.find(x => x.id === subId);
+    subTaskLabel = st ? `[하위: ${st.title}] ` : '[하위 과제] ';
+  }
+
+  const titleText = subTaskLabel + (note.title || '(제목 없음)');
+  const title = note.title ? escapeHTML(titleText) : `<span class="text-slate-400 italic">${escapeHTML(titleText)}</span>`;
   const bodyPreview = escapeHTML((note.body || '').slice(0, 80)) + ((note.body || '').length > 80 ? '...' : '');
   const dateStr = formatNoteDate(note.createdAt);
   const author = escapeHTML((note.createdByName || '').split('@')[0] || '알 수 없음');
@@ -614,6 +626,18 @@ async function loadProgressNotes(taskId) {
   const notes = typeof window.db_fetchProgressNotes === 'function'
     ? await window.db_fetchProgressNotes(taskId)
     : [];
+
+  // Group subtask note counts
+  _currentSubNoteCounts = {};
+  notes.forEach(n => {
+    if (n.taskId && n.taskId.includes('__sub_')) {
+      const subId = n.taskId.split('__sub_')[1];
+      _currentSubNoteCounts[subId] = (_currentSubNoteCounts[subId] || 0) + 1;
+    }
+  });
+
+  // Update note counts on subtask row buttons
+  renderModalSubTasks();
 
   list.innerHTML = '';
   if (notes.length === 0) {
