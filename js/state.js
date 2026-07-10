@@ -139,3 +139,9 @@
         window.MASTER_ADMIN_EMAILS = MASTER_ADMIN_EMAILS;
         window.isMasterAdmin = isMasterAdmin;
 
+        Object.defineProperty(window, 'currentTrackerId', {
+            get: function() { return currentTrackerId; },
+            set: function(val) { currentTrackerId = val; },
+            configurable: true
+        });
+

@@ -193,7 +193,7 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
             let subTaskLabel = '';
             if (note.taskId) {
                 const baseTaskId = note.taskId.split('__sub_')[0];
-                const t = filteredTasks.find(x => x.id === baseTaskId);
+                const t = tasks.find(x => x.id === baseTaskId);
                 if (t) {
                     taskTitle = t.title;
                     if (note.taskId.includes('__sub_')) {
