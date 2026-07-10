@@ -389,9 +389,10 @@ function setViewVisibility(mode) {
   const isMobile = window.matchMedia ? window.matchMedia('(max-width: 1023px)').matches : window.innerWidth < 1024;
   [table, mobile, calendar, calendarMobile, kanban, adminView].forEach(el => { if (el) { el.classList.add('hidden'); el.style.display = 'none'; } });
   
-  // 어드민 승인 관리 뷰에서는 불필요한 필터 박스 및 포커스 모드 박스 감추기
+  // 어드민 승인 관리 뷰에서는 불필요한 필터 박스, 포커스 모드 박스, 리스크 패널 감추기
   const filterBox = document.getElementById('btn-reset-filters')?.closest('.mb-3');
   const uxToolbar = document.getElementById('ux-toolbar');
+  const riskPanel = document.getElementById('risk-dashboard-panel');
   if (filterBox) {
     if (mode === 'ADMIN') {
       filterBox.classList.add('hidden');
@@ -404,6 +405,13 @@ function setViewVisibility(mode) {
       uxToolbar.classList.add('hidden');
     } else {
       uxToolbar.classList.remove('hidden');
+    }
+  }
+  if (riskPanel) {
+    if (mode === 'ADMIN') {
+      riskPanel.classList.add('hidden');
+    } else {
+      riskPanel.classList.remove('hidden');
     }
   }
 

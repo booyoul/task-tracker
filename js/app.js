@@ -156,6 +156,13 @@ function renderRiskDashboard(scope) {
   if (!panel) return;
   const today = getTodayStr();
   const risky = scope.filter(t => isTaskOverdueEffective(t, today)).sort((a,b) => getMaxDelayDays(b, today) - getMaxDelayDays(a, today));
+  
+  if (risky.length === 0) {
+    panel.classList.add('hidden');
+    return;
+  }
+  panel.classList.remove('hidden');
+  
   const critical = risky.filter(t => getTaskRiskInfo(t, today).level === 'CRITICAL').length;
   const high = risky.filter(t => getTaskRiskInfo(t, today).level === 'HIGH').length;
   const dueSoon = scope.filter(t => hasDueSoonRisk(t, today)).length;
