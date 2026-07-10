@@ -122,8 +122,11 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
         notesByTaskId[baseTaskId].push(note);
     });
 
-    // 이번 달 작성된 메모 필터링 (+ 현재 필터링된 활성 업무에 달린 메모만 포함)
+    // 이번 달 작성된 메모 필터링 (+ 현재 필터링된 활성 업무에 달린 메모 또는 검색어 매칭 메모 포함)
     const activeTaskIds = new Set((filteredTasks || []).map(t => t.id));
+    const searchVal = (document.getElementById('filter-search')?.value || '').trim() || (document.getElementById('filter-search-desktop')?.value || '').trim();
+    const search = searchVal.toLowerCase();
+
     const monthNotes = trackerNotes.filter(note => {
         const ts = note.createdAt;
         if (!ts) return false;
@@ -136,7 +139,18 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
         // 2) 소속 업무 검사 (현재 필터링된 활성 업무 목록에 포함되는지)
         if (!note.taskId) return false;
         const baseTaskId = note.taskId.split('__sub_')[0];
-        return activeTaskIds.has(baseTaskId);
+        const isMatchedTask = activeTaskIds.has(baseTaskId);
+        
+        // 3) 검색어 매칭 대조 (메모 자체 텍스트/작성자 교차 검증)
+        if (search) {
+            const title = (note.title || '').toLowerCase();
+            const body = (note.body || '').toLowerCase();
+            const author = (note.createdByName || '').toLowerCase();
+            const isNoteMatch = title.includes(search) || body.includes(search) || author.includes(search);
+            return isMatchedTask || isNoteMatch;
+        }
+        
+        return isMatchedTask;
     });
     const monthNotesCount = monthNotes.length;
 
