@@ -948,13 +948,13 @@ function applyCompactDashboardStyles() {
     <span data-status="OVERDUE" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-rose-700 border border-rose-200 cursor-pointer hover:bg-rose-100 transition duration-150 ${activeClass('OVERDUE')}">지연 <b>${k.overdue}</b></span>`;
 }
 function ensureUXToolbar() {
-  const filterBox = document.getElementById('btn-reset-filters')?.closest('.mb-4');
+  const filterBox = document.getElementById('btn-reset-filters')?.closest('.mb-3');
   if (!filterBox) return;
   let bar = document.getElementById('ux-toolbar');
   if (!bar) {
     bar = document.createElement('div');
     bar.id = 'ux-toolbar';
-    bar.className = 'mt-4 border-t border-slate-100 pt-4';
+    bar.className = 'mt-3 border-t border-slate-100 pt-3';
     bar.innerHTML = `
       <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
         <div class="flex flex-wrap items-center gap-2">
