@@ -103,15 +103,9 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
 
     const monthStart = new Date(year, month, 1);
     const monthEnd = new Date(year, month + 1, 0, 23, 59, 59);
-    const currentMonthTasks = filteredTasks.filter(t => isTaskOverlappingMonth(t, monthStart, monthEnd, todayStr));
+    const currentMonthTasks = (filteredTasks || []).filter(t => isTaskOverlappingMonth(t, monthStart, monthEnd, todayStr));
 
-    if (currentMonthTasks.length === 0) {
-        grid.innerHTML = `<div class="text-center py-16 text-sm text-slate-400 font-semibold">현재 조건 혹은 조회 기간 중 해당 월(${month + 1}월)의 업무 정보가 존재하지 않습니다.</div>`;
-        _summaryRenderInProgress = false;
-        return;
-    }
-
-    // 트래커 전체 메모 가져오기
+    // ★ 메모를 먼저 가져옴 — 업무 유무와 무관하게 항상 메모를 표시해야 하므로
     let trackerNotes = [];
     if (typeof window.db_fetchTrackerProgressNotes === 'function' && window.currentTrackerId) {
         trackerNotes = await window.db_fetchTrackerProgressNotes(window.currentTrackerId);
@@ -128,56 +122,60 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
         notesByTaskId[baseTaskId].push(note);
     });
 
-    // 월별 작성된 총 메모 건수 계산
-    const monthNotesCount = trackerNotes.filter(note => {
-        const ts = note.createdAt;
-        if (!ts) return false;
-        const d = typeof ts.toDate === 'function' ? ts.toDate() : new Date(ts);
-        return d >= monthStart && d <= monthEnd;
-    }).length;
-
-    const groups = { OVERDUE: [], PROGRESS: [], PENDING: [], COMPLETED: [] };
-    currentMonthTasks.forEach(t => {
-        if (t.status !== 'COMPLETED' && (t.dueDate || '') < todayStr) groups.OVERDUE.push(t);
-        else groups[t.status].push(t);
-    });
-
-    const monthlyTotal = currentMonthTasks.length;
-    const monthlyCompleted = groups.COMPLETED.length;
-    const monthlyOverdue = groups.OVERDUE.length;
-    const monthlyProgress = groups.PROGRESS.length;
-    const monthlyPending = groups.PENDING.length;
-    const monthlyCompletionRate = monthlyTotal > 0 ? Math.round((monthlyCompleted / monthlyTotal) * 100) : 0;
-    const monthlyDelayRate = monthlyTotal > 0 ? Math.round((monthlyOverdue / monthlyTotal) * 100) : 0;
-    const monthlySubTotal = currentMonthTasks.reduce((sum, t) => sum + getMonthlySubTaskSummary(t, monthStart, monthEnd).totalInMonth, 0);
-    const monthlySubCompleted = currentMonthTasks.reduce((sum, t) => sum + getMonthlySubTaskSummary(t, monthStart, monthEnd).completedInMonth, 0);
-
-    const kpiPanel = document.createElement('div');
-    kpiPanel.className = 'flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-white px-4 py-2.5 shadow-sm mb-4 text-xs';
-    kpiPanel.innerHTML = `
-        <div class="flex flex-wrap items-center gap-2">
-            <span class="font-black text-slate-800">${year}년 ${month + 1}월 요약</span>
-            <span class="rounded bg-slate-50 px-2 py-0.5 font-semibold text-slate-600 border border-slate-100">전체 <b>${monthlyTotal}</b>건</span>
-            <span class="rounded bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-700 border border-emerald-100">완료 <b>${monthlyCompleted}</b>건 (${monthlyCompletionRate}%)</span>
-            <span class="rounded bg-blue-50 px-2 py-0.5 font-semibold text-blue-700 border border-blue-100">진행 <b>${monthlyProgress}</b></span>
-            <span class="rounded bg-rose-50 px-2 py-0.5 font-semibold text-rose-700 border border-rose-100">지연 <b>${monthlyOverdue}</b></span>
-        </div>
-        <div class="flex items-center gap-3 text-slate-500 font-medium shrink-0 flex-wrap">
-            <span>⏱️ 하위 업무 <b class="text-indigo-600">${monthlySubTotal}</b>건 (완료 ${monthlySubCompleted})</span>
-            <span class="text-slate-300">|</span>
-            <span>📌 이번 달 메모 <b class="text-amber-600">${monthNotesCount}</b>건</span>
-        </div>
-    `;
-    grid.appendChild(kpiPanel);
-
-    // 📌 월간 진행 메모 리스트 렌더링
+    // 이번 달 작성된 메모 필터링
     const monthNotes = trackerNotes.filter(note => {
         const ts = note.createdAt;
         if (!ts) return false;
         const d = typeof ts.toDate === 'function' ? ts.toDate() : new Date(ts);
         return d >= monthStart && d <= monthEnd;
     });
+    const monthNotesCount = monthNotes.length;
 
+    // 업무도 없고 메모도 없을 때만 빈 화면 표시
+    if (currentMonthTasks.length === 0 && monthNotesCount === 0) {
+        grid.innerHTML = `<div class="text-center py-16 text-sm text-slate-400 font-semibold">현재 조건 혹은 조회 기간 중 해당 월(${month + 1}월)의 업무 또는 메모 정보가 없습니다.</div>`;
+        _summaryRenderInProgress = false;
+        return;
+    }
+
+    // ── KPI 패널 (업무가 있을 때만) ────────────────────────────────
+    if (currentMonthTasks.length > 0) {
+        const groups = { OVERDUE: [], PROGRESS: [], PENDING: [], COMPLETED: [] };
+        currentMonthTasks.forEach(t => {
+            if (t.status !== 'COMPLETED' && (t.dueDate || '') < todayStr) groups.OVERDUE.push(t);
+            else if (groups[t.status]) groups[t.status].push(t);
+            else groups.PENDING.push(t);
+        });
+
+        const monthlyTotal = currentMonthTasks.length;
+        const monthlyCompleted = groups.COMPLETED.length;
+        const monthlyOverdue = groups.OVERDUE.length;
+        const monthlyProgress = groups.PROGRESS.length;
+        const monthlyPending = groups.PENDING.length;
+        const monthlyCompletionRate = monthlyTotal > 0 ? Math.round((monthlyCompleted / monthlyTotal) * 100) : 0;
+        const monthlySubTotal = currentMonthTasks.reduce((sum, t) => sum + getMonthlySubTaskSummary(t, monthStart, monthEnd).totalInMonth, 0);
+        const monthlySubCompleted = currentMonthTasks.reduce((sum, t) => sum + getMonthlySubTaskSummary(t, monthStart, monthEnd).completedInMonth, 0);
+
+        const kpiPanel = document.createElement('div');
+        kpiPanel.className = 'flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-white px-4 py-2.5 shadow-sm mb-4 text-xs';
+        kpiPanel.innerHTML = `
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="font-black text-slate-800">${year}년 ${month + 1}월 요약</span>
+                <span class="rounded bg-slate-50 px-2 py-0.5 font-semibold text-slate-600 border border-slate-100">전체 <b>${monthlyTotal}</b>건</span>
+                <span class="rounded bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-700 border border-emerald-100">완료 <b>${monthlyCompleted}</b>건 (${monthlyCompletionRate}%)</span>
+                <span class="rounded bg-blue-50 px-2 py-0.5 font-semibold text-blue-700 border border-blue-100">진행 <b>${monthlyProgress}</b></span>
+                <span class="rounded bg-rose-50 px-2 py-0.5 font-semibold text-rose-700 border border-rose-100">지연 <b>${monthlyOverdue}</b></span>
+            </div>
+            <div class="flex items-center gap-3 text-slate-500 font-medium shrink-0 flex-wrap">
+                <span>⏱️ 하위 업무 <b class="text-indigo-600">${monthlySubTotal}</b>건 (완료 ${monthlySubCompleted})</span>
+                <span class="text-slate-300">|</span>
+                <span>📌 이번 달 메모 <b class="text-amber-600">${monthNotesCount}</b>건</span>
+            </div>
+        `;
+        grid.appendChild(kpiPanel);
+    }
+
+    // ── 📌 월간 진행 메모 리스트 (업무 유무와 무관하게 항상 표시) ──
     if (monthNotes.length > 0) {
         monthNotes.sort((a, b) => {
             const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt || 0).getTime();
@@ -247,6 +245,24 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
         grid.appendChild(notesSec);
     }
 
+    // 업무 없음 안내 (메모는 위에 표시됐으므로 가벼운 메시지만)
+    if (currentMonthTasks.length === 0) {
+        const noTaskEl = document.createElement('div');
+        noTaskEl.className = 'text-center py-6 text-sm text-slate-400';
+        noTaskEl.textContent = `${month + 1}월에 해당하는 업무가 없습니다.`;
+        grid.appendChild(noTaskEl);
+        _summaryRenderInProgress = false;
+        return;
+    }
+
+    // ── 업무 카테고리별 섹션 ──────────────────────────────────────
+    const groups = { OVERDUE: [], PROGRESS: [], PENDING: [], COMPLETED: [] };
+    currentMonthTasks.forEach(t => {
+        if (t.status !== 'COMPLETED' && (t.dueDate || '') < todayStr) groups.OVERDUE.push(t);
+        else if (groups[t.status]) groups[t.status].push(t);
+        else groups.PENDING.push(t);
+    });
+
     const categories = [
         { key: 'OVERDUE', label: '🚨 일정 초과 및 지연 상태', style: 'bg-rose-50/60 border-rose-100 text-rose-800', list: groups.OVERDUE },
         { key: 'PROGRESS', label: '⚙️ 현재 적극 진행 중', style: 'bg-blue-50/60 border-blue-100 text-blue-800', list: groups.PROGRESS },
@@ -270,7 +286,7 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
             const subProgressMarkup = subSummary.totalInMonth > 0
                 ? `<span class="text-[10px] text-slate-400">월내 하위 완료 ${subSummary.completedInMonth}/${subSummary.totalInMonth}</span>`
                 : (subSummary.totalAll > 0 ? `<span class="text-[10px] text-slate-400">해당 월 하위 업무 없음</span>` : '');
-            
+
             // 태스크의 메모 수 배지
             const noteCount = notesByTaskId[t.id]?.length || 0;
             const noteBadgeMarkup = noteCount > 0
@@ -349,3 +365,4 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
         _summaryRenderInProgress = false;
     }
 }
+
