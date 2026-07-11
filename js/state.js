@@ -109,6 +109,7 @@
         let currentSubTasks = []; 
         let editingSubTaskIndex = -1; 
         let expandedTaskIds = new Set();
+        let collapsedTaskIds = new Set();
         let unsubscribeTasks = null;
         let unsubscribeTrackers = null;
         let isAuthReady = false;
@@ -144,4 +145,3 @@
             set: function(val) { currentTrackerId = val; },
             configurable: true
         });
-

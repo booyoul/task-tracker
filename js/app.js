@@ -619,7 +619,7 @@ function buildTaskDetailCellHTML(t, subTasks, isExpanded, doneSubs, progressPct,
   const subInfo = subTasks.length ? ` · 하위 업무 ${doneSubs}/${subTasks.length}` : '';
   return `
       <td class="px-4 py-4 align-top"><div class="flex items-start gap-2">
-        <button type="button" class="btn-toggle-subtasks mt-1.5 shrink-0 text-slate-400 hover:text-indigo-600 flex items-center justify-center ${subTasks.length ? '' : 'invisible'}" data-id="${t.id}" title="하위 업무 토글">
+        <button type="button" class="btn-toggle-subtasks mt-1.5 shrink-0 text-slate-400 hover:text-indigo-600 flex items-center justify-center ${subTasks.length ? '' : 'invisible'}" data-id="${escapeHTML(t.id)}" data-expanded="${isExpanded ? 'true' : 'false'}" title="하위 업무 토글">
           ${subTasks.length ? (isExpanded ? `<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>` : `<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>`) : ''}
         </button>
         <div class="min-w-0 flex-1">
@@ -797,7 +797,18 @@ function handleTableClick(e) {
   const down = e.target.closest('.btn-order-down');
   if (edit) openTaskModal(edit.dataset.id);
   if (del) confirmDelete(del.dataset.id);
-  if (toggle) { const id = toggle.dataset.id; expandedTaskIds.has(id) ? expandedTaskIds.delete(id) : expandedTaskIds.add(id); renderActiveViews(); }
+  if (toggle) {
+    const id = toggle.dataset.id;
+    const isExpanded = toggle.dataset.expanded === 'true';
+    if (isExpanded) {
+      expandedTaskIds.delete(id);
+      collapsedTaskIds.add(id);
+    } else {
+      collapsedTaskIds.delete(id);
+      expandedTaskIds.add(id);
+    }
+    renderActiveViews();
+  }
   if (up) moveTaskOrder(up.dataset.id, 'up');
   if (down) moveTaskOrder(down.dataset.id, 'down');
 }

@@ -1,4 +1,4 @@
-console.info('Smart Task Flow table-mobile-renderer.js v20260626-module-split-phase5-table-mobile-renderer loaded');
+console.info('Smart Task Flow table-mobile-renderer.js v20260711-v11 loaded');
 // Table and mobile card renderers. Extracted from app.js in Phase 5.
 function renderTable(filtered) {
   const tbody = document.getElementById('task-table-body');
@@ -29,7 +29,7 @@ function renderTable(filtered) {
     if (checked) selectedCount++;
     const doneSubs = subTasks.filter(st => st.status === 'COMPLETED').length;
     const subOverdueCount = countOverdueSubTasks(t);
-    if (subOverdueCount > 0) isExpanded = true;
+    if (subOverdueCount > 0 && !collapsedTaskIds.has(t.id)) isExpanded = true;
     const subOverdueBadge = subOverdueCount ? ` <span class="rounded-lg bg-rose-50 px-2 py-1 text-[10px] font-bold text-rose-700 border border-rose-100">하위 기한 초과 ${subOverdueCount}</span>` : '';
     const todayStr = getTodayStr();
     const effectiveStatus = getEffectiveStatus(t, todayStr);
@@ -91,10 +91,10 @@ function getMobilePriorityClass(priority) {
 }
 function buildMobileSubTaskHTML(t, subTasks) {
   if (!subTasks.length) return '';
-  const isExpanded = expandedTaskIds.has(t.id) || countOverdueSubTasks(t) > 0;
+  const isExpanded = !collapsedTaskIds.has(t.id) && (expandedTaskIds.has(t.id) || countOverdueSubTasks(t) > 0);
   if (!isExpanded) {
     const done = subTasks.filter(st => normalizeStatus(st.status) === 'COMPLETED').length;
-    return `<button type="button" class="btn-toggle-subtasks mt-2 inline-flex items-center gap-1 rounded-lg bg-slate-50 px-2.5 py-1.5 text-[11px] font-bold text-slate-500 border border-slate-100" data-id="${t.id}">하위 업무 ${done}/${subTasks.length} 펼치기</button>`;
+    return `<button type="button" class="btn-toggle-subtasks mt-2 inline-flex items-center gap-1 rounded-lg bg-slate-50 px-2.5 py-1.5 text-[11px] font-bold text-slate-500 border border-slate-100" data-id="${escapeHTML(t.id)}" data-expanded="false">하위 업무 ${done}/${subTasks.length} 펼치기</button>`;
   }
   return `<div class="mt-3 space-y-1.5 border-t border-slate-100 pt-3">${subTasks.map(st => {
     const status = normalizeStatus(st.status);
@@ -165,7 +165,7 @@ function renderMobileCards(filtered) {
       ${subTasks.length ? `<div class="mt-2 text-[11px] font-semibold text-slate-400">하위 업무 ${subDone}/${subTasks.length}</div>` : ''}
       ${buildMobileSubTaskHTML(t, subTasks)}
       <div class="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
-        <button type="button" class="btn-toggle-subtasks ${subTasks.length ? '' : 'invisible'} mobile-touch-btn rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-bold text-slate-600" data-id="${t.id}">${expandedTaskIds.has(t.id) ? '하위 접기' : '하위 펼치기'}</button>
+        <button type="button" class="btn-toggle-subtasks ${subTasks.length ? '' : 'invisible'} mobile-touch-btn rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-bold text-slate-600" data-id="${escapeHTML(t.id)}" data-expanded="${(!collapsedTaskIds.has(t.id) && (expandedTaskIds.has(t.id) || countOverdueSubTasks(t) > 0)) ? 'true' : 'false'}">${(!collapsedTaskIds.has(t.id) && (expandedTaskIds.has(t.id) || countOverdueSubTasks(t) > 0)) ? '하위 접기' : '하위 펼치기'}</button>
       </div>`;
     container.appendChild(card);
   });
@@ -223,13 +223,13 @@ function mobileStatusSegment(id, status) {
 
 function buildMobileSubTaskHTML(t, subTasks) {
   if (!subTasks.length) return '';
-  const isExpanded = expandedTaskIds.has(t.id) || countOverdueSubTasks(t) > 0;
+  const isExpanded = !collapsedTaskIds.has(t.id) && (expandedTaskIds.has(t.id) || countOverdueSubTasks(t) > 0);
   const done = subTasks.filter(st => normalizeStatus(st.status) === 'COMPLETED').length;
   if (!isExpanded) {
-    return `<button type="button" class="btn-toggle-subtasks mt-3 w-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-left text-xs font-bold text-slate-500" data-id="${escapeHTML(t.id)}">하위 업무 ${done}/${subTasks.length} 보기</button>`;
+    return `<button type="button" class="btn-toggle-subtasks mt-3 w-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-left text-xs font-bold text-slate-500" data-id="${escapeHTML(t.id)}" data-expanded="false">하위 업무 ${done}/${subTasks.length} 보기</button>`;
   }
   return `<div class="mt-3 space-y-2 rounded-2xl border border-slate-100 bg-slate-50/80 p-2">
-    <div class="flex items-center justify-between px-1 text-[11px] font-black text-slate-400"><span>하위 업무</span><button type="button" class="btn-toggle-subtasks text-indigo-600" data-id="${escapeHTML(t.id)}">접기</button></div>
+    <div class="flex items-center justify-between px-1 text-[11px] font-black text-slate-400"><span>하위 업무</span><button type="button" class="btn-toggle-subtasks text-indigo-600" data-id="${escapeHTML(t.id)}" data-expanded="true">접기</button></div>
     ${subTasks.map(st => {
       const status = normalizeStatus(st.status);
       const overdue = isSubTaskOverdue(st);
