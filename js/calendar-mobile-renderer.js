@@ -190,6 +190,26 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
     return '⌛';
   };
 
+  const denseTaskLimit = 12;
+  const isDenseYear = tasksInYear.length > denseTaskLimit;
+  const getDisplayRank = function(task) {
+    const eff = typeof getEffectiveStatus === 'function' ? getEffectiveStatus(task, todayStr) : (task.status || 'PENDING');
+    if (eff === 'OVERDUE') return 0;
+    if ((task.priority || '').toUpperCase() === 'HIGH') return 1;
+    if (eff === 'PROGRESS') return 2;
+    if (eff === 'PENDING') return 3;
+    return 4;
+  };
+  const displayedTasks = isDenseYear
+    ? [...tasksInYear].sort(function(a, b) {
+        const rankDiff = getDisplayRank(a) - getDisplayRank(b);
+        if (rankDiff) return rankDiff;
+        const dueA = a.dueDate || a.startDate || '';
+        const dueB = b.dueDate || b.startDate || '';
+        return dueA.localeCompare(dueB);
+      }).slice(0, denseTaskLimit)
+    : tasksInYear;
+
   const getSubTasksInYear = function(task) {
     return showSubTaskBars && Array.isArray(task.subTasks) ? task.subTasks.filter(function(st) {
       const stS = st.startDate || st.dueDate;
@@ -203,17 +223,43 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
 
   const subTasksByTaskId = new Map();
   let maxBarsInGroup = 1;
-  tasksInYear.forEach(function(task) {
+  displayedTasks.forEach(function(task) {
     const visibleSubTasks = getSubTasksInYear(task);
     subTasksByTaskId.set(task.id, visibleSubTasks);
     maxBarsInGroup = Math.max(maxBarsInGroup, 1 + visibleSubTasks.length);
   });
 
+  const getMonthStats = function(monthIndex) {
+    const monthStart = `${year}-${String(monthIndex + 1).padStart(2, '0')}-01`;
+    const monthEndDay = new Date(year, monthIndex + 1, 0).getDate();
+    const monthEnd = `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(monthEndDay).padStart(2, '0')}`;
+    const monthTasks = tasksInYear.filter(function(task) {
+      const s = task.startDate || task.dueDate;
+      const e = task.dueDate || task.startDate;
+      return s && e && s <= monthEnd && e >= monthStart;
+    });
+    return {
+      total: monthTasks.length,
+      overdue: monthTasks.filter(function(task) { return typeof getEffectiveStatus === 'function' && getEffectiveStatus(task, todayStr) === 'OVERDUE'; }).length,
+      progress: monthTasks.filter(function(task) { return typeof getEffectiveStatus === 'function' && getEffectiveStatus(task, todayStr) === 'PROGRESS'; }).length,
+      completed: monthTasks.filter(function(task) { return typeof getEffectiveStatus === 'function' && getEffectiveStatus(task, todayStr) === 'COMPLETED'; }).length
+    };
+  };
+
+  const goToMonthDayView = function(monthIndex) {
+    currentCalDate.setMonth(monthIndex);
+    if (typeof setCalMode === 'function') setCalMode('DAY');
+    else {
+      currentCalMode = 'DAY';
+      if (typeof renderActiveViews === 'function') renderActiveViews();
+    }
+  };
+
   // 2. 겹침 방지 알고리즘 (Lane Assignment)
   const lanes = [];
   const taskLanes = new Map();
 
-  tasksInYear.forEach(function(task) {
+  displayedTasks.forEach(function(task) {
     const s = task.startDate || task.dueDate;
     const e = task.dueDate || task.startDate;
     const sDate = new Date(s.replace(/-/g, '/'));
@@ -263,9 +309,42 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
   header.className = 'flex items-center justify-between gap-3 border-b border-slate-200/80 bg-slate-50 px-3.5 py-3 shadow-sm';
   header.innerHTML = `
     <span class="text-xs font-bold text-slate-700">${year}년 연간 타임라인</span>
-    <span class="shrink-0 rounded-md bg-white px-2 py-1 text-[10px] font-bold text-slate-500 shadow-sm ring-1 ring-slate-200">총 ${tasksInYear.length}개</span>
+    <span class="shrink-0 rounded-md bg-white px-2 py-1 text-[10px] font-bold text-slate-500 shadow-sm ring-1 ring-slate-200">${isDenseYear ? `주요 ${displayedTasks.length}/${tasksInYear.length}` : `총 ${tasksInYear.length}개`}</span>
   `;
   ganttWrapper.appendChild(header);
+
+  if (isDenseYear) {
+    const summary = document.createElement('div');
+    summary.className = 'border-b border-slate-100 bg-white px-3 py-3';
+    const monthCards = [];
+    for (let m = 0; m < 12; m++) {
+      const stat = getMonthStats(m);
+      const isCurrentM = today.getFullYear() === year && today.getMonth() === m;
+      const activeCls = isCurrentM ? 'border-indigo-200 bg-indigo-50 text-indigo-700' : 'border-slate-100 bg-slate-50 text-slate-600';
+      monthCards.push(`
+        <button type="button" data-month="${m}" class="mobile-year-summary-month rounded-lg border ${activeCls} px-2 py-2 text-left transition active:scale-[0.98]">
+          <span class="block text-[10px] font-black">${m + 1}월</span>
+          <span class="mt-1 flex items-center justify-between gap-1 text-[10px] font-bold">
+            <b class="text-slate-800">${stat.total}</b>
+            ${stat.overdue ? `<span class="text-rose-600">지연 ${stat.overdue}</span>` : stat.progress ? `<span class="text-blue-600">진행 ${stat.progress}</span>` : `<span class="text-slate-400">완료 ${stat.completed}</span>`}
+          </span>
+        </button>
+      `);
+    }
+    summary.innerHTML = `
+      <div class="mb-2 flex items-center justify-between gap-2">
+        <span class="text-[11px] font-black text-slate-700">월별 요약</span>
+        <span class="text-[10px] font-bold text-slate-400">간트는 주요 업무만 표시</span>
+      </div>
+      <div class="grid grid-cols-3 gap-1.5">${monthCards.join('')}</div>
+    `;
+    summary.querySelectorAll('.mobile-year-summary-month').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        goToMonthDayView(Number(btn.getAttribute('data-month')));
+      });
+    });
+    ganttWrapper.appendChild(summary);
+  }
 
   const rowHeight = 46;
   const totalHeight = rowHeight * 12;
@@ -285,12 +364,7 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
     mLabel.title = `${m}월 일별 보기로 이동`;
     mLabel.innerHTML = `<span class="text-[11px] font-extrabold ${isCurrentM ? 'rounded-md border border-indigo-100 bg-indigo-50 px-1.5 py-0.5 text-indigo-600' : 'text-slate-500'}">${m}월</span>`;
     mLabel.onclick = function() {
-      currentCalDate.setMonth(m - 1);
-      if (typeof setCalMode === 'function') setCalMode('DAY');
-      else {
-        currentCalMode = 'DAY';
-        if (typeof renderActiveViews === 'function') renderActiveViews();
-      }
+      goToMonthDayView(m - 1);
     };
     yAxis.appendChild(mLabel);
   }
@@ -310,12 +384,7 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
     rowEl.style.height = `${rowHeight}px`;
     rowEl.title = `${m}월 일별 보기로 이동`;
     rowEl.onclick = function() {
-      currentCalDate.setMonth(m - 1);
-      if (typeof setCalMode === 'function') setCalMode('DAY');
-      else {
-        currentCalMode = 'DAY';
-        if (typeof renderActiveViews === 'function') renderActiveViews();
-      }
+      goToMonthDayView(m - 1);
     };
     bgGrid.appendChild(rowEl);
   }
@@ -325,7 +394,7 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
   const barContainer = document.createElement('div');
   barContainer.className = 'absolute inset-0 z-10 pointer-events-none';
 
-  tasksInYear.forEach(function(task) {
+  displayedTasks.forEach(function(task) {
     const tLane = taskLanes.get(task.id);
     if (!tLane) return;
 
