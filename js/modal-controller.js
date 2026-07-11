@@ -116,6 +116,8 @@ function openTaskModal(id = null) {
   }
   
   const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+  const advancedSection = document.getElementById('task-advanced-section');
+  const subTasksSection = document.getElementById('task-subtasks-section');
   setVal('input-subtask-title', '');
   resetSubtaskAssigneeDropdown();
   setVal('input-subtask-start', getTodayStr()); setVal('input-subtask-due', getFutureDateStr(7));
@@ -126,10 +128,14 @@ function openTaskModal(id = null) {
     if (title) title.textContent = '업무 상세 변경';
     setVal('input-task-id', t.id); setVal('input-task-title', t.title || ''); setVal('input-task-start', t.startDate || ''); setVal('input-task-due', t.dueDate || ''); setVal('input-task-priority', t.priority || 'NORMAL'); setVal('input-task-status', t.status || 'PENDING'); setVal('input-task-industry', t.industry || 'AUTO'); setVal('input-task-type', t.taskType || 'GENERAL'); setVal('input-task-notes', t.notes || '');
     currentSubTasks = Array.isArray(t.subTasks) ? JSON.parse(JSON.stringify(t.subTasks)).map(st => ({ ...st, status: normalizeStatus(st.status) })) : [];
+    if (advancedSection) advancedSection.open = !!(t.notes || (t.industry && t.industry !== 'AUTO') || (t.taskType && t.taskType !== 'GENERAL'));
+    if (subTasksSection) subTasksSection.open = currentSubTasks.length > 0;
   } else {
     if (title) title.textContent = '새로운 업무 배정';
     setVal('input-task-id', ''); setVal('input-task-start', getTodayStr()); setVal('input-task-due', getFutureDateStr(7)); setVal('input-task-industry', 'AUTO'); setVal('input-task-type', 'GENERAL');
     currentSubTasks = [];
+    if (advancedSection) advancedSection.open = false;
+    if (subTasksSection) subTasksSection.open = false;
   }
   renderModalSubTasks();
 
@@ -887,5 +893,4 @@ if (document.readyState === 'loading') {
 
 window.openNoteDetailPanel = openNoteDetailPanel;
 window.closeNoteDetailPanel = closeNoteDetailPanel;
-
 
