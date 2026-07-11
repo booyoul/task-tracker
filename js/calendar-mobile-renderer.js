@@ -277,40 +277,27 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
     const mainLeft = laneIdx * laneWidth + startOffset + subCount * step;
 
     const eff = typeof getEffectiveStatus === 'function' ? getEffectiveStatus(task, todayStr) : (task.status || 'PENDING');
-    // 데스크탑 mainClass 와 동일한 색상 매핑
-    const mainCls = (function(effective) {
-      if (effective === 'OVERDUE') return 'bg-rose-100 text-rose-800 border-rose-200 font-semibold';
-      if (effective === 'COMPLETED') return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-      if (effective === 'PROGRESS') return 'bg-blue-100 text-blue-800 border-blue-200';
-      return 'bg-slate-200 text-slate-700 border-slate-300';
-    })(eff);
-    
-    const assignees = Array.isArray(task.assignee) ? task.assignee.join(', ') : (task.assignee || '미지정');
-    const statusIcon = eff === 'OVERDUE' ? '🚨' : eff === 'COMPLETED' ? '⭐️' : eff === 'PROGRESS' ? '⚙️' : '⌛';
-
-    // 기하학적 공식 적용:
+      // 기하학적 공식 적용:
     // 가로 막대를 (left = mainLeft + mainBarWidth) 위치에 배치한 후,
     // top-left 기준으로 90도 회전하면 정확히 (left = mainLeft)에 맞아 떨어집니다.
-    // block 단일 레이어에 직접 truncate 속성을 부여해 글자 찌그러짐을 예방하고, lineHeight로 중앙 정렬을 완성합니다.
+    // flex items-center와 자식 min-w-0 flex-1 truncate의 조합으로 수축 현상 없이 정확한 좌우 정중앙 수직 정렬을 보장합니다.
     const mainBar = document.createElement('div');
-    mainBar.className = `absolute rounded-lg shadow-sm text-[10.5px] font-bold cursor-pointer transition-all hover:scale-[1.02] pointer-events-auto border whitespace-nowrap overflow-hidden text-ellipsis px-2 ${mainCls}`;
+    mainBar.className = `absolute rounded-lg shadow-sm text-[10.5px] font-bold cursor-pointer transition-all hover:scale-[1.02] pointer-events-auto border flex items-center pl-3 pr-2 ${mainCls}`;
     mainBar.style.width = `${height - 6}px`;
     mainBar.style.height = `${mainBarWidth}px`;
     mainBar.style.top = `${top + 3}px`;
     mainBar.style.left = `${mainLeft + mainBarWidth}px`; // 회전 후 mainLeft로 이동하도록 두께만큼 우측 시작
     mainBar.style.transformOrigin = 'top left';
     mainBar.style.transform = 'rotate(90deg)';
-    mainBar.style.lineHeight = `${mainBarWidth - 2}px`; // 테두리 두께 보정 수직 중앙 정렬
-    mainBar.style.textAlign = 'left';
+    mainBar.style.overflow = 'hidden';
     mainBar.title = `${task.title || ''} · 담당자: ${assignees}`;
     mainBar.onclick = function(e) {
       e.stopPropagation();
       if (typeof openTaskModal === 'function') openTaskModal(task.id);
     };
 
-    // 데스크탑과 동일 텍스트 포맷
-    // block w-full truncate span으로 감싸 브라우저가 수축 버그 없이 깔끔하게 말줄임표(...)를 그리도록 강제합니다.
-    mainBar.innerHTML = `<span class="block w-full truncate" style="text-align: left; padding: 0 4px;">${statusIcon} ${escapeHTML(task.title || '')}</span>`;
+    // 데스크탑과 동일 텍스트 포맷 (flex-1 min-w-0 truncate 구조 적용)
+    mainBar.innerHTML = `<span class="flex-1 min-w-0 truncate text-left">${statusIcon} ${escapeHTML(task.title || '')}</span>`;
     barContainer.appendChild(mainBar);
 
     // 서브 태스크들 DOM 생성
@@ -345,27 +332,7 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
 
       // 서브태스크도 동일하게 보정: (left = subLeft + subBarWidth) 배치 후 90도 회전
       const subBar = document.createElement('div');
-      subBar.className = `absolute rounded-lg shadow-sm text-[9.5px] font-bold cursor-pointer transition-all hover:scale-[1.02] pointer-events-auto border whitespace-nowrap overflow-hidden text-ellipsis px-1.5 ${stCls}`;
-      subBar.style.width = `${stHeight - 6}px`;
-      subBar.style.height = `${subBarWidth}px`;
-      subBar.style.top = `${stTop + 3}px`;
-      subBar.style.left = `${subLeft + subBarWidth}px`; // 회전 후 subLeft로 이동하도록 두께만큼 우측 시작
-      subBar.style.transformOrigin = 'top left';
-      subBar.style.transform = 'rotate(90deg)';
-      subBar.style.lineHeight = `${subBarWidth - 2}px`;
-      subBar.style.textAlign = 'left';
-      subBar.title = `↳ 하위: ${st.title || ''} · 담당자: ${subAssignees}`;
-      subBar.onclick = function(e) {
-        e.stopPropagation();
-        if (typeof openTaskModal === 'function') openTaskModal(task.id);
-      };
-
-      subBar.innerHTML = `<span class="block w-full truncate" style="text-align: left; padding: 0 3px;">${stStatusIcon} ↳ 👤 ${escapeHTML(subAssignees)} | ${escapeHTML(st.title || '')}</span>`;
-      barContainer.appendChild(subBar);
-    });
-  });
-
-  chartArea.appendChild(barContainer);inter-events-auto border ${stCls}`;
+      subBar.className = `absolute rounded-lg shadow-sm text-[9.5px] font-bold cursor-pointer transition-all hover:scale-[1.02] pointer-events-auto border flex items-center pl-2.5 pr-1.5 ${stCls}`;
       subBar.style.width = `${stHeight - 6}px`;
       subBar.style.height = `${subBarWidth}px`;
       subBar.style.top = `${stTop + 3}px`;
@@ -379,11 +346,7 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
         if (typeof openTaskModal === 'function') openTaskModal(task.id);
       };
 
-      const subTextSpan = document.createElement('span');
-      subTextSpan.className = 'truncate';
-      subTextSpan.textContent = `${stStatusIcon} ↳ 👤 ${subAssignees} | ${st.title || ''}`;
-      subBar.appendChild(subTextSpan);
-
+      subBar.innerHTML = `<span class="flex-1 min-w-0 truncate text-left">${stStatusIcon} ↳ 👤 ${escapeHTML(subAssignees)} | ${escapeHTML(st.title || '')}</span>`;
       barContainer.appendChild(subBar);
     });
   });
