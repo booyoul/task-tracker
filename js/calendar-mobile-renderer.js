@@ -31,7 +31,8 @@ function renderMobileCalendar(filtered) {
 
   content.innerHTML = '';
   if (mode === 'MONTH') {
-    _renderMobileMonthView(content, filtered, year, todayStr);
+    const containerWidth = content.clientWidth || 320;
+    _renderMobileMonthView(content, filtered, year, todayStr, containerWidth);
   } else if (mode === 'SUMMARY') {
     if (typeof renderCalendarSummaryView === 'function') {
       renderCalendarSummaryView({ grid: content, year, month, filteredTasks: filtered, todayStr });
@@ -131,7 +132,7 @@ function _renderMobileDayView(container, filtered, year, month, todayStr) {
   });
 }
 
-function _renderMobileMonthView(container, filtered, year, todayStr) {
+function _renderMobileMonthView(container, filtered, year, todayStr, containerWidth) {
   const today = new Date(todayStr.replace(/-/g, '/'));
   const yearStart = year + '-01-01';
   const yearEnd = year + '-12-31';
@@ -180,6 +181,12 @@ function _renderMobileMonthView(container, filtered, year, todayStr) {
 
   const totalLanes = lanes.length > 0 ? lanes.length : 1;
 
+  // 3. X축 고정 너비 및 반응형 간격 계산 (왼쪽 정렬 및 가로 스크롤 없음)
+  const chartWidth = containerWidth - 48 - 16; // 월 라벨 48px + 패딩 마진 16px 제외 가용폭
+  const maxLaneWidth = 44; // 레인당 최대 폭
+  const totalRequired = totalLanes * maxLaneWidth;
+  const laneWidth = totalRequired > chartWidth ? (chartWidth / totalLanes) : maxLaneWidth;
+
   const ganttWrapper = document.createElement('div');
   ganttWrapper.className = 'flex flex-col w-full bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm';
   
@@ -212,7 +219,7 @@ function _renderMobileMonthView(container, filtered, year, todayStr) {
   html += `
       </div>
       
-      <!-- 오른쪽 차트 영역 (가로 스크롤 없음, 100% 분할) -->
+      <!-- 오른쪽 차트 영역 (가로 스크롤 없음, 왼쪽부터 차례로 채움) -->
       <div class="flex-1 relative h-full bg-slate-50/10">
         <!-- 배경 그리드 가로선 -->
         <div class="absolute inset-0 flex flex-col pointer-events-none z-0">
@@ -238,15 +245,26 @@ function _renderMobileMonthView(container, filtered, year, todayStr) {
     const top = sm * rowHeight;
     const height = (em - sm + 1) * rowHeight;
     
-    const laneWidthPercent = 100 / totalLanes;
+    // 이 연도에 속하는 서브 태스크들 구함 (left 배치를 위해 개수 파악)
+    const subTasksInYear = Array.isArray(task.subTasks) ? task.subTasks.filter(function(st) {
+      const stS = st.startDate || st.dueDate;
+      const stE = st.dueDate || st.startDate;
+      if (!stS || !stE) return false;
+      const stSDate = new Date(stS.replace(/-/g, '/'));
+      const stEDate = new Date(stE.replace(/-/g, '/'));
+      return stSDate.getFullYear() <= year && stEDate.getFullYear() >= year;
+    }) : [];
+
+    const subCount = subTasksInYear.length;
     
-    // 본 태스크 크기 및 배치
+    // 레인 가용폭 안에서 촘촘하게 배치할 간격 계산
+    const step = Math.min(14, (laneWidth - 4) / (subCount + 1));
+    
+    // 본 태스크 크기 및 left 배치 (서브 태스크 개수만큼 오른쪽으로 이동하여 서브 태스크가 본 태스크 왼쪽에 위치하도록 함)
     const mainBarWidth = 14;
-    const mainLeftCalc = `calc(${(laneIdx + 1) * laneWidthPercent}% - ${mainBarWidth + 4}px)`;
+    const mainLeft = laneIdx * laneWidth + subCount * step + 2;
 
     const eff = typeof getEffectiveStatus === 'function' ? getEffectiveStatus(task, todayStr) : (task.status || 'PENDING');
-    
-    // 데스크탑(app.js)의 mainClass 색상 배치 규칙과 일관성 유지
     const mainCls = (function(effective) {
       if (effective === 'OVERDUE') return 'bg-rose-100 text-rose-800 border-rose-200 font-semibold';
       if (effective === 'COMPLETED') return 'bg-emerald-100 text-emerald-800 border-emerald-200';
@@ -254,70 +272,63 @@ function _renderMobileMonthView(container, filtered, year, todayStr) {
       return 'bg-slate-200 text-slate-700 border-slate-300';
     })(eff);
     
-    const assignees = Array.isArray(task.assignee) ? task.assignee.join(', ') : (task.assignee || '미지정');
+    const assignees = Array.isArray(task.assignee) ? task.assignee.join(', ') : (task.assignee || '미정');
 
+    // 본 태스크 막대 렌더링 (한글 90도 회전, 가로 중앙 및 top: 6px 정렬, 말줄임표 처리)
     html += `
-      <div class="absolute rounded-md shadow-sm text-[8px] font-bold cursor-pointer transition-all hover:scale-[1.05] pointer-events-auto border overflow-hidden flex flex-col items-center justify-start text-center p-1 ${mainCls}"
-           style="left: ${mainLeftCalc}; width: ${mainBarWidth}px; top: ${top + 3}px; height: ${height - 6}px; writing-mode: vertical-rl; text-orientation: mixed; line-height: 1.1;"
+      <div class="absolute rounded-md shadow-sm cursor-pointer transition-all hover:scale-[1.05] pointer-events-auto border overflow-hidden flex flex-col ${mainCls}"
+           style="left: ${mainLeft}px; width: ${mainBarWidth}px; top: ${top + 3}px; height: ${height - 6}px;"
            title="${escapeHTML(task.title || '')} (${assignees})"
            onclick="event.stopPropagation(); if (typeof openTaskModal === 'function') openTaskModal('${task.id}');">
-        <span class="leading-none tracking-tighter break-all font-black block">
-          ${escapeHTML(task.title || '')}
-        </span>
+        <!-- 90도 회전 텍스트 영역 -->
+        <div class="absolute whitespace-nowrap overflow-hidden text-ellipsis text-[8px] font-black"
+             style="top: 6px; left: 50%; width: ${height - 18}px; transform: translateX(-50%) rotate(90deg); transform-origin: top center; text-align: left; line-height: 1.1;">
+          ⚙️ ${escapeHTML(task.title || '')} (${escapeHTML(assignees)})
+        </div>
       </div>
     `;
 
-    // 서브 태스크들 (본 태스크 왼쪽에 나란히 배치)
-    if (Array.isArray(task.subTasks)) {
-      const subTasksInYear = task.subTasks.filter(function(st) {
-        const stS = st.startDate || st.dueDate;
-        const stE = st.dueDate || st.startDate;
-        if (!stS || !stE) return false;
-        const stSDate = new Date(stS.replace(/-/g, '/'));
-        const stEDate = new Date(stE.replace(/-/g, '/'));
-        return stSDate.getFullYear() <= year && stEDate.getFullYear() >= year;
-      });
+    // 서브 태스크들 렌더링
+    subTasksInYear.forEach(function(st, idx) {
+      const stS = st.startDate || st.dueDate;
+      const stE = st.dueDate || st.startDate;
+      const stSDate = new Date(stS.replace(/-/g, '/'));
+      const stEDate = new Date(stE.replace(/-/g, '/'));
 
-      subTasksInYear.forEach(function(st, idx) {
-        const stS = st.startDate || st.dueDate;
-        const stE = st.dueDate || st.startDate;
-        const stSDate = new Date(stS.replace(/-/g, '/'));
-        const stEDate = new Date(stE.replace(/-/g, '/'));
+      const stSm = stSDate.getFullYear() < year ? 0 : stSDate.getMonth();
+      const stEm = stEDate.getFullYear() > year ? 11 : stEDate.getMonth();
 
-        const stSm = stSDate.getFullYear() < year ? 0 : stSDate.getMonth();
-        const stEm = stEDate.getFullYear() > year ? 11 : stEDate.getMonth();
+      const stTop = stSm * rowHeight;
+      const stHeight = (stEm - stSm + 1) * rowHeight;
 
-        const stTop = stSm * rowHeight;
-        const stHeight = (stEm - stSm + 1) * rowHeight;
+      const subBarWidth = 11;
+      const subLeft = laneIdx * laneWidth + idx * step + 2;
 
-        const subBarWidth = 11;
-        const subLeftOffset = mainBarWidth + 4 + (idx + 1) * (subBarWidth + 3);
-        const subLeftCalc = `calc(${(laneIdx + 1) * laneWidthPercent}% - ${subLeftOffset}px)`;
+      const stStatus = st.status || 'PENDING';
+      const stCls = (function(status, stItem) {
+        const overdue = typeof isSubTaskOverdue === 'function' ? isSubTaskOverdue(stItem, todayStr) : false;
+        if (status === 'COMPLETED') return 'bg-emerald-50/80 text-emerald-800 border-emerald-300 border-dashed';
+        if (overdue) return 'bg-rose-50/90 text-rose-800 border-rose-300 border-dashed font-semibold';
+        if (status === 'PROGRESS') return 'bg-blue-50/80 text-blue-800 border-blue-300 border-dashed';
+        return 'bg-slate-50 text-slate-600 border-slate-300 border-dashed';
+      })(stStatus, st);
 
-        const stStatus = st.status || 'PENDING';
-        // 데스크탑(app.js)의 subClass 색상 배치 규칙과 일관성 유지
-        const stCls = (function(status, stItem) {
-          const overdue = typeof isSubTaskOverdue === 'function' ? isSubTaskOverdue(stItem, todayStr) : false;
-          if (status === 'COMPLETED') return 'bg-emerald-50/80 text-emerald-800 border-emerald-300 border-dashed';
-          if (overdue) return 'bg-rose-50/90 text-rose-800 border-rose-300 border-dashed font-semibold';
-          if (status === 'PROGRESS') return 'bg-blue-50/80 text-blue-800 border-blue-300 border-dashed';
-          return 'bg-slate-50 text-slate-600 border-slate-300 border-dashed';
-        })(stStatus, st);
+      const subAssignees = Array.isArray(st.assignee) ? st.assignee.join(', ') : (st.assignee || '미정');
 
-        const subAssignees = Array.isArray(st.assignee) ? st.assignee.join(', ') : (st.assignee || '미지정');
-
-        html += `
-          <div class="absolute rounded-md shadow-sm text-[7.5px] font-medium cursor-pointer transition-all hover:scale-[1.05] pointer-events-auto border overflow-hidden flex flex-col items-center justify-start text-center p-0.5 ${stCls}"
-               style="left: ${subLeftCalc}; width: ${subBarWidth}px; top: ${stTop + 3}px; height: ${stHeight - 6}px; writing-mode: vertical-rl; text-orientation: mixed; line-height: 1.1;"
-               title="↳ 하위: ${escapeHTML(st.title || '')} (${subAssignees})"
-               onclick="event.stopPropagation(); if (typeof openTaskModal === 'function') openTaskModal('${task.id}');">
-            <span class="leading-none tracking-tighter break-all block">
-              ${escapeHTML(st.title || '')}
-            </span>
+      // 서브 태스크 막대 렌더링 (한글 90도 회전, 가로 중앙 및 top: 6px 정렬, 말줄임표 처리)
+      html += `
+        <div class="absolute rounded-md shadow-sm cursor-pointer transition-all hover:scale-[1.05] pointer-events-auto border overflow-hidden flex flex-col ${stCls}"
+             style="left: ${subLeft}px; width: ${subBarWidth}px; top: ${stTop + 3}px; height: ${stHeight - 6}px;"
+             title="↳ 하위: ${escapeHTML(st.title || '')} (${subAssignees})"
+             onclick="event.stopPropagation(); if (typeof openTaskModal === 'function') openTaskModal('${task.id}');">
+          <!-- 90도 회전 텍스트 영역 -->
+          <div class="absolute whitespace-nowrap overflow-hidden text-ellipsis text-[7.5px] font-medium"
+               style="top: 6px; left: 50%; width: ${stHeight - 18}px; transform: translateX(-50%) rotate(90deg); transform-origin: top center; text-align: left; line-height: 1.1;">
+            ↳ ${escapeHTML(st.title || '')} (${escapeHTML(subAssignees)})
           </div>
-        `;
-      });
-    }
+        </div>
+      `;
+    });
   });
 
   html += `
