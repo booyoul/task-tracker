@@ -647,19 +647,6 @@ function renderCalendar(filteredTasks) {
   const month = currentCalDate.getMonth();
   const grid = document.getElementById('calendar-grid');
   
-  // Sync calendar date back to top month filters to keep them unified
-  const filterStartEl = document.getElementById('filter-start-month');
-  const filterEndEl = document.getElementById('filter-end-month');
-  if (filterStartEl && filterEndEl) {
-    if (currentCalMode === 'MONTH') {
-      filterStartEl.value = `${year}-01`;
-      filterEndEl.value = `${year}-12`;
-    } else {
-      const currentMonthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
-      filterStartEl.value = currentMonthStr;
-      filterEndEl.value = currentMonthStr;
-    }
-  }
   const weekdayHeader = document.getElementById('calendar-weekday-header');
   const titleEl = document.getElementById('calendar-month-year');
   const todayStr = getTodayStr();
@@ -991,6 +978,25 @@ function ensureUXToolbar() {
 function renderActiveViews(){
   ensureAdvancedFilterOptions();
   ensureUXToolbar();
+
+  // 캘린더 모드에 따른 상단 필터 값을 선제적으로 동기화하여 getFilteredTasks()가 올바른 범위를 필터링하도록 보장
+  if (currentViewMode === 'CALENDAR') {
+    const year = currentCalDate.getFullYear();
+    const month = currentCalDate.getMonth();
+    const filterStartEl = document.getElementById('filter-start-month');
+    const filterEndEl = document.getElementById('filter-end-month');
+    if (filterStartEl && filterEndEl) {
+      if (currentCalMode === 'MONTH') {
+        filterStartEl.value = `${year}-01`;
+        filterEndEl.value = `${year}-12`;
+      } else {
+        const currentMonthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
+        filterStartEl.value = currentMonthStr;
+        filterEndEl.value = currentMonthStr;
+      }
+    }
+  }
+
   if (typeof syncMobileFiltersFromDesktop === 'function') {
     syncMobileFiltersFromDesktop();
   }
