@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "npx serve -l 3000",
     "build:css": "npx @tailwindcss/cli -i ./src/input.css -o ./dist/output.css",
+    "smoke:mobile": "node scripts/mobile-smoke.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
