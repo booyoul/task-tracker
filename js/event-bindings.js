@@ -90,8 +90,31 @@ function initEventBindings(){
   document.getElementById('btn-delete-tracker')?.addEventListener('click',handleDeleteTrackerClick);
   document.getElementById('btn-cancel-confirm')?.addEventListener('click',()=>window.closeConfirmModal?.());
   document.getElementById('btn-action-confirm')?.addEventListener('click',()=>{if(confirmActionCb)confirmActionCb();});
-  document.addEventListener('click',e=>{
+  document.addEventListener('click', e => {
     console.log('[EventBindings] click detected on:', e.target);
+    
+    // 칸반 서브태스크 아코디언 토글 핸들러
+    const toggleSubBtn = e.target.closest('.btn-toggle-kanban-subs');
+    if (toggleSubBtn) {
+      console.log('[EventBindings] handling btn-toggle-kanban-subs');
+      e.preventDefault();
+      e.stopPropagation();
+      const taskId = toggleSubBtn.dataset.id;
+      const subContainer = document.getElementById(`kanban-subs-${taskId}`);
+      const icon = toggleSubBtn.querySelector('.toggle-icon');
+      if (subContainer) {
+        const isHidden = subContainer.classList.contains('hidden');
+        if (isHidden) {
+          subContainer.classList.remove('hidden');
+          if (icon) icon.style.transform = 'rotate(180deg)';
+        } else {
+          subContainer.classList.add('hidden');
+          if (icon) icon.style.transform = 'rotate(0deg)';
+        }
+      }
+      return;
+    }
+
     const statusBtn=e.target.closest('.mobile-status-btn');
     if(statusBtn){
       console.log('[EventBindings] handling mobile-status-btn');

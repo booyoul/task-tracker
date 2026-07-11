@@ -26,7 +26,7 @@ function buildKanbanCard(t,today){
   const subs=Array.isArray(t.subTasks)?t.subTasks:[];
   const done=subs.filter(st=>normalizeStatus(st.status)==='COMPLETED').length;
   const accent=['HIGH','CRITICAL'].includes(risk.level)?'border-rose-200':eff==='OVERDUE'?'border-amber-200':'border-slate-100';
-  const labelAssignee = Array.isArray(t.assignee) ? t.assignee.join(', ') : (t.assignee || '미지정');
+  const labelAssignee = Array.isArray(t.assignee) ? t.assignee.join(', ') : (t.assignee || '미정');
   return `<article class="rounded-2xl border ${accent} bg-white p-3 shadow-sm">
     <div class="flex items-start justify-between gap-2">
       <button type="button" class="btn-edit min-w-0 text-left" data-id="${escapeHTML(t.id)}"><div class="line-clamp-2 text-sm font-black leading-snug text-slate-900">${escapeHTML(t.title||'')}</div></button>
@@ -38,7 +38,52 @@ function buildKanbanCard(t,today){
       <span class="rounded-full ${(t.priority==='HIGH')?'bg-rose-50 text-rose-700':'bg-amber-50 text-amber-700'} px-2 py-1">${t.priority==='HIGH'?'높음':'보통'}</span>
     </div>
     <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100"><div class="h-full ${eff==='COMPLETED'?'bg-emerald-500':eff==='PROGRESS'?'bg-blue-500':'bg-amber-400'}" style="width:${pct}%"></div></div>
-    <div class="mt-2 flex items-center justify-between text-[11px] text-slate-400"><span>진척 ${pct}%</span><span>하위 ${done}/${subs.length}</span></div>
+    <div class="mt-2 flex items-center justify-between text-[11px] text-slate-400">
+      <span>진척 ${pct}%</span>
+      ${subs.length > 0 ? `
+        <button type="button" class="btn-toggle-kanban-subs flex items-center gap-1 hover:text-indigo-650 transition-colors font-bold text-slate-500 cursor-pointer" data-id="${escapeHTML(t.id)}">
+          <span>하위 ${done}/${subs.length}</span>
+          <span class="toggle-icon inline-block transition-transform duration-200 text-[9px]">🔽</span>
+        </button>
+      ` : `<span>하위 0/0</span>`}
+    </div>
+    ${subs.length > 0 ? `
+      <div id="kanban-subs-${escapeHTML(t.id)}" class="kanban-subtasks-container hidden mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-1.5 max-h-32 overflow-y-auto pr-0.5">
+        ${subs.map(st => {
+          const status = normalizeStatus(st.status);
+          const statusKorean = getStatusKorean(status);
+          const assigneeNames = Array.isArray(st.assignee) ? st.assignee.join(', ') : (st.assignee || '미정');
+          
+          let statusClass = '';
+          let textClass = 'text-slate-700 dark:text-slate-350';
+          if (status === 'COMPLETED') {
+              statusClass = 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50';
+              textClass = 'text-slate-400 line-through dark:text-slate-500';
+          } else if (status === 'PROGRESS') {
+              statusClass = 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/50';
+          } else {
+              statusClass = 'bg-slate-50 text-slate-650 border-slate-200 dark:bg-slate-850 dark:text-slate-300 dark:border-slate-800';
+          }
+          
+          return `
+            <div class="text-[9px] flex flex-col gap-1 p-1.5 rounded bg-slate-50/50 dark:bg-slate-900/10 border border-slate-100/50 dark:border-slate-800/50">
+              <div class="flex items-center justify-between gap-1.5">
+                <span class="truncate ${textClass} font-semibold">${escapeHTML(st.title)}</span>
+                <span class="shrink-0 px-1 py-0.2 rounded text-[7.5px] font-bold border ${statusClass}">
+                  ${statusKorean}
+                </span>
+              </div>
+              <div class="flex items-center justify-between text-[8px] text-slate-450 dark:text-slate-500">
+                <span class="truncate">👤 ${escapeHTML(assigneeNames)}</span>
+                <span class="shrink-0">
+                  ${st.dueDate ? '📅 ' + st.dueDate.substring(5) : ''}
+                </span>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    ` : ''}
     ${risk.level!=='NONE'?`<div class="mt-2 rounded-xl border border-rose-100 bg-rose-50 px-2 py-1 text-[11px] font-bold text-rose-700">🚨 ${risk.label} D+${risk.delay}</div>`:''}
     <div class="mt-3 grid grid-cols-3 gap-1">
       <button type="button" class="mobile-status-btn rounded-xl bg-amber-50 px-2 py-1.5 text-[11px] font-black text-amber-700" data-id="${escapeHTML(t.id)}" data-status="PENDING">대기</button>
