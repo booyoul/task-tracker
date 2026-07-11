@@ -21,6 +21,10 @@
    * `js/calendar-mobile-renderer.js`의 모바일 연간 간트 렌더러를 데스크탑 연간 보기와 유사한 막대 색상, 테두리, 월 축, 오늘 강조, 빈 상태 스타일로 정리 완료.
    * 기존 모바일 연간 렌더러의 미정의 변수(`mainCls`, `assignees`, `statusIcon`) 사용 위험을 제거하고, `calendarUxState`의 하위업무/산업색상 옵션을 반영하도록 보완 완료.
    * `index.html`의 `calendar-mobile-renderer.js` 캐시 버전을 `v20260711-v11`로 갱신하고 `npm run build:css`, `node --check`, `jsdom` 렌더러 스모크 검증 완료.
+5. **모바일 연간 간트 막대 정렬 보정**
+   * 본 태스크/서브 태스크 막대 두께를 동일하게 계산하고, 각 업무 그룹을 왼쪽 패딩 뒤에서부터 채우도록 `js/calendar-mobile-renderer.js` 배치 로직 보정 완료.
+   * 그룹 안에서는 서브 태스크를 왼쪽부터 배치하고 본 태스크를 오른쪽에 두도록 조정했으며, 그룹 단위 사이에 고정 간격을 추가해 구분감을 개선 완료.
+   * `index.html`의 `calendar-mobile-renderer.js` 캐시 버전을 `v20260711-v13`로 갱신하고 `npm run build:css`, `node --check`, `jsdom` 레이아웃 스모크 검증 완료.
 
 ---
 

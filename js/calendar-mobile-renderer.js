@@ -190,6 +190,25 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
     return '⌛';
   };
 
+  const getSubTasksInYear = function(task) {
+    return showSubTaskBars && Array.isArray(task.subTasks) ? task.subTasks.filter(function(st) {
+      const stS = st.startDate || st.dueDate;
+      const stE = st.dueDate || st.startDate;
+      if (!stS || !stE) return false;
+      const stSDate = new Date(stS.replace(/-/g, '/'));
+      const stEDate = new Date(stE.replace(/-/g, '/'));
+      return stSDate.getFullYear() <= year && stEDate.getFullYear() >= year;
+    }) : [];
+  };
+
+  const subTasksByTaskId = new Map();
+  let maxBarsInGroup = 1;
+  tasksInYear.forEach(function(task) {
+    const visibleSubTasks = getSubTasksInYear(task);
+    subTasksByTaskId.set(task.id, visibleSubTasks);
+    maxBarsInGroup = Math.max(maxBarsInGroup, 1 + visibleSubTasks.length);
+  });
+
   // 2. 겹침 방지 알고리즘 (Lane Assignment)
   const lanes = [];
   const taskLanes = new Map();
@@ -225,9 +244,15 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
   const axisWidth = 46;
   const horizontalPadding = 24;
   const chartWidth = Math.max(220, (containerWidth || 320) - axisWidth - horizontalPadding);
-  const laneGap = totalLanes > 1 ? 7 : 0;
-  const laneWidth = Math.max(22, Math.min(50, (chartWidth - 28 - laneGap * (totalLanes - 1)) / totalLanes));
-  const startOffset = Math.max(14, Math.floor((chartWidth - (laneWidth * totalLanes + laneGap * (totalLanes - 1))) / 2));
+  const startOffset = 14;
+  const endPadding = 10;
+  const groupGap = totalLanes > 1 ? 12 : 0;
+  const barGap = 3;
+  const availableWidth = Math.max(120, chartWidth - startOffset - endPadding - groupGap * Math.max(0, totalLanes - 1));
+  const rawBarThickness = (availableWidth / totalLanes - barGap * (maxBarsInGroup - 1)) / maxBarsInGroup;
+  const barThickness = Math.max(10, Math.min(22, Math.floor(rawBarThickness)));
+  const groupWidth = maxBarsInGroup * barThickness + (maxBarsInGroup - 1) * barGap;
+  const laneSlotWidth = groupWidth + groupGap;
 
   container.innerHTML = '';
 
@@ -311,21 +336,9 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
     const top = sm * rowHeight;
     const height = (em - sm + 1) * rowHeight;
     
-    // 이 연도에 속하는 서브 태스크들 구함
-    const subTasksInYear = showSubTaskBars && Array.isArray(task.subTasks) ? task.subTasks.filter(function(st) {
-      const stS = st.startDate || st.dueDate;
-      const stE = st.dueDate || st.startDate;
-      if (!stS || !stE) return false;
-      const stSDate = new Date(stS.replace(/-/g, '/'));
-      const stEDate = new Date(stE.replace(/-/g, '/'));
-      return stSDate.getFullYear() <= year && stEDate.getFullYear() >= year;
-    }) : [];
-
-    const subCount = subTasksInYear.length;
-    const subBarWidth = subCount ? Math.max(13, Math.min(17, (laneWidth - 6) / Math.max(1, subCount))) : 0;
-    const mainBarWidth = subCount ? Math.max(16, laneWidth - subBarWidth * Math.min(subCount, 2) - 4) : Math.max(20, Math.min(26, laneWidth));
-    const laneLeft = startOffset + laneIdx * (laneWidth + laneGap);
-    const mainLeft = laneLeft + Math.max(0, laneWidth - mainBarWidth);
+    const subTasksInYear = subTasksByTaskId.get(task.id) || [];
+    const laneLeft = startOffset + laneIdx * laneSlotWidth;
+    const mainLeft = laneLeft + subTasksInYear.length * (barThickness + barGap);
     const assignees = Array.isArray(task.assignee) ? task.assignee.join(', ') : (task.assignee || '미지정');
     const mainCls = getTaskTone(task);
     const statusIcon = getTaskIcon(task);
@@ -333,9 +346,9 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
     const mainBar = document.createElement('div');
     mainBar.className = `absolute rounded-lg shadow-sm text-[10.5px] font-bold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] pointer-events-auto flex items-center pl-3 pr-2 ${mainCls}`;
     mainBar.style.width = `${height - 6}px`;
-    mainBar.style.height = `${mainBarWidth}px`;
+    mainBar.style.height = `${barThickness}px`;
     mainBar.style.top = `${top + 3}px`;
-    mainBar.style.left = `${mainLeft + mainBarWidth}px`;
+    mainBar.style.left = `${mainLeft + barThickness}px`;
     mainBar.style.transformOrigin = 'top left';
     mainBar.style.transform = 'rotate(90deg)';
     mainBar.style.overflow = 'hidden';
@@ -362,7 +375,7 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
       const stTop = stSm * rowHeight;
       const stHeight = (stEm - stSm + 1) * rowHeight;
 
-      const subLeft = laneLeft + Math.max(0, idx * (subBarWidth + 2));
+      const subLeft = laneLeft + idx * (barThickness + barGap);
       const stCls = getSubTaskTone(st, task);
 
       const subAssignees = Array.isArray(st.assignee) ? st.assignee.join(', ') : (st.assignee || '미지정');
@@ -372,9 +385,9 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
       const subBar = document.createElement('div');
       subBar.className = `absolute rounded-lg shadow-sm text-[9.5px] font-bold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] pointer-events-auto flex items-center pl-2.5 pr-1.5 ${stCls}`;
       subBar.style.width = `${stHeight - 6}px`;
-      subBar.style.height = `${subBarWidth}px`;
+      subBar.style.height = `${barThickness}px`;
       subBar.style.top = `${stTop + 3}px`;
-      subBar.style.left = `${subLeft + subBarWidth}px`;
+      subBar.style.left = `${subLeft + barThickness}px`;
       subBar.style.transformOrigin = 'top left';
       subBar.style.transform = 'rotate(90deg)';
       subBar.style.overflow = 'hidden';
