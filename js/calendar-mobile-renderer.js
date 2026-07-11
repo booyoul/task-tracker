@@ -259,7 +259,7 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
     const top = sm * rowHeight;
     const height = (em - sm + 1) * rowHeight;
     
-    // 이 연도에 속하는 서브 태스크들 구함 (left 배치를 위해 개수 파악)
+    // 이 연도에 속하는 서브 태스크들 구함
     const subTasksInYear = Array.isArray(task.subTasks) ? task.subTasks.filter(function(st) {
       const stS = st.startDate || st.dueDate;
       const stE = st.dueDate || st.startDate;
@@ -270,16 +270,14 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
     }) : [];
 
     const subCount = subTasksInYear.length;
-    
-    // 레인 가용폭 안에서 촘촘하게 배치할 간격 계산 (본 태스크 28px, 서브 태스크 22px이므로 간격 최대 24px)
     const step = Math.min(24, (laneWidth - 4) / (subCount + 1));
     
-    // 본 태스크 크기 및 left 배치 (시작 오프셋 32px 추가)
     const mainBarWidth = 28;
-    const startOffset = 32;
+    const startOffset = 32; // 왼쪽 경계선과 너무 가깝지 않도록 32px 오프셋 유지
     const mainLeft = laneIdx * laneWidth + startOffset + subCount * step;
 
     const eff = typeof getEffectiveStatus === 'function' ? getEffectiveStatus(task, todayStr) : (task.status || 'PENDING');
+    // 데스크탑 mainClass 와 동일한 색상 매핑
     const mainCls = (function(effective) {
       if (effective === 'OVERDUE') return 'bg-rose-100 text-rose-800 border-rose-200 font-semibold';
       if (effective === 'COMPLETED') return 'bg-emerald-100 text-emerald-800 border-emerald-200';
@@ -287,37 +285,32 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
       return 'bg-slate-200 text-slate-700 border-slate-300';
     })(eff);
     
-    const assignees = Array.isArray(task.assignee) ? task.assignee.join(', ') : (task.assignee || '미정');
+    const assignees = Array.isArray(task.assignee) ? task.assignee.join(', ') : (task.assignee || '미지정');
+    const statusIcon = eff === 'OVERDUE' ? '🚨' : eff === 'COMPLETED' ? '⭐️' : eff === 'PROGRESS' ? '⚙️' : '⌛';
 
-    // 본 태스크 상태 아이콘 구하기
-    const statusIcon = eff === 'OVERDUE' ? '🚨' : eff === 'COMPLETED' ? '✅' : eff === 'PROGRESS' ? '⚙️' : '⌛';
-
-    // 본 태스크 막대 DOM 생성
+    // 기하학적 공식 적용:
+    // 가로 막대를 (left = mainLeft + mainBarWidth) 위치에 배치한 후,
+    // top-left 기준으로 90도 회전하면 정확히 (left = mainLeft)에 맞아 떨어집니다.
+    // block 단일 레이어에 직접 truncate 속성을 부여해 글자 찌그러짐을 예방하고, lineHeight로 중앙 정렬을 완성합니다.
     const mainBar = document.createElement('div');
-    mainBar.className = `absolute rounded-md shadow-sm cursor-pointer transition-all hover:scale-[1.05] pointer-events-auto border overflow-hidden flex flex-col ${mainCls}`;
-    mainBar.style.left = `${mainLeft}px`;
-    mainBar.style.width = `${mainBarWidth}px`;
+    mainBar.className = `absolute rounded-lg shadow-sm text-[10.5px] font-bold cursor-pointer transition-all hover:scale-[1.02] pointer-events-auto border whitespace-nowrap overflow-hidden text-ellipsis px-2 ${mainCls}`;
+    mainBar.style.width = `${height - 6}px`;
+    mainBar.style.height = `${mainBarWidth}px`;
     mainBar.style.top = `${top + 3}px`;
-    mainBar.style.height = `${height - 6}px`;
-    mainBar.title = `${task.title || ''} (${assignees})`;
+    mainBar.style.left = `${mainLeft + mainBarWidth}px`; // 회전 후 mainLeft로 이동하도록 두께만큼 우측 시작
+    mainBar.style.transformOrigin = 'top left';
+    mainBar.style.transform = 'rotate(90deg)';
+    mainBar.style.lineHeight = `${mainBarWidth - 2}px`; // 테두리 두께 보정 수직 중앙 정렬
+    mainBar.style.textAlign = 'left';
+    mainBar.title = `${task.title || ''} · 담당자: ${assignees}`;
     mainBar.onclick = function(e) {
       e.stopPropagation();
       if (typeof openTaskModal === 'function') openTaskModal(task.id);
     };
 
-    // 90도 회전 텍스트 영역 (CSS 기하학적 정렬 및 잘림 방지 반영)
-    const textEl = document.createElement('div');
-    textEl.className = 'absolute whitespace-nowrap overflow-hidden text-ellipsis text-[10.5px] font-black';
-    textEl.style.top = '8px';
-    textEl.style.left = 'calc(50% - 6px)'; // 텍스트 상자 두께의 절반만큼 왼쪽 이동하여 정중앙 정렬
-    textEl.style.width = `${height - 16}px`;
-    textEl.style.transform = 'rotate(90deg)';
-    textEl.style.transformOrigin = 'top left'; // 왼쪽 위 모서리를 축으로 회전시켜 아래쪽으로 바르게 쏟아짐
-    textEl.style.textAlign = 'left';
-    textEl.style.lineHeight = '1.1';
-    textEl.innerHTML = `${statusIcon} ${escapeHTML(task.title || '')} (👤 ${escapeHTML(assignees)})`;
-    mainBar.appendChild(textEl);
-
+    // 데스크탑과 동일 텍스트 포맷
+    // block w-full truncate span으로 감싸 브라우저가 수축 버그 없이 깔끔하게 말줄임표(...)를 그리도록 강제합니다.
+    mainBar.innerHTML = `<span class="block w-full truncate" style="text-align: left; padding: 0 4px;">${statusIcon} ${escapeHTML(task.title || '')}</span>`;
     barContainer.appendChild(mainBar);
 
     // 서브 태스크들 DOM 생성
@@ -337,41 +330,59 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
       const subLeft = laneIdx * laneWidth + startOffset + idx * step;
 
       const stStatus = st.status || 'PENDING';
+      // 데스크탑 subClass와 동일한 색상 매핑 (border-dashed 포함)
       const stCls = (function(status, stItem) {
         const overdue = typeof isSubTaskOverdue === 'function' ? isSubTaskOverdue(stItem, todayStr) : false;
-        if (status === 'COMPLETED') return 'bg-emerald-50/80 text-emerald-800 border-emerald-300 border-dashed';
-        if (overdue) return 'bg-rose-50/90 text-rose-800 border-rose-300 border-dashed font-semibold';
-        if (status === 'PROGRESS') return 'bg-blue-50/80 text-blue-800 border-blue-300 border-dashed';
+        if (overdue) return 'bg-rose-50 text-rose-800 border-rose-300 border-dashed font-semibold';
+        if (status === 'COMPLETED') return 'bg-emerald-50 text-emerald-800 border-emerald-300 border-dashed';
+        if (status === 'PROGRESS') return 'bg-blue-50 text-blue-800 border-blue-300 border-dashed';
         return 'bg-slate-50 text-slate-600 border-slate-300 border-dashed';
       })(stStatus, st);
 
-      const subAssignees = Array.isArray(st.assignee) ? st.assignee.join(', ') : (st.assignee || '미정');
+      const subAssignees = Array.isArray(st.assignee) ? st.assignee.join(', ') : (st.assignee || '미지정');
       const stOverdue = typeof isSubTaskOverdue === 'function' ? isSubTaskOverdue(st, todayStr) : false;
-      const stStatusIcon = stOverdue ? '🚨' : stStatus === 'COMPLETED' ? '✅' : stStatus === 'PROGRESS' ? '⚙️' : '⌛';
+      const stStatusIcon = stOverdue ? '🚨' : st.status === 'COMPLETED' ? '⭐️' : st.status === 'PROGRESS' ? '⚙️' : '⌛';
 
+      // 서브태스크도 동일하게 보정: (left = subLeft + subBarWidth) 배치 후 90도 회전
       const subBar = document.createElement('div');
-      subBar.className = `absolute rounded-md shadow-sm cursor-pointer transition-all hover:scale-[1.05] pointer-events-auto border overflow-hidden flex flex-col ${stCls}`;
-      subBar.style.left = `${subLeft}px`;
-      subBar.style.width = `${subBarWidth}px`;
+      subBar.className = `absolute rounded-lg shadow-sm text-[9.5px] font-bold cursor-pointer transition-all hover:scale-[1.02] pointer-events-auto border whitespace-nowrap overflow-hidden text-ellipsis px-1.5 ${stCls}`;
+      subBar.style.width = `${stHeight - 6}px`;
+      subBar.style.height = `${subBarWidth}px`;
       subBar.style.top = `${stTop + 3}px`;
-      subBar.style.height = `${stHeight - 6}px`;
-      subBar.title = `↳ 하위: ${st.title || ''} (${subAssignees})`;
+      subBar.style.left = `${subLeft + subBarWidth}px`; // 회전 후 subLeft로 이동하도록 두께만큼 우측 시작
+      subBar.style.transformOrigin = 'top left';
+      subBar.style.transform = 'rotate(90deg)';
+      subBar.style.lineHeight = `${subBarWidth - 2}px`;
+      subBar.style.textAlign = 'left';
+      subBar.title = `↳ 하위: ${st.title || ''} · 담당자: ${subAssignees}`;
       subBar.onclick = function(e) {
         e.stopPropagation();
         if (typeof openTaskModal === 'function') openTaskModal(task.id);
       };
 
-      const subTextEl = document.createElement('div');
-      subTextEl.className = 'absolute whitespace-nowrap overflow-hidden text-ellipsis text-[9px] font-medium';
-      subTextEl.style.top = '8px';
-      subTextEl.style.left = 'calc(50% - 5px)'; // 서브태스크 두께에 따른 보정
-      subTextEl.style.width = `${stHeight - 16}px`;
-      subTextEl.style.transform = 'rotate(90deg)';
-      subTextEl.style.transformOrigin = 'top left';
-      subTextEl.style.textAlign = 'left';
-      subTextEl.style.lineHeight = '1.1';
-      subTextEl.innerHTML = `${stStatusIcon} ↳ ${escapeHTML(st.title || '')} (👤 ${escapeHTML(subAssignees)})`;
-      subBar.appendChild(subTextEl);
+      subBar.innerHTML = `<span class="block w-full truncate" style="text-align: left; padding: 0 3px;">${stStatusIcon} ↳ 👤 ${escapeHTML(subAssignees)} | ${escapeHTML(st.title || '')}</span>`;
+      barContainer.appendChild(subBar);
+    });
+  });
+
+  chartArea.appendChild(barContainer);inter-events-auto border ${stCls}`;
+      subBar.style.width = `${stHeight - 6}px`;
+      subBar.style.height = `${subBarWidth}px`;
+      subBar.style.top = `${stTop + 3}px`;
+      subBar.style.left = `${subLeft + subBarWidth}px`; // 회전 후 subLeft로 이동하도록 두께만큼 우측 시작
+      subBar.style.transformOrigin = 'top left';
+      subBar.style.transform = 'rotate(90deg)';
+      subBar.style.overflow = 'hidden';
+      subBar.title = `↳ 하위: ${st.title || ''} · 담당자: ${subAssignees}`;
+      subBar.onclick = function(e) {
+        e.stopPropagation();
+        if (typeof openTaskModal === 'function') openTaskModal(task.id);
+      };
+
+      const subTextSpan = document.createElement('span');
+      subTextSpan.className = 'truncate';
+      subTextSpan.textContent = `${stStatusIcon} ↳ 👤 ${subAssignees} | ${st.title || ''}`;
+      subBar.appendChild(subTextSpan);
 
       barContainer.appendChild(subBar);
     });
