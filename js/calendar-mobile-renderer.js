@@ -237,31 +237,87 @@ function _renderMobileMonthView(container, filtered, year, todayStr) {
 
     const top = sm * rowHeight;
     const height = (em - sm + 1) * rowHeight;
-    const leftPercent = (laneIdx / totalLanes) * 100;
-    const widthPercent = (1 / totalLanes) * 100;
+    
+    const laneWidthPercent = 100 / totalLanes;
+    
+    // 본 태스크 크기 및 배치
+    const mainBarWidth = 14;
+    const mainLeftCalc = `calc(${(laneIdx + 1) * laneWidthPercent}% - ${mainBarWidth + 4}px)`;
 
-const eff = typeof getEffectiveStatus === 'function' ? getEffectiveStatus(task, todayStr) : (task.status || 'PENDING');
-    const statusConfig = {
-      COMPLETED: { icon: '✅', label: '완료', cls: 'bg-emerald-500 text-white border-emerald-600 hover:bg-emerald-600' },
-      OVERDUE:   { icon: '🚨', label: '지연', cls: 'bg-rose-500 text-white border-rose-600 hover:bg-rose-600' },
-      PROGRESS:  { icon: '⚙️', label: '진행', cls: 'bg-blue-500 text-white border-blue-600 hover:bg-blue-600' },
-      PENDING:   { icon: '⌛', label: '대기', cls: 'bg-amber-400 text-amber-950 border-amber-500 hover:bg-amber-500' },
-    };
-    const sc = statusConfig[eff] || statusConfig.PENDING;
+    const eff = typeof getEffectiveStatus === 'function' ? getEffectiveStatus(task, todayStr) : (task.status || 'PENDING');
+    
+    // 데스크탑(app.js)의 mainClass 색상 배치 규칙과 일관성 유지
+    const mainCls = (function(effective) {
+      if (effective === 'OVERDUE') return 'bg-rose-100 text-rose-800 border-rose-200 font-semibold';
+      if (effective === 'COMPLETED') return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+      if (effective === 'PROGRESS') return 'bg-blue-100 text-blue-800 border-blue-200';
+      return 'bg-slate-200 text-slate-700 border-slate-300';
+    })(eff);
+    
     const assignees = Array.isArray(task.assignee) ? task.assignee.join(', ') : (task.assignee || '미지정');
 
     html += `
-      <div class="absolute rounded-xl shadow-sm text-[9px] font-black cursor-pointer transition-all hover:scale-[1.01] pointer-events-auto border overflow-hidden flex flex-col items-center justify-start text-center p-1.5 gap-1 ${sc.cls}"
-           style="left: calc(${leftPercent}% + 2px); width: calc(${widthPercent}% - 4px); top: ${top + 3}px; height: ${height - 6}px;"
+      <div class="absolute rounded-md shadow-sm text-[8px] font-bold cursor-pointer transition-all hover:scale-[1.05] pointer-events-auto border overflow-hidden flex flex-col items-center justify-start text-center p-1 ${mainCls}"
+           style="left: ${mainLeftCalc}; width: ${mainBarWidth}px; top: ${top + 3}px; height: ${height - 6}px; writing-mode: vertical-rl; text-orientation: mixed; line-height: 1.1;"
            title="${escapeHTML(task.title || '')} (${assignees})"
            onclick="event.stopPropagation(); if (typeof openTaskModal === 'function') openTaskModal('${task.id}');">
-        <span class="text-xs shrink-0">${sc.icon}</span>
-        <span class="leading-tight break-all font-bold line-clamp-6 w-full">
+        <span class="leading-none tracking-tighter break-all font-black block">
           ${escapeHTML(task.title || '')}
         </span>
-        <span class="text-[8px] opacity-90 mt-auto shrink-0 truncate max-w-full font-medium">👤 ${escapeHTML(assignees.split(',')[0])}</span>
       </div>
     `;
+
+    // 서브 태스크들 (본 태스크 왼쪽에 나란히 배치)
+    if (Array.isArray(task.subTasks)) {
+      const subTasksInYear = task.subTasks.filter(function(st) {
+        const stS = st.startDate || st.dueDate;
+        const stE = st.dueDate || st.startDate;
+        if (!stS || !stE) return false;
+        const stSDate = new Date(stS.replace(/-/g, '/'));
+        const stEDate = new Date(stE.replace(/-/g, '/'));
+        return stSDate.getFullYear() <= year && stEDate.getFullYear() >= year;
+      });
+
+      subTasksInYear.forEach(function(st, idx) {
+        const stS = st.startDate || st.dueDate;
+        const stE = st.dueDate || st.startDate;
+        const stSDate = new Date(stS.replace(/-/g, '/'));
+        const stEDate = new Date(stE.replace(/-/g, '/'));
+
+        const stSm = stSDate.getFullYear() < year ? 0 : stSDate.getMonth();
+        const stEm = stEDate.getFullYear() > year ? 11 : stEDate.getMonth();
+
+        const stTop = stSm * rowHeight;
+        const stHeight = (stEm - stSm + 1) * rowHeight;
+
+        const subBarWidth = 11;
+        const subLeftOffset = mainBarWidth + 4 + (idx + 1) * (subBarWidth + 3);
+        const subLeftCalc = `calc(${(laneIdx + 1) * laneWidthPercent}% - ${subLeftOffset}px)`;
+
+        const stStatus = st.status || 'PENDING';
+        // 데스크탑(app.js)의 subClass 색상 배치 규칙과 일관성 유지
+        const stCls = (function(status, stItem) {
+          const overdue = typeof isSubTaskOverdue === 'function' ? isSubTaskOverdue(stItem, todayStr) : false;
+          if (status === 'COMPLETED') return 'bg-emerald-50/80 text-emerald-800 border-emerald-300 border-dashed';
+          if (overdue) return 'bg-rose-50/90 text-rose-800 border-rose-300 border-dashed font-semibold';
+          if (status === 'PROGRESS') return 'bg-blue-50/80 text-blue-800 border-blue-300 border-dashed';
+          return 'bg-slate-50 text-slate-600 border-slate-300 border-dashed';
+        })(stStatus, st);
+
+        const subAssignees = Array.isArray(st.assignee) ? st.assignee.join(', ') : (st.assignee || '미지정');
+
+        html += `
+          <div class="absolute rounded-md shadow-sm text-[7.5px] font-medium cursor-pointer transition-all hover:scale-[1.05] pointer-events-auto border overflow-hidden flex flex-col items-center justify-start text-center p-0.5 ${stCls}"
+               style="left: ${subLeftCalc}; width: ${subBarWidth}px; top: ${stTop + 3}px; height: ${stHeight - 6}px; writing-mode: vertical-rl; text-orientation: mixed; line-height: 1.1;"
+               title="↳ 하위: ${escapeHTML(st.title || '')} (${subAssignees})"
+               onclick="event.stopPropagation(); if (typeof openTaskModal === 'function') openTaskModal('${task.id}');">
+            <span class="leading-none tracking-tighter break-all block">
+              ${escapeHTML(st.title || '')}
+            </span>
+          </div>
+        `;
+      });
+    }
   });
 
   html += `
