@@ -19,7 +19,7 @@ function renderMobileCalendar(filtered) {
 
   if (monthYearEl) {
     if (mode === 'MONTH') {
-      monthYearEl.textContent = year + '년 연간 현황';
+      monthYearEl.textContent = year + '년 년간 현황';
     } else if (mode === 'SUMMARY') {
       monthYearEl.textContent = year + '년 ' + (month + 1) + '월 요약';
     } else {
@@ -60,27 +60,51 @@ function _renderMobileDayView(container, filtered, year, month, todayStr) {
   const monthStart = monthStr + '-01';
   const monthEnd = monthStr + '-' + String(daysInMonth).padStart(2, '0');
 
-  const tasksInMonth = filtered.filter(function(t) {
-    const s = t.startDate || t.dueDate;
-    const e = t.dueDate || t.startDate;
-    return s && e && s <= monthEnd && e >= monthStart;
-  });
-
-  if (tasksInMonth.length === 0) {
-    container.innerHTML = '<div class="flex flex-col items-center justify-center py-16 text-center"><span class="text-4xl mb-3">📅</span><p class="text-sm font-semibold text-slate-500">이번 달 업무가 없습니다.</p><p class="text-xs text-slate-400 mt-1">다른 달을 선택하거나 새 업무를 추가해 주세요.</p></div>';
-    return;
-  }
-
+  // dayMap: dateStr -> Map(taskId -> { task: task, startSubTasks: [] })
   const dayMap = new Map();
-  tasksInMonth.forEach(function(task) {
+
+  filtered.forEach(function(task) {
     const s = task.startDate || task.dueDate;
     const e = task.dueDate || task.startDate;
     if (!s || !e) return;
-    const effectiveStart = s < monthStart ? monthStart : s;
-    const displayDate = effectiveStart;
-    if (!dayMap.has(displayDate)) dayMap.set(displayDate, []);
-    dayMap.get(displayDate).push(task);
+
+    // 1. 본 태스크가 이번 달에 걸쳐 있는 경우 (시작일에 매핑)
+    if (s <= monthEnd && e >= monthStart) {
+      const effectiveStart = s < monthStart ? monthStart : s;
+      const displayDate = effectiveStart;
+      
+      if (!dayMap.has(displayDate)) {
+        dayMap.set(displayDate, new Map());
+      }
+      const dateTasks = dayMap.get(displayDate);
+      if (!dateTasks.has(task.id)) {
+        dateTasks.set(task.id, { task: task, startSubTasks: [] });
+      }
+    }
+
+    // 2. 이 달에 시작하는 서브 태스크가 있는 경우
+    if (Array.isArray(task.subTasks)) {
+      task.subTasks.forEach(function(st) {
+        const subS = st.startDate || st.dueDate;
+        if (subS && subS >= monthStart && subS <= monthEnd) {
+          const displayDate = subS;
+          if (!dayMap.has(displayDate)) {
+            dayMap.set(displayDate, new Map());
+          }
+          const dateTasks = dayMap.get(displayDate);
+          if (!dateTasks.has(task.id)) {
+            dateTasks.set(task.id, { task: task, startSubTasks: [] });
+          }
+          dateTasks.get(task.id).startSubTasks.push(st);
+        }
+      });
+    }
   });
+
+  if (dayMap.size === 0) {
+    container.innerHTML = '<div class="flex flex-col items-center justify-center py-16 text-center"><span class="text-4xl mb-3">📅</span><p class="text-sm font-semibold text-slate-500">이번 달 업무가 없습니다.</p><p class="text-xs text-slate-400 mt-1">다른 달을 선택하거나 새 업무를 추가해 주세요.</p></div>';
+    return;
+  }
 
   const sortedDates = Array.from(dayMap.keys()).sort();
   const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
@@ -98,8 +122,10 @@ function _renderMobileDayView(container, filtered, year, month, todayStr) {
 
     const taskList = document.createElement('div');
     taskList.className = 'space-y-2';
-    dayMap.get(dateStr).forEach(function(task) {
-      taskList.appendChild(_buildMobileTaskCard(task, todayStr));
+    
+    const dateTasksMap = dayMap.get(dateStr);
+    dateTasksMap.forEach(function(entry) {
+      taskList.appendChild(_buildMobileTaskCard(entry.task, entry.startSubTasks, todayStr));
     });
     container.appendChild(taskList);
   });
@@ -107,41 +133,148 @@ function _renderMobileDayView(container, filtered, year, month, todayStr) {
 
 function _renderMobileMonthView(container, filtered, year, todayStr) {
   const today = new Date(todayStr.replace(/-/g, '/'));
+  const yearStart = year + '-01-01';
+  const yearEnd = year + '-12-31';
+
+  // 1. 해당 연도에 걸쳐 있는 태스크 필터링 및 정렬
+  const tasksInYear = filtered.filter(function(t) {
+    const s = t.startDate || t.dueDate;
+    const e = t.dueDate || t.startDate;
+    return s && e && s <= yearEnd && e >= yearStart;
+  });
+
+  tasksInYear.sort(function(a, b) {
+    const sA = a.startDate || a.dueDate || '';
+    const sB = b.startDate || b.dueDate || '';
+    return sA.localeCompare(sB);
+  });
+
+  // 2. 겹침 방지 알고리즘 (Lane Assignment)
+  const lanes = [];
+  const taskLanes = new Map();
+
+  tasksInYear.forEach(function(task) {
+    const s = task.startDate || task.dueDate;
+    const e = task.dueDate || task.startDate;
+    const sDate = new Date(s.replace(/-/g, '/'));
+    const eDate = new Date(e.replace(/-/g, '/'));
+    
+    // 이 연도 내에서의 시작 월과 종료 월 계산 (0 ~ 11)
+    const startMonth = sDate.getFullYear() < year ? 0 : sDate.getMonth();
+    const endMonth = eDate.getFullYear() > year ? 11 : eDate.getMonth();
+    
+    let assignedLane = -1;
+    for (let i = 0; i < lanes.length; i++) {
+      if (startMonth > lanes[i]) {
+        assignedLane = i;
+        lanes[i] = endMonth;
+        break;
+      }
+    }
+    if (assignedLane === -1) {
+      lanes.push(endMonth);
+      assignedLane = lanes.length - 1;
+    }
+    taskLanes.set(task.id, { startMonth: startMonth, endMonth: endMonth, laneIndex: assignedLane });
+  });
+
+  const totalLanes = lanes.length > 0 ? lanes.length : 1;
+
+  const ganttWrapper = document.createElement('div');
+  ganttWrapper.className = 'flex flex-col w-full bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm';
+  
+  const rowHeight = 48;
+  const totalHeight = rowHeight * 12;
+
+  let html = '';
+  html += `
+    <div class="bg-slate-50 border-b border-slate-200 px-4 py-3 flex items-center justify-between">
+      <span class="text-xs font-bold text-slate-700">${year}년 년간 스케줄 막대</span>
+      <span class="text-[10px] text-slate-400 font-medium">총 ${tasksInYear.length}개 업무 진행</span>
+    </div>
+  `;
+
+  html += `
+    <div class="flex relative w-full overflow-hidden" style="height: ${totalHeight}px;">
+      <!-- Y축 고정: 월 라벨 -->
+      <div class="w-12 shrink-0 flex flex-col bg-slate-50/50 border-r border-slate-200 select-none h-full">
+  `;
   for (let m = 1; m <= 12; m++) {
-    const monthStart = year + '-' + String(m).padStart(2, '0') + '-01';
-    const daysInM = new Date(year, m, 0).getDate();
-    const monthEnd = year + '-' + String(m).padStart(2, '0') + '-' + String(daysInM).padStart(2, '0');
-    const isCurrentMonth = today.getFullYear() === year && today.getMonth() + 1 === m;
-
-    const tasksInM = filtered.filter(function(t) {
-      const s = t.startDate || t.dueDate;
-      const e = t.dueDate || t.startDate;
-      return s && e && s <= monthEnd && e >= monthStart;
-    });
-
-    const total = tasksInM.length;
-    const completed = tasksInM.filter(function(t) { return (t.status || '').toUpperCase() === 'COMPLETED'; }).length;
-    const overdue = tasksInM.filter(function(t) {
-      const eff = typeof getEffectiveStatus === 'function' ? getEffectiveStatus(t, todayStr) : t.status;
-      return eff === 'OVERDUE';
-    }).length;
-    const progress = tasksInM.filter(function(t) { return (t.status || '').toUpperCase() === 'PROGRESS'; }).length;
-    const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
-
-    const monthCard = document.createElement('div');
-    monthCard.className = 'flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all hover:shadow-sm mb-2 ' + (isCurrentMonth ? 'border-indigo-200 bg-indigo-50/50' : 'border-slate-100 bg-white hover:bg-slate-50');
-    monthCard.onclick = (function(mo) { return function() {
-      currentCalDate.setMonth(mo - 1);
-      currentCalMode = 'DAY';
-      if (typeof renderActiveViews === 'function') renderActiveViews();
-    }; })(m);
-
-    monthCard.innerHTML = '<div class="flex h-10 w-10 items-center justify-center rounded-xl shrink-0 ' + (isCurrentMonth ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600') + '"><span class="text-sm font-bold">' + m + '월</span></div><div class="flex-1 min-w-0"><div class="flex items-center justify-between mb-1"><span class="text-xs font-semibold text-slate-700">전체 ' + total + '건</span><span class="text-[10px] font-bold ' + (pct >= 80 ? 'text-emerald-600' : pct >= 50 ? 'text-amber-600' : 'text-slate-400') + '">' + pct + '% 완료</span></div><div class="w-full bg-slate-100 rounded-full h-1.5"><div class="bg-indigo-500 h-1.5 rounded-full" style="width:' + pct + '%"></div></div><div class="flex gap-2 mt-1">' + (progress > 0 ? '<span class="text-[10px] text-blue-600">⚙️ 진행 ' + progress + '</span>' : '') + (overdue > 0 ? '<span class="text-[10px] text-rose-600">🚨 지연 ' + overdue + '</span>' : '') + (completed > 0 ? '<span class="text-[10px] text-emerald-600">✅ 완료 ' + completed + '</span>' : '') + (total === 0 ? '<span class="text-[10px] text-slate-400">업무 없음</span>' : '') + '</div></div><svg class="h-4 w-4 text-slate-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>';
-    container.appendChild(monthCard);
+    const isCurrentM = today.getFullYear() === year && today.getMonth() + 1 === m;
+    html += `
+      <div class="flex-1 border-b border-slate-100 last:border-b-0 flex items-center justify-center cursor-pointer hover:bg-indigo-50 transition-colors"
+           style="height: ${rowHeight}px;"
+           onclick="currentCalDate.setMonth(${m - 1}); currentCalMode = 'DAY'; if (typeof renderActiveViews === 'function') renderActiveViews();">
+        <span class="text-xs font-extrabold ${isCurrentM ? 'text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded-md' : 'text-slate-500'}">${m}월</span>
+      </div>
+    `;
   }
+  html += `
+      </div>
+      
+      <!-- 오른쪽 차트 영역 (가로 스크롤 없음, 100% 분할) -->
+      <div class="flex-1 relative h-full bg-slate-50/10">
+        <!-- 배경 그리드 가로선 -->
+        <div class="absolute inset-0 flex flex-col pointer-events-none z-0">
+  `;
+  for (let m = 1; m <= 12; m++) {
+    html += `<div class="flex-1 border-b border-slate-100/70 last:border-b-0" style="height: ${rowHeight}px;"></div>`;
+  }
+  html += `
+        </div>
+        
+        <!-- 세로 막대 배치 영역 -->
+        <div class="absolute inset-0 z-10 pointer-events-none">
+  `;
+
+  tasksInYear.forEach(function(task) {
+    const tLane = taskLanes.get(task.id);
+    if (!tLane) return;
+
+    const sm = tLane.startMonth;
+    const em = tLane.endMonth;
+    const laneIdx = tLane.laneIndex;
+
+    const top = sm * rowHeight;
+    const height = (em - sm + 1) * rowHeight;
+    const leftPercent = (laneIdx / totalLanes) * 100;
+    const widthPercent = (1 / totalLanes) * 100;
+
+const eff = typeof getEffectiveStatus === 'function' ? getEffectiveStatus(task, todayStr) : (task.status || 'PENDING');
+    const statusConfig = {
+      COMPLETED: { icon: '✅', label: '완료', cls: 'bg-emerald-500 text-white border-emerald-600 hover:bg-emerald-600' },
+      OVERDUE:   { icon: '🚨', label: '지연', cls: 'bg-rose-500 text-white border-rose-600 hover:bg-rose-600' },
+      PROGRESS:  { icon: '⚙️', label: '진행', cls: 'bg-blue-500 text-white border-blue-600 hover:bg-blue-600' },
+      PENDING:   { icon: '⌛', label: '대기', cls: 'bg-amber-400 text-amber-950 border-amber-500 hover:bg-amber-500' },
+    };
+    const sc = statusConfig[eff] || statusConfig.PENDING;
+    const assignees = Array.isArray(task.assignee) ? task.assignee.join(', ') : (task.assignee || '미지정');
+
+    html += `
+      <div class="absolute rounded-xl shadow-sm text-[9px] font-black cursor-pointer transition-all hover:scale-[1.01] pointer-events-auto border overflow-hidden flex flex-col items-center justify-start text-center p-1.5 gap-1 ${sc.cls}"
+           style="left: calc(${leftPercent}% + 2px); width: calc(${widthPercent}% - 4px); top: ${top + 3}px; height: ${height - 6}px;"
+           title="${escapeHTML(task.title || '')} (${assignees})"
+           onclick="event.stopPropagation(); if (typeof openTaskModal === 'function') openTaskModal('${task.id}');">
+        <span class="text-xs shrink-0">${sc.icon}</span>
+        <span class="leading-tight break-all font-bold line-clamp-6 w-full">
+          ${escapeHTML(task.title || '')}
+        </span>
+        <span class="text-[8px] opacity-90 mt-auto shrink-0 truncate max-w-full font-medium">👤 ${escapeHTML(assignees.split(',')[0])}</span>
+      </div>
+    `;
+  });
+
+  html += `
+        </div>
+      </div>
+    </div>
+  `;
+
+  ganttWrapper.innerHTML = html;
+  container.appendChild(ganttWrapper);
 }
 
-function _buildMobileTaskCard(task, todayStr) {
+function _buildMobileTaskCard(task, startSubTasks, todayStr) {
   const card = document.createElement('div');
   const eff = typeof getEffectiveStatus === 'function' ? getEffectiveStatus(task, todayStr) : (task.status || 'PENDING');
   const statusConfig = {
@@ -161,9 +294,33 @@ function _buildMobileTaskCard(task, todayStr) {
   const subCount = Array.isArray(task.subTasks) ? task.subTasks.length : 0;
   const subDone = Array.isArray(task.subTasks) ? task.subTasks.filter(function(st) { return (st.status || '').toUpperCase() === 'COMPLETED'; }).length : 0;
 
+  let subTasksHtml = '';
+  if (Array.isArray(startSubTasks) && startSubTasks.length > 0) {
+    subTasksHtml += '<div class="border-t border-slate-100/80 pt-2 mt-2">';
+    subTasksHtml += '<p class="text-[9px] font-bold text-indigo-600 mb-1.5 flex items-center gap-1"><span>↳</span> 오늘 시작하는 하위 작업</p>';
+    subTasksHtml += '<div class="space-y-1.5">';
+    startSubTasks.forEach(function(st) {
+      const stEff = st.status || 'PENDING';
+      const stSc = statusConfig[stEff] || statusConfig.PENDING;
+      const stAssignee = Array.isArray(st.assignee) ? st.assignee.join(', ') : (st.assignee || '미지정');
+      subTasksHtml += `
+        <div class="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-lg p-2 text-xs">
+          <div class="flex items-center gap-1.5 min-w-0">
+            <span class="text-xs shrink-0">${stSc.icon}</span>
+            <span class="font-medium text-slate-700 truncate">${escapeHTML(st.title || '')}</span>
+          </div>
+          <div class="flex items-center gap-1.5 shrink-0 ml-2">
+            <span class="text-[9px] bg-slate-200 text-slate-600 px-1 py-0.2 rounded font-medium">👤 ${escapeHTML(stAssignee)}</span>
+          </div>
+        </div>
+      `;
+    });
+    subTasksHtml += '</div></div>';
+  }
+
   card.className = 'mobile-cal-card rounded-xl border bg-white p-3 shadow-sm cursor-pointer active:scale-[0.98] transition-all hover:shadow-md';
   card.onclick = function() { if (typeof openTaskModal === 'function') openTaskModal(task.id); };
-  card.innerHTML = '<div class="flex items-start gap-2.5"><span class="text-lg leading-none mt-0.5 shrink-0">' + sc.icon + '</span><div class="flex-1 min-w-0"><p class="text-sm font-semibold text-slate-800 leading-snug line-clamp-2">' + escapeHTML(task.title || '') + '</p><div class="flex flex-wrap items-center gap-1.5 mt-1.5"><span class="inline-flex items-center gap-0.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold ' + sc.cls + '">' + sc.label + '</span><span class="rounded-full px-2 py-0.5 text-[10px] font-semibold ' + pc.cls + '">' + pc.label + '</span>' + (subCount > 0 ? '<span class="rounded-full bg-indigo-50 text-indigo-600 px-2 py-0.5 text-[10px] font-semibold">하위 ' + subDone + '/' + subCount + '</span>' : '') + '</div><div class="flex items-center justify-between mt-2"><span class="text-[11px] text-slate-500 truncate">👤 ' + escapeHTML(assignees) + '</span><span class="text-[10px] text-slate-400 shrink-0 ml-2">' + (task.startDate ? task.startDate.substring(5) : '?') + ' ~ ' + (task.dueDate ? task.dueDate.substring(5) : '?') + '</span></div></div></div>';
+  card.innerHTML = '<div class="flex items-start gap-2.5"><span class="text-lg leading-none mt-0.5 shrink-0">' + sc.icon + '</span><div class="flex-1 min-w-0"><p class="text-sm font-semibold text-slate-800 leading-snug line-clamp-2">' + escapeHTML(task.title || '') + '</p><div class="flex flex-wrap items-center gap-1.5 mt-1.5"><span class="inline-flex items-center gap-0.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold ' + sc.cls + '">' + sc.label + '</span><span class="rounded-full px-2 py-0.5 text-[10px] font-semibold ' + pc.cls + '">' + pc.label + '</span>' + (subCount > 0 ? '<span class="rounded-full bg-indigo-50 text-indigo-600 px-2 py-0.5 text-[10px] font-semibold">하위 ' + subDone + '/' + subCount + '</span>' : '') + '</div><div class="flex items-center justify-between mt-2"><span class="text-[11px] text-slate-500 truncate">👤 ' + escapeHTML(assignees) + '</span><span class="text-[10px] text-slate-400 shrink-0 ml-2">' + (task.startDate ? task.startDate.substring(5) : '?') + ' ~ ' + (task.dueDate ? task.dueDate.substring(5) : '?') + '</span></div>' + subTasksHtml + '</div></div>';
   return card;
 }
 

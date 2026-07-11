@@ -451,6 +451,13 @@ function updateViewToggleButtons(mode) {
 function switchView(mode) {
   currentViewMode = mode === 'CALENDAR' ? 'CALENDAR' : mode === 'KANBAN' ? 'KANBAN' : mode === 'ADMIN' ? 'ADMIN' : 'TABLE';
   window.currentViewMode = currentViewMode;
+  if (currentViewMode === 'CALENDAR') {
+    if (typeof setCalMode === 'function') {
+      setCalMode('MONTH');
+    } else {
+      currentCalMode = 'MONTH';
+    }
+  }
   updateViewToggleButtons(currentViewMode);
   setViewVisibility(currentViewMode);
   renderActiveViews();

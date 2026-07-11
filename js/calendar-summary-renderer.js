@@ -76,16 +76,16 @@ function buildMonthlySubTaskHTML(task, monthStart, monthEnd) {
         }
 
         html += `
-            <div class="text-[10px] flex flex-col gap-1.5 p-2 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20">
+            <div class="text-[11px] flex flex-col gap-1.5 p-2 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20">
                 <div class="flex items-center justify-between gap-2">
                     <div class="flex items-center gap-1.5 truncate ${textClass} font-semibold">
                         <span class="truncate">${escapeHTML(st.title)}</span>
                     </div>
-                    <span class="shrink-0 px-1.5 py-0.5 rounded text-[8px] font-bold border ${statusClass} scale-95 origin-right">
+                    <span class="shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold border ${statusClass} origin-right">
                         ${statusKorean}
                     </span>
                 </div>
-                <div class="flex items-center justify-between text-[9px] text-slate-500 dark:text-slate-400">
+                <div class="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400">
                     <span class="truncate">👤 ${escapeHTML(assigneeNames)}</span>
                     <span class="shrink-0 text-slate-400 dark:text-slate-500">
                         ${st.dueDate ? '📅 ' + st.dueDate.substring(5) : ''}
@@ -149,8 +149,19 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
         
         // 2) 소속 업무 검사 (현재 필터링된 활성 업무 목록에 포함되는지)
         if (!note.taskId) return false;
-        const baseTaskId = note.taskId.split('__sub_')[0];
+        const parts = note.taskId.split('__sub_');
+        const baseTaskId = parts[0];
         const isMatchedTask = activeTaskIds.has(baseTaskId);
+        if (!isMatchedTask) return false;
+
+        // 하위 태스크 메모인 경우, 해당 하위 태스크가 실제로 존재하는지 추가 검증 (삭제된 하위 태스크 메모 노출 방지)
+        if (parts.length > 1) {
+            const subId = parts[1];
+            const parentTask = (filteredTasks || []).find(t => t.id === baseTaskId);
+            if (!parentTask) return false;
+            const subExists = (parentTask.subTasks || []).some(st => st.id === subId);
+            if (!subExists) return false;
+        }
         
         // 3) 검색어 매칭 대조 (메모 자체 텍스트/작성자 교차 검증)
         if (search) {

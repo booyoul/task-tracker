@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getFirestore, enableIndexedDbPersistence, collection, doc, setDoc, writeBatch, onSnapshot, serverTimestamp, getDoc, getDocs, query, where, orderBy, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getFirestore, enableIndexedDbPersistence, collection, doc, setDoc, writeBatch, onSnapshot, serverTimestamp, getDoc, getDocs, query, where, orderBy, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 let firebaseConfig = {
@@ -54,7 +54,7 @@ try {
 window.isFirebaseAvailable = isFirebaseAvailable;
 window.db = db;
 window.auth = auth;
-window.fs = { collection, doc, setDoc, writeBatch, onSnapshot, serverTimestamp, getDoc, getDocs, query, where, orderBy, deleteDoc };
+window.fs = { collection, doc, setDoc, writeBatch, onSnapshot, serverTimestamp, getDoc, getDocs, query, where, orderBy, deleteDoc, updateDoc };
 window.signInAnonymously = signInAnonymously;
 window.onAuthStateChanged = onAuthStateChanged;
 window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;

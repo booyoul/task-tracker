@@ -113,12 +113,38 @@ function renderCalendarDayView(ctx) {
     };
 
     if (calendarUxState.groupByAssignee) {
+      const hasTaskInWeek = (assigneeName, weekStartStr, weekEndStr) => {
+        const assigneeTasks = groups.filter(t => t.assigneeGroupName === assigneeName);
+        return assigneeTasks.some(t => {
+          const parentOverlap = t.startDate <= weekEndStr && t.dueDate >= weekStartStr;
+          if (parentOverlap) return true;
+          if (showSubTaskBars) {
+            const subTasks = t.monthSubTasks || [];
+            return subTasks.some(st => {
+              const start = st.startDate || t.startDate;
+              const end = st.dueDate || t.dueDate;
+              return start <= weekEndStr && end >= weekStartStr;
+            });
+          }
+          return false;
+        });
+      };
+
       const renderedAssigneeLabels = new Set();
       groups.forEach(g => {
         if (g.assigneeHeaderLine == null || renderedAssigneeLabels.has(g.assigneeGroupName)) return;
         renderedAssigneeLabels.add(g.assigneeGroupName);
         const k = g.assigneeKpi || { total: 0, progress: 0, overdue: 0, completed: 0 };
         for (let week = 0; week < weekCount; week++) {
+          const weekCellStart = week * 7;
+          const weekCellEnd = weekCellStart + 6;
+          const weekStartDay = Math.max(1, weekCellStart - firstDay + 1);
+          const weekEndDay = Math.min(daysInMonth, weekCellEnd - firstDay + 1);
+          const weekStartStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(weekStartDay).padStart(2, '0')}`;
+          const weekEndStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(weekEndDay).padStart(2, '0')}`;
+
+          if (!hasTaskInWeek(g.assigneeGroupName, weekStartStr, weekEndStr)) continue;
+
           const label = document.createElement('div');
           label.className = 'absolute z-20 pointer-events-none rounded-md bg-slate-800/85 px-2 py-0.5 text-[10px] font-black text-white shadow-sm';
           label.style.left = '4px';

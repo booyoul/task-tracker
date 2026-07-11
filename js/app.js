@@ -657,7 +657,7 @@ function renderCalendar(filteredTasks) {
   const showSubTaskBars = calendarUxState.subtasksExpanded;
   const highlightRiskOnly = calendarUxState.criticalOnly;
   const useIndustryColor = calendarUxState.colorByIndustry;
-  if (titleEl) titleEl.textContent = currentCalMode === 'MONTH' ? `${year}년 전체 Gantt 타임라인` : `${year}년 ${month + 1}월`;
+  if (titleEl) titleEl.textContent = currentCalMode === 'MONTH' ? `${year}년 년간 타임라인` : `${year}년 ${month + 1}월`;
 
   const groups = filteredTasks.map(t => {
     const start = t.startDate || t.dueDate || todayStr;

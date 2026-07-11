@@ -44,14 +44,14 @@ function renderModalSubTasks() {
     const status = normalizeStatus(st.status);
     const overdue = isSubTaskOverdue(st);
     const li = document.createElement('li');
-    li.className = 'flex flex-col gap-2 rounded-xl border border-slate-200/60 bg-slate-50 p-2 text-xs hover:bg-slate-100/50 sm:flex-row sm:items-center sm:justify-between';
+    li.className = 'flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3 text-xs shadow-sm hover:border-slate-300 transition-colors';
     const subAssigneeLabel = Array.isArray(st.assignee) ? st.assignee.join(', ') : (st.assignee || '미정');
     const subNoteCount = _currentSubNoteCounts[st.id] || 0;
     const noteBtnText = subNoteCount > 0 ? `📌 ${subNoteCount}` : '📌';
     const noteBtnHtml = _currentNoteTaskId 
       ? `<button type="button" class="btn-modal-note-subtask px-1.5 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold transition flex items-center gap-1" data-index="${idx}" title="진행 메모 관리">${noteBtnText}</button><span class="text-slate-300">|</span>` 
       : '';
-    li.innerHTML = `<div class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 sm:gap-2"><span class="shrink-0 font-bold ${status === 'COMPLETED' ? 'text-emerald-600' : overdue ? 'text-rose-600' : status === 'PROGRESS' ? 'text-blue-600' : 'text-amber-500'}">${overdue ? '🚨 기한 초과' : getStatusIcon(status) + ' ' + getStatusKorean(status).replace('됨', '')}</span><span class="min-w-0 flex-1 truncate font-medium text-slate-700 ${status === 'COMPLETED' ? 'line-through opacity-50' : ''}" title="${escapeHTML(st.title)}">${escapeHTML(st.title)}</span><span class="shrink-0 text-[10px] text-slate-400 font-semibold">📅 ${st.startDate ? st.startDate.substring(5) : '미정'} ~ ${st.dueDate ? st.dueDate.substring(5) : '미정'}</span><span class="shrink-0 max-w-[120px] truncate bg-indigo-50 text-indigo-700 border border-indigo-100 px-1 py-0.2 rounded text-[9px] font-bold" title="${escapeHTML(subAssigneeLabel)}">👤 ${escapeHTML(subAssigneeLabel)}</span></div><div class="flex shrink-0 items-center justify-end gap-1.5">${noteBtnHtml}<select class="sel-modal-subtask-status rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 outline-none focus:border-indigo-500" data-index="${idx}"><option value="PENDING" ${status === 'PENDING' ? 'selected' : ''}>진행 대기</option><option value="PROGRESS" ${status === 'PROGRESS' ? 'selected' : ''}>진행 중</option><option value="COMPLETED" ${status === 'COMPLETED' ? 'selected' : ''}>완료</option></select><button type="button" class="btn-modal-edit-subtask px-1 font-bold text-indigo-600 hover:text-indigo-800" data-index="${idx}">수정</button><span class="text-slate-300">|</span><button type="button" class="btn-modal-delete-subtask px-1 font-semibold text-rose-500 hover:text-rose-700" data-index="${idx}">삭제</button></div>`;
+    li.innerHTML = `<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div class="flex items-start gap-2 min-w-0"><span class="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-bold ${status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : overdue ? 'bg-rose-50 text-rose-700 border border-rose-200' : status === 'PROGRESS' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}">${overdue ? '🚨 기한 초과' : getStatusIcon(status) + ' ' + getStatusKorean(status).replace('됨', '')}</span><span class="text-[13px] font-bold text-slate-900 break-all leading-normal ${status === 'COMPLETED' ? 'line-through opacity-50' : ''}" title="${escapeHTML(st.title)}">${escapeHTML(st.title)}</span></div><div class="flex shrink-0 items-center justify-end gap-1.5">${noteBtnHtml}<select class="sel-modal-subtask-status rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-semibold text-slate-600 outline-none focus:border-indigo-500" data-index="${idx}"><option value="PENDING" ${status === 'PENDING' ? 'selected' : ''}>진행 대기</option><option value="PROGRESS" ${status === 'PROGRESS' ? 'selected' : ''}>진행 중</option><option value="COMPLETED" ${status === 'COMPLETED' ? 'selected' : ''}>완료</option></select><button type="button" class="btn-modal-edit-subtask text-[12px] font-bold text-indigo-600 hover:text-indigo-800 px-1" data-index="${idx}">수정</button><span class="text-slate-300">|</span><button type="button" class="btn-modal-delete-subtask text-[12px] font-semibold text-rose-500 hover:text-rose-700 px-1" data-index="${idx}">삭제</button></div></div><div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500 border-t border-slate-100 pt-2 mt-0.5"><span class="flex items-center gap-1 font-medium"><span class="text-slate-400">📅</span> ${st.startDate ? st.startDate.substring(5) : '미정'} ~ ${st.dueDate ? st.dueDate.substring(5) : '미정'}</span><span class="text-slate-300">|</span><span class="flex items-center gap-1 font-medium max-w-[150px] truncate" title="${escapeHTML(subAssigneeLabel)}"><span class="text-slate-400">👤</span> ${escapeHTML(subAssigneeLabel)}</span></div>`;
     container.appendChild(li);
   });
   
@@ -682,6 +682,11 @@ function openNoteDetailPanel(note) {
   const backdrop = document.getElementById('note-panel-backdrop');
   if (!panel) return;
 
+  // 월별 요약 등의 모달 외부에서 직접 진입 시 _currentNoteTaskId가 비어있으므로 note.taskId 기반으로 보완
+  if (!_currentNoteTaskId && note.taskId) {
+    _currentNoteTaskId = note.taskId.split('__sub_')[0];
+  }
+
   // 읽기 모드로 초기화
   setNotePanel_readMode(note);
 
@@ -807,6 +812,7 @@ function initProgressNotesEvents() {
       setNotePanel_readMode(_currentNotePanelNote);
       showToast('메모가 수정되었습니다.');
       if (_currentNoteTaskId) await loadTaskHistory(_currentNoteTaskId, _currentFeedPage);
+      if (typeof renderActiveViews === 'function') renderActiveViews();
     } else {
       const errMsg = result?.error || '알 수 없는 오류';
       showToast(`수정 실패: ${errMsg}`, false);
@@ -815,14 +821,15 @@ function initProgressNotesEvents() {
 
   // 삭제 버튼
   document.getElementById('btn-note-delete')?.addEventListener('click', async () => {
-    if (!_currentNotePanelNote || !_currentNoteTaskId) return;
+    if (!_currentNotePanelNote) return;
     if (!confirm('이 메모를 삭제하시겠습니까?')) return;
     const noteTaskId = _currentNotePanelNote.taskId || _currentNoteTaskId;
     const result = await window.db_deleteProgressNote?.(_currentNotePanelNote.id, noteTaskId);
     if (result && result.success) {
       closeNoteDetailPanel();
       showToast('메모가 삭제되었습니다.');
-      await loadTaskHistory(_currentNoteTaskId, 1);
+      if (_currentNoteTaskId) await loadTaskHistory(_currentNoteTaskId, 1);
+      if (typeof renderActiveViews === 'function') renderActiveViews();
     } else {
       const errMsg = result?.error || '알 수 없는 오류';
       showToast(`삭제 실패: ${errMsg}`, false);
