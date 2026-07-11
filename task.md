@@ -59,6 +59,14 @@
    * 모바일 요약 화면에서 `cal-mobile-content`가 데스크톱 요약 렌더러에 의해 재작성될 때 밝은 테마 배경이 어둡게 보일 수 있는 문제를 보정 완료.
    * `js/calendar-summary-renderer.js`에서 모바일 요약 컨테이너를 별도 감지해 `bg-white`, `pb-24`를 유지하고 다크 배경은 `dark:bg-slate-950`에서만 적용되도록 분리 완료.
    * `index.html`의 `calendar-summary-renderer.js` 캐시 버전을 `v20260711-v14`로 갱신하고 `node --check`, `npm run build:css`, jsdom 모바일 배경 클래스 스모크 검증 완료.
+13. **Tailwind 다크 모드 기준 보정**
+   * 밝은 테마에서도 OS/브라우저 다크 선호 설정 때문에 `dark:` 유틸리티가 적용되어 모바일 요약 배경이 어둡게 남는 원인을 확인 완료.
+   * `src/input.css`에 `@custom-variant dark (&:where(.dark, .dark *));`를 추가해 Tailwind `dark:` 유틸리티가 시스템 설정이 아닌 앱의 `.dark` 클래스에만 반응하도록 보정 완료.
+   * `index.html`의 `dist/output.css` 캐시 버전을 `v20260711-v2`로 갱신하고 `npm run build:css`, `node --check`, CSS dark variant 검사로 `prefers-color-scheme` 제거 및 `.dark` selector 컴파일을 검증 완료.
+14. **모바일 연간 보기 월별 요약 박스 제거**
+   * 모바일 캘린더 `년간` 보기에서 태스크가 많을 때 상단에 표시되던 월별 건수 요약 카드 영역을 제거 완료.
+   * `js/calendar-mobile-renderer.js`의 compact year 월별 카드 렌더링 블록과 카드 전용 월별 통계 헬퍼를 정리하되, 월 축 탭으로 해당 월 일별 보기로 이동하는 동작은 유지.
+   * `index.html`의 `calendar-mobile-renderer.js` 캐시 버전을 `v20260711-v16`으로 갱신.
 
 ---
 
