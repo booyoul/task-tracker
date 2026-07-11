@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-summary-renderer.js v20260711-v11 loaded');
+console.info('Smart Task Flow calendar-summary-renderer.js v20260711-v12 loaded');
 
 function formatSummaryNoteDate(ts) {
     if (!ts) return '';
@@ -183,53 +183,6 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
         return;
     }
 
-    // ── KPI 패널 (업무가 있을 때만) ────────────────────────────────
-    if (currentMonthTasks.length > 0) {
-        const groups = { OVERDUE: [], PROGRESS: [], PENDING: [], COMPLETED: [] };
-        currentMonthTasks.forEach(t => {
-            if (t.status !== 'COMPLETED' && (t.dueDate || '') < todayStr) groups.OVERDUE.push(t);
-            else if (groups[t.status]) groups[t.status].push(t);
-            else groups.PENDING.push(t);
-        });
-
-        const monthlyTotal = currentMonthTasks.length;
-        const monthlyCompleted = groups.COMPLETED.length;
-        const monthlyOverdue = groups.OVERDUE.length;
-        const monthlyProgress = groups.PROGRESS.length;
-        const monthlyPending = groups.PENDING.length;
-        const monthlyCompletionRate = monthlyTotal > 0 ? Math.round((monthlyCompleted / monthlyTotal) * 100) : 0;
-        const monthlySubTotal = currentMonthTasks.reduce((sum, t) => sum + getMonthlySubTaskSummary(t, monthStart, monthEnd).totalInMonth, 0);
-        const monthlySubCompleted = currentMonthTasks.reduce((sum, t) => sum + getMonthlySubTaskSummary(t, monthStart, monthEnd).completedInMonth, 0);
-
-        const kpiPanel = document.createElement('div');
-        kpiPanel.className = 'rounded-xl border border-slate-200 bg-white p-3 shadow-sm mb-4 dark:bg-slate-900 dark:border-slate-800';
-        kpiPanel.innerHTML = `
-            <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <span class="text-sm font-black text-slate-800 dark:text-slate-100">${year}년 ${month + 1}월 요약</span>
-                <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400">하위 업무 ${monthlySubCompleted}/${monthlySubTotal} · 메모 ${monthNotesCount}건</span>
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-                <div class="rounded-lg border border-slate-100 bg-slate-50 p-3 dark:bg-slate-800/70 dark:border-slate-700">
-                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">전체</div>
-                    <div class="mt-1 text-xl font-black text-slate-900 dark:text-white">${monthlyTotal}</div>
-                </div>
-                <div class="rounded-lg border border-rose-100 bg-rose-50 p-3 dark:bg-rose-950/20 dark:border-rose-900/50">
-                    <div class="text-[10px] font-bold uppercase tracking-wider text-rose-600">지연</div>
-                    <div class="mt-1 text-xl font-black text-rose-700 dark:text-rose-300">${monthlyOverdue}</div>
-                </div>
-                <div class="rounded-lg border border-blue-100 bg-blue-50 p-3 dark:bg-blue-950/20 dark:border-blue-900/50">
-                    <div class="text-[10px] font-bold uppercase tracking-wider text-blue-600">진행</div>
-                    <div class="mt-1 text-xl font-black text-blue-700 dark:text-blue-300">${monthlyProgress}<span class="ml-1 text-[11px] font-bold text-blue-500">대기 ${monthlyPending}</span></div>
-                </div>
-                <div class="rounded-lg border border-emerald-100 bg-emerald-50 p-3 dark:bg-emerald-950/20 dark:border-emerald-900/50">
-                    <div class="text-[10px] font-bold uppercase tracking-wider text-emerald-600">완료율</div>
-                    <div class="mt-1 text-xl font-black text-emerald-700 dark:text-emerald-300">${monthlyCompletionRate}%<span class="ml-1 text-[11px] font-bold text-emerald-500">${monthlyCompleted}건</span></div>
-                </div>
-            </div>
-        `;
-        grid.appendChild(kpiPanel);
-    }
-
     // ── 📌 월간 진행 메모 리스트 (업무 유무와 무관하게 항상 표시) ──
     if (monthNotes.length > 0) {
         monthNotes.sort((a, b) => {
@@ -315,6 +268,42 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
         }
 
         grid.appendChild(notesSec);
+    }
+
+    // ── KPI 요약 바 (업무가 있을 때만, 메모 리뷰 영역 아래에 한 줄로 최소화) ──
+    if (currentMonthTasks.length > 0) {
+        const groups = { OVERDUE: [], PROGRESS: [], PENDING: [], COMPLETED: [] };
+        currentMonthTasks.forEach(t => {
+            if (t.status !== 'COMPLETED' && (t.dueDate || '') < todayStr) groups.OVERDUE.push(t);
+            else if (groups[t.status]) groups[t.status].push(t);
+            else groups.PENDING.push(t);
+        });
+
+        const monthlyTotal = currentMonthTasks.length;
+        const monthlyCompleted = groups.COMPLETED.length;
+        const monthlyOverdue = groups.OVERDUE.length;
+        const monthlyProgress = groups.PROGRESS.length;
+        const monthlyPending = groups.PENDING.length;
+        const monthlyCompletionRate = monthlyTotal > 0 ? Math.round((monthlyCompleted / monthlyTotal) * 100) : 0;
+        const monthlySubTotal = currentMonthTasks.reduce((sum, t) => sum + getMonthlySubTaskSummary(t, monthStart, monthEnd).totalInMonth, 0);
+        const monthlySubCompleted = currentMonthTasks.reduce((sum, t) => sum + getMonthlySubTaskSummary(t, monthStart, monthEnd).completedInMonth, 0);
+
+        const kpiPanel = document.createElement('div');
+        kpiPanel.className = 'mb-4 overflow-x-auto rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-bold text-slate-600 shadow-sm dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300';
+        kpiPanel.innerHTML = `
+            <div class="flex min-w-max items-center gap-2 whitespace-nowrap">
+                <span class="text-slate-800 dark:text-slate-100">${year}년 ${month + 1}월 요약</span>
+                <span class="text-slate-300">|</span>
+                <span>전체 <b class="text-slate-900 dark:text-white">${monthlyTotal}</b></span>
+                <span class="text-rose-600">지연 <b>${monthlyOverdue}</b></span>
+                <span class="text-blue-600">진행 <b>${monthlyProgress}</b></span>
+                <span class="text-amber-600">대기 <b>${monthlyPending}</b></span>
+                <span class="text-emerald-600">완료율 <b>${monthlyCompletionRate}%</b> (${monthlyCompleted})</span>
+                <span class="text-indigo-600">하위 <b>${monthlySubCompleted}/${monthlySubTotal}</b></span>
+                <span class="text-amber-700">메모 <b>${monthNotesCount}</b></span>
+            </div>
+        `;
+        grid.appendChild(kpiPanel);
     }
 
     // 업무 없음 안내 (메모는 위에 표시됐으므로 가벼운 메시지만)

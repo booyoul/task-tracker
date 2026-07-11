@@ -44,6 +44,10 @@
    * `js/calendar-mobile-renderer.js`에 lane/하위업무 막대 폭을 사전 추정하는 밀집 판정 로직을 추가해, 화면 폭을 초과하면 본 업무 중심 간트로 자동 전환하도록 보정 완료.
    * 업무가 더 많은 경우에는 기존 우선순위 기준으로 주요 업무만 표시하고 월별 요약 버튼 12개를 유지하도록 보완 완료.
    * `index.html`의 `calendar-mobile-renderer.js` 캐시 버전을 `v20260711-v15`로 갱신하고 `node --check`, `npm run build:css`, 390px `jsdom` 밀집 스모크 검증 완료.
+10. **월별 요약 메모 리뷰 우선순위 조정**
+   * 월별 요약의 목적을 한 달 동안 작성된 진행 메모 리뷰로 보고, `js/calendar-summary-renderer.js`에서 메모 섹션을 최상단으로 이동 완료.
+   * KPI 대시보드는 메모 영역 아래의 한 줄 요약 바 형태로 축약해 화면 점유 공간을 최소화 완료.
+   * `index.html`의 `calendar-summary-renderer.js` 캐시 버전을 `v20260711-v12`로 갱신.
 
 ---
 
