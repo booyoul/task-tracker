@@ -67,6 +67,9 @@
    * 모바일 캘린더 `년간` 보기에서 태스크가 많을 때 상단에 표시되던 월별 건수 요약 카드 영역을 제거 완료.
    * `js/calendar-mobile-renderer.js`의 compact year 월별 카드 렌더링 블록과 카드 전용 월별 통계 헬퍼를 정리하되, 월 축 탭으로 해당 월 일별 보기로 이동하는 동작은 유지.
    * `index.html`의 `calendar-mobile-renderer.js` 캐시 버전을 `v20260711-v16`으로 갱신.
+15. **데스크톱 월별 요약 메모 필터 버튼 줄바꿈 방지**
+   * 컴퓨터 뷰의 캘린더 `월별 요약` 메모 필터 세그먼트에서 `본 업무`, `하위 업무` 버튼 텍스트가 두 줄로 접히지 않도록 `whitespace-nowrap`과 최소 폭을 추가 완료.
+   * `index.html`의 `calendar-summary-renderer.js` 캐시 버전을 `v20260711-v15`로 갱신.
 
 ---
 

@@ -703,6 +703,12 @@
   .min-w-0 {
     min-width: 0;
   }
+  .min-w-\[3\.5rem\] {
+    min-width: 3.5rem;
+  }
+  .min-w-\[4\.5rem\] {
+    min-width: 4.5rem;
+  }
   .min-w-\[18rem\] {
     min-width: 18rem;
   }

@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-summary-renderer.js v20260711-v14 loaded');
+console.info('Smart Task Flow calendar-summary-renderer.js v20260711-v15 loaded');
 
 function formatSummaryNoteDate(ts) {
     if (!ts) return '';
@@ -240,10 +240,10 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
         filtersBar.className = 'mb-3 flex flex-col gap-2 rounded-lg border border-amber-100 bg-white/70 p-2 dark:bg-slate-900/70 dark:border-amber-900/50';
         filtersBar.innerHTML = `
             <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div class="inline-flex w-full rounded-lg border border-amber-100 bg-amber-50 p-0.5 text-[11px] font-bold text-amber-800 sm:w-auto dark:bg-amber-950/20 dark:border-amber-900/50 dark:text-amber-300" data-summary-note-type-filter>
-                    <button type="button" data-note-type="all" class="flex-1 rounded-md px-2.5 py-1.5 bg-white shadow-sm dark:bg-slate-800">전체</button>
-                    <button type="button" data-note-type="main" class="flex-1 rounded-md px-2.5 py-1.5">본 업무</button>
-                    <button type="button" data-note-type="sub" class="flex-1 rounded-md px-2.5 py-1.5">하위 업무</button>
+                <div class="inline-flex w-full overflow-x-auto rounded-lg border border-amber-100 bg-amber-50 p-0.5 text-[11px] font-bold text-amber-800 sm:w-auto dark:bg-amber-950/20 dark:border-amber-900/50 dark:text-amber-300" data-summary-note-type-filter>
+                    <button type="button" data-note-type="all" class="flex-1 min-w-[3.5rem] whitespace-nowrap rounded-md px-2.5 py-1.5 bg-white shadow-sm dark:bg-slate-800">전체</button>
+                    <button type="button" data-note-type="main" class="flex-1 min-w-[4.5rem] whitespace-nowrap rounded-md px-2.5 py-1.5">본 업무</button>
+                    <button type="button" data-note-type="sub" class="flex-1 min-w-[4.5rem] whitespace-nowrap rounded-md px-2.5 py-1.5">하위 업무</button>
                 </div>
                 <select data-summary-note-author-filter class="w-full rounded-lg border border-amber-100 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-600 outline-none focus:border-amber-300 sm:w-40 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200">
                     <option value="all">작성자 전체</option>
