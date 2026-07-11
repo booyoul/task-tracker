@@ -19,7 +19,7 @@ function renderMobileCalendar(filtered) {
 
   if (monthYearEl) {
     if (mode === 'MONTH') {
-      monthYearEl.textContent = year + '년 년간 현황';
+      monthYearEl.textContent = year + '년 연간 현황';
     } else if (mode === 'SUMMARY') {
       monthYearEl.textContent = year + '년 ' + (month + 1) + '월 요약';
     } else {
@@ -135,6 +135,8 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
   const today = new Date(todayStr.replace(/-/g, '/'));
   const yearStart = year + '-01-01';
   const yearEnd = year + '-12-31';
+  const useIndustryColor = !!(window.calendarUxState && window.calendarUxState.colorByIndustry);
+  const showSubTaskBars = !(window.calendarUxState && window.calendarUxState.subtasksExpanded === false);
 
   // 1. 해당 연도에 걸쳐 있는 태스크 필터링 및 정렬
   const tasksInYear = filtered.filter(function(t) {
@@ -148,6 +150,45 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
     const sB = b.startDate || b.dueDate || '';
     return sA.localeCompare(sB);
   });
+
+  if (tasksInYear.length === 0) {
+    container.innerHTML = '<div class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white py-16 text-center shadow-sm"><span class="text-4xl mb-3">📅</span><p class="text-sm font-semibold text-slate-500">해당 연도의 업무가 없습니다.</p><p class="text-xs text-slate-400 mt-1">다른 연도로 이동하거나 새 업무를 추가해 주세요.</p></div>';
+    return;
+  }
+
+  const getTaskTone = function(task) {
+    const eff = typeof getEffectiveStatus === 'function' ? getEffectiveStatus(task, todayStr) : (task.status || 'PENDING');
+    if (eff === 'OVERDUE') return 'bg-rose-100 text-rose-800 border border-rose-200 font-semibold';
+    if (eff === 'COMPLETED') return 'bg-emerald-100 text-emerald-800 border border-emerald-200';
+    if (useIndustryColor && typeof getIndustryBarClass === 'function') return getIndustryBarClass(task, false);
+    if (eff === 'PROGRESS') return 'bg-blue-100 text-blue-800 border border-blue-200';
+    return 'bg-slate-200 text-slate-700 border border-slate-300';
+  };
+
+  const getSubTaskTone = function(st, parent) {
+    const status = typeof normalizeStatus === 'function' ? normalizeStatus(st.status) : (st.status || 'PENDING');
+    if (typeof isSubTaskOverdue === 'function' && isSubTaskOverdue(st, todayStr)) return 'bg-rose-50/90 text-rose-800 border border-dashed border-rose-300 font-semibold';
+    if (status === 'COMPLETED') return 'bg-emerald-50/80 text-emerald-800 border border-dashed border-emerald-300';
+    if (useIndustryColor && typeof getIndustryBarClass === 'function') return getIndustryBarClass(parent || st, true);
+    if (status === 'PROGRESS') return 'bg-blue-50/80 text-blue-800 border border-dashed border-blue-300';
+    return 'bg-slate-50 text-slate-700 border border-dashed border-slate-300';
+  };
+
+  const getTaskIcon = function(task) {
+    const eff = typeof getEffectiveStatus === 'function' ? getEffectiveStatus(task, todayStr) : (task.status || 'PENDING');
+    if (eff === 'OVERDUE') return '🚨';
+    if (eff === 'COMPLETED') return '⭐️';
+    if (eff === 'PROGRESS') return '⚙️';
+    return '⌛';
+  };
+
+  const getSubTaskIcon = function(st) {
+    if (typeof isSubTaskOverdue === 'function' && isSubTaskOverdue(st, todayStr)) return '🚨';
+    if (typeof getStatusIcon === 'function') return getStatusIcon(st.status);
+    if (st.status === 'COMPLETED') return '⭐️';
+    if (st.status === 'PROGRESS') return '⚙️';
+    return '⌛';
+  };
 
   // 2. 겹침 방지 알고리즘 (Lane Assignment)
   const lanes = [];
@@ -180,26 +221,28 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
 
   const totalLanes = lanes.length > 0 ? lanes.length : 1;
 
-  // 3. X축 고정 너비 및 반응형 간격 계산 (왼쪽 정렬 및 가로 스크롤 없음)
-  const chartWidth = containerWidth - 48 - 16; // 월 라벨 48px + 패딩 마진 16px 제외 가용폭
-  const maxLaneWidth = 70; // 레인당 최대 폭 (넉넉하게 설정)
-  const totalRequired = totalLanes * maxLaneWidth;
-  const laneWidth = totalRequired > chartWidth ? (chartWidth / totalLanes) : maxLaneWidth;
+  // 3. 모바일 세로형 간트: 데스크탑의 막대 질감은 유지하고, 월 축만 세로로 전환
+  const axisWidth = 46;
+  const horizontalPadding = 24;
+  const chartWidth = Math.max(220, (containerWidth || 320) - axisWidth - horizontalPadding);
+  const laneGap = totalLanes > 1 ? 7 : 0;
+  const laneWidth = Math.max(22, Math.min(50, (chartWidth - 28 - laneGap * (totalLanes - 1)) / totalLanes));
+  const startOffset = Math.max(14, Math.floor((chartWidth - (laneWidth * totalLanes + laneGap * (totalLanes - 1))) / 2));
 
   container.innerHTML = '';
 
   const ganttWrapper = document.createElement('div');
-  ganttWrapper.className = 'flex flex-col w-full bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm';
+  ganttWrapper.className = 'w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm';
   
   const header = document.createElement('div');
-  header.className = 'bg-slate-50 border-b border-slate-200 px-4 py-3 flex items-center justify-between';
+  header.className = 'flex items-center justify-between gap-3 border-b border-slate-200/80 bg-slate-50 px-3.5 py-3 shadow-sm';
   header.innerHTML = `
-    <span class="text-xs font-bold text-slate-700">${year}년 년간 스케줄 막대</span>
-    <span class="text-[10px] text-slate-400 font-medium">총 ${tasksInYear.length}개 업무 진행</span>
+    <span class="text-xs font-bold text-slate-700">${year}년 연간 타임라인</span>
+    <span class="shrink-0 rounded-md bg-white px-2 py-1 text-[10px] font-bold text-slate-500 shadow-sm ring-1 ring-slate-200">총 ${tasksInYear.length}개</span>
   `;
   ganttWrapper.appendChild(header);
 
-  const rowHeight = 48;
+  const rowHeight = 46;
   const totalHeight = rowHeight * 12;
 
   const chartBody = document.createElement('div');
@@ -208,17 +251,21 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
 
   // 5. Y축 월 라벨 영역
   const yAxis = document.createElement('div');
-  yAxis.className = 'w-12 shrink-0 flex flex-col bg-slate-50/50 border-r border-slate-200 select-none h-full';
+  yAxis.className = 'w-[46px] shrink-0 flex flex-col bg-slate-50 border-r border-slate-200 select-none h-full';
   for (let m = 1; m <= 12; m++) {
     const isCurrentM = today.getFullYear() === year && today.getMonth() + 1 === m;
     const mLabel = document.createElement('div');
-    mLabel.className = 'flex-1 border-b border-slate-100 last:border-b-0 flex items-center justify-center cursor-pointer hover:bg-indigo-50 transition-colors';
+    mLabel.className = 'flex-1 border-b border-slate-100 last:border-b-0 flex items-center justify-center cursor-pointer hover:bg-slate-100 transition-colors';
     mLabel.style.height = `${rowHeight}px`;
-    mLabel.innerHTML = `<span class="text-xs font-extrabold ${isCurrentM ? 'text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded-md' : 'text-slate-500'}">${m}월</span>`;
+    mLabel.title = `${m}월 일별 보기로 이동`;
+    mLabel.innerHTML = `<span class="text-[11px] font-extrabold ${isCurrentM ? 'rounded-md border border-indigo-100 bg-indigo-50 px-1.5 py-0.5 text-indigo-600' : 'text-slate-500'}">${m}월</span>`;
     mLabel.onclick = function() {
       currentCalDate.setMonth(m - 1);
-      currentCalMode = 'DAY';
-      if (typeof renderActiveViews === 'function') renderActiveViews();
+      if (typeof setCalMode === 'function') setCalMode('DAY');
+      else {
+        currentCalMode = 'DAY';
+        if (typeof renderActiveViews === 'function') renderActiveViews();
+      }
     };
     yAxis.appendChild(mLabel);
   }
@@ -226,19 +273,24 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
 
   // 6. 오른쪽 차트 영역
   const chartArea = document.createElement('div');
-  chartArea.className = 'flex-1 relative h-full bg-slate-50/10';
+  chartArea.className = 'flex-1 relative h-full bg-white';
 
   // 7. 클릭 가능한 가로 행 배경
   const bgGrid = document.createElement('div');
   bgGrid.className = 'absolute inset-0 flex flex-col z-0';
   for (let m = 1; m <= 12; m++) {
     const rowEl = document.createElement('div');
-    rowEl.className = 'flex-1 border-b border-slate-100/70 last:border-b-0 cursor-pointer hover:bg-slate-100/20 transition-colors';
+    const isCurrentM = today.getFullYear() === year && today.getMonth() + 1 === m;
+    rowEl.className = 'flex-1 border-b border-slate-100 last:border-b-0 cursor-pointer transition-colors ' + (isCurrentM ? 'bg-indigo-50/35' : 'hover:bg-slate-50');
     rowEl.style.height = `${rowHeight}px`;
+    rowEl.title = `${m}월 일별 보기로 이동`;
     rowEl.onclick = function() {
       currentCalDate.setMonth(m - 1);
-      currentCalMode = 'DAY';
-      if (typeof renderActiveViews === 'function') renderActiveViews();
+      if (typeof setCalMode === 'function') setCalMode('DAY');
+      else {
+        currentCalMode = 'DAY';
+        if (typeof renderActiveViews === 'function') renderActiveViews();
+      }
     };
     bgGrid.appendChild(rowEl);
   }
@@ -260,7 +312,7 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
     const height = (em - sm + 1) * rowHeight;
     
     // 이 연도에 속하는 서브 태스크들 구함
-    const subTasksInYear = Array.isArray(task.subTasks) ? task.subTasks.filter(function(st) {
+    const subTasksInYear = showSubTaskBars && Array.isArray(task.subTasks) ? task.subTasks.filter(function(st) {
       const stS = st.startDate || st.dueDate;
       const stE = st.dueDate || st.startDate;
       if (!stS || !stE) return false;
@@ -270,27 +322,24 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
     }) : [];
 
     const subCount = subTasksInYear.length;
-    const step = Math.min(24, (laneWidth - 4) / (subCount + 1));
-    
-    const mainBarWidth = 28;
-    const startOffset = 32; // 왼쪽 경계선과 너무 가깝지 않도록 32px 오프셋 유지
-    const mainLeft = laneIdx * laneWidth + startOffset + subCount * step;
+    const subBarWidth = subCount ? Math.max(13, Math.min(17, (laneWidth - 6) / Math.max(1, subCount))) : 0;
+    const mainBarWidth = subCount ? Math.max(16, laneWidth - subBarWidth * Math.min(subCount, 2) - 4) : Math.max(20, Math.min(26, laneWidth));
+    const laneLeft = startOffset + laneIdx * (laneWidth + laneGap);
+    const mainLeft = laneLeft + Math.max(0, laneWidth - mainBarWidth);
+    const assignees = Array.isArray(task.assignee) ? task.assignee.join(', ') : (task.assignee || '미지정');
+    const mainCls = getTaskTone(task);
+    const statusIcon = getTaskIcon(task);
 
-    const eff = typeof getEffectiveStatus === 'function' ? getEffectiveStatus(task, todayStr) : (task.status || 'PENDING');
-      // 기하학적 공식 적용:
-    // 가로 막대를 (left = mainLeft + mainBarWidth) 위치에 배치한 후,
-    // top-left 기준으로 90도 회전하면 정확히 (left = mainLeft)에 맞아 떨어집니다.
-    // flex items-center와 자식 min-w-0 flex-1 truncate의 조합으로 수축 현상 없이 정확한 좌우 정중앙 수직 정렬을 보장합니다.
     const mainBar = document.createElement('div');
-    mainBar.className = `absolute rounded-lg shadow-sm text-[10.5px] font-bold cursor-pointer transition-all hover:scale-[1.02] pointer-events-auto border flex items-center pl-3 pr-2 ${mainCls}`;
+    mainBar.className = `absolute rounded-lg shadow-sm text-[10.5px] font-bold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] pointer-events-auto flex items-center pl-3 pr-2 ${mainCls}`;
     mainBar.style.width = `${height - 6}px`;
     mainBar.style.height = `${mainBarWidth}px`;
     mainBar.style.top = `${top + 3}px`;
-    mainBar.style.left = `${mainLeft + mainBarWidth}px`; // 회전 후 mainLeft로 이동하도록 두께만큼 우측 시작
+    mainBar.style.left = `${mainLeft + mainBarWidth}px`;
     mainBar.style.transformOrigin = 'top left';
     mainBar.style.transform = 'rotate(90deg)';
     mainBar.style.overflow = 'hidden';
-    mainBar.title = `${task.title || ''} · 담당자: ${assignees}`;
+    mainBar.title = `${task.title || ''} · 담당자: ${assignees} · ${task.startDate || '?'} ~ ${task.dueDate || '?'}`;
     mainBar.onclick = function(e) {
       e.stopPropagation();
       if (typeof openTaskModal === 'function') openTaskModal(task.id);
@@ -313,34 +362,23 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
       const stTop = stSm * rowHeight;
       const stHeight = (stEm - stSm + 1) * rowHeight;
 
-      const subBarWidth = 22;
-      const subLeft = laneIdx * laneWidth + startOffset + idx * step;
-
-      const stStatus = st.status || 'PENDING';
-      // 데스크탑 subClass와 동일한 색상 매핑 (border-dashed 포함)
-      const stCls = (function(status, stItem) {
-        const overdue = typeof isSubTaskOverdue === 'function' ? isSubTaskOverdue(stItem, todayStr) : false;
-        if (overdue) return 'bg-rose-50 text-rose-800 border-rose-300 border-dashed font-semibold';
-        if (status === 'COMPLETED') return 'bg-emerald-50 text-emerald-800 border-emerald-300 border-dashed';
-        if (status === 'PROGRESS') return 'bg-blue-50 text-blue-800 border-blue-300 border-dashed';
-        return 'bg-slate-50 text-slate-600 border-slate-300 border-dashed';
-      })(stStatus, st);
+      const subLeft = laneLeft + Math.max(0, idx * (subBarWidth + 2));
+      const stCls = getSubTaskTone(st, task);
 
       const subAssignees = Array.isArray(st.assignee) ? st.assignee.join(', ') : (st.assignee || '미지정');
-      const stOverdue = typeof isSubTaskOverdue === 'function' ? isSubTaskOverdue(st, todayStr) : false;
-      const stStatusIcon = stOverdue ? '🚨' : st.status === 'COMPLETED' ? '⭐️' : st.status === 'PROGRESS' ? '⚙️' : '⌛';
+      const stStatusIcon = getSubTaskIcon(st);
 
       // 서브태스크도 동일하게 보정: (left = subLeft + subBarWidth) 배치 후 90도 회전
       const subBar = document.createElement('div');
-      subBar.className = `absolute rounded-lg shadow-sm text-[9.5px] font-bold cursor-pointer transition-all hover:scale-[1.02] pointer-events-auto border flex items-center pl-2.5 pr-1.5 ${stCls}`;
+      subBar.className = `absolute rounded-lg shadow-sm text-[9.5px] font-bold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] pointer-events-auto flex items-center pl-2.5 pr-1.5 ${stCls}`;
       subBar.style.width = `${stHeight - 6}px`;
       subBar.style.height = `${subBarWidth}px`;
       subBar.style.top = `${stTop + 3}px`;
-      subBar.style.left = `${subLeft + subBarWidth}px`; // 회전 후 subLeft로 이동하도록 두께만큼 우측 시작
+      subBar.style.left = `${subLeft + subBarWidth}px`;
       subBar.style.transformOrigin = 'top left';
       subBar.style.transform = 'rotate(90deg)';
       subBar.style.overflow = 'hidden';
-      subBar.title = `↳ 하위: ${st.title || ''} · 담당자: ${subAssignees}`;
+      subBar.title = `↳ 하위: ${st.title || ''} · 담당자: ${subAssignees} · ${st.startDate || '?'} ~ ${st.dueDate || '?'}`;
       subBar.onclick = function(e) {
         e.stopPropagation();
         if (typeof openTaskModal === 'function') openTaskModal(task.id);

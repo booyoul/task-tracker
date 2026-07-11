@@ -17,10 +17,18 @@
    * 프로젝트 내 [.agents/AGENTS.md](file:///home/booyoul/projects/task-tracker-main/.agents/AGENTS.md)에 세션 간 인수인계용 `task.md` 관리 규칙 명문화 및 반영 완료.
 3. **사전 분석 완료**
    * [token_optimization_guide.md](file:///home/booyoul/projects/task-tracker-main/token_optimization_guide.md) 파일을 정독하여 프로젝트 전역 스코프 구조 및 파일 참조 맵 숙지 완료.
+4. **모바일 캘린더 연간 보기 Look & Feel 개선**
+   * `js/calendar-mobile-renderer.js`의 모바일 연간 간트 렌더러를 데스크탑 연간 보기와 유사한 막대 색상, 테두리, 월 축, 오늘 강조, 빈 상태 스타일로 정리 완료.
+   * 기존 모바일 연간 렌더러의 미정의 변수(`mainCls`, `assignees`, `statusIcon`) 사용 위험을 제거하고, `calendarUxState`의 하위업무/산업색상 옵션을 반영하도록 보완 완료.
+   * `index.html`의 `calendar-mobile-renderer.js` 캐시 버전을 `v20260711-v11`로 갱신하고 `npm run build:css`, `node --check`, `jsdom` 렌더러 스모크 검증 완료.
 
 ---
 
 ## 🚀 다음 진행할 작업 (Next Steps)
+### 0. 모바일 캘린더 연간 보기 실제 기기 검수
+- [ ] 실제 모바일 브라우저 폭에서 `년간` 탭을 열어 막대 간 겹침, 터치 목표 크기, 긴 업무명 truncation 상태를 육안 확인
+- [ ] 필요 시 업무/하위업무가 매우 많은 트래커에서 모바일 연간 뷰의 레인 밀도 보정 추가
+
 ### 1. 캘린더 및 간트 차트 실시간 통합 필터링 구현
 - [x] **필터 연동 설계**: 테이블 뷰 필터 상태(`state.js` 또는 `app.js` 내 필터 변수)의 캘린더 렌더러 연계 설계 완료
 - [x] **캘린더 렌더러 수정**: `calendar-day-renderer.js`, `calendar-month-renderer.js` 등에서 tasks 필터링 적용 완료
