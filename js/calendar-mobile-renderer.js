@@ -119,6 +119,7 @@ function _renderMobileDayView(container, filtered, year, month, todayStr) {
     const dateHeader = document.createElement('div');
     dateHeader.className = 'flex items-center gap-2 mb-2 mt-4 first:mt-0';
     dateHeader.innerHTML = '<span class="inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold shrink-0 ' + (isToday ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 ' + dayColor) + '">' + dayNum + '</span><span class="text-xs font-semibold ' + dayColor + '">' + dayNames[dayOfWeek] + '</span>' + (isToday ? '<span class="text-[10px] font-bold bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded-full">오늘</span>' : '') + '<div class="flex-1 h-px bg-slate-100"></div>';
+    container.appendChild(dateHeader);
     const taskList = document.createElement('div');
     taskList.className = 'space-y-2';
     
