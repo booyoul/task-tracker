@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-summary-renderer.js v20260711-v1 loaded');
+console.info('Smart Task Flow calendar-summary-renderer.js v20260711-v11 loaded');
 
 function formatSummaryNoteDate(ts) {
     if (!ts) return '';
@@ -202,19 +202,29 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
         const monthlySubCompleted = currentMonthTasks.reduce((sum, t) => sum + getMonthlySubTaskSummary(t, monthStart, monthEnd).completedInMonth, 0);
 
         const kpiPanel = document.createElement('div');
-        kpiPanel.className = 'flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-white px-4 py-2.5 shadow-sm mb-4 text-xs';
+        kpiPanel.className = 'rounded-xl border border-slate-200 bg-white p-3 shadow-sm mb-4 dark:bg-slate-900 dark:border-slate-800';
         kpiPanel.innerHTML = `
-            <div class="flex flex-wrap items-center gap-2">
-                <span class="font-black text-slate-800">${year}년 ${month + 1}월 요약</span>
-                <span class="rounded bg-slate-50 px-2 py-0.5 font-semibold text-slate-600 border border-slate-100">전체 <b>${monthlyTotal}</b>건</span>
-                <span class="rounded bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-700 border border-emerald-100">완료 <b>${monthlyCompleted}</b>건 (${monthlyCompletionRate}%)</span>
-                <span class="rounded bg-blue-50 px-2 py-0.5 font-semibold text-blue-700 border border-blue-100">진행 <b>${monthlyProgress}</b></span>
-                <span class="rounded bg-rose-50 px-2 py-0.5 font-semibold text-rose-700 border border-rose-100">지연 <b>${monthlyOverdue}</b></span>
+            <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <span class="text-sm font-black text-slate-800 dark:text-slate-100">${year}년 ${month + 1}월 요약</span>
+                <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400">하위 업무 ${monthlySubCompleted}/${monthlySubTotal} · 메모 ${monthNotesCount}건</span>
             </div>
-            <div class="flex items-center gap-3 text-slate-500 font-medium shrink-0 flex-wrap">
-                <span>⏱️ 하위 업무 <b class="text-indigo-600">${monthlySubTotal}</b>건 (완료 ${monthlySubCompleted})</span>
-                <span class="text-slate-300">|</span>
-                <span>📌 이번 달 메모 <b class="text-amber-600">${monthNotesCount}</b>건</span>
+            <div class="grid grid-cols-2 gap-2">
+                <div class="rounded-lg border border-slate-100 bg-slate-50 p-3 dark:bg-slate-800/70 dark:border-slate-700">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">전체</div>
+                    <div class="mt-1 text-xl font-black text-slate-900 dark:text-white">${monthlyTotal}</div>
+                </div>
+                <div class="rounded-lg border border-rose-100 bg-rose-50 p-3 dark:bg-rose-950/20 dark:border-rose-900/50">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-rose-600">지연</div>
+                    <div class="mt-1 text-xl font-black text-rose-700 dark:text-rose-300">${monthlyOverdue}</div>
+                </div>
+                <div class="rounded-lg border border-blue-100 bg-blue-50 p-3 dark:bg-blue-950/20 dark:border-blue-900/50">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-blue-600">진행</div>
+                    <div class="mt-1 text-xl font-black text-blue-700 dark:text-blue-300">${monthlyProgress}<span class="ml-1 text-[11px] font-bold text-blue-500">대기 ${monthlyPending}</span></div>
+                </div>
+                <div class="rounded-lg border border-emerald-100 bg-emerald-50 p-3 dark:bg-emerald-950/20 dark:border-emerald-900/50">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-emerald-600">완료율</div>
+                    <div class="mt-1 text-xl font-black text-emerald-700 dark:text-emerald-300">${monthlyCompletionRate}%<span class="ml-1 text-[11px] font-bold text-emerald-500">${monthlyCompleted}건</span></div>
+                </div>
             </div>
         `;
         grid.appendChild(kpiPanel);
@@ -229,18 +239,17 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
         });
 
         const notesSec = document.createElement('div');
-        notesSec.className = 'rounded-xl border border-amber-250 bg-amber-50/20 p-4 mb-4 dark:bg-amber-950/10 dark:border-amber-900/50';
+        notesSec.className = 'rounded-xl border border-amber-100 bg-amber-50/20 p-3 mb-4 dark:bg-amber-950/10 dark:border-amber-900/50';
         notesSec.innerHTML = `
-            <h3 class="text-xs font-bold mb-3 text-amber-800 dark:text-amber-400 uppercase tracking-wider flex items-center justify-between">
+            <h3 class="text-xs font-bold mb-3 text-amber-800 dark:text-amber-400 uppercase tracking-wider flex items-center justify-between gap-2">
                 <span>📌 이번 달 작성된 진행 상황 메모 목록</span>
-                <span class="rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-bold shadow-sm text-amber-700 dark:bg-slate-900">${monthNotes.length}건</span>
+                <span class="rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-bold shadow-sm text-amber-700 dark:bg-slate-900">최신 ${Math.min(monthNotes.length, 3)}/${monthNotes.length}</span>
             </h3>
         `;
         const notesGrid = document.createElement('div');
-        // 메모가 많아도 월별 요약 레이아웃이 무한 확장되지 않도록 최대 높이 + 스크롤 적용
-        notesGrid.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-[380px] overflow-y-auto pr-0.5';
+        notesGrid.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2';
 
-        monthNotes.forEach(note => {
+        const createNoteCard = (note) => {
             let taskTitle = '알 수 없는 업무';
             let subTaskLabel = '';
             if (note.taskId) {
@@ -283,10 +292,28 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
                     window.openNoteDetailPanel(note);
                 }
             });
-            notesGrid.appendChild(card);
-        });
+            return card;
+        };
+
+        monthNotes.slice(0, 3).forEach(note => notesGrid.appendChild(createNoteCard(note)));
 
         notesSec.appendChild(notesGrid);
+
+        if (monthNotes.length > 3) {
+            const moreDetails = document.createElement('details');
+            moreDetails.className = 'mt-3 rounded-lg border border-amber-100 bg-white/70 p-2 dark:bg-slate-900/70 dark:border-amber-900/50';
+            moreDetails.innerHTML = `
+                <summary class="cursor-pointer select-none text-[11px] font-bold text-amber-700 dark:text-amber-400">
+                    전체 보기 (${monthNotes.length - 3}건 더 보기)
+                </summary>
+            `;
+            const moreGrid = document.createElement('div');
+            moreGrid.className = 'mt-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[320px] overflow-y-auto pr-0.5';
+            monthNotes.slice(3).forEach(note => moreGrid.appendChild(createNoteCard(note)));
+            moreDetails.appendChild(moreGrid);
+            notesSec.appendChild(moreDetails);
+        }
+
         grid.appendChild(notesSec);
     }
 
@@ -309,19 +336,20 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
     });
 
     const categories = [
-        { key: 'OVERDUE', label: '🚨 일정 초과 및 지연 상태', style: 'bg-rose-50/60 border-rose-100 text-rose-800', list: groups.OVERDUE },
-        { key: 'PROGRESS', label: '⚙️ 현재 적극 진행 중', style: 'bg-blue-50/60 border-blue-100 text-blue-800', list: groups.PROGRESS },
-        { key: 'PENDING', label: '⌛ 대기 및 진행 준비 중', style: 'bg-amber-50/60 border-amber-100 text-amber-800', list: groups.PENDING },
-        { key: 'COMPLETED', label: '⭐️ 정상 완료 항목', style: 'bg-emerald-50/60 border-emerald-100 text-emerald-800', list: groups.COMPLETED }
+        { key: 'OVERDUE', label: '🚨 일정 초과 및 지연 상태', style: 'bg-rose-50/60 border-rose-100 text-rose-800', list: groups.OVERDUE, open: true },
+        { key: 'PROGRESS', label: '⚙️ 현재 적극 진행 중', style: 'bg-blue-50/60 border-blue-100 text-blue-800', list: groups.PROGRESS, open: true },
+        { key: 'PENDING', label: '⌛ 대기 및 진행 준비 중', style: 'bg-amber-50/60 border-amber-100 text-amber-800', list: groups.PENDING, open: false },
+        { key: 'COMPLETED', label: '⭐️ 정상 완료 항목', style: 'bg-emerald-50/60 border-emerald-100 text-emerald-800', list: groups.COMPLETED, open: false }
     ];
 
     categories.forEach(cat => {
         if (cat.list.length === 0) return;
-        const sec = document.createElement('div');
+        const sec = document.createElement('details');
         sec.className = `rounded-xl border p-4 ${cat.style} mb-4`;
-        sec.innerHTML = `<h3 class="text-xs font-bold mb-3 uppercase tracking-wider flex items-center justify-between"><span>${cat.label}</span><span class="rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-bold shadow-sm">${cat.list.length}건</span></h3>`;
+        sec.open = cat.open;
+        sec.innerHTML = `<summary class="cursor-pointer select-none text-xs font-bold uppercase tracking-wider flex items-center justify-between gap-2"><span>${cat.label}</span><span class="rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-bold shadow-sm">${cat.list.length}건</span></summary>`;
         const subGrid = document.createElement('div');
-        subGrid.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5';
+        subGrid.className = 'mt-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5';
 
         cat.list.forEach(t => {
             const subSummary = getMonthlySubTaskSummary(t, monthStart, monthEnd);
@@ -338,22 +366,6 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
                 ? `<span class="text-[10px] bg-amber-50 text-amber-700 border border-amber-100 px-1.5 py-0.5 rounded font-bold">메모 ${noteCount}건</span>`
                 : '';
 
-            // 최신 메모 1줄 미리보기
-            const latestNote = notesByTaskId[t.id]?.[0];
-            let latestNoteMarkup = '';
-            if (latestNote) {
-                const noteTitle = latestNote.title ? `[${latestNote.title}] ` : '';
-                const noteBody = escapeHTML(latestNote.body || '').slice(0, 50) + ((latestNote.body || '').length > 50 ? '...' : '');
-                const noteAuthor = latestNote.createdByName ? ` (${latestNote.createdByName.split('@')[0]})` : '';
-                latestNoteMarkup = `
-                    <div class="mt-2 text-[10px] bg-amber-50/50 border border-amber-100 rounded-lg p-2 text-slate-600 dark:bg-amber-950/20 dark:border-amber-900/50 dark:text-slate-350">
-                        <span class="font-semibold text-amber-800 dark:text-amber-400">📌 최신 진행 상황:</span>
-                        <span>${escapeHTML(noteTitle)}${noteBody}${noteAuthor}</span>
-                    </div>
-                `;
-            }
-
-            const subTasksHtml = buildMonthlySubTaskHTML(t, monthStart, monthEnd);
             const progressPct = typeof getTaskProgress === 'function' ? getTaskProgress(t) : 0;
 
             const priorityColors = {
@@ -385,8 +397,6 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
                         </div>
                         ${subProgressMarkup}
                     </div>
-                    ${latestNoteMarkup}
-                    ${subTasksHtml}
                 </div>
                 <div class="mt-3">
                     <div class="flex items-center justify-between text-[9px] text-slate-400 mb-1">
@@ -410,4 +420,3 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
         _summaryRenderInProgress = false;
     }
 }
-

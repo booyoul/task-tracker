@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-mobile-renderer.js v20260711-v1 loaded');
+console.info('Smart Task Flow calendar-mobile-renderer.js v20260711-v15 loaded');
 
 // ============================================================
 //  모바일 전용 캘린더 렌더러
@@ -200,7 +200,7 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
     if (eff === 'PENDING') return 3;
     return 4;
   };
-  const displayedTasks = isDenseYear
+  let displayedTasks = isDenseYear
     ? [...tasksInYear].sort(function(a, b) {
         const rankDiff = getDisplayRank(a) - getDisplayRank(b);
         if (rankDiff) return rankDiff;
@@ -209,6 +209,8 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
         return dueA.localeCompare(dueB);
       }).slice(0, denseTaskLimit)
     : tasksInYear;
+  let usesCompactYear = isDenseYear;
+  let hideSubTaskBarsForFit = false;
 
   const getSubTasksInYear = function(task) {
     return showSubTaskBars && Array.isArray(task.subTasks) ? task.subTasks.filter(function(st) {
@@ -221,13 +223,66 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
     }) : [];
   };
 
-  const subTasksByTaskId = new Map();
+  const axisWidth = 46;
+  const horizontalPadding = 24;
+  const chartWidth = Math.max(220, (containerWidth || 320) - axisWidth - horizontalPadding);
+  const startOffset = 14;
+  const endPadding = 10;
+  const barGap = 3;
+  const minBarThickness = 10;
+
+  let subTasksByTaskId = new Map();
   let maxBarsInGroup = 1;
-  displayedTasks.forEach(function(task) {
-    const visibleSubTasks = getSubTasksInYear(task);
-    subTasksByTaskId.set(task.id, visibleSubTasks);
-    maxBarsInGroup = Math.max(maxBarsInGroup, 1 + visibleSubTasks.length);
-  });
+  const buildSubTaskLayout = function(allowSubTaskBars) {
+    const map = new Map();
+    let maxBars = 1;
+    displayedTasks.forEach(function(task) {
+      const visibleSubTasks = allowSubTaskBars ? getSubTasksInYear(task) : [];
+      map.set(task.id, visibleSubTasks);
+      maxBars = Math.max(maxBars, 1 + visibleSubTasks.length);
+    });
+    subTasksByTaskId = map;
+    maxBarsInGroup = maxBars;
+  };
+
+  const buildLaneLayout = function(tasksForLayout) {
+    const lanes = [];
+    const taskLanes = new Map();
+
+    tasksForLayout.forEach(function(task) {
+      const s = task.startDate || task.dueDate;
+      const e = task.dueDate || task.startDate;
+      const sDate = new Date(s.replace(/-/g, '/'));
+      const eDate = new Date(e.replace(/-/g, '/'));
+
+      const startMonth = sDate.getFullYear() < year ? 0 : sDate.getMonth();
+      const endMonth = eDate.getFullYear() > year ? 11 : eDate.getMonth();
+
+      let assignedLane = -1;
+      for (let i = 0; i < lanes.length; i++) {
+        if (startMonth > lanes[i]) {
+          assignedLane = i;
+          lanes[i] = endMonth;
+          break;
+        }
+      }
+      if (assignedLane === -1) {
+        lanes.push(endMonth);
+        assignedLane = lanes.length - 1;
+      }
+      taskLanes.set(task.id, { startMonth: startMonth, endMonth: endMonth, laneIndex: assignedLane });
+    });
+
+    return { taskLanes: taskLanes, totalLanes: lanes.length > 0 ? lanes.length : 1 };
+  };
+
+  const estimateLayoutWidth = function(totalLaneCount, barsInGroup) {
+    const gap = totalLaneCount > 1 ? 12 : 0;
+    const groupWidthForEstimate = barsInGroup * minBarThickness + (barsInGroup - 1) * barGap;
+    return startOffset + endPadding + (totalLaneCount * groupWidthForEstimate) + (gap * Math.max(0, totalLaneCount - 1));
+  };
+
+  buildSubTaskLayout(showSubTaskBars);
 
   const getMonthStats = function(monthIndex) {
     const monthStart = `${year}-${String(monthIndex + 1).padStart(2, '0')}-01`;
@@ -256,47 +311,35 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
   };
 
   // 2. 겹침 방지 알고리즘 (Lane Assignment)
-  const lanes = [];
-  const taskLanes = new Map();
+  let laneLayout = buildLaneLayout(displayedTasks);
+  if (estimateLayoutWidth(laneLayout.totalLanes, maxBarsInGroup) > chartWidth) {
+    usesCompactYear = true;
+    hideSubTaskBarsForFit = true;
+    buildSubTaskLayout(false);
+    laneLayout = buildLaneLayout(displayedTasks);
+  }
 
-  displayedTasks.forEach(function(task) {
-    const s = task.startDate || task.dueDate;
-    const e = task.dueDate || task.startDate;
-    const sDate = new Date(s.replace(/-/g, '/'));
-    const eDate = new Date(e.replace(/-/g, '/'));
-    
-    // 이 연도 내에서의 시작 월과 종료 월 계산 (0 ~ 11)
-    const startMonth = sDate.getFullYear() < year ? 0 : sDate.getMonth();
-    const endMonth = eDate.getFullYear() > year ? 11 : eDate.getMonth();
-    
-    let assignedLane = -1;
-    for (let i = 0; i < lanes.length; i++) {
-      if (startMonth > lanes[i]) {
-        assignedLane = i;
-        lanes[i] = endMonth;
-        break;
-      }
-    }
-    if (assignedLane === -1) {
-      lanes.push(endMonth);
-      assignedLane = lanes.length - 1;
-    }
-    taskLanes.set(task.id, { startMonth: startMonth, endMonth: endMonth, laneIndex: assignedLane });
-  });
+  if (estimateLayoutWidth(laneLayout.totalLanes, maxBarsInGroup) > chartWidth) {
+    const maxMainBars = Math.max(6, Math.min(denseTaskLimit, Math.floor((chartWidth - startOffset - endPadding + 12) / (minBarThickness + 12))));
+    displayedTasks = [...tasksInYear].sort(function(a, b) {
+      const rankDiff = getDisplayRank(a) - getDisplayRank(b);
+      if (rankDiff) return rankDiff;
+      const dueA = a.dueDate || a.startDate || '';
+      const dueB = b.dueDate || b.startDate || '';
+      return dueA.localeCompare(dueB);
+    }).slice(0, maxMainBars);
+    buildSubTaskLayout(false);
+    laneLayout = buildLaneLayout(displayedTasks);
+  }
 
-  const totalLanes = lanes.length > 0 ? lanes.length : 1;
+  const taskLanes = laneLayout.taskLanes;
+  const totalLanes = laneLayout.totalLanes;
 
   // 3. 모바일 세로형 간트: 데스크탑의 막대 질감은 유지하고, 월 축만 세로로 전환
-  const axisWidth = 46;
-  const horizontalPadding = 24;
-  const chartWidth = Math.max(220, (containerWidth || 320) - axisWidth - horizontalPadding);
-  const startOffset = 14;
-  const endPadding = 10;
   const groupGap = totalLanes > 1 ? 12 : 0;
-  const barGap = 3;
   const availableWidth = Math.max(120, chartWidth - startOffset - endPadding - groupGap * Math.max(0, totalLanes - 1));
   const rawBarThickness = (availableWidth / totalLanes - barGap * (maxBarsInGroup - 1)) / maxBarsInGroup;
-  const barThickness = Math.max(10, Math.min(22, Math.floor(rawBarThickness)));
+  const barThickness = Math.max(minBarThickness, Math.min(22, Math.floor(rawBarThickness)));
   const groupWidth = maxBarsInGroup * barThickness + (maxBarsInGroup - 1) * barGap;
   const laneSlotWidth = groupWidth + groupGap;
 
@@ -309,11 +352,11 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
   header.className = 'flex items-center justify-between gap-3 border-b border-slate-200/80 bg-slate-50 px-3.5 py-3 shadow-sm';
   header.innerHTML = `
     <span class="text-xs font-bold text-slate-700">${year}년 연간 타임라인</span>
-    <span class="shrink-0 rounded-md bg-white px-2 py-1 text-[10px] font-bold text-slate-500 shadow-sm ring-1 ring-slate-200">${isDenseYear ? `주요 ${displayedTasks.length}/${tasksInYear.length}` : `총 ${tasksInYear.length}개`}</span>
+    <span class="shrink-0 rounded-md bg-white px-2 py-1 text-[10px] font-bold text-slate-500 shadow-sm ring-1 ring-slate-200">${displayedTasks.length < tasksInYear.length ? `주요 ${displayedTasks.length}/${tasksInYear.length}` : (hideSubTaskBarsForFit ? `총 ${tasksInYear.length}개 · 본 업무` : `총 ${tasksInYear.length}개`)}</span>
   `;
   ganttWrapper.appendChild(header);
 
-  if (isDenseYear) {
+  if (usesCompactYear) {
     const summary = document.createElement('div');
     summary.className = 'border-b border-slate-100 bg-white px-3 py-3';
     const monthCards = [];
@@ -334,7 +377,7 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
     summary.innerHTML = `
       <div class="mb-2 flex items-center justify-between gap-2">
         <span class="text-[11px] font-black text-slate-700">월별 요약</span>
-        <span class="text-[10px] font-bold text-slate-400">간트는 주요 업무만 표시</span>
+        <span class="text-[10px] font-bold text-slate-400">${displayedTasks.length < tasksInYear.length ? '간트는 주요 업무만 표시' : '간트는 본 업무 중심 표시'}</span>
       </div>
       <div class="grid grid-cols-3 gap-1.5">${monthCards.join('')}</div>
     `;
