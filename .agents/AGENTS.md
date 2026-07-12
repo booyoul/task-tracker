@@ -1,12 +1,14 @@
-# Project-Scoped Rules
+# Task Tracker Rules
 
-- **중요**: 새로운 대화 세션을 시작하거나 코드를 수정하기 전, 사용자가 요청한 작업 대상 프로젝트 폴더 내부에 `token_optimization_guide.md` 파일이 존재하는지 먼저 체크하고 무조건 최우선으로 조회하십시오.
-- **글로벌 스코프 함수 중복 선언(Override) 방지**:
-  - 본 프로젝트는 ES Module이 아닌 레거시 글로벌 스크립트 결합 구조를 가지고 있습니다.
-  - 동일한 함수나 변수가 여러 위치(예: `js/app.js` 등)에 중복 선언될 경우, 아무런 에러 없이 나중에 정의된 함수가 이전 것을 오버라이드하여 오작동을 일으킵니다.
-  - 작업을 진행하거나 함수를 수정하기 전, 반드시 전체 소스 코드에서 해당 함수/변수명으로 `grep_search`를 수행하여 중복 선언이 존재하지 않는지 먼저 검증하십시오.
+- Legacy global browser scripts are loaded from `index.html`; script order and duplicate globals matter.
+- Before editing a function or global variable, search with `rg` for duplicate declarations.
+- Avoid full reads of `index.html` and `js/app.js`; search first, then open a small range.
+- Follow the existing renderer/service split; do not move architecture unless asked.
 
-- **세션 간 작업 인수인계 규칙 (`task.md` 유지 관리)**:
-  - 매 작업(기능 구현, 버그 수정 등)이 완료되거나 대화 세션을 종료하기 전에, 프로젝트 루트 경로의 `task.md` 파일에 **[완료된 작업]**, **[다음 세션에서 진행할 작업 (Next Steps)]**, **[주의 사항]**을 반드시 갱신하여 기록해 두십시오.
-  - 새로운 대화 세션을 시작할 때는 `token_optimization_guide.md`와 함께 프로젝트 루트의 `task.md`를 최우선으로 로드하여 이전 흐름을 그대로 이어받아 작업을 처리하십시오.
+## Verification
 
+- CSS build: `npm run build:css`
+- Mobile regression: `npm run smoke:mobile`
+- JS syntax: `node --check path/to/file.js`
+- Whitespace: `git diff --check`
+- Do not open an interactive browser unless explicitly requested or automated checks cannot answer the UI question.
