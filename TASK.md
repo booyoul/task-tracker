@@ -22,6 +22,7 @@ Last updated: 2026-07-14
 - Static HTML/JavaScript task tracker backed by Firebase/Firestore.
 - JavaScript files are loaded as browser globals from `index.html`; script order and cache query strings matter.
 - Mobile calendar, list, monthly summary, KPI badge/settings, activity timeline, and mobile smoke QA are implemented.
+- Monthly summary is optimized for progress-note review with note-first layout, author/type/search filters, and review labels for results, issues, decisions, and follow-up.
 - Sub task recurrence input, schema normalization, calendar/monthly summary occurrence rendering, and flat export rows are implemented.
 - Recurring sub task occurrences can store per-cycle status overrides on the source sub task through `recurrenceCompletions`; status can be edited from the task modal or monthly summary, and yearly calendar views group occurrences from the same source sub task into one lane.
 - Tailwind dark mode is class-based via `.dark`, not OS preference.
@@ -49,6 +50,7 @@ Last updated: 2026-07-14
 
 - Sub task execution cycle support is implemented end to end for input, schema normalization, calendar/monthly summary occurrence rendering, flat export rows, and per-cycle status overrides.
 - Task modal and monthly summary let recurring sub task occurrences be checked independently while preserving the source sub task's default status.
+- Monthly summary progress notes are automatically classified for review into results, issues, decisions, follow-up, and general notes.
 - Mobile/list/calendar/summary QA coverage remains available through `npm run smoke:mobile`.
 
 ## Next Work
