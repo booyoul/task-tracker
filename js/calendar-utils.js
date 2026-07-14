@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-utils.js v20260714-v2 loaded');
+console.info('Smart Task Flow calendar-utils.js v20260714-v3 loaded');
 function dateRangeOverlaps(item, monthStart, monthEnd, fallbackDate) { const start = new Date(String(item.startDate || item.dueDate || fallbackDate).replace(/-/g, '/')); const end = new Date(String(item.dueDate || item.startDate || fallbackDate).replace(/-/g, '/')); return !isNaN(start.getTime()) && !isNaN(end.getTime()) && start <= monthEnd && end >= monthStart; }
 function parseDateOnlyValue(value) {
   if (!value) return null;
@@ -51,9 +51,20 @@ function getSubTaskOccurrenceStatus(st, occurrenceKey) {
     : {};
   return normalizeStatus(completions[occurrenceKey] || st?.status);
 }
-function makeSubTaskOccurrence(st, occurrenceStart, durationDays, index) {
+function getClampedOccurrenceEndDate(occurrenceStart, durationDays, nextOccurrenceStart, effectiveEnd) {
+  let occurrenceEnd = addDateDays(occurrenceStart, durationDays);
+  if (nextOccurrenceStart instanceof Date && !isNaN(nextOccurrenceStart.getTime())) {
+    const latestBeforeNext = addDateDays(nextOccurrenceStart, -1);
+    if (latestBeforeNext < occurrenceEnd) occurrenceEnd = latestBeforeNext;
+  }
+  if (effectiveEnd instanceof Date && !isNaN(effectiveEnd.getTime()) && effectiveEnd < occurrenceEnd) {
+    occurrenceEnd = effectiveEnd;
+  }
+  return occurrenceEnd < occurrenceStart ? occurrenceStart : occurrenceEnd;
+}
+function makeSubTaskOccurrence(st, occurrenceStart, durationDays, index, occurrenceEnd = null) {
   const startDate = formatDateOnlyValue(occurrenceStart);
-  const dueDate = formatDateOnlyValue(addDateDays(occurrenceStart, durationDays));
+  const dueDate = formatDateOnlyValue(occurrenceEnd || addDateDays(occurrenceStart, durationDays));
   return {
     ...st,
     id: `${st.id || st.title || 'sub'}__occ_${startDate}`,
@@ -82,19 +93,18 @@ function getRecurringSubTaskOccurrences(st, rangeStart, rangeEnd, fallbackDate) 
   const untilDate = recurrence.endType === 'UNTIL' ? parseDateOnlyValue(recurrence.until) : null;
   const effectiveEnd = untilDate && untilDate < rangeE ? untilDate : rangeE;
   const safetyLimit = 10000;
-  const occurrences = [];
-  const pushIfVisible = (occurrenceStart, index) => {
-    const occurrenceEnd = addDateDays(occurrenceStart, durationDays);
+  const frequency = recurrence.frequency || 'WEEKLY';
+  const occurrenceStarts = [];
+  const addOccurrenceStart = occurrenceStart => {
     if (occurrenceStart > effectiveEnd) return false;
-    if (occurrenceEnd >= rangeS && occurrenceStart <= rangeE) occurrences.push(makeSubTaskOccurrence(st, occurrenceStart, durationDays, index));
+    occurrenceStarts.push(new Date(occurrenceStart));
     return true;
   };
-  const frequency = recurrence.frequency || 'WEEKLY';
   let generated = 0;
   let safety = 0;
   if (frequency === 'DAILY') {
     for (let cursor = new Date(start); generated < countLimit && cursor <= effectiveEnd && safety < safetyLimit; cursor = addDateDays(cursor, interval)) {
-      pushIfVisible(cursor, generated);
+      addOccurrenceStart(cursor);
       generated += 1;
       safety += 1;
     }
@@ -104,17 +114,38 @@ function getRecurringSubTaskOccurrences(st, rangeStart, rangeEnd, fallbackDate) 
       safety += 1;
       const weekDiff = Math.floor(getDateDiffDays(start, cursor) / 7);
       if (weekDiff % interval !== 0 || !selectedDays.includes(getWeekdayCode(cursor))) continue;
-      pushIfVisible(cursor, generated);
+      addOccurrenceStart(cursor);
       generated += 1;
     }
   } else {
     const monthStep = frequency === 'MONTHLY' ? interval : frequency === 'QUARTERLY' ? interval * 3 : interval * 12;
     for (let cursor = new Date(start); generated < countLimit && cursor <= effectiveEnd && safety < safetyLimit; cursor = addDateMonthsClamped(cursor, monthStep, start.getDate())) {
-      pushIfVisible(cursor, generated);
+      addOccurrenceStart(cursor);
       generated += 1;
       safety += 1;
     }
   }
+  const getNextScheduledStart = occurrenceStart => {
+    if (frequency === 'DAILY') return addDateDays(occurrenceStart, interval);
+    if (frequency === 'WEEKLY') {
+      const selectedDays = Array.isArray(recurrence.byDay) && recurrence.byDay.length ? recurrence.byDay : [getWeekdayCode(start)];
+      for (let cursor = addDateDays(occurrenceStart, 1), guard = 0; guard < safetyLimit; cursor = addDateDays(cursor, 1), guard += 1) {
+        const weekDiff = Math.floor(getDateDiffDays(start, cursor) / 7);
+        if (weekDiff % interval === 0 && selectedDays.includes(getWeekdayCode(cursor))) return cursor;
+      }
+      return null;
+    }
+    const monthStep = frequency === 'MONTHLY' ? interval : frequency === 'QUARTERLY' ? interval * 3 : interval * 12;
+    return addDateMonthsClamped(occurrenceStart, monthStep, start.getDate());
+  };
+  const occurrences = [];
+  occurrenceStarts.forEach((occurrenceStart, index) => {
+    const nextOccurrenceStart = occurrenceStarts[index + 1] || getNextScheduledStart(occurrenceStart);
+    const occurrenceEnd = getClampedOccurrenceEndDate(occurrenceStart, durationDays, nextOccurrenceStart, effectiveEnd);
+    if (occurrenceEnd >= rangeS && occurrenceStart <= rangeE) {
+      occurrences.push(makeSubTaskOccurrence(st, occurrenceStart, durationDays, index, occurrenceEnd));
+    }
+  });
   return occurrences;
 }
 function expandSubTasksForRange(task, rangeStart, rangeEnd, fallbackDate) {
