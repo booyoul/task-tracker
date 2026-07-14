@@ -1305,6 +1305,12 @@
       background-color: color-mix(in oklab, var(--color-indigo-50) 35%, transparent);
     }
   }
+  .bg-indigo-50\/40 {
+    background-color: color-mix(in srgb, oklch(96.2% 0.018 272.314) 40%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-indigo-50) 40%, transparent);
+    }
+  }
   .bg-indigo-50\/60 {
     background-color: color-mix(in srgb, oklch(96.2% 0.018 272.314) 60%, transparent);
     @supports (color: color-mix(in lab, red, red)) {

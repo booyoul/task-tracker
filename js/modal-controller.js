@@ -116,6 +116,39 @@ function formatSubTaskRecurrenceLabel(st = {}) {
       : '';
   return `${base}${days}${end}`;
 }
+function getModalSubTaskOccurrences(st = {}) {
+  if (!st?.recurrence || st.recurrence.enabled !== true || typeof getRecurringSubTaskOccurrences !== 'function') return [];
+  const today = getTodayStr();
+  const year = Number.parseInt(String(today).slice(0, 4), 10) || new Date().getFullYear();
+  const rangeStart = `${year}-01-01`;
+  const rangeEnd = `${year + 1}-12-31`;
+  return getRecurringSubTaskOccurrences(st, rangeStart, rangeEnd, today)
+    .sort((a, b) => String(a.startDate || '').localeCompare(String(b.startDate || '')))
+    .slice(0, 12);
+}
+function buildModalSubTaskOccurrenceStatusHTML(st = {}, idx) {
+  const occurrences = getModalSubTaskOccurrences(st);
+  if (!occurrences.length) return '';
+  const rows = occurrences.map(occ => {
+    const status = normalizeStatus(occ.status);
+    const key = occ.occurrenceKey || occ.startDate || '';
+    const dateLabel = occ.startDate === occ.dueDate
+      ? (occ.startDate ? occ.startDate.substring(5) : '미정')
+      : `${occ.startDate ? occ.startDate.substring(5) : '미정'}~${occ.dueDate ? occ.dueDate.substring(5) : '미정'}`;
+    return `<div class="flex items-center justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50 px-2 py-1.5">
+      <span class="min-w-0 truncate text-[11px] font-semibold text-slate-500">📅 ${escapeHTML(dateLabel)}</span>
+      <select class="sel-modal-subtask-occurrence-status shrink-0 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-semibold text-slate-600 outline-none focus:border-indigo-500" data-index="${idx}" data-occurrence-key="${escapeHTML(key)}">
+        <option value="PENDING" ${status === 'PENDING' ? 'selected' : ''}>대기</option>
+        <option value="PROGRESS" ${status === 'PROGRESS' ? 'selected' : ''}>진행</option>
+        <option value="COMPLETED" ${status === 'COMPLETED' ? 'selected' : ''}>완료</option>
+      </select>
+    </div>`;
+  }).join('');
+  return `<details class="rounded-lg border border-indigo-100 bg-indigo-50/40 px-2 py-1.5">
+    <summary class="cursor-pointer text-[11px] font-bold text-indigo-700">회차별 상태</summary>
+    <div class="mt-1.5 grid gap-1 sm:grid-cols-2">${rows}</div>
+  </details>`;
+}
 function addSubTaskToModalList() {
   const titleInput = document.getElementById('input-subtask-title');
   const startInput = document.getElementById('input-subtask-start');
@@ -173,7 +206,8 @@ function renderModalSubTasks() {
     const noteBtnHtml = _currentNoteTaskId 
       ? `<button type="button" class="btn-modal-note-subtask px-1.5 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold transition flex items-center gap-1" data-index="${idx}" title="진행 메모 관리">${noteBtnText}</button><span class="text-slate-300">|</span>` 
       : '';
-    li.innerHTML = `<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div class="flex items-start gap-2 min-w-0"><span class="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-bold ${status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : overdue ? 'bg-rose-50 text-rose-700 border border-rose-200' : status === 'PROGRESS' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}">${overdue ? '🚨 기한 초과' : getStatusIcon(status) + ' ' + getStatusKorean(status).replace('됨', '')}</span><span class="text-[13px] font-bold text-slate-900 break-all leading-normal ${status === 'COMPLETED' ? 'line-through opacity-50' : ''}" title="${escapeHTML(st.title)}">${escapeHTML(st.title)}</span></div><div class="flex shrink-0 items-center justify-end gap-1.5">${noteBtnHtml}<select class="sel-modal-subtask-status rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-semibold text-slate-600 outline-none focus:border-indigo-500" data-index="${idx}"><option value="PENDING" ${status === 'PENDING' ? 'selected' : ''}>진행 대기</option><option value="PROGRESS" ${status === 'PROGRESS' ? 'selected' : ''}>진행 중</option><option value="COMPLETED" ${status === 'COMPLETED' ? 'selected' : ''}>완료</option></select><button type="button" class="btn-modal-edit-subtask text-[12px] font-bold text-indigo-600 hover:text-indigo-800 px-1" data-index="${idx}">수정</button><span class="text-slate-300">|</span><button type="button" class="btn-modal-delete-subtask text-[12px] font-semibold text-rose-500 hover:text-rose-700 px-1" data-index="${idx}">삭제</button></div></div><div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500 border-t border-slate-100 pt-2 mt-0.5"><span class="flex items-center gap-1 font-medium"><span class="text-slate-400">📅</span> ${st.startDate ? st.startDate.substring(5) : '미정'} ~ ${st.dueDate ? st.dueDate.substring(5) : '미정'}</span><span class="text-slate-300">|</span><span class="flex items-center gap-1 font-medium max-w-[150px] truncate" title="${escapeHTML(subAssigneeLabel)}"><span class="text-slate-400">👤</span> ${escapeHTML(subAssigneeLabel)}</span>${recurrenceHtml}</div>`;
+    const occurrenceStatusHtml = buildModalSubTaskOccurrenceStatusHTML(st, idx);
+    li.innerHTML = `<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div class="flex items-start gap-2 min-w-0"><span class="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-bold ${status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : overdue ? 'bg-rose-50 text-rose-700 border border-rose-200' : status === 'PROGRESS' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}">${overdue ? '🚨 기한 초과' : getStatusIcon(status) + ' ' + getStatusKorean(status).replace('됨', '')}</span><span class="text-[13px] font-bold text-slate-900 break-all leading-normal ${status === 'COMPLETED' ? 'line-through opacity-50' : ''}" title="${escapeHTML(st.title)}">${escapeHTML(st.title)}</span></div><div class="flex shrink-0 items-center justify-end gap-1.5">${noteBtnHtml}<select class="sel-modal-subtask-status rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-semibold text-slate-600 outline-none focus:border-indigo-500" data-index="${idx}"><option value="PENDING" ${status === 'PENDING' ? 'selected' : ''}>진행 대기</option><option value="PROGRESS" ${status === 'PROGRESS' ? 'selected' : ''}>진행 중</option><option value="COMPLETED" ${status === 'COMPLETED' ? 'selected' : ''}>완료</option></select><button type="button" class="btn-modal-edit-subtask text-[12px] font-bold text-indigo-600 hover:text-indigo-800 px-1" data-index="${idx}">수정</button><span class="text-slate-300">|</span><button type="button" class="btn-modal-delete-subtask text-[12px] font-semibold text-rose-500 hover:text-rose-700 px-1" data-index="${idx}">삭제</button></div></div><div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500 border-t border-slate-100 pt-2 mt-0.5"><span class="flex items-center gap-1 font-medium"><span class="text-slate-400">📅</span> ${st.startDate ? st.startDate.substring(5) : '미정'} ~ ${st.dueDate ? st.dueDate.substring(5) : '미정'}</span><span class="text-slate-300">|</span><span class="flex items-center gap-1 font-medium max-w-[150px] truncate" title="${escapeHTML(subAssigneeLabel)}"><span class="text-slate-400">👤</span> ${escapeHTML(subAssigneeLabel)}</span>${recurrenceHtml}</div>${occurrenceStatusHtml}`;
     container.appendChild(li);
   });
   
@@ -187,6 +221,9 @@ function renderModalSubTasks() {
   container.querySelectorAll('.sel-modal-subtask-status').forEach(el => {
     el.addEventListener('change', (e) => window.updateSubTaskStatusInModal(e.target.dataset.index, e.target.value));
   });
+  container.querySelectorAll('.sel-modal-subtask-occurrence-status').forEach(el => {
+    el.addEventListener('change', (e) => window.updateSubTaskOccurrenceStatusInModal(e.target.dataset.index, e.target.dataset.occurrenceKey, e.target.value));
+  });
   container.querySelectorAll('.btn-modal-edit-subtask').forEach(el => {
     el.addEventListener('click', (e) => window.editSubTaskInModal(e.target.dataset.index));
   });
@@ -197,6 +234,17 @@ function renderModalSubTasks() {
 window.updateSubTaskStatusInModal = function(index, status) {
   if (!currentSubTasks[index]) return;
   currentSubTasks[index].status = normalizeStatus(status);
+  renderModalSubTasks();
+};
+window.updateSubTaskOccurrenceStatusInModal = function(index, occurrenceKey, status) {
+  const st = currentSubTasks[index];
+  if (!st || !occurrenceKey) return;
+  const normalizedStatus = normalizeStatus(status);
+  const recurrenceCompletions = { ...(st.recurrenceCompletions || {}) };
+  if (normalizedStatus === normalizeStatus(st.status)) delete recurrenceCompletions[occurrenceKey];
+  else recurrenceCompletions[occurrenceKey] = normalizedStatus;
+  st.recurrenceCompletions = recurrenceCompletions;
+  if (!Object.keys(recurrenceCompletions).length) delete st.recurrenceCompletions;
   renderModalSubTasks();
 };
 window.editSubTaskInModal = function(index) {
