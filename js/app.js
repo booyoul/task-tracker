@@ -688,7 +688,7 @@ function renderCalendar(filteredTasks) {
         const ss = st.startDate || st.dueDate || end;
         const dd = st.dueDate || end;
         const subAssignees = Array.isArray(st.assignee) ? [...st.assignee] : (st.assignee ? [st.assignee] : [...taskAssignees]);
-        return { id: st.id, title: st.title, startDate: ss > dd ? dd : ss, dueDate: dd, status: normalizeStatus(st.status), assignee: subAssignees, parentId: t.id, parentTitle: t.title, industry: t.industry || 'AUTO', taskType: t.taskType || 'GENERAL', isRecurringOccurrence: st.isRecurringOccurrence === true, recurrenceLabel: st.recurrenceLabel || '' };
+        return { id: st.id, title: st.title, startDate: ss > dd ? dd : ss, dueDate: dd, status: normalizeStatus(st.status), assignee: subAssignees, parentId: t.id, parentTitle: t.title, industry: t.industry || 'AUTO', taskType: t.taskType || 'GENERAL', isRecurringOccurrence: st.isRecurringOccurrence === true, sourceSubTaskId: st.sourceSubTaskId || '', occurrenceKey: st.occurrenceKey || '', recurrenceLabel: st.recurrenceLabel || '' };
       })
     };
     // Calendar lane calculation must use only the sub tasks relevant to the current view.

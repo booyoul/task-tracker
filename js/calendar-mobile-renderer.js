@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-mobile-renderer.js v20260714-v1 loaded');
+console.info('Smart Task Flow calendar-mobile-renderer.js v20260714-v2 loaded');
 
 // ============================================================
 //  모바일 전용 캘린더 렌더러
@@ -242,8 +242,11 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
     let maxBars = 1;
     displayedTasks.forEach(function(task) {
       const visibleSubTasks = allowSubTaskBars ? getSubTasksInYear(task) : [];
+      const subTaskLaneCount = typeof assignCalendarSubTaskLaneIndexes === 'function'
+        ? assignCalendarSubTaskLaneIndexes(visibleSubTasks)
+        : visibleSubTasks.length;
       map.set(task.id, visibleSubTasks);
-      maxBars = Math.max(maxBars, 1 + visibleSubTasks.length);
+      maxBars = Math.max(maxBars, 1 + subTaskLaneCount);
     });
     subTasksByTaskId = map;
     maxBarsInGroup = maxBars;
@@ -404,7 +407,11 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
     
     const subTasksInYear = subTasksByTaskId.get(task.id) || [];
     const laneLeft = startOffset + laneIdx * laneSlotWidth;
-    const mainLeft = laneLeft + subTasksInYear.length * (barThickness + barGap);
+    const subTaskLaneCount = subTasksInYear.reduce(function(max, st, idx) {
+      const lane = Number.isInteger(st.calendarYearLaneIndex) ? st.calendarYearLaneIndex : idx;
+      return Math.max(max, lane + 1);
+    }, 0);
+    const mainLeft = laneLeft + subTaskLaneCount * (barThickness + barGap);
     const assignees = Array.isArray(task.assignee) ? task.assignee.join(', ') : (task.assignee || '미지정');
     const mainCls = getTaskTone(task);
     const statusIcon = getTaskIcon(task);
@@ -441,7 +448,8 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
       const stTop = stSm * rowHeight;
       const stHeight = (stEm - stSm + 1) * rowHeight;
 
-      const subLeft = laneLeft + idx * (barThickness + barGap);
+      const subLaneIndex = Number.isInteger(st.calendarYearLaneIndex) ? st.calendarYearLaneIndex : idx;
+      const subLeft = laneLeft + subLaneIndex * (barThickness + barGap);
       const stCls = getSubTaskTone(st, task);
 
       const subAssignees = Array.isArray(st.assignee) ? st.assignee.join(', ') : (st.assignee || '미지정');

@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-utils.js v20260714-v3 loaded');
+console.info('Smart Task Flow calendar-utils.js v20260714-v4 loaded');
 function dateRangeOverlaps(item, monthStart, monthEnd, fallbackDate) { const start = new Date(String(item.startDate || item.dueDate || fallbackDate).replace(/-/g, '/')); const end = new Date(String(item.dueDate || item.startDate || fallbackDate).replace(/-/g, '/')); return !isNaN(start.getTime()) && !isNaN(end.getTime()) && start <= monthEnd && end >= monthStart; }
 function parseDateOnlyValue(value) {
   if (!value) return null;
@@ -160,6 +160,20 @@ function expandSubTasksForRange(task, rangeStart, rangeEnd, fallbackDate) {
   });
   return expanded;
 }
+function getCalendarSubTaskLaneKey(st = {}, index = 0) {
+  if (st.isRecurringOccurrence === true) return `recurring:${st.sourceSubTaskId || st.id || st.title || index}`;
+  return `single:${st.id || st.title || index}`;
+}
+function assignCalendarSubTaskLaneIndexes(subTasks = []) {
+  const laneByKey = new Map();
+  let nextLane = 0;
+  (Array.isArray(subTasks) ? subTasks : []).forEach((st, index) => {
+    const key = getCalendarSubTaskLaneKey(st, index);
+    if (!laneByKey.has(key)) laneByKey.set(key, nextLane++);
+    st.calendarYearLaneIndex = laneByKey.get(key);
+  });
+  return nextLane;
+}
 function getMonthlySubTasks(task, monthStart, monthEnd, todayStr) { const allSubTasks = Array.isArray(task.subTasks) ? task.subTasks : []; const expandedSubTasks = expandSubTasksForRange(task, monthStart, monthEnd, todayStr); return { allSubTasks, expandedSubTasks, visibleSubTasks: expandedSubTasks.filter(st => dateRangeOverlaps(st, monthStart, monthEnd, todayStr)) }; }
 function buildMonthlySubTaskHTML(task, monthStart, monthEnd, todayStr) { const { allSubTasks, visibleSubTasks } = getMonthlySubTasks(task, monthStart, monthEnd, todayStr); if (!allSubTasks.length || !visibleSubTasks.length) return ''; let html = '<div class="mt-2 space-y-1">'; visibleSubTasks.forEach(st => { const status = normalizeStatus(st.status); const overdue = isSubTaskOverdue(st, todayStr); html += `<div class="truncate text-[10px] ${status === 'COMPLETED' ? 'text-slate-400 line-through' : overdue ? 'text-rose-700 font-semibold' : status === 'PROGRESS' ? 'text-blue-600' : 'text-slate-600'}">${overdue ? '🚨' : getStatusIcon(status)} ${escapeHTML(st.title)} <span class="${overdue ? 'text-rose-500' : 'text-slate-400'}">${st.dueDate ? st.dueDate.substring(5) : ''}</span></div>`; }); const hidden = allSubTasks.length - visibleSubTasks.length; if (hidden > 0) html += `<div class="text-[10px] text-slate-400">외 ${hidden}건 숨김</div>`; html += '</div>'; return html; }
 function bindGanttTooltip(el, title, details) { const tip = document.getElementById('gantt-tooltip'); if (!tip || !el) return; el.addEventListener('mouseenter', () => { tip.innerHTML = `<div class="font-bold mb-1">${escapeHTML(title || '')}</div><div>${String(details || '')}</div>`; tip.classList.remove('hidden'); }); el.addEventListener('mousemove', e => { tip.style.left = e.clientX + 15 + 'px'; tip.style.top = e.clientY + 15 + 'px'; }); el.addEventListener('mouseleave', () => tip.classList.add('hidden')); }
@@ -172,7 +186,8 @@ function calendarComputeLaneLayout(groups, options = {}) {
   const lines = [];
   const packGroupIntoLines = (g, lineStore, lineOffset = 0) => {
     const layoutSubTasks = currentCalMode === 'MONTH' ? g.subTasks : (g.monthSubTasks || []);
-    const need = showSubTaskBars ? 1 + layoutSubTasks.length : 1;
+    const subTaskLaneCount = currentCalMode === 'MONTH' ? assignCalendarSubTaskLaneIndexes(layoutSubTasks) : layoutSubTasks.length;
+    const need = showSubTaskBars ? 1 + subTaskLaneCount : 1;
     let startLine = 0;
     while (true) {
       let overlap = false;

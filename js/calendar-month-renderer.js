@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-month-renderer.js v20260626-module-split-phase4c-month-renderer loaded');
+console.info('Smart Task Flow calendar-month-renderer.js v20260714-v11 loaded');
 // MONTH calendar Gantt renderer. Extracted from app.js in Phase 4C.
 function renderCalendarMonthView(ctx) {
   const { weekdayHeader, grid, year, groups, lines, mainClass, subClass, dimIfNotCritical, showSubTaskBars, todayStr } = ctx;
@@ -84,7 +84,8 @@ function renderCalendarMonthView(ctx) {
           sb.className = `absolute h-5 rounded-lg shadow-sm text-[9.5px] font-bold flex items-center px-1.5 cursor-pointer transition-all hover:scale-[1.01] pointer-events-auto truncate ${subClass(st)}${dimIfNotCritical({ ...st, isSub: true })}`;
           sb.style.left = `calc(${sm / 12 * 100}% + 4px)`;
           sb.style.width = `calc(${(em - sm + 1) / 12 * 100}% - 8px)`;
-          sb.style.top = `${(g.globalLineStart + 1 + idx) * rowHeight + 10}px`;
+          const subLaneIndex = Number.isInteger(st.calendarYearLaneIndex) ? st.calendarYearLaneIndex : idx;
+          sb.style.top = `${(g.globalLineStart + 1 + subLaneIndex) * rowHeight + 10}px`;
           sb.onclick = () => openTaskModal(g.id);
           const subAssignees = Array.isArray(st.assignee) ? st.assignee.join(', ') : (st.assignee || '미지정');
           sb.innerHTML = `${isSubTaskOverdue(st, todayStr) ? '🚨' : getStatusIcon(st.status)} ↳ 👤 ${escapeHTML(subAssignees)} | ${escapeHTML(st.title)}`;
