@@ -6,6 +6,116 @@ function resetSubTaskButton() {
   btn.textContent = '추가';
   btn.className = 'rounded-lg bg-slate-800 px-4 py-1.5 text-xs font-bold text-white hover:bg-slate-700 transition shrink-0 ml-auto';
 }
+const SUBTASK_RECURRENCE_LABELS = {
+  DAILY: '매일',
+  WEEKLY: '매주',
+  MONTHLY: '매월',
+  QUARTERLY: '분기',
+  YEARLY: '매년'
+};
+const SUBTASK_WEEKDAY_LABELS = {
+  MON: '월',
+  TUE: '화',
+  WED: '수',
+  THU: '목',
+  FRI: '금',
+  SAT: '토',
+  SUN: '일'
+};
+const SUBTASK_RECURRENCE_INTERVAL_UNITS = {
+  DAILY: '일',
+  WEEKLY: '주',
+  MONTHLY: '개월',
+  QUARTERLY: '분기',
+  YEARLY: '년'
+};
+function updateSubTaskRecurrenceControls() {
+  const enabled = document.getElementById('input-subtask-recurrence-enabled')?.checked === true;
+  const frequency = document.getElementById('input-subtask-recurrence-frequency')?.value || 'WEEKLY';
+  const endType = document.getElementById('input-subtask-recurrence-end-type')?.value || 'NONE';
+  document.getElementById('subtask-recurrence-options')?.classList.toggle('hidden', !enabled);
+  document.getElementById('subtask-recurrence-weekdays')?.classList.toggle('hidden', !enabled || frequency !== 'WEEKLY');
+  document.getElementById('input-subtask-recurrence-until')?.classList.toggle('hidden', !enabled || endType !== 'UNTIL');
+  document.getElementById('input-subtask-recurrence-count')?.classList.toggle('hidden', !enabled || endType !== 'COUNT');
+}
+function bindSubTaskRecurrenceControls() {
+  if (window.__subTaskRecurrenceControlsBound) return;
+  window.__subTaskRecurrenceControlsBound = true;
+  ['input-subtask-recurrence-enabled', 'input-subtask-recurrence-frequency', 'input-subtask-recurrence-end-type'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', updateSubTaskRecurrenceControls);
+  });
+}
+function resetSubTaskRecurrenceForm() {
+  const enabled = document.getElementById('input-subtask-recurrence-enabled');
+  const frequency = document.getElementById('input-subtask-recurrence-frequency');
+  const interval = document.getElementById('input-subtask-recurrence-interval');
+  const endType = document.getElementById('input-subtask-recurrence-end-type');
+  const until = document.getElementById('input-subtask-recurrence-until');
+  const count = document.getElementById('input-subtask-recurrence-count');
+  if (enabled) enabled.checked = false;
+  if (frequency) frequency.value = 'WEEKLY';
+  if (interval) interval.value = '1';
+  if (endType) endType.value = 'NONE';
+  if (until) until.value = '';
+  if (count) count.value = '';
+  document.querySelectorAll('.subtask-recurrence-day').forEach(cb => { cb.checked = false; });
+  updateSubTaskRecurrenceControls();
+}
+function setSubTaskRecurrenceForm(recurrence = null) {
+  resetSubTaskRecurrenceForm();
+  if (!recurrence || recurrence.enabled !== true) return;
+  const enabled = document.getElementById('input-subtask-recurrence-enabled');
+  const frequency = document.getElementById('input-subtask-recurrence-frequency');
+  const interval = document.getElementById('input-subtask-recurrence-interval');
+  const endType = document.getElementById('input-subtask-recurrence-end-type');
+  const until = document.getElementById('input-subtask-recurrence-until');
+  const count = document.getElementById('input-subtask-recurrence-count');
+  if (enabled) enabled.checked = true;
+  if (frequency) frequency.value = recurrence.frequency || 'WEEKLY';
+  if (interval) interval.value = recurrence.interval || '1';
+  if (endType) endType.value = recurrence.endType || 'NONE';
+  if (until) until.value = recurrence.until || '';
+  if (count) count.value = recurrence.count || '';
+  const days = Array.isArray(recurrence.byDay) ? recurrence.byDay : [];
+  document.querySelectorAll('.subtask-recurrence-day').forEach(cb => { cb.checked = days.includes(cb.value); });
+  updateSubTaskRecurrenceControls();
+}
+function getSubTaskRecurrenceFromForm() {
+  const enabled = document.getElementById('input-subtask-recurrence-enabled')?.checked === true;
+  if (!enabled) return null;
+  const frequency = document.getElementById('input-subtask-recurrence-frequency')?.value || 'WEEKLY';
+  const endType = document.getElementById('input-subtask-recurrence-end-type')?.value || 'NONE';
+  const recurrence = {
+    enabled: true,
+    frequency,
+    interval: document.getElementById('input-subtask-recurrence-interval')?.value || '1',
+    endType
+  };
+  if (frequency === 'WEEKLY') {
+    recurrence.byDay = Array.from(document.querySelectorAll('.subtask-recurrence-day:checked')).map(cb => cb.value);
+  }
+  if (endType === 'UNTIL') recurrence.until = document.getElementById('input-subtask-recurrence-until')?.value || '';
+  if (endType === 'COUNT') recurrence.count = document.getElementById('input-subtask-recurrence-count')?.value || '';
+  return recurrence;
+}
+function formatSubTaskRecurrenceLabel(st = {}) {
+  const recurrence = st.recurrence;
+  if (!recurrence || recurrence.enabled !== true) return '';
+  const frequency = recurrence.frequency || 'WEEKLY';
+  const interval = Number.parseInt(recurrence.interval, 10);
+  const base = interval > 1
+    ? `${interval}${SUBTASK_RECURRENCE_INTERVAL_UNITS[frequency] || '회'}마다`
+    : (SUBTASK_RECURRENCE_LABELS[frequency] || '반복');
+  const days = frequency === 'WEEKLY' && Array.isArray(recurrence.byDay) && recurrence.byDay.length
+    ? ` · ${recurrence.byDay.map(day => SUBTASK_WEEKDAY_LABELS[day] || day).join('/')}`
+    : '';
+  const end = recurrence.endType === 'UNTIL' && recurrence.until
+    ? ` · ${recurrence.until.substring(5)}까지`
+    : recurrence.endType === 'COUNT' && recurrence.count
+      ? ` · ${recurrence.count}회`
+      : '';
+  return `${base}${days}${end}`;
+}
 function addSubTaskToModalList() {
   const titleInput = document.getElementById('input-subtask-title');
   const startInput = document.getElementById('input-subtask-start');
@@ -15,9 +125,16 @@ function addSubTaskToModalList() {
   const parentAssignees = Array.from(document.querySelectorAll('.task-assignee-checkbox:checked')).map(cb => cb.value);
   const subAssignees = Array.from(document.querySelectorAll('.subtask-assignee-checkbox:checked')).map(cb => cb.value);
   const assignee = subAssignees.length ? subAssignees : (parentAssignees.length ? parentAssignees : ['미지정']);
+  const recurrence = getSubTaskRecurrenceFromForm();
   const payload = { title, assignee, startDate: startInput?.value || getTodayStr(), dueDate: dueInput?.value || getTodayStr() };
+  if (recurrence) payload.recurrence = recurrence;
+  if (typeof validateSubTaskRecurrence === 'function') {
+    const recurrenceMessage = validateSubTaskRecurrence(payload);
+    if (recurrenceMessage) return showToast(recurrenceMessage, false);
+  }
   if (editingSubTaskIndex > -1 && currentSubTasks[editingSubTaskIndex]) {
     currentSubTasks[editingSubTaskIndex] = { ...currentSubTasks[editingSubTaskIndex], ...payload, status: normalizeStatus(currentSubTasks[editingSubTaskIndex].status) };
+    if (!recurrence) delete currentSubTasks[editingSubTaskIndex].recurrence;
     editingSubTaskIndex = -1;
     resetSubTaskButton();
   } else {
@@ -27,6 +144,7 @@ function addSubTaskToModalList() {
   resetSubtaskAssigneeDropdown();
   if (startInput) startInput.value = getTodayStr();
   if (dueInput) dueInput.value = getFutureDateStr(7);
+  resetSubTaskRecurrenceForm();
   renderModalSubTasks();
 }
 function renderModalSubTasks() {
@@ -47,11 +165,15 @@ function renderModalSubTasks() {
     li.className = 'flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3 text-xs shadow-sm hover:border-slate-300 transition-colors';
     const subAssigneeLabel = Array.isArray(st.assignee) ? st.assignee.join(', ') : (st.assignee || '미정');
     const subNoteCount = _currentSubNoteCounts[st.id] || 0;
+    const recurrenceLabel = formatSubTaskRecurrenceLabel(st);
+    const recurrenceHtml = recurrenceLabel
+      ? `<span class="text-slate-300">|</span><span class="flex items-center gap-1 font-semibold text-indigo-600" title="${escapeHTML(recurrenceLabel)}">반복 ${escapeHTML(recurrenceLabel)}</span>`
+      : '';
     const noteBtnText = subNoteCount > 0 ? `📌 ${subNoteCount}` : '📌';
     const noteBtnHtml = _currentNoteTaskId 
       ? `<button type="button" class="btn-modal-note-subtask px-1.5 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold transition flex items-center gap-1" data-index="${idx}" title="진행 메모 관리">${noteBtnText}</button><span class="text-slate-300">|</span>` 
       : '';
-    li.innerHTML = `<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div class="flex items-start gap-2 min-w-0"><span class="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-bold ${status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : overdue ? 'bg-rose-50 text-rose-700 border border-rose-200' : status === 'PROGRESS' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}">${overdue ? '🚨 기한 초과' : getStatusIcon(status) + ' ' + getStatusKorean(status).replace('됨', '')}</span><span class="text-[13px] font-bold text-slate-900 break-all leading-normal ${status === 'COMPLETED' ? 'line-through opacity-50' : ''}" title="${escapeHTML(st.title)}">${escapeHTML(st.title)}</span></div><div class="flex shrink-0 items-center justify-end gap-1.5">${noteBtnHtml}<select class="sel-modal-subtask-status rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-semibold text-slate-600 outline-none focus:border-indigo-500" data-index="${idx}"><option value="PENDING" ${status === 'PENDING' ? 'selected' : ''}>진행 대기</option><option value="PROGRESS" ${status === 'PROGRESS' ? 'selected' : ''}>진행 중</option><option value="COMPLETED" ${status === 'COMPLETED' ? 'selected' : ''}>완료</option></select><button type="button" class="btn-modal-edit-subtask text-[12px] font-bold text-indigo-600 hover:text-indigo-800 px-1" data-index="${idx}">수정</button><span class="text-slate-300">|</span><button type="button" class="btn-modal-delete-subtask text-[12px] font-semibold text-rose-500 hover:text-rose-700 px-1" data-index="${idx}">삭제</button></div></div><div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500 border-t border-slate-100 pt-2 mt-0.5"><span class="flex items-center gap-1 font-medium"><span class="text-slate-400">📅</span> ${st.startDate ? st.startDate.substring(5) : '미정'} ~ ${st.dueDate ? st.dueDate.substring(5) : '미정'}</span><span class="text-slate-300">|</span><span class="flex items-center gap-1 font-medium max-w-[150px] truncate" title="${escapeHTML(subAssigneeLabel)}"><span class="text-slate-400">👤</span> ${escapeHTML(subAssigneeLabel)}</span></div>`;
+    li.innerHTML = `<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div class="flex items-start gap-2 min-w-0"><span class="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-bold ${status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : overdue ? 'bg-rose-50 text-rose-700 border border-rose-200' : status === 'PROGRESS' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}">${overdue ? '🚨 기한 초과' : getStatusIcon(status) + ' ' + getStatusKorean(status).replace('됨', '')}</span><span class="text-[13px] font-bold text-slate-900 break-all leading-normal ${status === 'COMPLETED' ? 'line-through opacity-50' : ''}" title="${escapeHTML(st.title)}">${escapeHTML(st.title)}</span></div><div class="flex shrink-0 items-center justify-end gap-1.5">${noteBtnHtml}<select class="sel-modal-subtask-status rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-semibold text-slate-600 outline-none focus:border-indigo-500" data-index="${idx}"><option value="PENDING" ${status === 'PENDING' ? 'selected' : ''}>진행 대기</option><option value="PROGRESS" ${status === 'PROGRESS' ? 'selected' : ''}>진행 중</option><option value="COMPLETED" ${status === 'COMPLETED' ? 'selected' : ''}>완료</option></select><button type="button" class="btn-modal-edit-subtask text-[12px] font-bold text-indigo-600 hover:text-indigo-800 px-1" data-index="${idx}">수정</button><span class="text-slate-300">|</span><button type="button" class="btn-modal-delete-subtask text-[12px] font-semibold text-rose-500 hover:text-rose-700 px-1" data-index="${idx}">삭제</button></div></div><div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500 border-t border-slate-100 pt-2 mt-0.5"><span class="flex items-center gap-1 font-medium"><span class="text-slate-400">📅</span> ${st.startDate ? st.startDate.substring(5) : '미정'} ~ ${st.dueDate ? st.dueDate.substring(5) : '미정'}</span><span class="text-slate-300">|</span><span class="flex items-center gap-1 font-medium max-w-[150px] truncate" title="${escapeHTML(subAssigneeLabel)}"><span class="text-slate-400">👤</span> ${escapeHTML(subAssigneeLabel)}</span>${recurrenceHtml}</div>`;
     container.appendChild(li);
   });
   
@@ -89,6 +211,7 @@ window.editSubTaskInModal = function(index) {
   document.getElementById('input-subtask-title').value = st.title || '';
   document.getElementById('input-subtask-start').value = st.startDate || '';
   document.getElementById('input-subtask-due').value = st.dueDate || '';
+  setSubTaskRecurrenceForm(st.recurrence || null);
   const btn = document.getElementById('btn-add-subtask');
   if (btn) { btn.textContent = '수정 완료'; btn.className = 'rounded-lg bg-indigo-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-indigo-700 transition shrink-0 ml-auto'; }
 };
@@ -98,6 +221,7 @@ window.removeSubTaskFromModal = function(index) {
   renderModalSubTasks();
 };
 function openTaskModal(id = null) {
+  bindSubTaskRecurrenceControls();
   document.getElementById('form-task')?.reset();
   _currentNoteTaskId = id; // Set task ID immediately for subtask notes visibility
   _currentSubNoteCounts = {}; // Reset subtask notes counts cache
@@ -121,6 +245,7 @@ function openTaskModal(id = null) {
   setVal('input-subtask-title', '');
   resetSubtaskAssigneeDropdown();
   setVal('input-subtask-start', getTodayStr()); setVal('input-subtask-due', getFutureDateStr(7));
+  resetSubTaskRecurrenceForm();
   editingSubTaskIndex = -1; resetSubTaskButton();
   const title = document.getElementById('modal-title');
   if (id) {
@@ -893,4 +1018,3 @@ if (document.readyState === 'loading') {
 
 window.openNoteDetailPanel = openNoteDetailPanel;
 window.closeNoteDetailPanel = closeNoteDetailPanel;
-

@@ -304,6 +304,9 @@
   .pointer-events-none {
     pointer-events: none;
   }
+  .collapse {
+    visibility: collapse;
+  }
   .invisible {
     visibility: hidden;
   }
@@ -645,9 +648,6 @@
   }
   .w-48 {
     width: calc(var(--spacing) * 48);
-  }
-  .w-72 {
-    width: calc(var(--spacing) * 72);
   }
   .w-\[3\%\] {
     width: 3%;
