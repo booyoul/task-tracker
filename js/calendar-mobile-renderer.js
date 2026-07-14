@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-mobile-renderer.js v20260711-v16 loaded');
+console.info('Smart Task Flow calendar-mobile-renderer.js v20260714-v1 loaded');
 
 // ============================================================
 //  모바일 전용 캘린더 렌더러
@@ -84,22 +84,23 @@ function _renderMobileDayView(container, filtered, year, month, todayStr) {
     }
 
     // 2. 이 달에 시작하는 서브 태스크가 있는 경우
-    if (Array.isArray(task.subTasks)) {
-      task.subTasks.forEach(function(st) {
-        const subS = st.startDate || st.dueDate;
-        if (subS && subS >= monthStart && subS <= monthEnd) {
-          const displayDate = subS;
-          if (!dayMap.has(displayDate)) {
-            dayMap.set(displayDate, new Map());
-          }
-          const dateTasks = dayMap.get(displayDate);
-          if (!dateTasks.has(task.id)) {
-            dateTasks.set(task.id, { task: task, startSubTasks: [] });
-          }
-          dateTasks.get(task.id).startSubTasks.push(st);
+    const visibleSubTasks = typeof expandSubTasksForRange === 'function'
+      ? expandSubTasksForRange(task, monthStart, monthEnd, todayStr)
+      : (Array.isArray(task.subTasks) ? task.subTasks : []);
+    visibleSubTasks.forEach(function(st) {
+      const subS = st.startDate || st.dueDate;
+      if (subS && subS >= monthStart && subS <= monthEnd) {
+        const displayDate = subS;
+        if (!dayMap.has(displayDate)) {
+          dayMap.set(displayDate, new Map());
         }
-      });
-    }
+        const dateTasks = dayMap.get(displayDate);
+        if (!dateTasks.has(task.id)) {
+          dateTasks.set(task.id, { task: task, startSubTasks: [] });
+        }
+        dateTasks.get(task.id).startSubTasks.push(st);
+      }
+    });
   });
 
   if (dayMap.size === 0) {
@@ -213,7 +214,10 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
   let hideSubTaskBarsForFit = false;
 
   const getSubTasksInYear = function(task) {
-    return showSubTaskBars && Array.isArray(task.subTasks) ? task.subTasks.filter(function(st) {
+    const sourceSubTasks = typeof expandSubTasksForRange === 'function'
+      ? expandSubTasksForRange(task, yearStart, yearEnd, todayStr)
+      : (Array.isArray(task.subTasks) ? task.subTasks : []);
+    return showSubTaskBars ? sourceSubTasks.filter(function(st) {
       const stS = st.startDate || st.dueDate;
       const stE = st.dueDate || st.startDate;
       if (!stS || !stE) return false;

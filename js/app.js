@@ -544,8 +544,16 @@ function getFilteredTasks() {
     if (focusState.mineOnly && !isMineTask(t)) return false;
     if (focusState.highOnly && t.priority !== 'HIGH') return false;
     if (!isAssigneeFilterMatched(t)) return false;
-    if (filterStartDate && (t.dueDate || today) < filterStartDate) return false;
-    if (filterEndDate && (t.startDate || today) > filterEndDate) return false;
+    if (filterStartDate || filterEndDate) {
+      const rangeStart = filterStartDate || '0000-01-01';
+      const rangeEnd = filterEndDate || '9999-12-31';
+      const taskOverlaps = (t.startDate || today) <= rangeEnd && (t.dueDate || today) >= rangeStart;
+      const subTasksInRange = typeof expandSubTasksForRange === 'function'
+        ? expandSubTasksForRange(t, rangeStart, rangeEnd, today)
+        : (Array.isArray(t.subTasks) ? t.subTasks : []);
+      const subOverlaps = subTasksInRange.some(st => (st.startDate || st.dueDate || today) <= rangeEnd && (st.dueDate || st.startDate || today) >= rangeStart);
+      if (!taskOverlaps && !subOverlaps) return false;
+    }
     return true;
   });
 }
@@ -663,14 +671,19 @@ function renderCalendar(filteredTasks) {
     const start = t.startDate || t.dueDate || todayStr;
     const end = t.dueDate || todayStr;
     const taskAssignees = Array.isArray(t.assignee) ? [...t.assignee] : [t.assignee || '미지정'];
+    const subTaskRangeStart = currentCalMode === 'MONTH' ? new Date(year, 0, 1) : monthStartDate;
+    const subTaskRangeEnd = currentCalMode === 'MONTH' ? new Date(year, 11, 31, 23, 59, 59) : monthEndDate;
+    const sourceSubTasks = typeof expandSubTasksForRange === 'function'
+      ? expandSubTasksForRange(t, subTaskRangeStart, subTaskRangeEnd, todayStr)
+      : (t.subTasks || []);
     const g = {
       id: t.id, title: t.title, startDate: start > end ? end : start, dueDate: end, status: t.status || 'PENDING',
       priority: t.priority || 'NORMAL', industry: t.industry || 'AUTO', taskType: t.taskType || 'GENERAL', assignee: taskAssignees, notes: t.notes || '', order: t.order ?? 999,
-      subTasks: (t.subTasks || []).map(st => {
+      subTasks: sourceSubTasks.map(st => {
         const ss = st.startDate || st.dueDate || end;
         const dd = st.dueDate || end;
         const subAssignees = Array.isArray(st.assignee) ? [...st.assignee] : (st.assignee ? [st.assignee] : [...taskAssignees]);
-        return { id: st.id, title: st.title, startDate: ss > dd ? dd : ss, dueDate: dd, status: normalizeStatus(st.status), assignee: subAssignees, parentId: t.id, parentTitle: t.title, industry: t.industry || 'AUTO', taskType: t.taskType || 'GENERAL' };
+        return { id: st.id, title: st.title, startDate: ss > dd ? dd : ss, dueDate: dd, status: normalizeStatus(st.status), assignee: subAssignees, parentId: t.id, parentTitle: t.title, industry: t.industry || 'AUTO', taskType: t.taskType || 'GENERAL', isRecurringOccurrence: st.isRecurringOccurrence === true, recurrenceLabel: st.recurrenceLabel || '' };
       })
     };
     // Calendar lane calculation must use only the sub tasks relevant to the current view.

@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-summary-renderer.js v20260711-v15 loaded');
+console.info('Smart Task Flow calendar-summary-renderer.js v20260714-v1 loaded');
 
 function formatSummaryNoteDate(ts) {
     if (!ts) return '';
@@ -82,16 +82,20 @@ function isSubTaskInMonth(item, monthStart, monthEnd) {
 
 function getMonthlySubTaskSummary(task, monthStart, monthEnd) {
     const allSubTasks = Array.isArray(task.subTasks) ? task.subTasks : [];
-    const inMonthSubTasks = allSubTasks.filter(st => isSubTaskInMonth(st, monthStart, monthEnd));
+    const expandedSubTasks = typeof expandSubTasksForRange === 'function'
+        ? expandSubTasksForRange(task, monthStart, monthEnd, getTodayStr())
+        : allSubTasks;
+    const inMonthSubTasks = expandedSubTasks.filter(st => isSubTaskInMonth(st, monthStart, monthEnd));
     const outsideMonthSubTasks = allSubTasks.filter(st => !isSubTaskInMonth(st, monthStart, monthEnd));
     const completedInMonth = inMonthSubTasks.filter(st => st.status === 'COMPLETED').length;
     return {
         allSubTasks,
+        expandedSubTasks,
         inMonthSubTasks,
         outsideMonthSubTasks,
         totalAll: allSubTasks.length,
         totalInMonth: inMonthSubTasks.length,
-        hiddenOutsideMonth: outsideMonthSubTasks.length,
+        hiddenOutsideMonth: Math.max(0, outsideMonthSubTasks.length),
         completedInMonth
     };
 }
@@ -107,6 +111,7 @@ function buildMonthlySubTaskHTML(task, monthStart, monthEnd) {
         const status = normalizeStatus(st.status);
         const statusKorean = getStatusKorean(status);
         const assigneeNames = Array.isArray(st.assignee) ? st.assignee.join(', ') : (st.assignee || '미지정');
+        const recurrenceLabel = st.isRecurringOccurrence && st.recurrenceLabel ? `반복 ${st.recurrenceLabel}` : '';
         
         let statusClass = '';
         let textClass = 'text-slate-700 dark:text-slate-350';
@@ -135,6 +140,7 @@ function buildMonthlySubTaskHTML(task, monthStart, monthEnd) {
                         ${st.dueDate ? '📅 ' + st.dueDate.substring(5) : ''}
                     </span>
                 </div>
+                ${recurrenceLabel ? `<div class="truncate text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">${escapeHTML(recurrenceLabel)}</div>` : ''}
             </div>`;
     });
 
@@ -161,7 +167,10 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
 
     const monthStart = new Date(year, month, 1);
     const monthEnd = new Date(year, month + 1, 0, 23, 59, 59);
-    const currentMonthTasks = (filteredTasks || []).filter(t => isTaskOverlappingMonth(t, monthStart, monthEnd, todayStr));
+    const currentMonthTasks = (filteredTasks || []).filter(t => {
+        if (isTaskOverlappingMonth(t, monthStart, monthEnd, todayStr)) return true;
+        return getMonthlySubTaskSummary(t, monthStart, monthEnd).totalInMonth > 0;
+    });
 
     // ★ 메모를 먼저 가져옴 — 업무 유무와 무관하게 항상 메모를 표시해야 하므로
     let trackerNotes = [];

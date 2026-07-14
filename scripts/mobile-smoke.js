@@ -137,7 +137,9 @@ function makeTasks() {
       startDate: '2026-03-01',
       dueDate: '2026-04-30',
       assignee: ['이매니저'],
-      subTasks: []
+      subTasks: [
+        { id: 'sub-recurring-1', title: '월간 정기 완료 체크', status: 'PENDING', startDate: '2026-03-15', dueDate: '2026-03-15', assignee: ['이매니저'], recurrence: { enabled: true, frequency: 'MONTHLY', interval: 1, endType: 'NONE' } }
+      ]
     }
   ];
 
@@ -160,6 +162,7 @@ function makeTasks() {
 
 async function main() {
   loadScript('js/date-risk-utils.js');
+  loadScript('js/calendar-utils.js');
   loadScript('js/calendar-summary-renderer.js');
   loadScript('js/calendar-mobile-renderer.js');
   loadScript('js/table-mobile-renderer.js');
@@ -176,6 +179,7 @@ async function main() {
   window.renderMobileCalendar(tasks.slice(0, 2));
   assert(document.getElementById('cal-mobile-month-year').textContent.includes('2026년 7월'), '모바일 월간 헤더가 올바르지 않습니다.');
   assert(document.querySelectorAll('#cal-mobile-content .mobile-cal-card').length >= 1, '모바일 월간 업무 카드가 없습니다.');
+  assert(document.getElementById('cal-mobile-content').textContent.includes('월간 정기 완료 체크'), '반복 하위 업무가 모바일 월간에 반영되지 않았습니다.');
 
   global.currentCalMode = 'MONTH';
   window.renderMobileCalendar(tasks);
