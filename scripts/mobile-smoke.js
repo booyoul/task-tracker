@@ -198,7 +198,7 @@ async function main() {
   });
   const summary = document.getElementById('cal-mobile-content');
   assert(summary.className.includes('bg-white'), '모바일 월별 요약 배경 클래스가 없습니다.');
-  assert(summary.textContent.includes('이번 달 작성된 진행 상황 메모 목록'), '월별 요약 메모 섹션이 없습니다.');
+  assert(summary.textContent.includes('이번 달 메모 리뷰'), '월별 요약 메모 섹션이 없습니다.');
   assert(summary.textContent.includes('총 2건'), '월별 요약 메모 통계가 올바르지 않습니다.');
 
   console.log('mobile smoke passed: list, calendar day, calendar year, summary');
