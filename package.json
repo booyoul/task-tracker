@@ -6,15 +6,22 @@
   "scripts": {
     "dev": "npx serve -l 3000",
     "build:css": "npx @tailwindcss/cli -i ./src/input.css -o ./dist/output.css",
+    "emulator:firestore": "firebase emulators:start --only firestore --project demo-task-tracker-security",
     "smoke:mobile": "node scripts/mobile-smoke.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "smoke:security": "node scripts/security-smoke.js",
+    "smoke:crud": "node scripts/task-crud-smoke.js",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-task-tracker-security \"node scripts/firestore-rules.test.js\"",
+    "test": "npm run smoke:security && npm run smoke:crud && npm run test:rules && npm run smoke:mobile"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.1",
     "autoprefixer": "^10.5.2",
     "canvas": "^3.2.3",
+    "firebase": "^12.16.0",
+    "firebase-tools": "^15.23.0",
     "jsdom": "^29.1.1",
     "postcss": "^8.5.15",
     "tailwindcss": "^4.3.1"

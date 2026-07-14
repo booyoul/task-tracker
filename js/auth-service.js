@@ -150,7 +150,8 @@ function hasWritePermission(item) {
     }
     if (typeof isAdminUser === 'function' && isAdminUser()) return true; // 관리자는 전체 권한 허용
     if (!item) return true;
-    if (!item.createdBy || item.createdBy === 'anonymous') return true; // 레거시 및 anonymous 데이터 허용
+    // 소유권이 없는 레거시 데이터는 관리자만 수정할 수 있어야 Firestore Rules와 일치합니다.
+    if (!item.createdBy || item.createdBy === 'anonymous') return false;
     
     const hasPermission = item.createdBy === window.currentUser.uid;
     if (!hasPermission) {

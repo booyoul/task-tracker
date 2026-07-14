@@ -17,22 +17,29 @@ async function db_addTask(taskData) {
   });
   console.info('db_addTask - 생성할 payload:', payload);
   markSaving();
-  if (canWriteToFirestore() && coll) {
-    try { 
-      await window.fs.setDoc(window.fs.doc(coll, id), payload, { merge: true }); 
-      markSaved(); 
-      await db_recordActivity(id, 'CREATE');
-    }
-    catch (e) { markSaveError(); console.warn('업무 추가 실패', e); showToast('Firebase 저장 실패', false); }
+  if (!coll || !canWriteToFirestore()) {
+    markSaveError();
+    return { success: false, error: '인증 실패 또는 DB 접근 불가' };
+  }
+  try {
+    await window.fs.setDoc(window.fs.doc(coll, id), payload, { merge: true });
+    markSaved();
+    await db_recordActivity(id, 'CREATE');
+  } catch (e) {
+    markSaveError();
+    console.warn('업무 추가 실패', e);
+    showToast('Firebase 저장 실패', false);
+    return { success: false, error: e.message || String(e) };
   }
   if (!tasks.some(t => t.id === id)) tasks.push({ id, ...payload });
   updateUI();
+  return { success: true, id, task: { id, ...payload } };
 }
 async function db_updateTask(id, taskData) {
   const originalTask = tasks.find(t => t.id === id) || {};
   if (!window.hasWritePermission(originalTask)) {
     showToast('수정 권한이 없습니다.', false);
-    return;
+    return { success: false, error: '수정 권한이 없습니다.' };
   }
   
   // Calculate field changes
@@ -50,43 +57,54 @@ async function db_updateTask(id, taskData) {
   const tracker = trackers.find(t => t.id === (taskData.trackerId || currentTrackerId));
   const payload = normalizeTaskForSchema({ ...originalTask, ...taskData, trackerName: tracker ? tracker.name : taskData.trackerName, updatedAt: getServerTimestamp() });
   markSaving();
-  if (canWriteToFirestore() && coll) {
-    try { 
-      await window.fs.setDoc(window.fs.doc(coll, id), payload, { merge: true }); 
-      markSaved(); 
-      if (Object.keys(changes).length > 0) {
-        await db_recordActivity(id, 'UPDATE', changes);
-      }
+  if (!coll || !canWriteToFirestore()) {
+    markSaveError();
+    return { success: false, error: '인증 실패 또는 DB 접근 불가' };
+  }
+  try {
+    await window.fs.setDoc(window.fs.doc(coll, id), payload, { merge: true });
+    markSaved();
+    if (Object.keys(changes).length > 0) {
+      await db_recordActivity(id, 'UPDATE', changes);
     }
-    catch (e) { 
-      markSaveError(); 
-      console.error('업무 수정 실패 상세 에러:', e); 
-      showToast(`Firebase 수정 실패: ${e.message || e}`, false); 
-    }
+  } catch (e) {
+    markSaveError();
+    console.error('업무 수정 실패 상세 에러:', e);
+    showToast(`Firebase 수정 실패: ${e.message || e}`, false);
+    return { success: false, error: e.message || String(e) };
   }
   const idx = tasks.findIndex(t => t.id === id);
   if (idx !== -1) tasks[idx] = { ...tasks[idx], ...payload };
   updateUI();
+  return { success: true, id, task: idx !== -1 ? tasks[idx] : { id, ...payload } };
 }
 async function db_deleteTask(id) {
   const originalTask = tasks.find(t => t.id === id);
   if (!window.hasWritePermission(originalTask)) {
     showToast('삭제 권한이 없습니다.', false);
-    return;
+    return { success: false, error: '삭제 권한이 없습니다.' };
   }
   const coll = getTasksCollection();
   const payload = { deleted: true, deletedAt: getServerTimestamp(), updatedAt: getServerTimestamp() };
-  if (canWriteToFirestore() && coll) {
-    try { 
-      await window.fs.setDoc(window.fs.doc(coll, id), payload, { merge: true }); 
-      markSaved(); 
-      await db_recordActivity(id, 'DELETE');
-    }
-    catch (e) { markSaveError(); console.warn('업무 삭제 실패', e); showToast('Firebase 삭제 실패', false); }
+  markSaving();
+  if (!coll || !canWriteToFirestore()) {
+    markSaveError();
+    return { success: false, error: '인증 실패 또는 DB 접근 불가' };
+  }
+  try {
+    await window.fs.setDoc(window.fs.doc(coll, id), payload, { merge: true });
+    markSaved();
+    await db_recordActivity(id, 'DELETE');
+  } catch (e) {
+    markSaveError();
+    console.warn('업무 삭제 실패', e);
+    showToast('Firebase 삭제 실패', false);
+    return { success: false, error: e.message || String(e) };
   }
   tasks = tasks.filter(t => t.id !== id);
   if (typeof selectedTaskIds !== 'undefined') selectedTaskIds.delete(id);
   updateUI();
+  return { success: true, id, task: originalTask };
 }
 async function db_batchDelete(idsSet) {
   const ids = Array.from(idsSet || []);
@@ -96,25 +114,72 @@ async function db_batchDelete(idsSet) {
   });
   if (myIds.length === 0) {
     showToast('삭제 권한이 있는 업무가 없습니다.', false);
-    return;
+    return { success: false, error: '삭제 권한이 있는 업무가 없습니다.', deletedIds: [] };
   }
   const coll = getTasksCollection();
-  if (canWriteToFirestore() && coll) {
-    try {
-      const batch = window.fs.writeBatch(window.db);
-      myIds.forEach(id => batch.set(window.fs.doc(coll, id), { deleted: true, deletedAt: getServerTimestamp(), updatedAt: getServerTimestamp() }, { merge: true }));
-      await batch.commit();
-      markSaved();
-      for (const id of myIds) {
-        await db_recordActivity(id, 'DELETE');
-      }
-    } catch (e) { markSaveError(); showToast('Firebase 일괄 삭제 실패', false); }
+  markSaving();
+  if (!coll || !canWriteToFirestore()) {
+    markSaveError();
+    return { success: false, error: '인증 실패 또는 DB 접근 불가', deletedIds: [] };
+  }
+  try {
+    const batch = window.fs.writeBatch(window.db);
+    myIds.forEach(id => batch.set(window.fs.doc(coll, id), { deleted: true, deletedAt: getServerTimestamp(), updatedAt: getServerTimestamp() }, { merge: true }));
+    await batch.commit();
+    markSaved();
+    for (const id of myIds) {
+      await db_recordActivity(id, 'DELETE');
+    }
+  } catch (e) {
+    markSaveError();
+    console.warn('업무 일괄 삭제 실패', e);
+    showToast('Firebase 일괄 삭제 실패', false);
+    return { success: false, error: e.message || String(e), deletedIds: [] };
   }
   tasks = tasks.filter(t => !myIds.includes(t.id));
   if (idsSet && typeof idsSet.clear === 'function') {
     ids.forEach(id => idsSet.delete(id));
   }
   updateUI();
+  return { success: true, deletedIds: myIds };
+}
+async function db_updateTaskOrders(orderUpdates) {
+  const updates = Array.isArray(orderUpdates) ? orderUpdates : [];
+  if (!updates.length) return { success: true, updatedIds: [] };
+  const invalid = updates.find(update => {
+    const task = tasks.find(t => t.id === update.id);
+    return !task || !window.hasWritePermission(task);
+  });
+  if (invalid) {
+    showToast('업무 순서 변경 권한이 없습니다.', false);
+    return { success: false, error: '업무 순서 변경 권한이 없습니다.', updatedIds: [] };
+  }
+  const coll = getTasksCollection();
+  markSaving();
+  if (!coll || !canWriteToFirestore()) {
+    markSaveError();
+    return { success: false, error: '인증 실패 또는 DB 접근 불가', updatedIds: [] };
+  }
+  try {
+    const batch = window.fs.writeBatch(window.db);
+    updates.forEach(update => batch.set(window.fs.doc(coll, update.id), {
+      order: update.order,
+      updatedAt: getServerTimestamp()
+    }, { merge: true }));
+    await batch.commit();
+    markSaved();
+  } catch (e) {
+    markSaveError();
+    console.warn('업무 순서 저장 실패', e);
+    showToast('업무 순서 저장 실패', false);
+    return { success: false, error: e.message || String(e), updatedIds: [] };
+  }
+  updates.forEach(update => {
+    const idx = tasks.findIndex(t => t.id === update.id);
+    if (idx !== -1) tasks[idx] = { ...tasks[idx], order: update.order };
+  });
+  updateUI();
+  return { success: true, updatedIds: updates.map(update => update.id) };
 }
 async function db_addTracker(data) {
   const coll = getTrackersCollection();
@@ -135,52 +200,85 @@ async function db_addTracker(data) {
     createdByName: window.currentUser ? (window.currentUser.displayName || window.currentUser.email) : 'anonymous',
     ownerId: window.currentUser ? window.currentUser.uid : 'anonymous'
   };
-  if (canWriteToFirestore() && coll) {
-    try { await window.fs.setDoc(window.fs.doc(coll, id), payload, { merge: true }); markSaved(); }
-    catch (e) { console.warn('트래커 추가 실패', e); showToast('Firebase 트래커 저장 실패', false); }
+  markSaving();
+  if (!coll || !canWriteToFirestore()) {
+    markSaveError();
+    return { success: false, error: '인증 실패 또는 DB 접근 불가' };
+  }
+  try {
+    await window.fs.setDoc(window.fs.doc(coll, id), payload, { merge: true });
+    markSaved();
+  } catch (e) {
+    markSaveError();
+    console.warn('트래커 추가 실패', e);
+    showToast('Firebase 트래커 저장 실패', false);
+    return { success: false, error: e.message || String(e) };
   }
   if (!trackers.some(t => t.id === id)) trackers.push({ id, ...payload });
   currentTrackerId = id;
   localStorage.setItem('flow_current_tracker', id);
   updateTrackerUI();
   updateUI();
+  return { success: true, id, tracker: { id, ...payload } };
 }
 async function db_updateTracker(id, data) {
   const original = trackers.find(t => t.id === id);
   if (!window.hasTrackerWritePermission(original)) {
     showToast('트래커 수정 권한이 없습니다.', false);
-    return;
+    return { success: false, error: '트래커 수정 권한이 없습니다.' };
   }
   const coll = getTrackersCollection();
   const payload = { ...data, order: original && typeof original.order === 'number' ? original.order : data.order, updatedAt: getServerTimestamp() };
-  if (canWriteToFirestore() && coll) {
-    try { await window.fs.setDoc(window.fs.doc(coll, id), payload, { merge: true }); markSaved(); }
-    catch (e) { console.warn('트래커 수정 실패', e); showToast('Firebase 트래커 수정 실패', false); }
+  markSaving();
+  if (!coll || !canWriteToFirestore()) {
+    markSaveError();
+    return { success: false, error: '인증 실패 또는 DB 접근 불가' };
+  }
+  try {
+    await window.fs.setDoc(window.fs.doc(coll, id), payload, { merge: true });
+    markSaved();
+  } catch (e) {
+    markSaveError();
+    console.warn('트래커 수정 실패', e);
+    showToast('Firebase 트래커 수정 실패', false);
+    return { success: false, error: e.message || String(e) };
   }
   const idx = trackers.findIndex(t => t.id === id);
   if (idx !== -1) trackers[idx] = { ...trackers[idx], ...payload };
   updateTrackerUI();
   updateUI();
+  return { success: true, id, tracker: idx !== -1 ? trackers[idx] : { id, ...payload } };
 }
 async function db_deleteTracker(id) {
   const original = trackers.find(t => t.id === id);
   if (!window.hasTrackerWritePermission(original)) {
     showToast('트래커 삭제 권한이 없습니다.', false);
-    return;
+    return { success: false, error: '트래커 삭제 권한이 없습니다.' };
   }
   const coll = getTrackersCollection();
   const tColl = getTasksCollection();
-  if (canWriteToFirestore() && coll) {
-    try {
-      await window.fs.setDoc(window.fs.doc(coll, id), { deleted: true, deletedAt: getServerTimestamp(), updatedAt: getServerTimestamp() }, { merge: true });
-      if (tColl) {
-        const snap = await window.fs.getDocs(window.fs.query(tColl, window.fs.where('trackerId', "==", id)));
-        const batch = window.fs.writeBatch(window.db);
-        snap.docs.forEach(doc => batch.set(doc.ref, { deleted: true, deletedAt: getServerTimestamp(), updatedAt: getServerTimestamp() }, { merge: true }));
-        if (!snap.empty) await batch.commit();
-      }
-      markSaved();
-    } catch (e) { console.warn('트래커 삭제 실패', e); showToast('Firebase 트래커 삭제 실패', false); }
+  markSaving();
+  if (!coll || !canWriteToFirestore()) {
+    markSaveError();
+    return { success: false, error: '인증 실패 또는 DB 접근 불가' };
+  }
+  try {
+    const snap = tColl
+      ? await window.fs.getDocs(window.fs.query(tColl, window.fs.where('trackerId', "==", id)))
+      : { docs: [], empty: true };
+    if (snap.docs.length > 499) throw new Error('소속 업무가 499개를 초과하여 한 번에 삭제할 수 없습니다.');
+    const batch = window.fs.writeBatch(window.db);
+    batch.set(window.fs.doc(coll, id), { deleted: true, deletedAt: getServerTimestamp(), updatedAt: getServerTimestamp() }, { merge: true });
+    if (tColl) {
+      snap.docs.forEach(doc => batch.set(doc.ref, { deleted: true, deletedAt: getServerTimestamp(), updatedAt: getServerTimestamp() }, { merge: true }));
+    }
+    await batch.commit();
+    markSaved();
+  } catch (e) {
+    markSaveError();
+    console.warn('트래커 삭제 실패', e);
+    showToast('Firebase 트래커 삭제 실패', false);
+    return { success: false, error: e.message || String(e) };
   }
   trackers = trackers.filter(t => t.id !== id);
   tasks = tasks.filter(t => t.trackerId !== id);
@@ -189,6 +287,7 @@ async function db_deleteTracker(id) {
   localStorage.setItem('flow_current_tracker', currentTrackerId);
   updateTrackerUI();
   updateUI();
+  return { success: true, id, tracker: original };
 }
 async function ensureDefaultTrackersInFirestore() {
   if (!isFirebaseAvailable || !db) return;
@@ -197,7 +296,7 @@ async function ensureDefaultTrackersInFirestore() {
     for (let i = 0; i < trackers.length; i++) {
       const t = trackers[i]; if (!t || !t.id) continue;
       const snap = await window.fs.getDoc(window.fs.doc(coll, t.id));
-      if (!snap.exists) await window.fs.setDoc(window.fs.doc(coll, t.id), { name: t.name, desc: t.desc || '', order: t.order || i + 1, deleted: false, createdAt: getServerTimestamp(), updatedAt: getServerTimestamp() }, { merge: true });
+      if (!snap.exists) await window.fs.setDoc(window.fs.doc(coll, t.id), { name: t.name, desc: t.desc || '', order: t.order || i + 1, deleted: false, createdAt: getServerTimestamp(), updatedAt: getServerTimestamp(), createdBy: window.currentUser.uid, ownerId: window.currentUser.uid }, { merge: true });
     }
   } catch (e) { console.warn('기본 트래커 보정 실패', e); }
 }

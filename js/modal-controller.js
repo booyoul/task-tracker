@@ -379,8 +379,9 @@ async function handleTrackerSubmit(e) {
   e.preventDefault();
   const id = document.getElementById('input-tracker-id').value;
   const data = { name: document.getElementById('input-tracker-name').value.trim(), desc: document.getElementById('input-tracker-desc').value.trim() };
-  if (id) { await db_updateTracker(id, data); showToast('트래커가 수정되었습니다.'); }
-  else { await db_addTracker(data); showToast('새 트래커 공간이 생성되었습니다.'); }
+  const result = id ? await db_updateTracker(id, data) : await db_addTracker(data);
+  if (!result || !result.success) return;
+  showToast(id ? '트래커가 수정되었습니다.' : '새 트래커 공간이 생성되었습니다.');
   closeTrackerModal();
 }
 async function handleTaskSubmit(e) {
@@ -412,8 +413,9 @@ async function handleTaskSubmit(e) {
     const validationMessage = validateTaskPayload(data);
     if (validationMessage) return showToast(validationMessage, false);
     if (!id) data.order = order;
-    if (id) { await db_updateTask(id, data); showToast('수정되었습니다.'); }
-    else { await db_addTask(data); showToast('추가되었습니다.'); }
+    const result = id ? await db_updateTask(id, data) : await db_addTask(data);
+    if (!result || !result.success) return;
+    showToast(id ? '수정되었습니다.' : '추가되었습니다.');
     closeModal();
   } catch (err) {
     console.error('handleTaskSubmit 에러 발생:', err);
@@ -683,7 +685,8 @@ function initKpiSettingsEvents() {
 
       if (typeof window.db_updateTracker === 'function') {
         showToast('KPI 설정을 저장하는 중...');
-        await window.db_updateTracker(currentTrackerId, payload);
+        const result = await window.db_updateTracker(currentTrackerId, payload);
+        if (!result || !result.success) return;
       }
 
       closeKpiSettingsModal();

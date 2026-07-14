@@ -26,9 +26,9 @@ async function initializeAuthAndData(){
                   await window.fs.setDoc(docRef, { role: 'admin', status: 'approved' }, { merge: true });
                 }
               } else {
-                // 문서가 없으면 레거시 유저 혹은 신규 가입 시 누락된 경우이므로 자동으로 생성 (기본 approved)
+                // 사용자 문서가 없으면 마스터 관리자만 자동 승인하고 일반 사용자는 승인 대기로 등록합니다.
                 const isMasterAdmin = window.isMasterAdmin(user.email);
-                const status = 'approved'; // 레거시 유저(문서 없음)는 기본 승인 처리
+                const status = isMasterAdmin ? 'approved' : 'pending';
                 userDoc = {
                   uid: user.uid,
                   email: user.email || '',
@@ -99,16 +99,15 @@ async function initializeAuthAndData(){
             }
           } catch (e) {
             console.error('사용자 정보 조회 실패:', e);
-            const isMasterAdmin = window.isMasterAdmin(user.email);
-            
-            window.currentUser = user;
-            window.currentUserDoc = isMasterAdmin ? { role: 'admin', status: 'approved' } : null;
-            window.currentUserRole = isMasterAdmin ? 'admin' : 'user';
-            
-            if (typeof window.renderAuthHeader === 'function') {
-              window.renderAuthHeader();
-            }
-            fetchInitialData();
+            window.currentUser = null;
+            window.currentUserDoc = null;
+            window.currentUserRole = null;
+            if (typeof window.stopRealtimeListeners === 'function') window.stopRealtimeListeners();
+            tasks = [];
+            trackers = [];
+            if (typeof window.renderAuthHeader === 'function') window.renderAuthHeader();
+            if (typeof updateUI === 'function') updateUI();
+            try { await window.signOut(window.auth); } catch (signOutError) { console.warn('인증 오류 후 로그아웃 실패:', signOutError); }
           }
         })();
       } else {

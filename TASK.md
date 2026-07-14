@@ -12,7 +12,7 @@ Last updated: 2026-07-14
 
 ## Current State
 
-- Status: development and maintenance ready.
+- Status: Firestore authorization hardening and failed-write-safe task/tracker CRUD are complete; the user published the production rules and unauthenticated production reads are verified denied.
 - Main app: `/home/booyoul/projects/task-tracker-main`
 - Task file: `TASK.md`
 - Project rules: `.agents/AGENTS.md`
@@ -43,11 +43,20 @@ Last updated: 2026-07-14
 
 - CSS build: `npm run build:css`
 - Mobile regression: `npm run smoke:mobile`
+- Security contract: `npm run smoke:security`
+- Firestore Rules Emulator: `npm run test:rules`
+- Combined regression: `npm test`
 - JS syntax: `node --check path/to/file.js`
 - Whitespace: `git diff --check`
 
 ## Recent Completed Work
 
+- Firestore rules now require approved users, prevent self-promotion to admin, enforce task/tracker ownership, and validate note/activity authorship for both standard and environment-scoped collections.
+- Missing user documents now enter approval-pending state, authentication lookup failures fail closed, and legacy ownerless tasks are editable only by admins.
+- `npm run smoke:security` guards the approval, role, ownership, and legacy-write contracts.
+- Task and tracker CRUD now mutate local state and show caller success messages only after Firestore confirms the write; `npm run smoke:crud` covers failed add/update/delete behavior.
+- Java 21, Firebase CLI, and `@firebase/rules-unit-testing` now run 26 allow/deny scenarios against the actual Firestore Emulator using the isolated `demo-task-tracker-security` project ID.
+- Production project `task-tracker-99af4` denied unauthenticated reads to `tasks`, `trackers`, `users`, `activity_logs`, and `progress_notes` after the user published the rules.
 - Sub task execution cycle support is implemented end to end for input, schema normalization, calendar/monthly summary occurrence rendering, flat export rows, and per-cycle status overrides.
 - Task modal and monthly summary let recurring sub task occurrences be checked independently while preserving the source sub task's default status.
 - Monthly summary progress notes are automatically classified for review into results, issues, decisions, follow-up, and general notes.
@@ -55,7 +64,8 @@ Last updated: 2026-07-14
 
 ## Next Work
 
-- No urgent follow-up is queued. For the next feature or bug, start from the user request, search targeted symbols/files, and keep this file updated only if the future restart context changes.
+- Audit existing production user documents for unexpected `role: admin` or `status: approved` values created under the previous permissive rules.
+- Run approved-user owner/admin create, update, delete, and restore checks against production Firestore.
 
 ## Cautions
 

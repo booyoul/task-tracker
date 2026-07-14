@@ -128,9 +128,7 @@
 
         // --- Master Admin Logic ---
         const MASTER_ADMIN_EMAILS = [
-            'booyoul.oh@kr.spiraxsarco.com',
-            'test.admin@kr.spiraxsarco.com',
-            'test.admin@kr.spiraxsarco.kr'
+            'booyoul.oh@kr.spiraxsarco.com'
         ];
         const isMasterAdmin = (email) => {
             if (!email) return false;

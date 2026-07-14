@@ -377,12 +377,22 @@ function clearSelection() {
 async function bulkUpdateSelected(payloadBuilder, successMessage) {
   const ids = Array.from(selectedTaskIds || []);
   if (!ids.length) return showToast('선택된 업무가 없습니다.', false);
+  const succeeded = [];
   for (const id of ids) {
     const payload = typeof payloadBuilder === 'function' ? payloadBuilder(id) : payloadBuilder;
-    await db_updateTask(id, payload);
+    const result = await db_updateTask(id, payload);
+    if (result && result.success) succeeded.push(id);
   }
-  showToast(successMessage || `${ids.length}개 업무가 일괄 수정되었습니다.`);
+  succeeded.forEach(id => selectedTaskIds.delete(id));
+  if (succeeded.length !== ids.length) {
+    showToast(`${succeeded.length}개 수정, ${ids.length - succeeded.length}개 실패`, false);
+    renderActiveViews();
+    updateBulkActionBar();
+    return { success: false, succeeded };
+  }
+  showToast(successMessage || `${succeeded.length}개 업무가 일괄 수정되었습니다.`);
   clearSelection();
+  return { success: true, succeeded };
 }
 async function bulkChangeStatus() {
   const raw = prompt('변경할 상태를 입력하세요: PENDING, PROGRESS, COMPLETED', 'PROGRESS');
@@ -431,6 +441,10 @@ function canWriteToFirestore() {
     showToast('Firebase 인증 준비 중입니다. 잠시 후 다시 시도해 주세요.', false);
     return false;
   }
+  if (!window.currentUser) {
+    showToast('승인된 사용자만 데이터를 변경할 수 있습니다.', false);
+    return false;
+  }
   return true;
 }
 function markSaving() { lastSaveState = 'saving'; }
@@ -459,23 +473,32 @@ async function saveTrackerOrder() {
   isTrackerOrderSaving = true;
   updateTrackerUI();
   const coll = getTrackersCollection();
-  if (canWriteToFirestore() && coll) {
-    try {
-      const batch = window.fs.writeBatch(window.db);
-      trackers.forEach((t, i) => batch.set(window.fs.doc(coll, t.id), { order: i + 1, updatedAt: getServerTimestamp() }, { merge: true }));
-      await batch.commit();
-      markSaved();
-    } catch (e) {
-      markSaveError();
-      console.warn('트래커 순서 저장 실패', e);
-      showToast('트래커 순서 저장 실패', false);
-    }
+  if (!coll || !canWriteToFirestore()) {
+    markSaveError();
+    pendingTrackerOrderSignature = null;
+    isTrackerOrderSaving = false;
+    return { success: false, error: '인증 실패 또는 DB 접근 불가' };
+  }
+  try {
+    const batch = window.fs.writeBatch(window.db);
+    trackers.forEach((t, i) => batch.set(window.fs.doc(coll, t.id), { order: i + 1, updatedAt: getServerTimestamp() }, { merge: true }));
+    await batch.commit();
+    markSaved();
+  } catch (e) {
+    markSaveError();
+    console.warn('트래커 순서 저장 실패', e);
+    showToast('트래커 순서 저장 실패', false);
+    pendingTrackerOrderSignature = null;
+    isTrackerOrderSaving = false;
+    return { success: false, error: e.message || String(e) };
   }
   pendingTrackerOrderSignature = null;
   isTrackerOrderSaving = false;
+  return { success: true };
 }
 async function moveTrackerOrder(id, direction) {
   trackers = sortTrackersByOrder(trackers);
+  const previousTrackers = trackers.map(t => ({ ...t }));
   const idx = trackers.findIndex(t => t.id === id);
   const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
   if (idx < 0 || targetIdx < 0 || targetIdx >= trackers.length) return;
@@ -483,7 +506,12 @@ async function moveTrackerOrder(id, direction) {
   trackers.splice(targetIdx, 0, moved);
   trackers = normalizeTrackerOrder(trackers);
   updateTrackerUI();
-  await saveTrackerOrder();
+  const result = await saveTrackerOrder();
+  if (!result || !result.success) {
+    trackers = previousTrackers;
+    updateTrackerUI();
+  }
+  return result;
 }
 async function moveTaskOrder(id, direction) {
   const scoped = tasks.filter(t => t.trackerId === currentTrackerId).sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
@@ -493,12 +521,10 @@ async function moveTaskOrder(id, direction) {
   if (idx < 0 || targetIdx < 0 || targetIdx >= scoped.length) return;
   const a = scoped[idx];
   const b = scoped[targetIdx];
-  const temp = a.order;
-  a.order = b.order;
-  b.order = temp;
-  updateUI();
-  await db_updateTask(a.id, { order: a.order });
-  await db_updateTask(b.id, { order: b.order });
+  return db_updateTaskOrders([
+    { id: a.id, order: b.order },
+    { id: b.id, order: a.order }
+  ]);
 }
 
 // Task and tracker CRUD helpers moved to js/task-service.js
@@ -763,7 +789,11 @@ function updateUI() {
 }
 
 // Task/tracker modal controller moved to js/modal-controller.js
-async function updateTaskStatus(id, status) { await db_updateTask(id, { status }); showToast(`상태 변경: ${getStatusKorean(status)}`); }
+async function updateTaskStatus(id, status) {
+  const result = await db_updateTask(id, { status });
+  if (result && result.success) showToast(`상태 변경: ${getStatusKorean(status)}`);
+  return result;
+}
 async function updateSubTaskStatus(parentId, subId, status, options = {}) {
   const parent = tasks.find(t => t.id === parentId);
   if (!parent || !Array.isArray(parent.subTasks)) return;
@@ -781,14 +811,21 @@ async function updateSubTaskStatus(parentId, subId, status, options = {}) {
     }
     return st.id === subId ? { ...st, status: normalizedStatus } : st;
   });
-  await db_updateTask(parentId, { subTasks: updated });
-  showToast(`하위 업무 상태 변경: ${getStatusKorean(status)}`);
+  const result = await db_updateTask(parentId, { subTasks: updated });
+  if (result && result.success) showToast(`하위 업무 상태 변경: ${getStatusKorean(status)}`);
+  return result;
 }
 function confirmDelete(id) {
   const t = tasks.find(x => x.id === id); if (!t) return;
   document.getElementById('confirm-title').textContent = '업무 삭제 알림';
   document.getElementById('confirm-message').innerHTML = `'${escapeHTML(t.title)}' 업무를 삭제하시겠습니까?`;
-  confirmActionCb = async () => { await db_deleteTask(id); deletionHistory.push({ timestamp: Date.now(), items: [t] }); closeConfirmModal(); showToast('삭제되었습니다.'); };
+  confirmActionCb = async () => {
+    const result = await db_deleteTask(id);
+    if (!result || !result.success) return;
+    deletionHistory.push({ timestamp: Date.now(), items: [t] });
+    closeConfirmModal();
+    showToast('삭제되었습니다.');
+  };
   document.getElementById('modal-confirm')?.classList.remove('hidden');
 }
 function confirmBatchDelete() {
@@ -798,24 +835,32 @@ function confirmBatchDelete() {
   confirmActionCb = async () => {
     const deleted = [];
     selectedTaskIds.forEach(id => { const t = tasks.find(x => x.id === id); if (t) deleted.push(t); });
-    await db_batchDelete(selectedTaskIds);
-    deletionHistory.push({ timestamp: Date.now(), items: deleted });
+    const result = await db_batchDelete(selectedTaskIds);
+    if (!result || !result.success) return;
+    const deletedIds = new Set(result.deletedIds || []);
+    const committed = deleted.filter(t => deletedIds.has(t.id));
+    deletionHistory.push({ timestamp: Date.now(), items: committed });
     closeConfirmModal();
-    showToast(`${deleted.length}개 삭제됨.`);
+    showToast(`${committed.length}개 삭제됨.`);
   };
   document.getElementById('modal-confirm')?.classList.remove('hidden');
 }
 async function undoDelete() {
   if (!deletionHistory.length) return;
-  const last = deletionHistory.pop();
+  const last = deletionHistory[deletionHistory.length - 1];
   const coll = getTasksCollection();
-  if (canWriteToFirestore() && coll) {
-    try {
-      const batch = window.fs.writeBatch(window.db);
-      last.items.forEach(t => { const { id, ...data } = t; batch.set(window.fs.doc(coll, id), { ...data, deleted: false, deletedAt: null, updatedAt: getServerTimestamp() }, { merge: true }); });
-      await batch.commit();
-    } catch (e) { showToast('Firebase 복원 실패', false); }
+  if (!coll || !canWriteToFirestore()) return;
+  try {
+    const batch = window.fs.writeBatch(window.db);
+    last.items.forEach(t => { const { id, ...data } = t; batch.set(window.fs.doc(coll, id), { ...data, deleted: false, deletedAt: null, updatedAt: getServerTimestamp() }, { merge: true }); });
+    await batch.commit();
+  } catch (e) {
+    markSaveError();
+    console.warn('Firebase 복원 실패', e);
+    showToast('Firebase 복원 실패', false);
+    return;
   }
+  deletionHistory.pop();
   last.items.forEach(t => { if (!tasks.some(x => x.id === t.id)) tasks.push({ ...t, deleted: false, deletedAt: null }); });
   showToast(`${last.items.length}개 복원됨.`);
   updateUI();
@@ -875,7 +920,12 @@ function handleDeleteTrackerClick() {
   closeTrackerModal();
   document.getElementById('confirm-title').textContent = '트래커 완전 삭제';
   document.getElementById('confirm-message').innerHTML = `정말 '${escapeHTML(t.name)}' 트래커를 삭제하시겠습니까?<br>* 이 트래커 소속의 모든 업무 데이터가 함께 삭제됩니다.`;
-  confirmActionCb = async () => { await db_deleteTracker(id); closeConfirmModal(); showToast('트래커 및 소속 데이터가 제거되었습니다.'); };
+  confirmActionCb = async () => {
+    const result = await db_deleteTracker(id);
+    if (!result || !result.success) return;
+    closeConfirmModal();
+    showToast('트래커 및 소속 데이터가 제거되었습니다.');
+  };
   document.getElementById('modal-confirm')?.classList.remove('hidden');
 }
 // Export helpers moved to js/export-service.js
@@ -887,9 +937,14 @@ async function importFromJSON(e) {
     try {
       const arr = JSON.parse(ev.target.result);
       if (!Array.isArray(arr)) throw new Error('배열 아님');
-      for (const t of arr) await db_addTask({ ...t, trackerId: currentTrackerId });
-      showToast('성공적으로 불러왔습니다.');
-    } catch (err) { showToast('읽기 오류 발생', false); }
+      let imported = 0;
+      for (const t of arr) {
+        const result = await db_addTask({ ...t, trackerId: currentTrackerId });
+        if (!result || !result.success) throw new Error(`${imported}개 반영 후 Firebase 저장 실패`);
+        imported += 1;
+      }
+      showToast(`${imported}개 업무를 성공적으로 불러왔습니다.`);
+    } catch (err) { showToast(`불러오기 실패: ${err.message || String(err)}`, false); }
   };
   reader.readAsText(file);
   e.target.value = '';
