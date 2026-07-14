@@ -640,10 +640,15 @@ function buildTaskDetailCellHTML(t, subTasks, isExpanded, doneSubs, progressPct,
       </div></td>`;
 }
 
-function subTaskStatusSelect(parentId, subId, status) {
+function subTaskStatusSelect(parentId, subId, status, options = {}) {
   status = normalizeStatus(status);
+  const sourceSubTaskId = options.sourceSubTaskId || '';
+  const occurrenceKey = options.occurrenceKey || '';
+  const occurrenceAttrs = occurrenceKey
+    ? ` data-source-subtask-id="${escapeHTML(sourceSubTaskId || subId)}" data-occurrence-key="${escapeHTML(occurrenceKey)}"`
+    : '';
   return `
-    <select class="sel-subtask-status rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100" data-task-id="${escapeHTML(parentId)}" data-subtask-id="${escapeHTML(subId)}">
+    <select class="sel-subtask-status rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100" data-task-id="${escapeHTML(parentId)}" data-subtask-id="${escapeHTML(subId)}"${occurrenceAttrs}>
       <option value="PENDING" ${status === 'PENDING' ? 'selected' : ''}>진행 대기</option>
       <option value="PROGRESS" ${status === 'PROGRESS' ? 'selected' : ''}>진행 중</option>
       <option value="COMPLETED" ${status === 'COMPLETED' ? 'selected' : ''}>완료</option>
@@ -759,10 +764,23 @@ function updateUI() {
 
 // Task/tracker modal controller moved to js/modal-controller.js
 async function updateTaskStatus(id, status) { await db_updateTask(id, { status }); showToast(`상태 변경: ${getStatusKorean(status)}`); }
-async function updateSubTaskStatus(parentId, subId, status) {
+async function updateSubTaskStatus(parentId, subId, status, options = {}) {
   const parent = tasks.find(t => t.id === parentId);
   if (!parent || !Array.isArray(parent.subTasks)) return;
-  const updated = parent.subTasks.map(st => st.id === subId ? { ...st, status: normalizeStatus(status) } : st);
+  const normalizedStatus = normalizeStatus(status);
+  const occurrenceKey = options.occurrenceKey || '';
+  const sourceSubTaskId = options.sourceSubTaskId || subId;
+  const updated = parent.subTasks.map(st => {
+    if (occurrenceKey && st.id === sourceSubTaskId) {
+      const recurrenceCompletions = { ...(st.recurrenceCompletions || {}) };
+      if (normalizedStatus === normalizeStatus(st.status)) delete recurrenceCompletions[occurrenceKey];
+      else recurrenceCompletions[occurrenceKey] = normalizedStatus;
+      const next = { ...st, recurrenceCompletions };
+      if (!Object.keys(recurrenceCompletions).length) delete next.recurrenceCompletions;
+      return next;
+    }
+    return st.id === subId ? { ...st, status: normalizedStatus } : st;
+  });
   await db_updateTask(parentId, { subTasks: updated });
   showToast(`하위 업무 상태 변경: ${getStatusKorean(status)}`);
 }
@@ -830,7 +848,7 @@ function handleTableChange(e) {
   const subSel = e.target.closest('.sel-subtask-status');
   const cb = e.target.closest('.cb-task');
   if (sel) updateTaskStatus(sel.dataset.id, sel.value);
-  if (subSel) updateSubTaskStatus(subSel.dataset.taskId, subSel.dataset.subtaskId, subSel.value);
+  if (subSel) updateSubTaskStatus(subSel.dataset.taskId, subSel.dataset.subtaskId, subSel.value, { sourceSubTaskId: subSel.dataset.sourceSubtaskId, occurrenceKey: subSel.dataset.occurrenceKey });
   if (cb) { cb.checked ? selectedTaskIds.add(cb.dataset.id) : selectedTaskIds.delete(cb.dataset.id); renderActiveViews(); updateBatchButton(); }
 }
 function toggleSelectAll(e) { document.querySelectorAll('.cb-task').forEach(cb => e.target.checked ? selectedTaskIds.add(cb.dataset.id) : selectedTaskIds.delete(cb.dataset.id)); renderActiveViews(); updateBatchButton(); }

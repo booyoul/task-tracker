@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-utils.js v20260714-v1 loaded');
+console.info('Smart Task Flow calendar-utils.js v20260714-v2 loaded');
 function dateRangeOverlaps(item, monthStart, monthEnd, fallbackDate) { const start = new Date(String(item.startDate || item.dueDate || fallbackDate).replace(/-/g, '/')); const end = new Date(String(item.dueDate || item.startDate || fallbackDate).replace(/-/g, '/')); return !isNaN(start.getTime()) && !isNaN(end.getTime()) && start <= monthEnd && end >= monthStart; }
 function parseDateOnlyValue(value) {
   if (!value) return null;
@@ -45,6 +45,12 @@ function getRecurrenceLabel(recurrence = {}) {
       : '';
   return `${base}${byDay}${end}`;
 }
+function getSubTaskOccurrenceStatus(st, occurrenceKey) {
+  const completions = st && typeof st.recurrenceCompletions === 'object' && st.recurrenceCompletions
+    ? st.recurrenceCompletions
+    : {};
+  return normalizeStatus(completions[occurrenceKey] || st?.status);
+}
 function makeSubTaskOccurrence(st, occurrenceStart, durationDays, index) {
   const startDate = formatDateOnlyValue(occurrenceStart);
   const dueDate = formatDateOnlyValue(addDateDays(occurrenceStart, durationDays));
@@ -52,9 +58,11 @@ function makeSubTaskOccurrence(st, occurrenceStart, durationDays, index) {
     ...st,
     id: `${st.id || st.title || 'sub'}__occ_${startDate}`,
     sourceSubTaskId: st.id || '',
+    occurrenceKey: startDate,
     occurrenceIndex: index,
     isRecurringOccurrence: true,
     recurrenceLabel: getRecurrenceLabel(st.recurrence),
+    status: getSubTaskOccurrenceStatus(st, startDate),
     startDate,
     dueDate
   };

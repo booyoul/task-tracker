@@ -1,4 +1,4 @@
-console.info('Smart Task Flow schema-service.js v20260626-module-split-phase4b-day-renderer loaded');
+console.info('Smart Task Flow schema-service.js v20260714-v2 loaded');
 const CURRENT_TASK_SCHEMA_VERSION = 2; let schemaMigrationInProgress = false;
 const SUBTASK_RECURRENCE_FREQUENCIES = ['DAILY', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'YEARLY'];
 const SUBTASK_RECURRENCE_END_TYPES = ['NONE', 'UNTIL', 'COUNT'];
@@ -41,6 +41,13 @@ function normalizeSubTaskRecurrence(recurrence = {}) {
     if (Number.isFinite(count) && count > 0) normalized.count = Math.min(count, 999);
   }
   return normalized;
+}
+function normalizeSubTaskRecurrenceCompletions(completions = {}) {
+  if (!completions || typeof completions !== 'object' || Array.isArray(completions)) return {};
+  return Object.entries(completions).reduce((acc, [key, value]) => {
+    if (isDateOnlyString(key)) acc[key] = normalizeStatus(value);
+    return acc;
+  }, {});
 }
 function validateSubTaskRecurrence(st = {}) {
   const recurrence = st.recurrence;
@@ -88,6 +95,8 @@ function normalizeSubTaskForSchema(st = {}, parent = {}) {
   };
   const recurrence = normalizeSubTaskRecurrence(st.recurrence);
   if (recurrence) normalized.recurrence = recurrence;
+  const recurrenceCompletions = normalizeSubTaskRecurrenceCompletions(st.recurrenceCompletions);
+  if (Object.keys(recurrenceCompletions).length) normalized.recurrenceCompletions = recurrenceCompletions;
   return normalized;
 }
 function normalizeTaskForSchema(task = {}) { const start = task.startDate || task.dueDate || getTodayStr(); const due = task.dueDate || task.startDate || start; const normalized = { ...task, title: String(task.title || '').trim() || '업무', assignee: normalizeAssignee(task.assignee), startDate: start > due ? due : start, dueDate: due, priority: ['HIGH','NORMAL','LOW'].includes(task.priority) ? task.priority : 'NORMAL', status: normalizeStatus(task.status), industry: task.industry || 'AUTO', taskType: task.taskType || 'GENERAL', notes: task.notes || '', deleted: task.deleted === true ? true : false, schemaVersion: CURRENT_TASK_SCHEMA_VERSION }; normalized.subTasks = (Array.isArray(task.subTasks) ? task.subTasks : []).map(st => normalizeSubTaskForSchema(st, normalized)); return normalized; }

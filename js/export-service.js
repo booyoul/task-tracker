@@ -1,4 +1,4 @@
-console.info('Smart Task Flow export-service.js v20260714-v1 loaded');
+console.info('Smart Task Flow export-service.js v20260714-v2 loaded');
 
 function getExportSubTaskRows(normalized, today, exportStart, exportEnd) {
   const rows = [];
@@ -32,6 +32,7 @@ function getExportSubTaskRows(normalized, today, exportStart, exportEnd) {
           id: occ.id || `${st.id || ''}@${occ.startDate || ''}`,
           startDate: occ.startDate || '',
           dueDate: occ.dueDate || '',
+          status: getStatusKorean(normalizeStatus(occ.status)),
           riskLevel: isSubTaskOverdue(occ, today) ? '지연' : getStatusKorean(normalizeStatus(occ.status)),
           riskDelayDays: isSubTaskOverdue(occ, today) ? getDelayDays(occ.dueDate, today) : 0
         });

@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow event-bindings.js v20260626-final-stable loaded');
+console.info('Smart Task Flow event-bindings.js v20260714-v2 loaded');
 
 function initEventBindings(){
   if(window.__eventBindingsInitialized)return;
@@ -69,6 +69,8 @@ function initEventBindings(){
   document.getElementById('task-card-container')?.addEventListener('change',handleTableChange);
   document.getElementById('kanban-container')?.addEventListener('click',handleTableClick);
   document.getElementById('kanban-container')?.addEventListener('change',handleTableChange);
+  document.getElementById('calendar-grid')?.addEventListener('change',handleTableChange);
+  document.getElementById('cal-mobile-content')?.addEventListener('change',handleTableChange);
   document.getElementById('btn-view-table')?.addEventListener('click',()=>window.switchView?.('TABLE'));
   document.getElementById('btn-view-calendar')?.addEventListener('click',()=>window.switchView?.('CALENDAR'));
   document.getElementById('btn-view-kanban')?.addEventListener('click',()=>window.switchView?.('KANBAN'));

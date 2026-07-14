@@ -23,6 +23,7 @@ Last updated: 2026-07-14
 - JavaScript files are loaded as browser globals from `index.html`; script order and cache query strings matter.
 - Mobile calendar, list, monthly summary, KPI badge/settings, activity timeline, and mobile smoke QA are implemented.
 - Sub task recurrence input, schema normalization, calendar/monthly summary occurrence rendering, and flat export rows are implemented.
+- Recurring sub task occurrences can store per-cycle status overrides on the source sub task through `recurrenceCompletions`.
 - Tailwind dark mode is class-based via `.dark`, not OS preference.
 
 ## Key Files
@@ -46,14 +47,13 @@ Last updated: 2026-07-14
 
 ## Recent Completed Work
 
-- Sub task execution cycle support is implemented end to end for input, schema normalization, calendar/monthly summary occurrence rendering, and flat export rows.
+- Sub task execution cycle support is implemented end to end for input, schema normalization, calendar/monthly summary occurrence rendering, flat export rows, and per-cycle status overrides.
+- Monthly summary lets recurring sub task occurrences be checked independently while preserving the source sub task's default status.
 - Mobile/list/calendar/summary QA coverage remains available through `npm run smoke:mobile`.
-- Earlier calendar, summary, KPI, activity timeline, and mobile polish work is complete.
 
 ## Next Work
 
-- If continuing sub task recurrence work, consider per-occurrence completion state so each generated cycle can be checked off independently.
-- For the next feature or bug, start from the user request, search targeted symbols/files, and keep this file updated only if the future restart context changes.
+- No urgent follow-up is queued. For the next feature or bug, start from the user request, search targeted symbols/files, and keep this file updated only if the future restart context changes.
 
 ## Cautions
 

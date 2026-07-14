@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-summary-renderer.js v20260714-v1 loaded');
+console.info('Smart Task Flow calendar-summary-renderer.js v20260714-v2 loaded');
 
 function formatSummaryNoteDate(ts) {
     if (!ts) return '';
@@ -130,9 +130,9 @@ function buildMonthlySubTaskHTML(task, monthStart, monthEnd) {
                     <div class="flex items-center gap-1.5 truncate ${textClass} font-semibold">
                         <span class="truncate">${escapeHTML(st.title)}</span>
                     </div>
-                    <span class="shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold border ${statusClass} origin-right">
-                        ${statusKorean}
-                    </span>
+                    ${st.isRecurringOccurrence && typeof subTaskStatusSelect === 'function'
+                        ? subTaskStatusSelect(task.id, st.id, status, { sourceSubTaskId: st.sourceSubTaskId || st.id, occurrenceKey: st.occurrenceKey || st.startDate })
+                        : `<span class="shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold border ${statusClass} origin-right">${statusKorean}</span>`}
                 </div>
                 <div class="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400">
                     <span class="truncate">👤 ${escapeHTML(assigneeNames)}</span>
