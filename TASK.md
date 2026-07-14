@@ -1,6 +1,6 @@
 # Smart Task Flow Task
 
-Last updated: 2026-07-12
+Last updated: 2026-07-14
 
 ## Startup
 
@@ -22,6 +22,7 @@ Last updated: 2026-07-12
 - Static HTML/JavaScript task tracker backed by Firebase/Firestore.
 - JavaScript files are loaded as browser globals from `index.html`; script order and cache query strings matter.
 - Mobile calendar, list, monthly summary, KPI badge/settings, activity timeline, and mobile smoke QA are implemented.
+- Sub task recurrence schema and modal input support are implemented; calendar/summary occurrence rendering is not yet implemented.
 - Tailwind dark mode is class-based via `.dark`, not OS preference.
 
 ## Key Files
@@ -49,12 +50,13 @@ Last updated: 2026-07-12
 - Monthly summary was refocused around memo review with filters and compact KPI display.
 - Mobile light/dark background behavior was corrected.
 - Mobile list subtask collapse behavior was fixed.
+- Sub task execution cycle input was added to the task modal, with recurrence schema normalization and validation.
 - Mobile QA checklist and `npm run smoke:mobile` were added.
 - Calendar/Gantt filtering, activity log timeline, custom KPI manager, and related quality fixes are complete.
 
 ## Next Work
 
-- No active unfinished task is recorded.
+- If continuing sub task recurrence work, add occurrence calculation for calendar/monthly summary/export views without duplicating stored sub task rows.
 - For the next feature or bug, start from the user request, search targeted symbols/files, and keep this file updated only if the future restart context changes.
 
 ## Cautions
