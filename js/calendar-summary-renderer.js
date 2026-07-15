@@ -1,14 +1,25 @@
-console.info('Smart Task Flow calendar-summary-renderer.js v20260714-v4 loaded');
+console.info('Smart Task Flow calendar-summary-renderer.js v20260715-v2 loaded');
 
-function formatSummaryNoteDate(ts) {
-    if (!ts) return '';
+function getSummaryNoteDate(note = {}) {
+    if (note.noteDate && /^\d{4}-\d{2}-\d{2}$/.test(note.noteDate)) {
+        const [year, month, day] = note.noteDate.split('-').map(Number);
+        return new Date(year, month - 1, day);
+    }
+    const ts = note.createdAt;
+    if (!ts) return null;
     const d = typeof ts.toDate === 'function' ? ts.toDate() : new Date(ts);
-    return d.toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return Number.isNaN(d.getTime()) ? null : d;
 }
 
-function getSummaryNoteTime(ts) {
-    if (!ts) return 0;
-    const d = typeof ts.toDate === 'function' ? ts.toDate() : new Date(ts);
+function formatSummaryNoteDate(note) {
+    const d = getSummaryNoteDate(note);
+    if (!d) return '';
+    return d.toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function getSummaryNoteTime(note) {
+    const d = getSummaryNoteDate(note);
+    if (!d) return 0;
     const time = d.getTime();
     return Number.isFinite(time) ? time : 0;
 }
@@ -73,7 +84,7 @@ function buildSummaryNoteItem(note, taskList) {
         reviewClassName: reviewConfig.className,
         isImportant,
         searchText,
-        createdAtTime: getSummaryNoteTime(note.createdAt)
+        createdAtTime: getSummaryNoteTime(note)
     };
 }
 
@@ -216,15 +227,13 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
         notesByTaskId[baseTaskId].push(note);
     });
 
-    // 이번 달 작성된 메모 필터링 (+ 현재 필터링된 활성 업무에 달린 메모만 포함)
+    // 이번 달 기록일 기준 메모 필터링 (+ 현재 필터링된 활성 업무에 달린 메모만 포함)
     const activeTaskIds = new Set((filteredTasks || []).map(t => t.id));
 
     const monthNotes = trackerNotes.filter(note => {
-        const ts = note.createdAt;
-        if (!ts) return false;
-        
         // 1) 날짜 범위 검사
-        const d = typeof ts.toDate === 'function' ? ts.toDate() : new Date(ts);
+        const d = getSummaryNoteDate(note);
+        if (!d) return false;
         const inMonth = d >= monthStart && d <= monthEnd;
         if (!inMonth) return false;
         
@@ -301,50 +310,66 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
         const notesList = document.createElement('div');
         notesList.className = 'flex max-h-[460px] flex-col gap-3 overflow-y-auto pr-0.5';
 
-        const createNoteRow = (note, isPinned = false) => {
-            const dateStr = formatSummaryNoteDate(note.createdAt);
-            const author = escapeHTML(note.author);
-            const bodyText = note.body || '';
-            const bodyPreview = escapeHTML(bodyText);
-            const noteTypeLabel = note.isSubTask
-                ? `[하위: ${note.subTaskTitle || '하위 업무'}] `
-                : '[본 업무] ';
-            const noteTitleText = noteTypeLabel + note.noteTitle;
-
-            const row = document.createElement('button');
-            row.type = 'button';
-            row.className = [
-                'group w-full rounded-lg border bg-white p-3 text-left transition hover:border-amber-400 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-300 dark:bg-slate-900',
-                isPinned ? 'border-amber-200 shadow-sm dark:border-amber-900/60' : 'border-slate-200 dark:border-slate-800'
+        const createTaskNoteCard = (taskNotes, isPinned = false) => {
+            const latestNote = taskNotes[0];
+            const card = document.createElement('div');
+            card.dataset.summaryNoteCard = '';
+            card.dataset.taskId = latestNote.taskId || '';
+            card.className = [
+                'w-full overflow-hidden rounded-lg border bg-white shadow-sm dark:bg-slate-900',
+                isPinned ? 'border-amber-200 dark:border-amber-900/60' : 'border-slate-200 dark:border-slate-800'
             ].join(' ');
-            row.innerHTML = `
-                <div class="flex items-start justify-between gap-2">
-                    <div class="min-w-0 flex-1">
-                        <div class="flex items-center gap-1.5">
-                            ${isPinned ? '<span class="shrink-0 text-[11px] text-amber-500">★</span>' : ''}
-                            <span class="truncate text-xs font-bold text-slate-800 dark:text-slate-200">${escapeHTML(noteTitleText)}</span>
-                        </div>
-                        <div class="mt-1 flex flex-wrap items-center gap-1.5">
-                            <span class="rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${note.reviewClassName}">${escapeHTML(note.reviewLabel)}</span>
-                            <span class="rounded-md border border-slate-100 bg-slate-50 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">${note.isSubTask ? '하위 업무' : '본 업무'}</span>
-                            <span class="text-[10px] font-semibold text-slate-400">${dateStr}</span>
-                            <span class="text-[10px] font-semibold text-slate-400">👤 ${author}</span>
-                        </div>
+            card.innerHTML = `
+                <div class="flex items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/70 px-3 py-2 dark:border-slate-800 dark:bg-slate-800/50">
+                    <div class="flex min-w-0 items-center gap-1.5">
+                        ${isPinned ? '<span class="shrink-0 text-[11px] text-amber-500">★</span>' : ''}
+                        <span class="truncate text-xs font-bold text-slate-800 dark:text-slate-200">${escapeHTML(latestNote.linkedTitle)}</span>
+                        <span class="shrink-0 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-bold text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">${latestNote.isSubTask ? '하위 업무' : '본 업무'}</span>
                     </div>
-                    <span class="shrink-0 text-[10px] font-bold text-amber-600 opacity-0 transition group-hover:opacity-100 dark:text-amber-400">열기</span>
+                    <span class="shrink-0 text-[10px] font-bold text-amber-700 dark:text-amber-400">메모 ${taskNotes.length}건</span>
                 </div>
-                <p class="mt-2 line-clamp-2 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">${bodyPreview || '<span class="italic text-slate-400">(내용 없음)</span>'}</p>
-                <div class="mt-2 truncate border-t border-slate-50 pt-1.5 text-[10px] font-semibold text-slate-500 dark:border-slate-800">
-                    업무: ${escapeHTML(note.linkedTitle)}
-                </div>
+                <div class="divide-y divide-slate-100 dark:divide-slate-800" data-summary-task-notes></div>
             `;
-            row.addEventListener('click', () => {
-                if (typeof window.openNoteDetailPanel === 'function') {
-                    window.openNoteDetailPanel(note);
-                }
+
+            const entries = card.querySelector('[data-summary-task-notes]');
+            taskNotes.forEach(note => {
+                const entry = document.createElement('button');
+                entry.type = 'button';
+                entry.dataset.summaryNoteEntry = '';
+                entry.className = 'group block w-full p-3 text-left transition hover:bg-amber-50/60 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-amber-300 dark:hover:bg-amber-950/10';
+                entry.innerHTML = `
+                    <div class="flex items-start justify-between gap-2">
+                        <span class="min-w-0 flex-1 truncate text-xs font-bold text-slate-800 dark:text-slate-200">${escapeHTML(note.noteTitle)}</span>
+                        <span class="shrink-0 text-[10px] font-bold text-amber-600 opacity-0 transition group-hover:opacity-100 dark:text-amber-400">열기</span>
+                    </div>
+                    <div class="mt-1 flex flex-wrap items-center gap-1.5">
+                        <span class="rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${note.reviewClassName}">${escapeHTML(note.reviewLabel)}</span>
+                        <span class="text-[10px] font-semibold text-slate-400">${formatSummaryNoteDate(note)}</span>
+                        <span class="text-[10px] font-semibold text-slate-400">👤 ${escapeHTML(note.author)}</span>
+                    </div>
+                    <p class="mt-2 line-clamp-2 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">${escapeHTML(note.body || '') || '<span class="italic text-slate-400">(내용 없음)</span>'}</p>
+                `;
+                entry.addEventListener('click', () => {
+                    if (typeof window.openNoteDetailPanel === 'function') {
+                        window.openNoteDetailPanel(note);
+                    }
+                });
+                entries.appendChild(entry);
             });
-            return row;
+            return card;
         };
+
+        function groupNotesByTask(notes) {
+            const groups = new Map();
+            notes.forEach(note => {
+                const taskKey = note.taskId || `note:${note.id || note.createdAtTime}`;
+                if (!groups.has(taskKey)) groups.set(taskKey, []);
+                groups.get(taskKey).push(note);
+            });
+            return [...groups.values()]
+                .map(taskNotes => taskNotes.sort((a, b) => b.createdAtTime - a.createdAtTime))
+                .sort((a, b) => b[0].createdAtTime - a[0].createdAtTime);
+        }
 
         function getFilteredNotes() {
             return monthNotes.filter(note => {
@@ -386,17 +411,17 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
             });
         }
 
-        function appendNoteGroup(title, list, pinned) {
-            if (!list.length) return;
+        function appendNoteGroup(title, taskGroups, pinned) {
+            if (!taskGroups.length) return;
             const group = document.createElement('div');
             group.className = 'space-y-2';
             group.innerHTML = `
                 <div class="flex items-center justify-between px-0.5 text-[11px] font-bold text-slate-500 dark:text-slate-400">
                     <span>${title}</span>
-                    <span>${list.length}건</span>
+                    <span>${taskGroups.length}개 업무 · ${taskGroups.reduce((sum, notes) => sum + notes.length, 0)}건</span>
                 </div>
             `;
-            list.forEach(note => group.appendChild(createNoteRow(note, pinned)));
+            taskGroups.forEach(taskNotes => group.appendChild(createTaskNoteCard(taskNotes, pinned)));
             notesList.appendChild(group);
         }
 
@@ -409,22 +434,23 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
             const reviewCounts = Object.entries(SUMMARY_REVIEW_TYPES)
                 .map(([key, config]) => `${config.label} ${filteredNotes.filter(note => note.reviewType === key).length}`)
                 .join(' · ');
-            const importantNotes = filteredNotes.filter(note => note.isImportant);
-            const regularNotes = noteFilterState.importantOnly
-                ? importantNotes
-                : filteredNotes.filter(note => !note.isImportant);
+            const taskGroups = groupNotesByTask(filteredNotes);
+            const importantTaskGroups = taskGroups.filter(notes => notes.some(note => note.isImportant));
+            const regularTaskGroups = noteFilterState.importantOnly
+                ? importantTaskGroups
+                : taskGroups.filter(notes => !notes.some(note => note.isImportant));
 
             notesList.innerHTML = '';
             if (!noteFilterState.importantOnly) {
-                appendNoteGroup('중요 메모', importantNotes, true);
-                appendNoteGroup('최근 메모', regularNotes, false);
+                appendNoteGroup('중요 업무 메모', importantTaskGroups, true);
+                appendNoteGroup('최근 업무 메모', regularTaskGroups, false);
             } else {
-                appendNoteGroup('중요 메모', regularNotes, true);
+                appendNoteGroup('중요 업무 메모', regularTaskGroups, true);
             }
             if (filteredNotes.length === 0) {
                 notesList.innerHTML = '<div class="rounded-lg border border-dashed border-amber-200 bg-white/70 p-5 text-center text-xs font-semibold text-slate-400 dark:bg-slate-900/70 dark:border-slate-700">조건에 맞는 메모가 없습니다.</div>';
             }
-            notesSec.querySelector('[data-summary-note-count]').textContent = `표시 ${filteredNotes.length}/${monthNotes.length}`;
+            notesSec.querySelector('[data-summary-note-count]').textContent = `업무 ${taskGroups.length}개 · 메모 ${filteredNotes.length}/${monthNotes.length}건`;
             notesSec.querySelector('[data-summary-note-stats]').textContent = `총 ${filteredNotes.length}건 · 중요 ${importantCount} · 본 업무 ${mainCount} · 하위 업무 ${subCount} · 작성자 ${authorCount}명 · ${reviewCounts}`;
             updateTypeButtons();
             updateImportantButton();

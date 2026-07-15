@@ -404,7 +404,7 @@ window.db_fetchActivityLogs = db_fetchActivityLogs;
 // 진행 메모(Progress Notes) CRUD
 // ──────────────────────────────────────────────────────
 
-async function db_addProgressNote(taskId, { title, body }) {
+async function db_addProgressNote(taskId, { title, body, noteDate }) {
   const coll = window.getProgressNotesCollection?.();
   if (!coll || !canWriteToFirestore()) return { success: false, error: '인증 실패 또는 DB 접근 불가' };
   const id = 'note_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
@@ -413,6 +413,7 @@ async function db_addProgressNote(taskId, { title, body }) {
     trackerId: currentTrackerId,
     title: title || '',
     body: body || '',
+    noteDate: noteDate || '',
     createdBy: window.currentUser ? window.currentUser.uid : 'anonymous',
     createdByName: window.currentUser ? (window.currentUser.displayName || window.currentUser.email) : 'anonymous',
     createdAt: getServerTimestamp(),
@@ -459,13 +460,14 @@ async function db_fetchProgressNotes(taskId) {
   }
 }
 
-async function db_updateProgressNote(noteId, { title, body }) {
+async function db_updateProgressNote(noteId, { title, body, noteDate }) {
   const coll = window.getProgressNotesCollection?.();
   if (!coll || !canWriteToFirestore()) return { success: false, error: '인증 실패 또는 DB 접근 불가' };
   try {
     await window.fs.updateDoc(window.fs.doc(coll, noteId), {
       title: title || '',
       body: body || '',
+      noteDate: noteDate || '',
       updatedAt: getServerTimestamp()
     });
     return { success: true };

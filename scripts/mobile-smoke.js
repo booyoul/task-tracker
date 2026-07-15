@@ -55,7 +55,8 @@ window.db_fetchTrackerProgressNotes = async () => [
     title: '리스크 회의 결과',
     body: '설비 인터락 이슈를 확인하고 후속 조치 담당자를 지정함',
     createdByName: 'bd@example.com',
-    createdAt: new Date('2026-07-10T09:30:00+09:00')
+    noteDate: '2026-07-10',
+    createdAt: new Date('2026-06-30T09:30:00+09:00')
   },
   {
     taskId: 'task-1__sub_sub-1',
@@ -63,6 +64,14 @@ window.db_fetchTrackerProgressNotes = async () => [
     body: '현장 확인 완료',
     createdByName: 'engineer@example.com',
     createdAt: new Date('2026-07-11T15:00:00+09:00')
+  },
+  {
+    taskId: 'task-1',
+    title: '후속 검토',
+    body: '회의 결과 후속 조치 확인',
+    createdByName: 'bd@example.com',
+    noteDate: '2026-07-12',
+    createdAt: new Date('2026-07-12T10:00:00+09:00')
   }
 ];
 
@@ -199,7 +208,10 @@ async function main() {
   const summary = document.getElementById('cal-mobile-content');
   assert(summary.className.includes('bg-white'), '모바일 월별 요약 배경 클래스가 없습니다.');
   assert(summary.textContent.includes('이번 달 메모 리뷰'), '월별 요약 메모 섹션이 없습니다.');
-  assert(summary.textContent.includes('총 2건'), '월별 요약 메모 통계가 올바르지 않습니다.');
+  assert(summary.textContent.includes('총 3건'), '월별 요약 메모 통계가 올바르지 않습니다.');
+  assert(summary.textContent.includes('2026년 7월 10일'), '사용자가 지정한 메모 기록일이 월별 요약에 반영되지 않았습니다.');
+  assert(summary.querySelectorAll('[data-summary-note-card]').length === 2, '같은 업무의 메모가 하나의 카드로 묶이지 않았습니다.');
+  assert(summary.querySelector('[data-task-id="task-1"]')?.querySelectorAll('[data-summary-note-entry]').length === 2, '업무 카드 안에 같은 업무의 메모가 모두 표시되지 않았습니다.');
 
   console.log('mobile smoke passed: list, calendar day, calendar year, summary');
 }

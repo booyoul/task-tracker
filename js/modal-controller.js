@@ -716,10 +716,35 @@ const FEED_PAGE_SIZE = 5;         // 페이지당 아이템 개수
 let _cachedFeedItems = [];        // 머지된 타임라인 데이터 캐시
 
 // ─── 날짜 포맷 헬퍼 ───────────────────────────────────────
-function formatNoteDate(ts) {
+function getNoteDateValue(note = {}) {
+  if (note.noteDate && /^\d{4}-\d{2}-\d{2}$/.test(note.noteDate)) return note.noteDate;
+  const ts = note.createdAt;
   if (!ts) return '';
   const d = typeof ts.toDate === 'function' ? ts.toDate() : new Date(ts);
-  return d.toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  if (Number.isNaN(d.getTime())) return '';
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function formatNoteDate(note) {
+  const dateValue = getNoteDateValue(note);
+  if (!dateValue) return '';
+  const [year, month, day] = dateValue.split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function getNoteSortTime(note = {}) {
+  const dateValue = getNoteDateValue(note);
+  if (!dateValue) return 0;
+  const [year, month, day] = dateValue.split('-').map(Number);
+  const d = new Date(year, month - 1, day);
+  const createdAt = note.createdAt?.toDate ? note.createdAt.toDate() : new Date(note.createdAt || 0);
+  if (!Number.isNaN(createdAt.getTime())) {
+    d.setHours(createdAt.getHours(), createdAt.getMinutes(), createdAt.getSeconds(), createdAt.getMilliseconds());
+  }
+  return d.getTime();
 }
 
 // ─── 메모 카드 렌더러 ─────────────────────────────────────
@@ -734,7 +759,7 @@ function renderNoteCard(note) {
   const titleText = subTaskLabel + (note.title || '(제목 없음)');
   const title = note.title ? escapeHTML(titleText) : `<span class="text-slate-400 italic">${escapeHTML(titleText)}</span>`;
   const bodyPreview = escapeHTML((note.body || '').slice(0, 80)) + ((note.body || '').length > 80 ? '...' : '');
-  const dateStr = formatNoteDate(note.createdAt);
+  const dateStr = formatNoteDate(note);
   const author = escapeHTML((note.createdByName || '').split('@')[0] || '알 수 없음');
 
   const card = document.createElement('div');
@@ -776,7 +801,7 @@ async function loadTaskHistory(taskId, page = 1) {
       : [];
       
     // 활동 이력(system log)을 제외하고 사용자가 작성한 진행 메모만 노출
-    const items = notes.map(n => ({ ...n, feedType: 'NOTE', sortDate: n.createdAt }));
+    const items = notes.map(n => ({ ...n, feedType: 'NOTE', sortDate: getNoteSortTime(n) }));
 
     items.sort((a, b) => {
       const timeA = a.sortDate?.toDate ? a.sortDate.toDate().getTime() : new Date(a.sortDate || 0).getTime();
@@ -895,7 +920,7 @@ function setNotePanel_readMode(note) {
   const editActions = document.getElementById('note-panel-edit-actions');
 
   if (title) title.textContent = note.title || '(제목 없음)';
-  if (meta)  meta.textContent  = `${(note.createdByName || '').split('@')[0] || '알 수 없음'} · ${formatNoteDate(note.createdAt)}`;
+  if (meta)  meta.textContent  = `${(note.createdByName || '').split('@')[0] || '알 수 없음'} · 기록일 ${formatNoteDate(note)}`;
   if (body)  body.textContent  = note.body || '';
 
   readMode?.classList.remove('hidden');
@@ -910,9 +935,11 @@ function setNotePanel_editMode(note) {
   const readActions= document.getElementById('note-panel-read-actions');
   const editActions= document.getElementById('note-panel-edit-actions');
   const editTitle  = document.getElementById('input-note-edit-title');
+  const editDate   = document.getElementById('input-note-edit-date');
   const editBody   = document.getElementById('input-note-edit-body');
 
   if (editTitle) editTitle.value = note.title || '';
+  if (editDate)  editDate.value  = getNoteDateValue(note);
   if (editBody)  editBody.value  = note.body  || '';
 
   readMode?.classList.add('hidden');
@@ -930,6 +957,9 @@ function initProgressNotesEvents() {
     form.classList.toggle('hidden');
     if (!form.classList.contains('hidden')) {
       document.getElementById('input-note-title').value = '';
+      const now = new Date();
+      const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      document.getElementById('input-note-date').value = typeof getTodayStr === 'function' ? getTodayStr() : localToday;
       document.getElementById('input-note-body').value  = '';
       document.getElementById('input-note-body').focus();
     }
@@ -947,14 +977,17 @@ function initProgressNotesEvents() {
     const targetTaskId = scopeSelect?.value || _currentNoteTaskId;
 
     const titleEl = document.getElementById('input-note-title');
+    const dateEl  = document.getElementById('input-note-date');
     const bodyEl  = document.getElementById('input-note-body');
     const body = bodyEl?.value?.trim() || '';
     if (!body) { showToast('메모 내용을 입력해 주세요.', false); return; }
     const title = titleEl?.value?.trim() || '';
+    const noteDate = dateEl?.value || '';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(noteDate)) { showToast('기록일을 선택해 주세요.', false); return; }
 
     const saveBtn = document.getElementById('btn-save-progress-note');
     if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '저장 중...'; }
-    const result = await window.db_addProgressNote?.(targetTaskId, { title, body });
+    const result = await window.db_addProgressNote?.(targetTaskId, { title, body, noteDate });
     if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '저장'; }
 
     if (result && result.success) {
@@ -985,12 +1018,14 @@ function initProgressNotesEvents() {
   document.getElementById('btn-note-edit-save')?.addEventListener('click', async () => {
     if (!_currentNotePanelNote) return;
     const title = document.getElementById('input-note-edit-title')?.value?.trim() || '';
+    const noteDate = document.getElementById('input-note-edit-date')?.value || '';
     const body  = document.getElementById('input-note-edit-body')?.value?.trim()  || '';
     if (!body) { showToast('메모 내용을 입력해 주세요.', false); return; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(noteDate)) { showToast('기록일을 선택해 주세요.', false); return; }
 
-    const result = await window.db_updateProgressNote?.(_currentNotePanelNote.id, { title, body });
+    const result = await window.db_updateProgressNote?.(_currentNotePanelNote.id, { title, body, noteDate });
     if (result && result.success) {
-      _currentNotePanelNote = { ..._currentNotePanelNote, title, body };
+      _currentNotePanelNote = { ..._currentNotePanelNote, title, body, noteDate };
       setNotePanel_readMode(_currentNotePanelNote);
       showToast('메모가 수정되었습니다.');
       if (_currentNoteTaskId) await loadTaskHistory(_currentNoteTaskId, _currentFeedPage);

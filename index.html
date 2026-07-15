@@ -1195,6 +1195,11 @@
                                     </div>
                                     <input type="text" id="input-note-title" maxlength="80" placeholder="제목 (선택사항)"
                                         class="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs outline-none transition focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100">
+                                    <div>
+                                        <label for="input-note-date" class="block text-[10px] font-bold text-indigo-700 dark:text-indigo-400 mb-1">기록일 *</label>
+                                        <input type="date" id="input-note-date" required
+                                            class="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100">
+                                    </div>
                                     <textarea id="input-note-body" rows="3" maxlength="2000" placeholder="진행 상황, 결과, 이슈 등을 자유롭게 기록하세요."
                                         class="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs outline-none transition focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100 resize-none"></textarea>
                                     <div class="flex items-center justify-end gap-2">
@@ -1400,6 +1405,11 @@
             <div id="note-panel-edit-mode" class="hidden space-y-2">
                 <input type="text" id="input-note-edit-title" maxlength="80" placeholder="제목 (선택사항)"
                     class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+                <div>
+                    <label for="input-note-edit-date" class="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">기록일</label>
+                    <input type="date" id="input-note-edit-date" required
+                        class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+                </div>
                 <textarea id="input-note-edit-body" rows="8" maxlength="2000" placeholder="메모 내용"
                     class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white resize-none"></textarea>
             </div>
@@ -1448,16 +1458,16 @@
     <script defer src="./js/calendar-utils.js?v=20260714-v4"></script>
     <script defer src="./js/calendar-day-renderer.js?v=20260711-v10"></script>
     <script defer src="./js/calendar-month-renderer.js?v=20260714-v11"></script>
-    <script defer src="./js/calendar-summary-renderer.js?v=20260714-v4"></script>
+    <script defer src="./js/calendar-summary-renderer.js?v=20260715-v2"></script>
     <script defer src="./js/calendar-mobile-renderer.js?v=20260714-v2"></script>
     <script defer src="./js/table-mobile-renderer.js?v=20260711-v11"></script>
     <script defer src="./js/kanban-renderer.js?v=20260711-v10"></script>
-    <script defer src="./js/modal-controller.js?v=20260714-v3"></script>
+    <script defer src="./js/modal-controller.js?v=20260715-v1"></script>
     <script defer src="./js/admin-approvals.js?v=20260711-v10"></script>
     <script defer src="./js/event-bindings.js?v=20260714-v2"></script>
     <script defer src="./js/bootstrap-service.js?v=20260714-v11"></script>
     <script defer src="./js/app.js?v=20260714-v7"></script>
-    <script defer src="./js/task-service.js?v=20260714-v13"></script>
+    <script defer src="./js/task-service.js?v=20260715-v1"></script>
     <script defer src="./js/export-service.js?v=20260714-v2"></script>
 </body>
 

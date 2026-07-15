@@ -15,6 +15,7 @@ function createContext() {
     localStorage: { setItem() {}, getItem() { return null; } },
     getTasksCollection: () => ({ name: 'tasks' }),
     getTrackersCollection: () => ({ name: 'trackers' }),
+    getProgressNotesCollection: () => ({ name: 'progress_notes' }),
     getServerTimestamp: () => 'server-time',
     normalizeTaskForSchema: value => ({ ...value }),
     canWriteToFirestore: () => true,
@@ -37,6 +38,7 @@ function createContext() {
   context.fs = {
     doc: (_collection, id) => ({ id }),
     setDoc: async () => {},
+    updateDoc: async () => {},
     where: (...args) => args,
     query: (...args) => args,
     getDocs: async () => ({ docs: [], empty: true }),
@@ -108,7 +110,30 @@ async function main() {
   assert.equal(unavailableResult.success, false);
   assert.equal(unavailable.tasks[0].title, '원본 업무', 'DB 접근 불가 시 로컬만 변경하면 안 됩니다.');
 
-  console.log('task CRUD smoke passed: failed writes preserve local task and tracker state');
+  const noteCreate = createContext();
+  let createdNotePayload = null;
+  noteCreate.fs.setDoc = async (_ref, payload) => { createdNotePayload = payload; };
+  const noteCreateResult = await noteCreate.db_addProgressNote('task-1', {
+    title: '지난 회의',
+    body: '지정 날짜 기록',
+    noteDate: '2026-07-03',
+  });
+  assert.equal(noteCreateResult.success, true);
+  assert.equal(createdNotePayload.noteDate, '2026-07-03', '메모 생성 시 지정 기록일을 저장해야 합니다.');
+  assert.equal(createdNotePayload.createdAt, 'server-time', '기록일과 별개로 실제 작성 시각을 보존해야 합니다.');
+
+  const noteUpdate = createContext();
+  let updatedNotePayload = null;
+  noteUpdate.fs.updateDoc = async (_ref, payload) => { updatedNotePayload = payload; };
+  const noteUpdateResult = await noteUpdate.db_updateProgressNote('note-1', {
+    title: '날짜 수정',
+    body: '수정된 기록',
+    noteDate: '2026-07-04',
+  });
+  assert.equal(noteUpdateResult.success, true);
+  assert.equal(updatedNotePayload.noteDate, '2026-07-04', '메모 수정 시 변경한 기록일을 저장해야 합니다.');
+
+  console.log('task CRUD smoke passed: failed writes preserve local state and note dates persist');
 }
 
 main().catch(error => {
