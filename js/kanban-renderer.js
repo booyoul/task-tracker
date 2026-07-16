@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow kanban-renderer.js v20260626-final-stable loaded');
+console.info('Smart Task Flow kanban-renderer.js v20260716-v12 loaded');
 
 function getKanbanColumns(){
   return [
@@ -26,7 +26,8 @@ function buildKanbanCard(t,today){
   const eff=getEffectiveStatus(t,today);
   const pct=getTaskProgress(t);
   const subs=Array.isArray(t.subTasks)?t.subTasks:[];
-  const done=subs.filter(st=>normalizeStatus(st.status)==='COMPLETED').length;
+  const subCounts=getSubTaskCompletionCounts(subs);
+  const done=subCounts.completed;
   const accent=['HIGH','CRITICAL'].includes(risk.level)?'border-rose-200':eff==='OVERDUE'?'border-amber-200':'border-slate-100';
   const labelAssignee = Array.isArray(t.assignee) ? t.assignee.join(', ') : (t.assignee || '미정');
   return `<article class="rounded-2xl border ${accent} bg-white p-3 shadow-sm">
@@ -44,7 +45,7 @@ function buildKanbanCard(t,today){
       <span>진척 ${pct}%</span>
       ${subs.length > 0 ? `
         <button type="button" class="btn-toggle-kanban-subs flex items-center gap-1 hover:text-indigo-650 transition-colors font-bold text-slate-500 cursor-pointer" data-id="${escapeHTML(t.id)}">
-          <span>하위 ${done}/${subs.length}</span>
+          <span>하위 ${done}/${subCounts.active}${subCounts.cancelled ? ` · 취소 ${subCounts.cancelled}` : ''}</span>
           <span class="toggle-icon inline-block transition-transform duration-200 text-[9px]">🔽</span>
         </button>
       ` : `<span>하위 0/0</span>`}
@@ -60,6 +61,9 @@ function buildKanbanCard(t,today){
           let textClass = 'text-slate-700 dark:text-slate-350';
           if (status === 'COMPLETED') {
               statusClass = 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50';
+              textClass = 'text-slate-400 line-through dark:text-slate-500';
+          } else if (status === 'CANCELLED') {
+              statusClass = 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700';
               textClass = 'text-slate-400 line-through dark:text-slate-500';
           } else if (status === 'PROGRESS') {
               statusClass = 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/50';

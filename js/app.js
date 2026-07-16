@@ -652,7 +652,8 @@ function renderStats() {
 }
 
 function buildTaskDetailCellHTML(t, subTasks, isExpanded, doneSubs, progressPct, bottleneckHTML) {
-  const subInfo = subTasks.length ? ` · 하위 업무 ${doneSubs}/${subTasks.length}` : '';
+  const counts = getSubTaskCompletionCounts(subTasks);
+  const subInfo = subTasks.length ? ` · 하위 업무 ${doneSubs}/${counts.active}${counts.cancelled ? ` · 취소 ${counts.cancelled}` : ''}` : '';
   return `
       <td class="px-4 py-4 align-top"><div class="flex items-start gap-2">
         <button type="button" class="btn-toggle-subtasks mt-1.5 shrink-0 text-slate-400 hover:text-indigo-600 flex items-center justify-center ${subTasks.length ? '' : 'invisible'}" data-id="${escapeHTML(t.id)}" data-expanded="${isExpanded ? 'true' : 'false'}" title="하위 업무 토글">
@@ -738,7 +739,7 @@ function renderCalendar(filteredTasks) {
   const shouldShowCalendarText = (item, dateStr, isWeekStart, day) => dateStr === item.start || dateStr === item.end || isWeekStart || forceTextOnFirstDay(day) || dateStr === todayStr;
   const addInvisibleCalendarSpacer = container => { const sp = document.createElement('div'); sp.className = 'calendar-lane-spacer min-h-[17px] invisible'; container.appendChild(sp); };
   const isCalendarCriticalItem = item => item?.isSub
-    ? isSubTaskOverdue(item, todayStr) || (normalizeStatus(item.status) !== 'COMPLETED' && !!item.dueDate && item.dueDate <= getFutureDateStr(3))
+    ? isSubTaskOverdue(item, todayStr) || (!['COMPLETED', 'CANCELLED'].includes(normalizeStatus(item.status)) && !!item.dueDate && item.dueDate <= getFutureDateStr(3))
     : getEffectiveStatus(item, todayStr) !== 'CANCELLED' && (getEffectiveStatus(item, todayStr) === 'OVERDUE' || item.priority === 'HIGH' || hasDueSoonRisk(item, todayStr, 3));
   const dimIfNotCritical = item => highlightRiskOnly && !isCalendarCriticalItem(item) ? ' opacity-25 grayscale' : '';
   const mainClass = item => {
@@ -753,6 +754,7 @@ function renderCalendar(filteredTasks) {
   const subClass = item => {
     const status = normalizeStatus(item.status);
     if (status === 'COMPLETED') return 'bg-emerald-50/80 text-emerald-800 border border-dashed border-emerald-300';
+    if (status === 'CANCELLED') return 'bg-slate-100/80 text-slate-500 border border-dashed border-slate-300 opacity-70';
     if (isSubTaskOverdue(item, todayStr)) return 'bg-rose-50/90 text-rose-800 border border-dashed border-rose-300 font-semibold';
     if (useIndustryColor) return getIndustryBarClass(item, true);
     if (status === 'PROGRESS') return 'bg-blue-50/80 text-blue-800 border border-dashed border-blue-300';

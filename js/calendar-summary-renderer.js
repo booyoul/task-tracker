@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-summary-renderer.js v20260715-v2 loaded');
+console.info('Smart Task Flow calendar-summary-renderer.js v20260716-v4 loaded');
 
 function getSummaryNoteDate(note = {}) {
     if (note.noteDate && /^\d{4}-\d{2}-\d{2}$/.test(note.noteDate)) {
@@ -125,7 +125,8 @@ function getMonthlySubTaskSummary(task, monthStart, monthEnd) {
         : allSubTasks;
     const inMonthSubTasks = expandedSubTasks.filter(st => isSubTaskInMonth(st, monthStart, monthEnd));
     const outsideMonthSubTasks = allSubTasks.filter(st => !isSubTaskInMonth(st, monthStart, monthEnd));
-    const completedInMonth = inMonthSubTasks.filter(st => st.status === 'COMPLETED').length;
+    const completedInMonth = inMonthSubTasks.filter(st => normalizeStatus(st.status) === 'COMPLETED').length;
+    const cancelledInMonth = inMonthSubTasks.filter(st => normalizeStatus(st.status) === 'CANCELLED').length;
     return {
         allSubTasks,
         expandedSubTasks,
@@ -133,8 +134,10 @@ function getMonthlySubTaskSummary(task, monthStart, monthEnd) {
         outsideMonthSubTasks,
         totalAll: allSubTasks.length,
         totalInMonth: inMonthSubTasks.length,
+        activeInMonth: inMonthSubTasks.length - cancelledInMonth,
         hiddenOutsideMonth: Math.max(0, outsideMonthSubTasks.length),
-        completedInMonth
+        completedInMonth,
+        cancelledInMonth
     };
 }
 
@@ -155,6 +158,9 @@ function buildMonthlySubTaskHTML(task, monthStart, monthEnd) {
         let textClass = 'text-slate-700 dark:text-slate-350';
         if (status === 'COMPLETED') {
             statusClass = 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50';
+            textClass = 'text-slate-400 line-through dark:text-slate-500';
+        } else if (status === 'CANCELLED') {
+            statusClass = 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700';
             textClass = 'text-slate-400 line-through dark:text-slate-500';
         } else if (status === 'PROGRESS') {
             statusClass = 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/50';
@@ -506,7 +512,7 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
         const monthlyActiveTotal = monthlyTotal - monthlyCancelled;
         const monthlyCompletionRate = monthlyActiveTotal > 0 ? Math.round((monthlyCompleted / monthlyActiveTotal) * 100) : 0;
         const monthlyActiveTasks = currentMonthTasks.filter(t => getEffectiveStatus(t, todayStr) !== 'CANCELLED');
-        const monthlySubTotal = monthlyActiveTasks.reduce((sum, t) => sum + getMonthlySubTaskSummary(t, monthStart, monthEnd).totalInMonth, 0);
+        const monthlySubTotal = monthlyActiveTasks.reduce((sum, t) => sum + getMonthlySubTaskSummary(t, monthStart, monthEnd).activeInMonth, 0);
         const monthlySubCompleted = monthlyActiveTasks.reduce((sum, t) => sum + getMonthlySubTaskSummary(t, monthStart, monthEnd).completedInMonth, 0);
 
         const kpiPanel = document.createElement('div');
@@ -569,7 +575,7 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
                 ? `<span class="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-100 px-1.5 py-0.5 rounded font-bold">하위 ${subSummary.totalInMonth}건</span>`
                 : (subSummary.totalAll > 0 ? `<span class="text-[10px] bg-slate-50 text-slate-500 border border-slate-100 px-1.5 py-0.5 rounded font-bold">하위 0건</span>` : '');
             const subProgressMarkup = subSummary.totalInMonth > 0
-                ? `<span class="text-[10px] text-slate-400">월내 하위 완료 ${subSummary.completedInMonth}/${subSummary.totalInMonth}</span>`
+                ? `<span class="text-[10px] text-slate-400">월내 하위 완료 ${subSummary.completedInMonth}/${subSummary.activeInMonth}${subSummary.cancelledInMonth ? ` · 취소 ${subSummary.cancelledInMonth}` : ''}</span>`
                 : (subSummary.totalAll > 0 ? `<span class="text-[10px] text-slate-400">해당 월 하위 업무 없음</span>` : '');
 
             // 태스크의 메모 수 배지

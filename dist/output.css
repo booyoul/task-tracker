@@ -1444,6 +1444,18 @@
       background-color: color-mix(in oklab, var(--color-slate-100) 70%, transparent);
     }
   }
+  .bg-slate-100\/80 {
+    background-color: color-mix(in srgb, oklch(96.8% 0.007 247.896) 80%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-slate-100) 80%, transparent);
+    }
+  }
+  .bg-slate-100\/90 {
+    background-color: color-mix(in srgb, oklch(96.8% 0.007 247.896) 90%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-slate-100) 90%, transparent);
+    }
+  }
   .bg-slate-200 {
     background-color: var(--color-slate-200);
   }

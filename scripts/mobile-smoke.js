@@ -192,11 +192,28 @@ async function main() {
       { id: 'cancelled-sub-1', title: '취소 업무의 미완료 하위 업무', status: 'PENDING', startDate: '2026-06-01', dueDate: '2026-06-15', assignee: ['김BD'] }
     ]
   };
+  const taskWithCancelledSubTask = {
+    id: 'task-with-cancelled-subtask',
+    title: '취소 하위 업무 회귀 테스트',
+    status: 'PENDING',
+    priority: 'NORMAL',
+    startDate: '2026-07-01',
+    dueDate: '2026-07-31',
+    assignee: ['박엔지니어'],
+    subTasks: [
+      { id: 'active-completed-sub', title: '완료된 유효 하위 업무', status: 'COMPLETED', startDate: '2026-07-01', dueDate: '2026-07-10', assignee: ['박엔지니어'] },
+      { id: 'cancelled-sub', title: '취소된 하위 업무', status: 'CANCELLED', startDate: '2026-06-01', dueDate: '2026-06-15', assignee: ['박엔지니어'] }
+    ]
+  };
 
   assert(global.normalizeStatus('CANCELLED') === 'CANCELLED', '취소 상태가 스키마에서 유지되지 않습니다.');
   assert(global.getEffectiveStatus(cancelledTask, '2026-07-12') === 'CANCELLED', '취소 업무의 운영 상태가 올바르지 않습니다.');
   assert(global.isTaskOverdueEffective(cancelledTask, '2026-07-12') === false, '취소 업무가 기한 초과로 계산됩니다.');
   assert(global.getTaskRiskInfo(cancelledTask, '2026-07-12').level === 'NONE', '취소 업무가 위험 업무로 계산됩니다.');
+  assert(global.isSubTaskOverdue(taskWithCancelledSubTask.subTasks[1], '2026-07-12') === false, '취소 하위 업무가 기한 초과로 계산됩니다.');
+  assert(global.getSubTaskCompletionCounts(taskWithCancelledSubTask).active === 1, '취소 하위 업무가 진행률 분모에 포함됩니다.');
+  assert(global.getTaskProgress(taskWithCancelledSubTask) === 100, '취소 하위 업무를 제외한 진행률이 올바르지 않습니다.');
+  assert(global.getEffectiveStatus(taskWithCancelledSubTask, '2026-07-12') === 'COMPLETED', '취소 하위 업무를 제외한 운영 상태가 올바르지 않습니다.');
 
   global.renderMobileCards(tasks.slice(0, 2));
   assert(document.querySelectorAll('.mobile-task-card').length === 2, '모바일 목록 카드가 렌더링되지 않았습니다.');
@@ -207,6 +224,11 @@ async function main() {
   global.renderMobileCards([cancelledTask]);
   assert(document.getElementById('task-card-container').textContent.includes('취소'), '모바일 목록에 취소 상태가 표시되지 않습니다.');
   assert(document.querySelector('.mobile-status-btn[data-status="CANCELLED"]'), '모바일 목록에 취소 상태 버튼이 없습니다.');
+
+  global.expandedTaskIds.add(taskWithCancelledSubTask.id);
+  global.renderMobileCards([taskWithCancelledSubTask]);
+  assert(document.getElementById('task-card-container').textContent.includes('취소 1'), '모바일 목록에 취소 하위 업무 집계가 없습니다.');
+  assert(document.querySelector('.sel-subtask-status option[value="CANCELLED"]'), '하위 업무 상태 선택에 취소가 없습니다.');
 
   global.currentCalMode = 'DAY';
   window.renderMobileCalendar(tasks.slice(0, 2));
@@ -238,7 +260,7 @@ async function main() {
   assert(summary.querySelector('[data-task-id="task-1"]')?.querySelectorAll('[data-summary-note-entry]').length === 2, '업무 카드 안에 같은 업무의 메모가 모두 표시되지 않았습니다.');
   assert(summary.textContent.includes('취소 1'), '월별 요약에 취소 업무 집계가 없습니다.');
 
-  console.log('mobile smoke passed: calendar default, cancelled status, list, calendar day, calendar year, summary');
+  console.log('mobile smoke passed: calendar default, task and subtask cancelled status, list, calendar day, calendar year, summary');
 }
 
 main().catch((error) => {

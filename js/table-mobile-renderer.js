@@ -1,5 +1,9 @@
-console.info('Smart Task Flow table-mobile-renderer.js v20260711-v11 loaded');
+console.info('Smart Task Flow table-mobile-renderer.js v20260716-v13 loaded');
 // Table and mobile card renderers. Extracted from app.js in Phase 5.
+function getSubTaskProgressLabel(subTasks) {
+  const counts = getSubTaskCompletionCounts(subTasks);
+  return `${counts.completed}/${counts.active}${counts.cancelled ? ` · 취소 ${counts.cancelled}` : ''}`;
+}
 function renderTable(filtered) {
   const tbody = document.getElementById('task-table-body');
   const emptyState = document.getElementById('empty-state-table');
@@ -27,7 +31,7 @@ function renderTable(filtered) {
     let isExpanded = expandedTaskIds.has(t.id);
     const checked = selectedTaskIds.has(t.id);
     if (checked) selectedCount++;
-    const doneSubs = subTasks.filter(st => st.status === 'COMPLETED').length;
+    const doneSubs = getSubTaskCompletionCounts(subTasks).completed;
     const subOverdueCount = countOverdueSubTasks(t);
     if (subOverdueCount > 0 && !collapsedTaskIds.has(t.id)) isExpanded = true;
     const subOverdueBadge = subOverdueCount ? ` <span class="rounded-lg bg-rose-50 px-2 py-1 text-[10px] font-bold text-rose-700 border border-rose-100">하위 기한 초과 ${subOverdueCount}</span>` : '';
@@ -69,7 +73,7 @@ function renderTable(filtered) {
         sr.className = isSubTaskOverdue(st) ? 'bg-rose-50/70 border-l-2 border-l-rose-500/60 hover:bg-rose-50 transition-colors text-xs' : 'bg-slate-50/70 border-l-2 border-l-indigo-500/40 hover:bg-indigo-50/30 transition-colors text-xs';
         sr.innerHTML = `
           <td colspan="2"></td>
-          <td class="px-4 py-2 text-slate-600"><div class="flex items-center gap-2 pl-8"><span class="text-slate-300">└─</span><button type="button" class="btn-edit font-semibold text-left ${status === 'COMPLETED' ? 'line-through text-slate-400' : isSubTaskOverdue(st) ? 'text-rose-700' : 'text-slate-700'} hover:text-indigo-600 outline-none" data-id="${t.id}" title="클릭해서 업무 수정">${isSubTaskOverdue(st) ? '🚨 ' : ''}${escapeHTML(st.title)}</button><span class="shrink-0 max-w-[120px] truncate rounded border border-indigo-100 bg-indigo-50 px-1 py-0.5 text-[10px] font-bold text-indigo-700" title="${escapeHTML(subAssigneeLabel)}">👤 ${escapeHTML(subAssigneeLabel)}</span></div></td>
+          <td class="px-4 py-2 text-slate-600"><div class="flex items-center gap-2 pl-8"><span class="text-slate-300">└─</span><button type="button" class="btn-edit font-semibold text-left ${['COMPLETED', 'CANCELLED'].includes(status) ? 'line-through text-slate-400' : isSubTaskOverdue(st) ? 'text-rose-700' : 'text-slate-700'} hover:text-indigo-600 outline-none" data-id="${t.id}" title="클릭해서 업무 수정">${isSubTaskOverdue(st) ? '🚨 ' : ''}${escapeHTML(st.title)}</button><span class="shrink-0 max-w-[120px] truncate rounded border border-indigo-100 bg-indigo-50 px-1 py-0.5 text-[10px] font-bold text-indigo-700" title="${escapeHTML(subAssigneeLabel)}">👤 ${escapeHTML(subAssigneeLabel)}</span></div></td>
           <td class="px-3 py-2 text-center text-slate-400">-</td>
           <td class="px-3 py-2 text-slate-500 whitespace-nowrap"><div class="inline-flex items-center gap-1.5 whitespace-nowrap"><span>📅 ${st.startDate ? st.startDate.substring(5) : '미정'} ~ ${st.dueDate ? st.dueDate.substring(5) : '미정'}</span><span class="inline-flex shrink-0 rounded-lg border px-2 py-0.5 text-[10px] ${stTimeline.class}">${stTimeline.text}</span></div></td>
           <td class="px-4 py-2 text-center text-slate-400">-</td>
@@ -93,8 +97,7 @@ function buildMobileSubTaskHTML(t, subTasks) {
   if (!subTasks.length) return '';
   const isExpanded = !collapsedTaskIds.has(t.id) && (expandedTaskIds.has(t.id) || countOverdueSubTasks(t) > 0);
   if (!isExpanded) {
-    const done = subTasks.filter(st => normalizeStatus(st.status) === 'COMPLETED').length;
-    return `<button type="button" class="btn-toggle-subtasks mt-2 inline-flex items-center gap-1 rounded-lg bg-slate-50 px-2.5 py-1.5 text-[11px] font-bold text-slate-500 border border-slate-100" data-id="${escapeHTML(t.id)}" data-expanded="false">하위 업무 ${done}/${subTasks.length} 펼치기</button>`;
+    return `<button type="button" class="btn-toggle-subtasks mt-2 inline-flex items-center gap-1 rounded-lg bg-slate-50 px-2.5 py-1.5 text-[11px] font-bold text-slate-500 border border-slate-100" data-id="${escapeHTML(t.id)}" data-expanded="false">하위 업무 ${getSubTaskProgressLabel(subTasks)} 펼치기</button>`;
   }
   return `<div class="mt-3 space-y-1.5 border-t border-slate-100 pt-3">${subTasks.map(st => {
     const status = normalizeStatus(st.status);
@@ -103,7 +106,7 @@ function buildMobileSubTaskHTML(t, subTasks) {
     return `<div class="rounded-xl border ${overdue ? 'border-rose-100 bg-rose-50/70' : 'border-slate-100 bg-slate-50'} px-3 py-2">
       <div class="flex items-start justify-between gap-2">
         <div class="min-w-0">
-          <button type="button" class="btn-edit truncate text-xs font-bold text-left ${status === 'COMPLETED' ? 'line-through text-slate-400' : overdue ? 'text-rose-700' : 'text-slate-700'} hover:text-indigo-600 outline-none" data-id="${t.id}" title="클릭해서 업무 수정">↳ ${overdue ? '🚨 ' : ''}${escapeHTML(st.title || '')}</button>
+          <button type="button" class="btn-edit truncate text-xs font-bold text-left ${['COMPLETED', 'CANCELLED'].includes(status) ? 'line-through text-slate-400' : overdue ? 'text-rose-700' : 'text-slate-700'} hover:text-indigo-600 outline-none" data-id="${t.id}" title="클릭해서 업무 수정">↳ ${overdue ? '🚨 ' : ''}${escapeHTML(st.title || '')}</button>
           <div class="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500">
             <span class="rounded-md bg-white px-1.5 py-0.5 border border-slate-100">👤 ${escapeHTML(st.assignee || t.assignee || '미지정')}</span>
             <span class="inline-flex items-center gap-1 whitespace-nowrap"><span>📅 ${st.startDate ? st.startDate.substring(5) : '미정'} ~ ${st.dueDate ? st.dueDate.substring(5) : '미정'}</span><span class="inline-flex shrink-0 rounded-md border px-1.5 py-0.5 ${stTimeline.class}">${stTimeline.text}</span></span>
@@ -113,6 +116,7 @@ function buildMobileSubTaskHTML(t, subTasks) {
           <option value="PENDING" ${status === 'PENDING' ? 'selected' : ''}>대기</option>
           <option value="PROGRESS" ${status === 'PROGRESS' ? 'selected' : ''}>진행</option>
           <option value="COMPLETED" ${status === 'COMPLETED' ? 'selected' : ''}>완료</option>
+          <option value="CANCELLED" ${status === 'CANCELLED' ? 'selected' : ''}>취소</option>
         </select>
       </div>
     </div>`;
@@ -137,7 +141,6 @@ function renderMobileCards(filtered) {
     const timeline = getTimelineStatus(t.dueDate || getTodayStr(), t.status);
     const riskInfo = getTaskRiskInfo(t, todayStr);
     const progressPct = getTaskProgress(t);
-    const subDone = subTasks.filter(st => normalizeStatus(st.status) === 'COMPLETED').length;
     const card = document.createElement('article');
     card.className = `mobile-task-card rounded-2xl border bg-white p-3 shadow-sm ${['HIGH','CRITICAL'].includes(riskInfo.level) ? 'border-rose-200 bg-rose-50/40' : effectiveStatus === 'OVERDUE' ? 'border-amber-200 bg-amber-50/30' : 'border-slate-100'}`;
     card.innerHTML = `
@@ -162,7 +165,7 @@ function renderMobileCards(filtered) {
         <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full ${progressPct >= 100 ? 'bg-emerald-500' : progressPct > 0 ? 'bg-blue-500' : 'bg-slate-300'}" style="width:${progressPct}%"></div></div>
       </div>
       ${(riskInfo.level !== 'NONE') ? `<div class="mt-2 inline-flex rounded-lg border px-2 py-1 text-[11px] font-black ${riskInfo.class}">Risk: ${riskInfo.label} D+${riskInfo.delay}</div>` : ''}
-      ${subTasks.length ? `<div class="mt-2 text-[11px] font-semibold text-slate-400">하위 업무 ${subDone}/${subTasks.length}</div>` : ''}
+      ${subTasks.length ? `<div class="mt-2 text-[11px] font-semibold text-slate-400">하위 업무 ${getSubTaskProgressLabel(subTasks)}</div>` : ''}
       ${buildMobileSubTaskHTML(t, subTasks)}
       <div class="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
         <button type="button" class="btn-toggle-subtasks ${subTasks.length ? '' : 'invisible'} mobile-touch-btn rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-bold text-slate-600" data-id="${escapeHTML(t.id)}" data-expanded="${(!collapsedTaskIds.has(t.id) && (expandedTaskIds.has(t.id) || countOverdueSubTasks(t) > 0)) ? 'true' : 'false'}">${(!collapsedTaskIds.has(t.id) && (expandedTaskIds.has(t.id) || countOverdueSubTasks(t) > 0)) ? '하위 접기' : '하위 펼치기'}</button>
@@ -226,9 +229,8 @@ function mobileStatusSegment(id, status) {
 function buildMobileSubTaskHTML(t, subTasks) {
   if (!subTasks.length) return '';
   const isExpanded = !collapsedTaskIds.has(t.id) && (expandedTaskIds.has(t.id) || countOverdueSubTasks(t) > 0);
-  const done = subTasks.filter(st => normalizeStatus(st.status) === 'COMPLETED').length;
   if (!isExpanded) {
-    return `<button type="button" class="btn-toggle-subtasks mt-3 w-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-left text-xs font-bold text-slate-500" data-id="${escapeHTML(t.id)}" data-expanded="false">하위 업무 ${done}/${subTasks.length} 보기</button>`;
+    return `<button type="button" class="btn-toggle-subtasks mt-3 w-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-left text-xs font-bold text-slate-500" data-id="${escapeHTML(t.id)}" data-expanded="false">하위 업무 ${getSubTaskProgressLabel(subTasks)} 보기</button>`;
   }
   return `<div class="mt-3 space-y-2 rounded-2xl border border-slate-100 bg-slate-50/80 p-2">
     <div class="flex items-center justify-between px-1 text-[11px] font-black text-slate-400"><span>하위 업무</span><button type="button" class="btn-toggle-subtasks text-indigo-600" data-id="${escapeHTML(t.id)}" data-expanded="true">접기</button></div>
@@ -248,6 +250,7 @@ function buildMobileSubTaskHTML(t, subTasks) {
             <option value="PENDING" ${status === 'PENDING' ? 'selected' : ''}>대기</option>
             <option value="PROGRESS" ${status === 'PROGRESS' ? 'selected' : ''}>진행</option>
             <option value="COMPLETED" ${status === 'COMPLETED' ? 'selected' : ''}>완료</option>
+            <option value="CANCELLED" ${status === 'CANCELLED' ? 'selected' : ''}>취소</option>
           </select>
         </div>
       </div>`;
@@ -340,7 +343,6 @@ function renderMobileCards(filtered) {
     const effectiveStatus = getEffectiveStatus(t, todayStr);
     const riskInfo = getTaskRiskInfo(t, todayStr);
     const progressPct = getTaskProgress(t);
-    const subDone = subTasks.filter(st => normalizeStatus(st.status) === 'COMPLETED').length;
     const checked = selectedTaskIds.has(t.id);
     const notes = String(t.notes || '').trim();
     const card = document.createElement('article');
@@ -369,7 +371,7 @@ function renderMobileCards(filtered) {
         ${getMobileProgressBar(progressPct, effectiveStatus)}
         ${riskInfo.level !== 'NONE' ? `<div class="mt-2 rounded-2xl border border-rose-100 bg-white/80 px-3 py-2 text-xs font-bold text-rose-700">🚨 Risk: ${riskInfo.label} D+${riskInfo.delay}</div>` : ''}
         ${notes ? `<div class="mt-2 line-clamp-2 rounded-2xl bg-slate-50 px-3 py-2 text-xs text-slate-500">${escapeHTML(notes)}</div>` : ''}
-        ${subTasks.length ? `<div class="mt-2 text-[11px] font-bold text-slate-400">하위 업무 ${subDone}/${subTasks.length}</div>` : ''}
+        ${subTasks.length ? `<div class="mt-2 text-[11px] font-bold text-slate-400">하위 업무 ${getSubTaskProgressLabel(subTasks)}</div>` : ''}
         ${mobileStatusSegment(t.id, effectiveStatus)}
         ${buildMobileSubTaskHTML(t, subTasks)}
       </div>

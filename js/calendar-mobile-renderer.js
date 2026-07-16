@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-mobile-renderer.js v20260714-v2 loaded');
+console.info('Smart Task Flow calendar-mobile-renderer.js v20260716-v4 loaded');
 
 // ============================================================
 //  모바일 전용 캘린더 렌더러
@@ -171,6 +171,7 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
     const status = typeof normalizeStatus === 'function' ? normalizeStatus(st.status) : (st.status || 'PENDING');
     if (typeof isSubTaskOverdue === 'function' && isSubTaskOverdue(st, todayStr)) return 'bg-rose-50/90 text-rose-800 border border-dashed border-rose-300 font-semibold';
     if (status === 'COMPLETED') return 'bg-emerald-50/80 text-emerald-800 border border-dashed border-emerald-300';
+    if (status === 'CANCELLED') return 'bg-slate-100/80 text-slate-500 border border-dashed border-slate-300 opacity-70';
     if (useIndustryColor && typeof getIndustryBarClass === 'function') return getIndustryBarClass(parent || st, true);
     if (status === 'PROGRESS') return 'bg-blue-50/80 text-blue-800 border border-dashed border-blue-300';
     return 'bg-slate-50 text-slate-700 border border-dashed border-slate-300';
@@ -503,8 +504,9 @@ function _buildMobileTaskCard(task, startSubTasks, todayStr) {
   const sc = statusConfig[eff] || statusConfig.PENDING;
   const pc = priorityConfig[(task.priority || 'NORMAL').toUpperCase()] || priorityConfig.NORMAL;
   const assignees = Array.isArray(task.assignee) ? task.assignee.join(', ') : (task.assignee || '미지정');
-  const subCount = Array.isArray(task.subTasks) ? task.subTasks.length : 0;
-  const subDone = Array.isArray(task.subTasks) ? task.subTasks.filter(function(st) { return (st.status || '').toUpperCase() === 'COMPLETED'; }).length : 0;
+  const subCounts = getSubTaskCompletionCounts(task.subTasks || []);
+  const subCount = subCounts.active;
+  const subDone = subCounts.completed;
 
   let subTasksHtml = '';
   if (Array.isArray(startSubTasks) && startSubTasks.length > 0) {
@@ -532,7 +534,7 @@ function _buildMobileTaskCard(task, startSubTasks, todayStr) {
 
   card.className = 'mobile-cal-card rounded-xl border bg-white p-3 shadow-sm cursor-pointer active:scale-[0.98] transition-all hover:shadow-md';
   card.onclick = function() { if (typeof openTaskModal === 'function') openTaskModal(task.id); };
-  card.innerHTML = '<div class="flex items-start gap-2.5"><span class="text-lg leading-none mt-0.5 shrink-0">' + sc.icon + '</span><div class="flex-1 min-w-0"><p class="text-sm font-semibold text-slate-800 leading-snug line-clamp-2">' + escapeHTML(task.title || '') + '</p><div class="flex flex-wrap items-center gap-1.5 mt-1.5"><span class="inline-flex items-center gap-0.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold ' + sc.cls + '">' + sc.label + '</span><span class="rounded-full px-2 py-0.5 text-[10px] font-semibold ' + pc.cls + '">' + pc.label + '</span>' + (subCount > 0 ? '<span class="rounded-full bg-indigo-50 text-indigo-600 px-2 py-0.5 text-[10px] font-semibold">하위 ' + subDone + '/' + subCount + '</span>' : '') + '</div><div class="flex items-center justify-between mt-2"><span class="text-[11px] text-slate-500 truncate">👤 ' + escapeHTML(assignees) + '</span><span class="text-[10px] text-slate-400 shrink-0 ml-2">' + (task.startDate ? task.startDate.substring(5) : '?') + ' ~ ' + (task.dueDate ? task.dueDate.substring(5) : '?') + '</span></div>' + subTasksHtml + '</div></div>';
+  card.innerHTML = '<div class="flex items-start gap-2.5"><span class="text-lg leading-none mt-0.5 shrink-0">' + sc.icon + '</span><div class="flex-1 min-w-0"><p class="text-sm font-semibold text-slate-800 leading-snug line-clamp-2">' + escapeHTML(task.title || '') + '</p><div class="flex flex-wrap items-center gap-1.5 mt-1.5"><span class="inline-flex items-center gap-0.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold ' + sc.cls + '">' + sc.label + '</span><span class="rounded-full px-2 py-0.5 text-[10px] font-semibold ' + pc.cls + '">' + pc.label + '</span>' + (subCounts.total > 0 ? '<span class="rounded-full bg-indigo-50 text-indigo-600 px-2 py-0.5 text-[10px] font-semibold">하위 ' + subDone + '/' + subCount + (subCounts.cancelled ? ' · 취소 ' + subCounts.cancelled : '') + '</span>' : '') + '</div><div class="flex items-center justify-between mt-2"><span class="text-[11px] text-slate-500 truncate">👤 ' + escapeHTML(assignees) + '</span><span class="text-[10px] text-slate-400 shrink-0 ml-2">' + (task.startDate ? task.startDate.substring(5) : '?') + ' ~ ' + (task.dueDate ? task.dueDate.substring(5) : '?') + '</span></div>' + subTasksHtml + '</div></div>';
   return card;
 }
 

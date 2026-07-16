@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-day-renderer.js v20260626-module-split-phase4b-day-renderer loaded');
+console.info('Smart Task Flow calendar-day-renderer.js v20260716-v12 loaded');
 // DAY calendar mini-Gantt renderer. Extracted from app.js in Phase 4B.
 function renderCalendarDayView(ctx) {
   const { weekdayHeader, grid, year, month, todayStr, totalCalLanes, groups, showSubTaskBars, mainClass, dimIfNotCritical, useIndustryColor } = ctx;
@@ -56,6 +56,8 @@ function renderCalendarDayView(ctx) {
     };
     const polishedSubClass = item => normalizeStatus(item.status) === 'COMPLETED'
       ? 'bg-emerald-100/90 text-emerald-800 border border-emerald-200'
+      : normalizeStatus(item.status) === 'CANCELLED'
+        ? 'bg-slate-100/90 text-slate-500 border border-slate-200 opacity-70'
       : isSubTaskOverdue(item, todayStr)
         ? 'bg-rose-100/90 text-rose-800 border border-rose-200 font-semibold'
         : useIndustryColor
@@ -159,7 +161,7 @@ function renderCalendarDayView(ctx) {
     groups.forEach(g => {
       // Main task bar
       if (g.startDate <= lastDayStr && g.dueDate >= monthFirstStr) {
-        drawWeekFragment({ id: g.id, title: g.title, isSub: false, status: g.status, priority: g.priority, industry: g.industry, taskType: g.taskType, lane: g.globalLineStart, start: g.startDate, end: g.dueDate, parentId: g.id, assignee: g.assignee, notes: g.notes, dueDate: g.dueDate, subCount: (g.monthSubTasks || []).length, subDone: (g.monthSubTasks || []).filter(st => normalizeStatus(st.status) === 'COMPLETED').length, progressPct: getTaskProgress(g) });
+        drawWeekFragment({ id: g.id, title: g.title, isSub: false, status: g.status, priority: g.priority, industry: g.industry, taskType: g.taskType, lane: g.globalLineStart, start: g.startDate, end: g.dueDate, parentId: g.id, assignee: g.assignee, notes: g.notes, dueDate: g.dueDate, subCount: getSubTaskCompletionCounts(g.monthSubTasks || []).active, subDone: getSubTaskCompletionCounts(g.monthSubTasks || []).completed, progressPct: getTaskProgress(g) });
       }
       // Stable sub-task lane within the current month. Do not calculate by visible day; calculate once per month.
       if (showSubTaskBars) {
