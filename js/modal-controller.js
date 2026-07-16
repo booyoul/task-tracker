@@ -1,4 +1,4 @@
-console.info('Smart Task Flow modal-controller.js v20260701-v2 loaded');
+console.info('Smart Task Flow modal-controller.js v20260716-v1 loaded');
 // Task modal, subtask modal list, tracker modal, and form submit handlers.
 function resetSubTaskButton() {
   const btn = document.getElementById('btn-add-subtask');
@@ -269,6 +269,15 @@ window.removeSubTaskFromModal = function(index) {
   renderModalSubTasks();
 };
 function openTaskModal(id = null) {
+  const targetTask = id ? tasks.find(task => task.id === id) : null;
+  const targetTracker = trackers.find(tracker => tracker.id === currentTrackerId);
+  const canSave = id
+    ? window.hasTaskPermission?.(targetTask, 'update') === true
+    : window.hasTaskPermission?.(targetTracker, 'create') === true;
+  if (!id && !canSave) {
+    showToast('이 트래커에 업무를 등록할 권한이 없습니다.', false);
+    return;
+  }
   bindSubTaskRecurrenceControls();
   document.getElementById('form-task')?.reset();
   _currentNoteTaskId = id; // Set task ID immediately for subtask notes visibility
@@ -298,7 +307,7 @@ function openTaskModal(id = null) {
   const title = document.getElementById('modal-title');
   if (id) {
     const t = tasks.find(x => x.id === id); if (!t) return;
-    if (title) title.textContent = '업무 상세 변경';
+    if (title) title.textContent = canSave ? '업무 상세 변경' : '업무 상세 조회';
     setVal('input-task-id', t.id); setVal('input-task-title', t.title || ''); setVal('input-task-start', t.startDate || ''); setVal('input-task-due', t.dueDate || ''); setVal('input-task-priority', t.priority || 'NORMAL'); setVal('input-task-status', t.status || 'PENDING'); setVal('input-task-industry', t.industry || 'AUTO'); setVal('input-task-type', t.taskType || 'GENERAL'); setVal('input-task-notes', t.notes || '');
     currentSubTasks = Array.isArray(t.subTasks) ? JSON.parse(JSON.stringify(t.subTasks)).map(st => ({ ...st, status: normalizeStatus(st.status) })) : [];
     if (advancedSection) advancedSection.open = !!(t.notes || (t.industry && t.industry !== 'AUTO') || (t.taskType && t.taskType !== 'GENERAL'));
@@ -311,6 +320,7 @@ function openTaskModal(id = null) {
     if (subTasksSection) subTasksSection.open = false;
   }
   renderModalSubTasks();
+  document.querySelector('#form-task button[type="submit"]')?.classList.toggle('hidden', !canSave);
 
   // Load and render Unified Task History (Progress Notes & Activity Logs)
   const historySection = document.getElementById('task-history-section');
@@ -334,6 +344,90 @@ function openTaskModal(id = null) {
 }
 function closeModal() { document.getElementById('modal-task')?.classList.add('hidden'); }
 function closeConfirmModal() { document.getElementById('modal-confirm')?.classList.add('hidden'); confirmActionCb = null; }
+
+const TRACKER_ACCESS_LABELS = { view: '조회', create: '등록', update: '수정', delete: '삭제' };
+let trackerAccessMode = 'new';
+let trackerAccessWasEdited = false;
+
+function getTrackerAccessUsers() {
+  const usersById = new Map();
+  (window.approvedUsers || []).forEach(user => {
+    if (user?.uid) usersById.set(user.uid, user);
+  });
+  if (window.currentUser?.uid && !usersById.has(window.currentUser.uid)) {
+    usersById.set(window.currentUser.uid, {
+      uid: window.currentUser.uid,
+      displayName: window.currentUser.displayName || window.currentUser.email || '현재 사용자',
+      email: window.currentUser.email || ''
+    });
+  }
+  return [...usersById.values()].sort((a, b) => String(a.displayName || a.email).localeCompare(String(b.displayName || b.email), 'ko'));
+}
+
+function renderTrackerAccessControl(tracker = null, editable = true) {
+  const list = document.getElementById('tracker-access-list');
+  if (!list) return;
+  const ownerId = tracker?.ownerId || tracker?.createdBy || window.currentUser?.uid || '';
+  const acl = tracker?.accessControl && typeof tracker.accessControl === 'object' ? tracker.accessControl : null;
+  trackerAccessMode = tracker ? (acl ? 'acl' : 'legacy') : 'new';
+  trackerAccessWasEdited = false;
+  const users = getTrackerAccessUsers();
+  list.innerHTML = '';
+
+  users.forEach(user => {
+    const isOwner = user.uid === ownerId;
+    const row = document.createElement('div');
+    row.className = 'grid grid-cols-[minmax(180px,1fr)_repeat(4,58px)] items-center gap-1 px-2 py-2';
+    const fallbackPermissions = tracker
+      ? { view: true, create: true, update: false, delete: false }
+      : { view: false, create: false, update: false, delete: false };
+    const permissions = isOwner
+      ? { view: true, create: true, update: true, delete: true }
+      : (acl?.[user.uid] || fallbackPermissions);
+    row.innerHTML = `
+      <div class="min-w-0 pr-2">
+        <div class="truncate text-xs font-semibold text-slate-700">${escapeHTML(user.displayName || user.email || user.uid)}${isOwner ? ' <span class="text-indigo-600">(소유자)</span>' : ''}</div>
+        <div class="truncate text-[10px] text-slate-400">${escapeHTML(user.email || user.uid)}</div>
+      </div>
+      ${Object.keys(TRACKER_ACCESS_LABELS).map(permission => `
+        <label class="flex justify-center" title="${TRACKER_ACCESS_LABELS[permission]}">
+          <input type="checkbox" class="tracker-access-checkbox h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+            data-user-id="${escapeHTML(user.uid)}" data-permission="${permission}"
+            ${permissions[permission] === true ? 'checked' : ''} ${(isOwner || !editable) ? 'disabled' : ''}>
+        </label>
+      `).join('')}
+    `;
+    list.appendChild(row);
+  });
+
+  list.querySelectorAll('.tracker-access-checkbox:not(:disabled)').forEach(input => {
+    input.addEventListener('change', () => {
+      trackerAccessWasEdited = true;
+      const userId = input.dataset.userId;
+      const permission = input.dataset.permission;
+      const userInputs = [...list.querySelectorAll('.tracker-access-checkbox')].filter(item => item.dataset.userId === userId);
+      const viewInput = userInputs.find(item => item.dataset.permission === 'view');
+      if (permission !== 'view' && input.checked && viewInput) viewInput.checked = true;
+      if (permission === 'view' && !input.checked) {
+        userInputs.forEach(item => { item.checked = false; });
+      }
+    });
+  });
+}
+
+function collectTrackerAccessControl() {
+  if (trackerAccessMode === 'legacy' && !trackerAccessWasEdited) return null;
+  const acl = {};
+  document.querySelectorAll('#tracker-access-list .tracker-access-checkbox').forEach(input => {
+    const userId = input.dataset.userId;
+    const permission = input.dataset.permission;
+    if (!userId || !permission) return;
+    if (!acl[userId]) acl[userId] = { view: false, create: false, update: false, delete: false };
+    acl[userId][permission] = input.checked;
+  });
+  return Object.fromEntries(Object.entries(acl).filter(([, permissions]) => Object.values(permissions).some(Boolean)));
+}
+
 function openTrackerModal(id = null) {
   document.getElementById('form-tracker')?.reset();
   const del = document.getElementById('btn-delete-tracker');
@@ -362,6 +456,7 @@ function openTrackerModal(id = null) {
     document.getElementById('input-tracker-id').value = t.id;
     document.getElementById('input-tracker-name').value = t.name || '';
     document.getElementById('input-tracker-desc').value = t.desc || '';
+    renderTrackerAccessControl(t, hasPerm);
   } else {
     document.getElementById('modal-tracker-title').textContent = '새 트래커 스페이스 추가';
     document.getElementById('input-tracker-id').value = '';
@@ -369,6 +464,7 @@ function openTrackerModal(id = null) {
     if (inputDesc) inputDesc.readOnly = false;
     del?.classList.add('hidden');
     saveBtn?.classList.remove('hidden');
+    renderTrackerAccessControl(null, true);
   }
   document.getElementById('tracker-dropdown-menu')?.classList.add('hidden');
   document.getElementById('modal-tracker')?.classList.remove('hidden');
@@ -378,7 +474,12 @@ function closeTrackerModal() { document.getElementById('modal-tracker')?.classLi
 async function handleTrackerSubmit(e) {
   e.preventDefault();
   const id = document.getElementById('input-tracker-id').value;
-  const data = { name: document.getElementById('input-tracker-name').value.trim(), desc: document.getElementById('input-tracker-desc').value.trim() };
+  const data = {
+    name: document.getElementById('input-tracker-name').value.trim(),
+    desc: document.getElementById('input-tracker-desc').value.trim()
+  };
+  const accessControl = collectTrackerAccessControl();
+  if (accessControl) data.accessControl = accessControl;
   const result = id ? await db_updateTracker(id, data) : await db_addTracker(data);
   if (!result || !result.success) return;
   showToast(id ? '트래커가 수정되었습니다.' : '새 트래커 공간이 생성되었습니다.');
@@ -1023,7 +1124,12 @@ function initProgressNotesEvents() {
     if (!body) { showToast('메모 내용을 입력해 주세요.', false); return; }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(noteDate)) { showToast('기록일을 선택해 주세요.', false); return; }
 
-    const result = await window.db_updateProgressNote?.(_currentNotePanelNote.id, { title, body, noteDate });
+    const result = await window.db_updateProgressNote?.(_currentNotePanelNote.id, {
+      title,
+      body,
+      noteDate,
+      taskId: _currentNotePanelNote.taskId
+    });
     if (result && result.success) {
       _currentNotePanelNote = { ..._currentNotePanelNote, title, body, noteDate };
       setNotePanel_readMode(_currentNotePanelNote);
@@ -1056,6 +1162,7 @@ function initProgressNotesEvents() {
 
 
 window.closeKpiSettingsModal = closeKpiSettingsModal;
+window.renderTrackerAccessControl = renderTrackerAccessControl;
 
 // ──────────────────────────────────────────────────────
 // 하위 업무 진행 메모(Sub-task Progress Notes) 통합 라우터

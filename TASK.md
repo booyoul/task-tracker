@@ -1,6 +1,6 @@
 # Smart Task Flow Task
 
-Last updated: 2026-07-15
+Last updated: 2026-07-16
 
 ## Startup
 
@@ -12,7 +12,7 @@ Last updated: 2026-07-15
 
 ## Current State
 
-- Status: Firestore authorization hardening and failed-write-safe task/tracker CRUD are complete; the user published the production rules and unauthenticated production reads are verified denied.
+- Status: Tracker-level access control is implemented and the updated Firestore rules are published; live account permission verification remains.
 - Main app: `/home/booyoul/projects/task-tracker-main`
 - Task file: `TASK.md`
 - Project rules: `.agents/AGENTS.md`
@@ -24,6 +24,7 @@ Last updated: 2026-07-15
 - Mobile calendar, list, monthly summary, KPI badge/settings, activity timeline, and mobile smoke QA are implemented.
 - Monthly summary is optimized for progress-note review with note-first layout, task-grouped note cards, author/type/search filters, and review labels for results, issues, decisions, and follow-up.
 - Progress notes support a user-selected `noteDate`; existing notes fall back to `createdAt`, while feeds and monthly summaries use the effective record date.
+- New trackers store per-user `view/create/update/delete` permissions in `accessControl`; owners and admins retain full access, while legacy trackers keep their previous behavior until ACL settings are explicitly changed.
 - Sub task recurrence input, schema normalization, calendar/monthly summary occurrence rendering, and flat export rows are implemented.
 - Recurring sub task occurrences can store per-cycle status overrides on the source sub task through `recurrenceCompletions`; status can be edited from the task modal or monthly summary, and yearly calendar views group occurrences from the same source sub task into one lane.
 - Tailwind dark mode is class-based via `.dark`, not OS preference.
@@ -45,6 +46,7 @@ Last updated: 2026-07-15
 - CSS build: `npm run build:css`
 - Mobile regression: `npm run smoke:mobile`
 - Security contract: `npm run smoke:security`
+- Tracker access UI: `npm run smoke:access`
 - Firestore Rules Emulator: `npm run test:rules`
 - Combined regression: `npm test`
 - JS syntax: `node --check path/to/file.js`
@@ -53,6 +55,7 @@ Last updated: 2026-07-15
 ## Recent Completed Work
 
 - Firestore rules now require approved users, prevent self-promotion to admin, enforce task/tracker ownership, and validate note/activity authorship for both standard and environment-scoped collections.
+- Tracker owners can grant approved users separate task view, create, update, and delete rights; client rendering/listeners and Firestore rules enforce the same ACL contract.
 - Missing user documents now enter approval-pending state, authentication lookup failures fail closed, and legacy ownerless tasks are editable only by admins.
 - `npm run smoke:security` guards the approval, role, ownership, and legacy-write contracts.
 - Task and tracker CRUD now mutate local state and show caller success messages only after Firestore confirms the write; `npm run smoke:crud` covers failed add/update/delete behavior.
@@ -65,6 +68,7 @@ Last updated: 2026-07-15
 
 ## Next Work
 
+- Verify owner, view-only, creator, editor, deleter, and no-access accounts against production using the published tracker-ACL Firestore rules.
 - Audit existing production user documents for unexpected `role: admin` or `status: approved` values created under the previous permissive rules.
 - Run approved-user owner/admin create, update, delete, and restore checks against production Firestore.
 

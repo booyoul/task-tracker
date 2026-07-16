@@ -1,5 +1,5 @@
 // js/auth-service.js
-console.info('Smart Task Flow auth-service.js v20260701-v2 loaded');
+console.info('Smart Task Flow auth-service.js v20260716-v1 loaded');
 
 // 가입을 허용할 사내 이메일 도메인 설정 (필요시 도메인 추가 가능)
 const ALLOWED_DOMAINS = ['@kr.spiraxsarco.com', '@kr.spiraxsarco.kr', '@test.com'];
@@ -143,21 +143,49 @@ function isAdminUser() {
     return window.currentUserDoc?.role === 'admin';
 }
 
-function hasWritePermission(item) {
+const TRACKER_PERMISSION_KEYS = ['view', 'create', 'update', 'delete'];
+
+function getTrackerForPermission(item) {
+    if (!item) return trackers?.find(t => t.id === currentTrackerId) || null;
+    if (!item.trackerId && item.id) return item;
+    const trackerId = item.trackerId || currentTrackerId;
+    return trackers?.find(t => t.id === trackerId) || null;
+}
+
+function hasTaskPermission(item, permission = 'view') {
     if (!window.currentUser) {
-        console.warn('hasWritePermission 거부: 로그인된 사용자가 없습니다.');
+        console.warn(`hasTaskPermission(${permission}) 거부: 로그인된 사용자가 없습니다.`);
         return false;
     }
-    if (typeof isAdminUser === 'function' && isAdminUser()) return true; // 관리자는 전체 권한 허용
-    if (!item) return true;
-    // 소유권이 없는 레거시 데이터는 관리자만 수정할 수 있어야 Firestore Rules와 일치합니다.
-    if (!item.createdBy || item.createdBy === 'anonymous') return false;
-    
-    const hasPermission = item.createdBy === window.currentUser.uid;
+    if (!TRACKER_PERMISSION_KEYS.includes(permission)) return false;
+    if (typeof isAdminUser === 'function' && isAdminUser()) return true;
+
+    const tracker = getTrackerForPermission(item);
+    if (!tracker) return false;
+    const ownerId = tracker.ownerId || tracker.createdBy;
+    if (ownerId && ownerId === window.currentUser.uid) return true;
+
+    const acl = tracker.accessControl;
+    if (acl && typeof acl === 'object') {
+        return acl[window.currentUser.uid]?.[permission] === true;
+    }
+
+    // ACL 도입 전 트래커는 기존 동작을 보존합니다.
+    if (permission === 'view' || permission === 'create') return true;
+    if (!item || !item.createdBy || item.createdBy === 'anonymous') return false;
+    return item.createdBy === window.currentUser.uid;
+}
+
+function hasWritePermission(item) {
+    const hasPermission = hasTaskPermission(item, 'update');
     if (!hasPermission) {
-        console.warn(`hasWritePermission 거부: 데이터 작성자(${item.createdBy})와 현재 사용자(${window.currentUser.uid})가 일치하지 않습니다.`);
+        console.warn(`hasWritePermission 거부: 사용자(${window.currentUser?.uid || 'anonymous'})에게 업무 수정 권한이 없습니다.`);
     }
     return hasPermission;
+}
+
+function canAccessTracker(tracker) {
+    return hasTaskPermission(tracker, 'view');
 }
 
 function hasTrackerWritePermission(tracker) {
@@ -168,14 +196,15 @@ function hasTrackerWritePermission(tracker) {
     if (typeof isAdminUser === 'function' && isAdminUser()) return true; // 관리자는 전체 권한 허용
     if (!tracker) return true; // 신규 생성 등
     
+    const trackerOwnerId = tracker.ownerId || tracker.createdBy;
     // 기본 트래커 및 소유자가 지정되지 않은 레거시 트래커는 관리자 외 수정/삭제 차단
-    if (!tracker.createdBy || tracker.createdBy === 'anonymous') {
+    if (!trackerOwnerId || trackerOwnerId === 'anonymous') {
         return false;
     }
     
-    const hasPermission = tracker.createdBy === window.currentUser.uid;
+    const hasPermission = trackerOwnerId === window.currentUser.uid;
     if (!hasPermission) {
-        console.warn(`hasTrackerWritePermission 거부: 트래커 작성자(${tracker.createdBy})와 현재 사용자(${window.currentUser.uid})가 일치하지 않습니다.`);
+        console.warn(`hasTrackerWritePermission 거부: 트래커 소유자(${trackerOwnerId})와 현재 사용자(${window.currentUser.uid})가 일치하지 않습니다.`);
     }
     return hasPermission;
 }
@@ -184,6 +213,9 @@ window.signUpWithEmail = signUpWithEmail;
 window.loginWithEmail = loginWithEmail;
 window.logout = logout;
 window.renderAuthHeader = renderAuthHeader;
+window.TRACKER_PERMISSION_KEYS = TRACKER_PERMISSION_KEYS;
+window.hasTaskPermission = hasTaskPermission;
 window.hasWritePermission = hasWritePermission;
+window.canAccessTracker = canAccessTracker;
 window.hasTrackerWritePermission = hasTrackerWritePermission;
 window.isAdminUser = isAdminUser;

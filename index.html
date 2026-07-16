@@ -1240,8 +1240,8 @@
                 </div>
                 <span class="hidden sm:inline-block sm:h-screen sm:align-middle" aria-hidden="true">&#8203;</span>
                 <div
-                    class="relative z-10 inline-block transform overflow-hidden rounded-2xl bg-white text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md sm:align-middle">
-                    <div class="bg-white p-6">
+                    class="relative z-10 inline-block transform overflow-hidden rounded-2xl bg-white text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-3xl sm:align-middle">
+                    <div class="max-h-[90vh] overflow-y-auto bg-white p-6">
                         <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                             <h3 class="text-lg font-bold text-slate-900" id="modal-tracker-title">새 트래커 스페이스 추가</h3>
                             <button id="btn-close-tracker-modal"
@@ -1266,6 +1266,21 @@
                                     placeholder="트래커 스페이스에 대한 간단한 역할을 설명해 주세요."
                                     class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100"></textarea>
                             </div>
+                            <section id="tracker-access-section" class="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                                <div class="mb-2 flex flex-wrap items-start justify-between gap-2">
+                                    <div>
+                                        <h4 class="text-xs font-bold text-slate-700">사용자별 접근 권한</h4>
+                                        <p class="mt-0.5 text-[10px] text-slate-400">조회·등록·수정·삭제 권한을 사용자별로 설정합니다. 소유자는 항상 전체 권한을 가집니다.</p>
+                                    </div>
+                                    <span class="rounded-full bg-indigo-50 px-2 py-1 text-[10px] font-bold text-indigo-600">트래커 소유자 관리</span>
+                                </div>
+                                <div class="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+                                    <div class="grid min-w-[560px] grid-cols-[minmax(180px,1fr)_repeat(4,58px)] items-center gap-1 border-b border-slate-100 bg-slate-50 px-2 py-1.5 text-center text-[10px] font-bold text-slate-500">
+                                        <span class="text-left">사용자</span><span>조회</span><span>등록</span><span>수정</span><span>삭제</span>
+                                    </div>
+                                    <div id="tracker-access-list" class="max-h-56 min-w-[560px] divide-y divide-slate-100"></div>
+                                </div>
+                            </section>
                             <div class="border-t border-slate-100 pt-4 flex items-center justify-between gap-2">
                                 <button type="button" id="btn-delete-tracker"
                                     class="hidden rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 hover:bg-rose-100 transition">이
@@ -1452,7 +1467,7 @@
     <!-- 스크립트 비즈니스 로직 연동 시작 -->
     <script type="module" src="./js/firebase.js?v=20260629-v1"></script>
     <script defer src="./js/state.js?v=20260714-v5"></script>
-    <script defer src="./js/auth-service.js?v=20260714-v3"></script>
+    <script defer src="./js/auth-service.js?v=20260716-v1"></script>
     <script defer src="./js/date-risk-utils.js?v=20260629-v2"></script>
     <script defer src="./js/schema-service.js?v=20260714-v3"></script>
     <script defer src="./js/calendar-utils.js?v=20260714-v4"></script>
@@ -1462,12 +1477,12 @@
     <script defer src="./js/calendar-mobile-renderer.js?v=20260714-v2"></script>
     <script defer src="./js/table-mobile-renderer.js?v=20260711-v11"></script>
     <script defer src="./js/kanban-renderer.js?v=20260711-v10"></script>
-    <script defer src="./js/modal-controller.js?v=20260715-v1"></script>
-    <script defer src="./js/admin-approvals.js?v=20260711-v10"></script>
+    <script defer src="./js/modal-controller.js?v=20260716-v1"></script>
+    <script defer src="./js/admin-approvals.js?v=20260716-v1"></script>
     <script defer src="./js/event-bindings.js?v=20260714-v2"></script>
     <script defer src="./js/bootstrap-service.js?v=20260714-v11"></script>
-    <script defer src="./js/app.js?v=20260714-v7"></script>
-    <script defer src="./js/task-service.js?v=20260715-v1"></script>
+    <script defer src="./js/app.js?v=20260716-v1"></script>
+    <script defer src="./js/task-service.js?v=20260716-v1"></script>
     <script defer src="./js/export-service.js?v=20260714-v2"></script>
 </body>
 

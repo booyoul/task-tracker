@@ -34,6 +34,10 @@ function createContext() {
   context.window = context;
   context.currentUser = { uid: 'user-1', email: 'user-1@example.com' };
   context.hasWritePermission = task => task && task.ownerId === 'user-1';
+  context.hasTaskPermission = (item, permission) => {
+    if (permission === 'view' || permission === 'create') return true;
+    return item ? item.ownerId === 'user-1' : true;
+  };
   context.hasTrackerWritePermission = tracker => tracker && tracker.ownerId === 'user-1';
   context.fs = {
     doc: (_collection, id) => ({ id }),
@@ -109,6 +113,43 @@ async function main() {
   const unavailableResult = await unavailable.db_updateTask('task-1', { title: '로컬만 변경' });
   assert.equal(unavailableResult.success, false);
   assert.equal(unavailable.tasks[0].title, '원본 업무', 'DB 접근 불가 시 로컬만 변경하면 안 됩니다.');
+
+  const deniedCreate = createContext();
+  let deniedCreateWrites = 0;
+  deniedCreate.hasTaskPermission = (_item, permission) => permission !== 'create';
+  deniedCreate.fs.setDoc = async () => { deniedCreateWrites += 1; };
+  const deniedCreateResult = await deniedCreate.db_addTask({ title: '권한 없는 업무' });
+  assert.equal(deniedCreateResult.success, false);
+  assert.equal(deniedCreateWrites, 0, '등록 권한이 없으면 Firestore 쓰기를 시도하면 안 됩니다.');
+
+  const aclUpdate = createContext();
+  aclUpdate.tasks[0].ownerId = 'user-2';
+  aclUpdate.tasks[0].createdBy = 'user-2';
+  aclUpdate.hasTaskPermission = (_item, permission) => permission === 'update';
+  const aclUpdateResult = await aclUpdate.db_updateTask('task-1', { title: '권한으로 수정된 업무' });
+  assert.equal(aclUpdateResult.success, true);
+  assert.equal(aclUpdate.tasks[0].title, '권한으로 수정된 업무', '트래커 수정 권한은 다른 작성자의 업무에도 적용되어야 합니다.');
+
+  const trackerCreate = createContext();
+  let trackerCreatePayload = null;
+  trackerCreate.fs.setDoc = async (_ref, payload) => { trackerCreatePayload = payload; };
+  const trackerCreateResult = await trackerCreate.db_addTracker({ name: '권한 트래커', accessControl: {} });
+  assert.equal(trackerCreateResult.success, true);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(trackerCreatePayload.accessControl['user-1'])),
+    { view: true, create: true, update: true, delete: true },
+    '트래커 등록자는 항상 전체 권한을 가져야 합니다.'
+  );
+
+  const trackerAclUpdate = createContext();
+  let trackerUpdatePayload = null;
+  trackerAclUpdate.fs.setDoc = async (_ref, payload) => { trackerUpdatePayload = payload; };
+  const trackerAclResult = await trackerAclUpdate.db_updateTracker('tracker-1', {
+    accessControl: { 'user-2': { view: true, create: false, update: false, delete: false } }
+  });
+  assert.equal(trackerAclResult.success, true);
+  assert.equal(trackerUpdatePayload.accessControl['user-1'].delete, true, '권한 수정 시 소유자 전체 권한을 보존해야 합니다.');
+  assert.equal(trackerUpdatePayload.accessControl['user-2'].view, true, '다른 사용자의 조회 권한을 저장해야 합니다.');
 
   const noteCreate = createContext();
   let createdNotePayload = null;

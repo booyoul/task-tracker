@@ -10,8 +10,9 @@
     "smoke:mobile": "node scripts/mobile-smoke.js",
     "smoke:security": "node scripts/security-smoke.js",
     "smoke:crud": "node scripts/task-crud-smoke.js",
+    "smoke:access": "node scripts/tracker-access-smoke.js",
     "test:rules": "firebase emulators:exec --only firestore --project demo-task-tracker-security \"node scripts/firestore-rules.test.js\"",
-    "test": "npm run smoke:security && npm run smoke:crud && npm run test:rules && npm run smoke:mobile"
+    "test": "npm run smoke:security && npm run smoke:crud && npm run smoke:access && npm run test:rules && npm run smoke:mobile"
   },
   "keywords": [],
   "author": "",

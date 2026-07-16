@@ -1,12 +1,18 @@
-console.info('Smart Task Flow task-service.js v20260701-v2 loaded');
+console.info('Smart Task Flow task-service.js v20260716-v1 loaded');
 // Task / tracker CRUD and Firebase realtime listener helpers.
+let taskSnapshotsByTracker = new Map();
 async function db_addTask(taskData) {
   const coll = getTasksCollection();
   const id = 'task_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
-  const tracker = trackers.find(t => t.id === currentTrackerId);
+  const targetTrackerId = taskData.trackerId || currentTrackerId;
+  const tracker = trackers.find(t => t.id === targetTrackerId);
+  if (!window.hasTaskPermission?.(tracker, 'create')) {
+    showToast('이 트래커에 업무를 등록할 권한이 없습니다.', false);
+    return { success: false, error: '업무 등록 권한이 없습니다.' };
+  }
   const payload = normalizeTaskForSchema({
     ...taskData,
-    trackerId: taskData.trackerId || currentTrackerId,
+    trackerId: targetTrackerId,
     trackerName: tracker ? tracker.name : '',
     deleted: false,
     createdAt: getServerTimestamp(),
@@ -37,7 +43,7 @@ async function db_addTask(taskData) {
 }
 async function db_updateTask(id, taskData) {
   const originalTask = tasks.find(t => t.id === id) || {};
-  if (!window.hasWritePermission(originalTask)) {
+  if (!window.hasTaskPermission?.(originalTask, 'update')) {
     showToast('수정 권한이 없습니다.', false);
     return { success: false, error: '수정 권한이 없습니다.' };
   }
@@ -80,7 +86,7 @@ async function db_updateTask(id, taskData) {
 }
 async function db_deleteTask(id) {
   const originalTask = tasks.find(t => t.id === id);
-  if (!window.hasWritePermission(originalTask)) {
+  if (!window.hasTaskPermission?.(originalTask, 'delete')) {
     showToast('삭제 권한이 없습니다.', false);
     return { success: false, error: '삭제 권한이 없습니다.' };
   }
@@ -110,7 +116,7 @@ async function db_batchDelete(idsSet) {
   const ids = Array.from(idsSet || []);
   const myIds = ids.filter(id => {
     const task = tasks.find(t => t.id === id);
-    return window.hasWritePermission(task);
+    return window.hasTaskPermission?.(task, 'delete');
   });
   if (myIds.length === 0) {
     showToast('삭제 권한이 있는 업무가 없습니다.', false);
@@ -148,7 +154,7 @@ async function db_updateTaskOrders(orderUpdates) {
   if (!updates.length) return { success: true, updatedIds: [] };
   const invalid = updates.find(update => {
     const task = tasks.find(t => t.id === update.id);
-    return !task || !window.hasWritePermission(task);
+    return !task || !window.hasTaskPermission?.(task, 'update');
   });
   if (invalid) {
     showToast('업무 순서 변경 권한이 없습니다.', false);
@@ -185,8 +191,11 @@ async function db_addTracker(data) {
   const coll = getTrackersCollection();
   const id = 'tracker_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
   const nextOrder = trackers.length ? Math.max(...trackers.map(t => typeof t.order === 'number' ? t.order : 0)) + 1 : 1;
+  const ownerId = window.currentUser ? window.currentUser.uid : 'anonymous';
+  const ownerPermissions = { view: true, create: true, update: true, delete: true };
   const payload = {
     ...data,
+    accessControl: { ...(data.accessControl || {}), [ownerId]: ownerPermissions },
     kpiTitle: data.kpiTitle || '업무 완료율',
     kpiTarget: typeof data.kpiTarget === 'number' ? data.kpiTarget : (typeof data.targetKpi === 'number' ? data.targetKpi : 80),
     kpiUnit: data.kpiUnit || '%',
@@ -198,7 +207,7 @@ async function db_addTracker(data) {
     updatedAt: getServerTimestamp(),
     createdBy: window.currentUser ? window.currentUser.uid : 'anonymous',
     createdByName: window.currentUser ? (window.currentUser.displayName || window.currentUser.email) : 'anonymous',
-    ownerId: window.currentUser ? window.currentUser.uid : 'anonymous'
+    ownerId
   };
   markSaving();
   if (!coll || !canWriteToFirestore()) {
@@ -228,7 +237,14 @@ async function db_updateTracker(id, data) {
     return { success: false, error: '트래커 수정 권한이 없습니다.' };
   }
   const coll = getTrackersCollection();
-  const payload = { ...data, order: original && typeof original.order === 'number' ? original.order : data.order, updatedAt: getServerTimestamp() };
+  const ownerId = original?.ownerId || original?.createdBy;
+  const ownerPermissions = { view: true, create: true, update: true, delete: true };
+  const payload = {
+    ...data,
+    accessControl: data.accessControl ? { ...data.accessControl, ...(ownerId ? { [ownerId]: ownerPermissions } : {}) } : original?.accessControl,
+    order: original && typeof original.order === 'number' ? original.order : data.order,
+    updatedAt: getServerTimestamp()
+  };
   markSaving();
   if (!coll || !canWriteToFirestore()) {
     markSaveError();
@@ -320,21 +336,52 @@ function setupRealtimeListeners() {
         kpiCurrent: typeof d.kpiCurrent === 'number' ? d.kpiCurrent : 0,
         ...d 
       };
-    }).filter(t => t.deleted !== true));
-    if (incoming.length) trackers = incoming;
+    }).filter(t => t.deleted !== true && window.canAccessTracker?.(t) === true));
+    trackers = incoming;
     const saved = localStorage.getItem('flow_current_tracker');
     if (saved && trackers.some(t => t.id === saved)) currentTrackerId = saved;
     else if (!trackers.some(t => t.id === currentTrackerId) && trackers[0]) currentTrackerId = trackers[0].id;
+    else if (!trackers.length) currentTrackerId = '';
+    setupAccessibleTaskListeners(taskColl, trackers);
     updateTrackerUI();
     updateUI();
   }, err => { console.error('트래커 동기화 오류', err); showToast('트래커 실시간 동기화 오류', false); });
-  unsubscribeTasks = window.fs.onSnapshot(taskColl, snapshot => {
-    tasks = snapshot.docs.map(doc => normalizeTaskForSchema({ id: doc.id, ...doc.data() })).filter(t => t.deleted !== true);
+  return true;
+}
+
+function setupAccessibleTaskListeners(taskColl, accessibleTrackers) {
+  if (typeof unsubscribeTasks === 'function') unsubscribeTasks();
+  taskSnapshotsByTracker = new Map();
+  const unsubscribers = [];
+  const refreshTasks = () => {
+    tasks = [...taskSnapshotsByTracker.values()].flat();
     updateTrackerUI();
     updateUI();
     migrateExistingTasksToCurrentSchema(tasks);
-  }, err => { console.error('업무 동기화 오류', err); showToast('업무 실시간 동기화 오류', false); });
-  return true;
+  };
+
+  (accessibleTrackers || []).forEach(tracker => {
+    const q = window.fs.query(taskColl, window.fs.where('trackerId', '==', tracker.id));
+    const unsubscribe = window.fs.onSnapshot(q, snapshot => {
+      const scopedTasks = snapshot.docs
+        .map(doc => normalizeTaskForSchema({ id: doc.id, ...doc.data() }))
+        .filter(task => task.deleted !== true && window.hasTaskPermission?.(task, 'view') === true);
+      taskSnapshotsByTracker.set(tracker.id, scopedTasks);
+      refreshTasks();
+    }, err => {
+      console.error(`업무 동기화 오류 (${tracker.id})`, err);
+      showToast(`'${tracker.name || tracker.id}' 업무 동기화 권한을 확인해 주세요.`, false);
+    });
+    unsubscribers.push(unsubscribe);
+  });
+
+  unsubscribeTasks = () => {
+    unsubscribers.forEach(unsubscribe => {
+      try { unsubscribe(); } catch (e) { console.warn('unsubscribe task scope error', e); }
+    });
+    taskSnapshotsByTracker.clear();
+  };
+  if (!unsubscribers.length) refreshTasks();
 }
 async function fetchInitialData() { await ensureDefaultTrackersInFirestore(); if (!setupRealtimeListeners()) updateUI(); }
 
@@ -377,12 +424,9 @@ async function db_fetchActivityLogs(taskId) {
   const coll = window.getActivityLogsCollection?.();
   if (!coll || !canWriteToFirestore()) return [];
   try {
-    const q = window.fs.query(
-      coll,
-      window.fs.where('taskId', '==', taskId)
-    );
+    const q = window.fs.query(coll, window.fs.where('trackerId', '==', currentTrackerId));
     const snap = await window.fs.getDocs(q);
-    const logs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const logs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(log => log.taskId === taskId);
     logs.sort((a, b) => {
       const timeA = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : new Date(a.timestamp || 0).getTime();
       const timeB = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : new Date(b.timestamp || 0).getTime();
@@ -407,6 +451,8 @@ window.db_fetchActivityLogs = db_fetchActivityLogs;
 async function db_addProgressNote(taskId, { title, body, noteDate }) {
   const coll = window.getProgressNotesCollection?.();
   if (!coll || !canWriteToFirestore()) return { success: false, error: '인증 실패 또는 DB 접근 불가' };
+  const task = tasks.find(item => item.id === taskId.split('__sub_')[0]);
+  if (!window.hasTaskPermission?.(task, 'update')) return { success: false, error: '메모 등록 권한이 없습니다.' };
   const id = 'note_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
   const payload = {
     taskId,
@@ -433,21 +479,12 @@ async function db_fetchProgressNotes(taskId) {
   const coll = window.getProgressNotesCollection?.();
   if (!coll) return [];
   try {
-    let q;
-    if (taskId.includes('__sub_')) {
-      q = window.fs.query(
-        coll,
-        window.fs.where('taskId', '==', taskId)
-      );
-    } else {
-      q = window.fs.query(
-        coll,
-        window.fs.where('taskId', '>=', taskId),
-        window.fs.where('taskId', '<=', taskId + '\uf8ff')
-      );
-    }
+    const q = window.fs.query(coll, window.fs.where('trackerId', '==', currentTrackerId));
     const snap = await window.fs.getDocs(q);
-    const notes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const notes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(note => {
+      if (taskId.includes('__sub_')) return note.taskId === taskId;
+      return note.taskId === taskId || note.taskId?.startsWith(`${taskId}__sub_`);
+    });
     notes.sort((a, b) => {
       const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt || 0).getTime();
       const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt || 0).getTime();
@@ -460,9 +497,11 @@ async function db_fetchProgressNotes(taskId) {
   }
 }
 
-async function db_updateProgressNote(noteId, { title, body, noteDate }) {
+async function db_updateProgressNote(noteId, { title, body, noteDate, taskId }) {
   const coll = window.getProgressNotesCollection?.();
   if (!coll || !canWriteToFirestore()) return { success: false, error: '인증 실패 또는 DB 접근 불가' };
+  const task = tasks.find(item => item.id === String(taskId || '').split('__sub_')[0]);
+  if (!window.hasTaskPermission?.(task || null, 'update')) return { success: false, error: '메모 수정 권한이 없습니다.' };
   try {
     await window.fs.updateDoc(window.fs.doc(coll, noteId), {
       title: title || '',
@@ -480,6 +519,8 @@ async function db_updateProgressNote(noteId, { title, body, noteDate }) {
 async function db_deleteProgressNote(noteId, taskId) {
   const coll = window.getProgressNotesCollection?.();
   if (!coll || !canWriteToFirestore()) return { success: false, error: '인증 실패 또는 DB 접근 불가' };
+  const task = tasks.find(item => item.id === String(taskId || '').split('__sub_')[0]);
+  if (!window.hasTaskPermission?.(task, 'delete')) return { success: false, error: '메모 삭제 권한이 없습니다.' };
   try {
     await window.fs.deleteDoc(window.fs.doc(coll, noteId));
     if (taskId) await db_recordActivity(taskId, 'NOTE_DELETE', null);

@@ -77,6 +77,60 @@ service cloud.firestore {
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['createdBy', 'ownerId']);
     }
 
+    function keepsTrackerReference() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['trackerId']);
+    }
+
+    function keepsTaskIdentity() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['createdBy', 'ownerId', 'trackerId']);
+    }
+
+    function changesOnlyDeleteState() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deleted', 'deletedAt', 'updatedAt']);
+    }
+
+    function keepsDeleteState() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['deleted', 'deletedAt']);
+    }
+
+    function trackerUsesAcl(trackerId) {
+      return exists(/databases/$(database)/documents/trackers/$(trackerId)) &&
+        'accessControl' in get(/databases/$(database)/documents/trackers/$(trackerId)).data;
+    }
+
+    function hasTrackerPermission(trackerId, permission) {
+      let tracker = get(/databases/$(database)/documents/trackers/$(trackerId)).data;
+      return isApproved() && exists(/databases/$(database)/documents/trackers/$(trackerId)) && (
+        isAdmin() ||
+        tracker.ownerId == request.auth.uid ||
+        tracker.createdBy == request.auth.uid ||
+        (
+          request.auth.uid in tracker.accessControl &&
+          permission in tracker.accessControl[request.auth.uid] &&
+          tracker.accessControl[request.auth.uid][permission] == true
+        )
+      );
+    }
+
+    function envTrackerUsesAcl(envAppId, trackerId) {
+      return exists(/databases/$(database)/documents/artifacts/$(envAppId)/public/data/trackers/$(trackerId)) &&
+        'accessControl' in get(/databases/$(database)/documents/artifacts/$(envAppId)/public/data/trackers/$(trackerId)).data;
+    }
+
+    function hasEnvTrackerPermission(envAppId, trackerId, permission) {
+      let tracker = get(/databases/$(database)/documents/artifacts/$(envAppId)/public/data/trackers/$(trackerId)).data;
+      return isEnvApproved(envAppId) && exists(/databases/$(database)/documents/artifacts/$(envAppId)/public/data/trackers/$(trackerId)) && (
+        isEnvAdmin(envAppId) ||
+        tracker.ownerId == request.auth.uid ||
+        tracker.createdBy == request.auth.uid ||
+        (
+          request.auth.uid in tracker.accessControl &&
+          permission in tracker.accessControl[request.auth.uid] &&
+          tracker.accessControl[request.auth.uid][permission] == true
+        )
+      );
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
@@ -89,10 +143,25 @@ service cloud.firestore {
     }
 
     match /tasks/{taskId} {
-      allow read: if isApproved();
-      allow create: if isApproved() && (isAdmin() || isCreatedByCurrentUser());
-      allow update: if isApproved() && (isAdmin() || (isResourceOwner() && keepsOwnership()));
-      allow delete: if isApproved() && (isAdmin() || isResourceOwner());
+      allow read: if isApproved() && (
+        isAdmin() || !trackerUsesAcl(resource.data.trackerId) || hasTrackerPermission(resource.data.trackerId, 'view')
+      );
+      allow create: if isApproved() && isCreatedByCurrentUser() && (
+        isAdmin() || !trackerUsesAcl(request.resource.data.trackerId) || hasTrackerPermission(request.resource.data.trackerId, 'create')
+      );
+      allow update: if isApproved() && (
+        isAdmin() ||
+        (trackerUsesAcl(resource.data.trackerId) && keepsTaskIdentity() && (
+          (hasTrackerPermission(resource.data.trackerId, 'update') && keepsDeleteState()) ||
+          (hasTrackerPermission(resource.data.trackerId, 'delete') && changesOnlyDeleteState())
+        )) ||
+        (!trackerUsesAcl(resource.data.trackerId) && isResourceOwner() && keepsTaskIdentity())
+      );
+      allow delete: if isApproved() && (
+        isAdmin() ||
+        (trackerUsesAcl(resource.data.trackerId) && hasTrackerPermission(resource.data.trackerId, 'delete')) ||
+        (!trackerUsesAcl(resource.data.trackerId) && isResourceOwner())
+      );
     }
 
     match /users/{userId} {
@@ -110,10 +179,25 @@ service cloud.firestore {
     }
 
     match /artifacts/{envAppId}/public/data/tasks/{taskId} {
-      allow read: if isEnvApproved(envAppId);
-      allow create: if isEnvApproved(envAppId) && (isEnvAdmin(envAppId) || isCreatedByCurrentUser());
-      allow update: if isEnvApproved(envAppId) && (isEnvAdmin(envAppId) || (isResourceOwner() && keepsOwnership()));
-      allow delete: if isEnvApproved(envAppId) && (isEnvAdmin(envAppId) || isResourceOwner());
+      allow read: if isEnvApproved(envAppId) && (
+        isEnvAdmin(envAppId) || !envTrackerUsesAcl(envAppId, resource.data.trackerId) || hasEnvTrackerPermission(envAppId, resource.data.trackerId, 'view')
+      );
+      allow create: if isEnvApproved(envAppId) && isCreatedByCurrentUser() && (
+        isEnvAdmin(envAppId) || !envTrackerUsesAcl(envAppId, request.resource.data.trackerId) || hasEnvTrackerPermission(envAppId, request.resource.data.trackerId, 'create')
+      );
+      allow update: if isEnvApproved(envAppId) && (
+        isEnvAdmin(envAppId) ||
+        (envTrackerUsesAcl(envAppId, resource.data.trackerId) && keepsTaskIdentity() && (
+          (hasEnvTrackerPermission(envAppId, resource.data.trackerId, 'update') && keepsDeleteState()) ||
+          (hasEnvTrackerPermission(envAppId, resource.data.trackerId, 'delete') && changesOnlyDeleteState())
+        )) ||
+        (!envTrackerUsesAcl(envAppId, resource.data.trackerId) && isResourceOwner() && keepsTaskIdentity())
+      );
+      allow delete: if isEnvApproved(envAppId) && (
+        isEnvAdmin(envAppId) ||
+        (envTrackerUsesAcl(envAppId, resource.data.trackerId) && hasEnvTrackerPermission(envAppId, resource.data.trackerId, 'delete')) ||
+        (!envTrackerUsesAcl(envAppId, resource.data.trackerId) && isResourceOwner())
+      );
     }
 
     match /artifacts/{envAppId}/public/data/users/{userId} {
@@ -124,27 +208,65 @@ service cloud.firestore {
     }
 
     match /activity_logs/{logId} {
-      allow read: if isApproved();
-      allow create: if isApproved() && request.resource.data.changedBy == request.auth.uid;
+      allow read: if isApproved() && (
+        isAdmin() || !trackerUsesAcl(resource.data.trackerId) || hasTrackerPermission(resource.data.trackerId, 'view')
+      );
+      allow create: if isApproved() && request.resource.data.changedBy == request.auth.uid && (
+        isAdmin() || !trackerUsesAcl(request.resource.data.trackerId) ||
+        (request.resource.data.action == 'CREATE' && hasTrackerPermission(request.resource.data.trackerId, 'create')) ||
+        (request.resource.data.action == 'DELETE' && hasTrackerPermission(request.resource.data.trackerId, 'delete')) ||
+        (!(request.resource.data.action in ['CREATE', 'DELETE']) && hasTrackerPermission(request.resource.data.trackerId, 'update'))
+      );
     }
 
     match /artifacts/{envAppId}/public/data/activity_logs/{logId} {
-      allow read: if isEnvApproved(envAppId);
-      allow create: if isEnvApproved(envAppId) && request.resource.data.changedBy == request.auth.uid;
+      allow read: if isEnvApproved(envAppId) && (
+        isEnvAdmin(envAppId) || !envTrackerUsesAcl(envAppId, resource.data.trackerId) || hasEnvTrackerPermission(envAppId, resource.data.trackerId, 'view')
+      );
+      allow create: if isEnvApproved(envAppId) && request.resource.data.changedBy == request.auth.uid && (
+        isEnvAdmin(envAppId) || !envTrackerUsesAcl(envAppId, request.resource.data.trackerId) ||
+        (request.resource.data.action == 'CREATE' && hasEnvTrackerPermission(envAppId, request.resource.data.trackerId, 'create')) ||
+        (request.resource.data.action == 'DELETE' && hasEnvTrackerPermission(envAppId, request.resource.data.trackerId, 'delete')) ||
+        (!(request.resource.data.action in ['CREATE', 'DELETE']) && hasEnvTrackerPermission(envAppId, request.resource.data.trackerId, 'update'))
+      );
     }
 
     match /progress_notes/{noteId} {
-      allow read: if isApproved();
-      allow create: if isApproved() && request.resource.data.createdBy == request.auth.uid;
-      allow update: if isApproved() && (isAdmin() || (resource.data.createdBy == request.auth.uid && keepsOwnership()));
-      allow delete: if isApproved() && (isAdmin() || resource.data.createdBy == request.auth.uid);
+      allow read: if isApproved() && (
+        isAdmin() || !trackerUsesAcl(resource.data.trackerId) || hasTrackerPermission(resource.data.trackerId, 'view')
+      );
+      allow create: if isApproved() && request.resource.data.createdBy == request.auth.uid && (
+        isAdmin() || !trackerUsesAcl(request.resource.data.trackerId) || hasTrackerPermission(request.resource.data.trackerId, 'update')
+      );
+      allow update: if isApproved() && keepsOwnership() && keepsTrackerReference() && (
+        isAdmin() ||
+        (trackerUsesAcl(resource.data.trackerId) && hasTrackerPermission(resource.data.trackerId, 'update')) ||
+        (!trackerUsesAcl(resource.data.trackerId) && resource.data.createdBy == request.auth.uid)
+      );
+      allow delete: if isApproved() && (
+        isAdmin() ||
+        (trackerUsesAcl(resource.data.trackerId) && hasTrackerPermission(resource.data.trackerId, 'delete')) ||
+        (!trackerUsesAcl(resource.data.trackerId) && resource.data.createdBy == request.auth.uid)
+      );
     }
 
     match /artifacts/{envAppId}/public/data/progress_notes/{noteId} {
-      allow read: if isEnvApproved(envAppId);
-      allow create: if isEnvApproved(envAppId) && request.resource.data.createdBy == request.auth.uid;
-      allow update: if isEnvApproved(envAppId) && (isEnvAdmin(envAppId) || (resource.data.createdBy == request.auth.uid && keepsOwnership()));
-      allow delete: if isEnvApproved(envAppId) && (isEnvAdmin(envAppId) || resource.data.createdBy == request.auth.uid);
+      allow read: if isEnvApproved(envAppId) && (
+        isEnvAdmin(envAppId) || !envTrackerUsesAcl(envAppId, resource.data.trackerId) || hasEnvTrackerPermission(envAppId, resource.data.trackerId, 'view')
+      );
+      allow create: if isEnvApproved(envAppId) && request.resource.data.createdBy == request.auth.uid && (
+        isEnvAdmin(envAppId) || !envTrackerUsesAcl(envAppId, request.resource.data.trackerId) || hasEnvTrackerPermission(envAppId, request.resource.data.trackerId, 'update')
+      );
+      allow update: if isEnvApproved(envAppId) && keepsOwnership() && keepsTrackerReference() && (
+        isEnvAdmin(envAppId) ||
+        (envTrackerUsesAcl(envAppId, resource.data.trackerId) && hasEnvTrackerPermission(envAppId, resource.data.trackerId, 'update')) ||
+        (!envTrackerUsesAcl(envAppId, resource.data.trackerId) && resource.data.createdBy == request.auth.uid)
+      );
+      allow delete: if isEnvApproved(envAppId) && (
+        isEnvAdmin(envAppId) ||
+        (envTrackerUsesAcl(envAppId, resource.data.trackerId) && hasEnvTrackerPermission(envAppId, resource.data.trackerId, 'delete')) ||
+        (!envTrackerUsesAcl(envAppId, resource.data.trackerId) && resource.data.createdBy == request.auth.uid)
+      );
     }
   }
 }

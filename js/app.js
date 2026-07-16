@@ -783,6 +783,15 @@ function updateUI() {
     }
   }
   renderStats();
+  const currentTracker = trackers.find(tracker => tracker.id === currentTrackerId);
+  const addTaskButton = document.getElementById('btn-add-task');
+  if (addTaskButton) {
+    const canCreateTask = window.hasTaskPermission?.(currentTracker, 'create') === true;
+    addTaskButton.disabled = !canCreateTask;
+    addTaskButton.classList.toggle('opacity-40', !canCreateTask);
+    addTaskButton.classList.toggle('cursor-not-allowed', !canCreateTask);
+    addTaskButton.title = canCreateTask ? '새 업무 추가' : '업무 등록 권한이 없습니다.';
+  }
   renderActiveViews();
   updateUndoButton();
   renderTrackerKpiBadge();
@@ -848,11 +857,16 @@ function confirmBatchDelete() {
 async function undoDelete() {
   if (!deletionHistory.length) return;
   const last = deletionHistory[deletionHistory.length - 1];
+  const restorableItems = last.items.filter(task => window.hasTaskPermission?.(task, 'delete') === true);
+  if (!restorableItems.length) {
+    showToast('복원 권한이 있는 업무가 없습니다.', false);
+    return;
+  }
   const coll = getTasksCollection();
   if (!coll || !canWriteToFirestore()) return;
   try {
     const batch = window.fs.writeBatch(window.db);
-    last.items.forEach(t => { const { id, ...data } = t; batch.set(window.fs.doc(coll, id), { ...data, deleted: false, deletedAt: null, updatedAt: getServerTimestamp() }, { merge: true }); });
+    restorableItems.forEach(t => { const { id, ...data } = t; batch.set(window.fs.doc(coll, id), { ...data, deleted: false, deletedAt: null, updatedAt: getServerTimestamp() }, { merge: true }); });
     await batch.commit();
   } catch (e) {
     markSaveError();
@@ -860,9 +874,11 @@ async function undoDelete() {
     showToast('Firebase 복원 실패', false);
     return;
   }
-  deletionHistory.pop();
-  last.items.forEach(t => { if (!tasks.some(x => x.id === t.id)) tasks.push({ ...t, deleted: false, deletedAt: null }); });
-  showToast(`${last.items.length}개 복원됨.`);
+  const restoredIds = new Set(restorableItems.map(task => task.id));
+  last.items = last.items.filter(task => !restoredIds.has(task.id));
+  if (!last.items.length) deletionHistory.pop();
+  restorableItems.forEach(t => { if (!tasks.some(x => x.id === t.id)) tasks.push({ ...t, deleted: false, deletedAt: null }); });
+  showToast(`${restorableItems.length}개 복원됨.`);
   updateUI();
 }
 function handleTableClick(e) {

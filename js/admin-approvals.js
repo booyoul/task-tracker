@@ -1,5 +1,5 @@
 // js/admin-approvals.js
-console.info('Smart Task Flow admin-approvals.js loaded');
+console.info('Smart Task Flow admin-approvals.js v20260716-v1 loaded');
 
 let unsubscribeAdminUsers = null;
 let unsubscribeApprovedUsers = null;
