@@ -69,7 +69,7 @@ function renderCalendarMonthView(ctx) {
       bar.style.width = `calc(${(endMonth - startMonth + 1) / 12 * 100}% - 8px)`;
       bar.style.top = `${g.globalLineStart * rowHeight + 10}px`;
       bar.onclick = () => openTaskModal(g.id);
-      bar.innerHTML = `${getEffectiveStatus(g, todayStr) === 'OVERDUE' ? '🚨' : getEffectiveStatus(g, todayStr) === 'COMPLETED' ? '⭐️' : getEffectiveStatus(g, todayStr) === 'PROGRESS' ? '⚙️' : '⌛'} ${escapeHTML(g.title)}`;
+      bar.innerHTML = `${getEffectiveStatus(g, todayStr) === 'OVERDUE' ? '🚨' : getStatusIcon(getEffectiveStatus(g, todayStr))} ${escapeHTML(g.title)}`;
       const mainAssignees = Array.isArray(g.assignee) ? g.assignee.join(', ') : (g.assignee || '미지정');
       bindGanttTooltip(bar, g.title, `담당자: ${escapeHTML(mainAssignees)}<br>기간: ${g.startDate} ~ ${g.dueDate}<br>설명: ${escapeHTML(g.notes || '없음')}`);
       overlay.appendChild(bar);

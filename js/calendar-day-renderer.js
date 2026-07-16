@@ -52,7 +52,7 @@ function renderCalendarDayView(ctx) {
       const labelAssignees = Array.isArray(item.assignee) ? item.assignee.join(', ') : (item.assignee || '미지정');
       return item.isSub
         ? `${isSubTaskOverdue(item, todayStr) ? '🚨' : getStatusIcon(item.status)} ↳ 👤 ${escapeHTML(labelAssignees)} | ${escapeHTML(item.title)}`
-        : `${getEffectiveStatus(item, todayStr) === 'OVERDUE' ? '🚨' : getEffectiveStatus(item, todayStr) === 'COMPLETED' ? '⭐️' : getEffectiveStatus(item, todayStr) === 'PROGRESS' ? '⚙️' : '⌛'} ${escapeHTML(item.title)}${item.subCount && !showSubTaskBars ? ` · 하위 ${item.subCount}` : ''}`;
+        : `${getEffectiveStatus(item, todayStr) === 'OVERDUE' ? '🚨' : getStatusIcon(getEffectiveStatus(item, todayStr))} ${escapeHTML(item.title)}${item.subCount && !showSubTaskBars ? ` · 하위 ${item.subCount}` : ''}`;
     };
     const polishedSubClass = item => normalizeStatus(item.status) === 'COMPLETED'
       ? 'bg-emerald-100/90 text-emerald-800 border border-emerald-200'

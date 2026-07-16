@@ -170,6 +170,9 @@ function makeTasks() {
 }
 
 async function main() {
+  const stateSource = fs.readFileSync(path.join(root, 'js/state.js'), 'utf8');
+  assert(/let currentViewMode = ['"]CALENDAR['"]/.test(stateSource), '트래커 기본 진입 뷰가 캘린더가 아닙니다.');
+
   loadScript('js/date-risk-utils.js');
   loadScript('js/calendar-utils.js');
   loadScript('js/calendar-summary-renderer.js');
@@ -177,12 +180,33 @@ async function main() {
   loadScript('js/table-mobile-renderer.js');
 
   const tasks = makeTasks();
+  const cancelledTask = {
+    id: 'task-cancelled',
+    title: '취소 상태 회귀 테스트',
+    status: 'CANCELLED',
+    priority: 'HIGH',
+    startDate: '2026-06-01',
+    dueDate: '2026-07-05',
+    assignee: ['김BD'],
+    subTasks: [
+      { id: 'cancelled-sub-1', title: '취소 업무의 미완료 하위 업무', status: 'PENDING', startDate: '2026-06-01', dueDate: '2026-06-15', assignee: ['김BD'] }
+    ]
+  };
+
+  assert(global.normalizeStatus('CANCELLED') === 'CANCELLED', '취소 상태가 스키마에서 유지되지 않습니다.');
+  assert(global.getEffectiveStatus(cancelledTask, '2026-07-12') === 'CANCELLED', '취소 업무의 운영 상태가 올바르지 않습니다.');
+  assert(global.isTaskOverdueEffective(cancelledTask, '2026-07-12') === false, '취소 업무가 기한 초과로 계산됩니다.');
+  assert(global.getTaskRiskInfo(cancelledTask, '2026-07-12').level === 'NONE', '취소 업무가 위험 업무로 계산됩니다.');
 
   global.renderMobileCards(tasks.slice(0, 2));
   assert(document.querySelectorAll('.mobile-task-card').length === 2, '모바일 목록 카드가 렌더링되지 않았습니다.');
   assert(document.querySelector('.mobile-command-deck'), '모바일 목록 상단 제어 영역이 없습니다.');
   assert(document.querySelector('.btn-toggle-subtasks[data-expanded="true"]'), '하위 업무 펼침 상태가 렌더링되지 않았습니다.');
   assert(document.querySelector('.line-clamp-2'), '긴 업무명 줄임 클래스가 누락되었습니다.');
+
+  global.renderMobileCards([cancelledTask]);
+  assert(document.getElementById('task-card-container').textContent.includes('취소'), '모바일 목록에 취소 상태가 표시되지 않습니다.');
+  assert(document.querySelector('.mobile-status-btn[data-status="CANCELLED"]'), '모바일 목록에 취소 상태 버튼이 없습니다.');
 
   global.currentCalMode = 'DAY';
   window.renderMobileCalendar(tasks.slice(0, 2));
@@ -202,7 +226,7 @@ async function main() {
     grid: document.getElementById('cal-mobile-content'),
     year: 2026,
     month: 6,
-    filteredTasks: tasks,
+    filteredTasks: [...tasks, cancelledTask],
     todayStr: '2026-07-12'
   });
   const summary = document.getElementById('cal-mobile-content');
@@ -212,8 +236,9 @@ async function main() {
   assert(summary.textContent.includes('2026년 7월 10일'), '사용자가 지정한 메모 기록일이 월별 요약에 반영되지 않았습니다.');
   assert(summary.querySelectorAll('[data-summary-note-card]').length === 2, '같은 업무의 메모가 하나의 카드로 묶이지 않았습니다.');
   assert(summary.querySelector('[data-task-id="task-1"]')?.querySelectorAll('[data-summary-note-entry]').length === 2, '업무 카드 안에 같은 업무의 메모가 모두 표시되지 않았습니다.');
+  assert(summary.textContent.includes('취소 1'), '월별 요약에 취소 업무 집계가 없습니다.');
 
-  console.log('mobile smoke passed: list, calendar day, calendar year, summary');
+  console.log('mobile smoke passed: calendar default, cancelled status, list, calendar day, calendar year, summary');
 }
 
 main().catch((error) => {

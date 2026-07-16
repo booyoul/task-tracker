@@ -490,10 +490,10 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
 
     // ── KPI 요약 바 (업무가 있을 때만, 메모 리뷰 영역 아래에 한 줄로 최소화) ──
     if (currentMonthTasks.length > 0) {
-        const groups = { OVERDUE: [], PROGRESS: [], PENDING: [], COMPLETED: [] };
+        const groups = { OVERDUE: [], PROGRESS: [], PENDING: [], COMPLETED: [], CANCELLED: [] };
         currentMonthTasks.forEach(t => {
-            if (t.status !== 'COMPLETED' && (t.dueDate || '') < todayStr) groups.OVERDUE.push(t);
-            else if (groups[t.status]) groups[t.status].push(t);
+            const status = getEffectiveStatus(t, todayStr);
+            if (groups[status]) groups[status].push(t);
             else groups.PENDING.push(t);
         });
 
@@ -502,9 +502,12 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
         const monthlyOverdue = groups.OVERDUE.length;
         const monthlyProgress = groups.PROGRESS.length;
         const monthlyPending = groups.PENDING.length;
-        const monthlyCompletionRate = monthlyTotal > 0 ? Math.round((monthlyCompleted / monthlyTotal) * 100) : 0;
-        const monthlySubTotal = currentMonthTasks.reduce((sum, t) => sum + getMonthlySubTaskSummary(t, monthStart, monthEnd).totalInMonth, 0);
-        const monthlySubCompleted = currentMonthTasks.reduce((sum, t) => sum + getMonthlySubTaskSummary(t, monthStart, monthEnd).completedInMonth, 0);
+        const monthlyCancelled = groups.CANCELLED.length;
+        const monthlyActiveTotal = monthlyTotal - monthlyCancelled;
+        const monthlyCompletionRate = monthlyActiveTotal > 0 ? Math.round((monthlyCompleted / monthlyActiveTotal) * 100) : 0;
+        const monthlyActiveTasks = currentMonthTasks.filter(t => getEffectiveStatus(t, todayStr) !== 'CANCELLED');
+        const monthlySubTotal = monthlyActiveTasks.reduce((sum, t) => sum + getMonthlySubTaskSummary(t, monthStart, monthEnd).totalInMonth, 0);
+        const monthlySubCompleted = monthlyActiveTasks.reduce((sum, t) => sum + getMonthlySubTaskSummary(t, monthStart, monthEnd).completedInMonth, 0);
 
         const kpiPanel = document.createElement('div');
         kpiPanel.className = 'mb-4 overflow-x-auto rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-bold text-slate-600 shadow-sm dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300';
@@ -516,6 +519,7 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
                 <span class="text-rose-600">지연 <b>${monthlyOverdue}</b></span>
                 <span class="text-blue-600">진행 <b>${monthlyProgress}</b></span>
                 <span class="text-amber-600">대기 <b>${monthlyPending}</b></span>
+                <span class="text-slate-500">취소 <b>${monthlyCancelled}</b></span>
                 <span class="text-emerald-600">완료율 <b>${monthlyCompletionRate}%</b> (${monthlyCompleted})</span>
                 <span class="text-indigo-600">하위 <b>${monthlySubCompleted}/${monthlySubTotal}</b></span>
                 <span class="text-amber-700">메모 <b>${monthNotesCount}</b></span>
@@ -535,10 +539,10 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
     }
 
     // ── 업무 카테고리별 섹션 ──────────────────────────────────────
-    const groups = { OVERDUE: [], PROGRESS: [], PENDING: [], COMPLETED: [] };
+    const groups = { OVERDUE: [], PROGRESS: [], PENDING: [], COMPLETED: [], CANCELLED: [] };
     currentMonthTasks.forEach(t => {
-        if (t.status !== 'COMPLETED' && (t.dueDate || '') < todayStr) groups.OVERDUE.push(t);
-        else if (groups[t.status]) groups[t.status].push(t);
+        const status = getEffectiveStatus(t, todayStr);
+        if (groups[status]) groups[status].push(t);
         else groups.PENDING.push(t);
     });
 
@@ -546,7 +550,8 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
         { key: 'OVERDUE', label: '🚨 일정 초과 및 지연 상태', style: 'bg-rose-50/60 border-rose-100 text-rose-800', list: groups.OVERDUE, open: true },
         { key: 'PROGRESS', label: '⚙️ 현재 적극 진행 중', style: 'bg-blue-50/60 border-blue-100 text-blue-800', list: groups.PROGRESS, open: true },
         { key: 'PENDING', label: '⌛ 대기 및 진행 준비 중', style: 'bg-amber-50/60 border-amber-100 text-amber-800', list: groups.PENDING, open: false },
-        { key: 'COMPLETED', label: '⭐️ 정상 완료 항목', style: 'bg-emerald-50/60 border-emerald-100 text-emerald-800', list: groups.COMPLETED, open: false }
+        { key: 'COMPLETED', label: '⭐️ 정상 완료 항목', style: 'bg-emerald-50/60 border-emerald-100 text-emerald-800', list: groups.COMPLETED, open: false },
+        { key: 'CANCELLED', label: '🚫 취소된 업무', style: 'bg-slate-100/70 border-slate-200 text-slate-600', list: groups.CANCELLED, open: false }
     ];
 
     categories.forEach(cat => {

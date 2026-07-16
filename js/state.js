@@ -102,7 +102,7 @@
         let selectedTaskIds = new Set(); 
         let confirmActionCb = null; 
         
-        let currentViewMode = 'TABLE'; 
+        let currentViewMode = 'CALENDAR';
         let currentCalDate = new Date(); 
         let currentCalMode = 'DAY'; 
         let isCalSubTaskVisible = true; // 캘린더에서 하위 업무 표시 토글 상태

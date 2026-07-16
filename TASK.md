@@ -22,6 +22,8 @@ Last updated: 2026-07-16
 - Static HTML/JavaScript task tracker backed by Firebase/Firestore.
 - JavaScript files are loaded as browser globals from `index.html`; script order and cache query strings matter.
 - Mobile calendar, list, monthly summary, KPI badge/settings, activity timeline, and mobile smoke QA are implemented.
+- Trackers open in the calendar view by default; users can still switch to list or Kanban views.
+- Tasks support a `CANCELLED` status shown as `취소`; cancelled tasks remain filterable but are excluded from overdue, risk, and completion-rate denominators.
 - Monthly summary is optimized for progress-note review with note-first layout, task-grouped note cards, author/type/search filters, and review labels for results, issues, decisions, and follow-up.
 - Progress notes support a user-selected `noteDate`; existing notes fall back to `createdAt`, while feeds and monthly summaries use the effective record date.
 - New trackers store per-user `view/create/update/delete` permissions in `accessControl`; owners and admins retain full access, while legacy trackers keep their previous behavior until ACL settings are explicitly changed.

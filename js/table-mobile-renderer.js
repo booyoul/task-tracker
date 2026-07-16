@@ -56,7 +56,7 @@ function renderTable(filtered) {
       <td class="px-3 py-4 align-top whitespace-nowrap">${typeof window.renderAssignees === 'function' ? window.renderAssignees(t.assignee) : escapeHTML(t.assignee)}</td>
       <td class="px-3 py-4 align-top whitespace-nowrap"><div class="inline-flex items-center gap-2 whitespace-nowrap text-xs font-semibold text-slate-600"><span>${t.startDate ? t.startDate.substring(5) : '미정'} ~ ${(t.dueDate || '').substring(5)}</span><span class="inline-flex shrink-0 rounded-lg border px-2 py-0.5 text-[11px] ${timeline.class}">${timeline.text}</span></div></td>
       <td class="px-2 py-4 text-center align-top"><span class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold">${getPriorityBadge(t.priority)}</span></td>
-      <td class="px-3 py-4 text-center align-top whitespace-nowrap"><div class="mb-1 text-[10px] font-bold text-slate-400 whitespace-nowrap">${getStatusKorean(effectiveStatus)}</div><select class="sel-status rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 outline-none focus:border-indigo-500 task-status-compact" data-id="${t.id}"><option value="PENDING" ${t.status === 'PENDING' ? 'selected' : ''}>진행 대기 ⌛</option><option value="PROGRESS" ${t.status === 'PROGRESS' ? 'selected' : ''}>진행 중 ⚙️</option><option value="COMPLETED" ${t.status === 'COMPLETED' ? 'selected' : ''}>완료됨 ⭐️</option></select></td>
+      <td class="px-3 py-4 text-center align-top whitespace-nowrap"><div class="mb-1 text-[10px] font-bold text-slate-400 whitespace-nowrap">${getStatusKorean(effectiveStatus)}</div><select class="sel-status rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 outline-none focus:border-indigo-500 task-status-compact" data-id="${t.id}"><option value="PENDING" ${t.status === 'PENDING' ? 'selected' : ''}>진행 대기 ⌛</option><option value="PROGRESS" ${t.status === 'PROGRESS' ? 'selected' : ''}>진행 중 ⚙️</option><option value="COMPLETED" ${t.status === 'COMPLETED' ? 'selected' : ''}>완료됨 ⭐️</option><option value="CANCELLED" ${t.status === 'CANCELLED' ? 'selected' : ''}>취소 🚫</option></select></td>
       <td class="px-2 py-4 text-center align-top whitespace-nowrap"><button type="button" class="btn-delete text-slate-400 hover:text-rose-600 px-2" data-id="${t.id}">🗑</button></td>`;
     tbody.appendChild(tr);
     if (subTasks.length && isExpanded) {
@@ -156,7 +156,7 @@ function renderMobileCards(filtered) {
         <div class="flex items-center justify-between gap-2">
           <div class="min-w-0 overflow-x-auto"><div class="inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-semibold text-slate-600"><span class="shrink-0">📅 ${t.startDate ? t.startDate.substring(5) : '미정'} ~ ${(t.dueDate || '').substring(5) || '미정'}</span><span class="inline-flex shrink-0 rounded-lg border px-2 py-0.5 text-[11px] ${timeline.class}">${timeline.text}</span></div></div>
           <select class="sel-status mobile-touch-btn shrink-0 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-600 outline-none" data-id="${t.id}">
-            <option value="PENDING" ${t.status === 'PENDING' ? 'selected' : ''}>대기</option><option value="PROGRESS" ${t.status === 'PROGRESS' ? 'selected' : ''}>진행</option><option value="COMPLETED" ${t.status === 'COMPLETED' ? 'selected' : ''}>완료</option>
+            <option value="PENDING" ${t.status === 'PENDING' ? 'selected' : ''}>대기</option><option value="PROGRESS" ${t.status === 'PROGRESS' ? 'selected' : ''}>진행</option><option value="COMPLETED" ${t.status === 'COMPLETED' ? 'selected' : ''}>완료</option><option value="CANCELLED" ${t.status === 'CANCELLED' ? 'selected' : ''}>취소</option>
           </select>
         </div>
         <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full ${progressPct >= 100 ? 'bg-emerald-500' : progressPct > 0 ? 'bg-blue-500' : 'bg-slate-300'}" style="width:${progressPct}%"></div></div>
@@ -179,6 +179,7 @@ console.info('Smart Task Flow mobile redesign v20260626-phase11 loaded');
 function getMobileStatusClass(status) {
   const s = normalizeStatus(status);
   if (s === 'COMPLETED') return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+  if (s === 'CANCELLED') return 'bg-slate-100 text-slate-500 border-slate-200';
   if (s === 'PROGRESS') return 'bg-blue-50 text-blue-700 border-blue-100';
   return 'bg-amber-50 text-amber-700 border-amber-100';
 }
@@ -204,7 +205,7 @@ function getMobileDuePill(t, todayStr) {
 
 function getMobileProgressBar(progressPct, status) {
   const s = normalizeStatus(status);
-  const color = s === 'COMPLETED' ? 'bg-emerald-500' : s === 'PROGRESS' ? 'bg-blue-500' : 'bg-amber-400';
+  const color = s === 'COMPLETED' ? 'bg-emerald-500' : s === 'CANCELLED' ? 'bg-slate-400' : s === 'PROGRESS' ? 'bg-blue-500' : 'bg-amber-400';
   return `<div class="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100"><div class="h-full ${color} transition-all" style="width:${Math.max(0, Math.min(100, progressPct || 0))}%"></div></div>`;
 }
 
@@ -214,10 +215,11 @@ function mobileStatusSegment(id, status) {
     const active = s === value;
     return `<button type="button" class="mobile-status-btn flex-1 rounded-xl px-2 py-2 text-[11px] font-black transition ${active ? activeClass : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}" data-id="${escapeHTML(id)}" data-status="${value}">${label}</button>`;
   };
-  return `<div class="mt-3 grid grid-cols-3 gap-1 rounded-2xl bg-slate-100/70 p-1">
+  return `<div class="mt-3 grid grid-cols-4 gap-1 rounded-2xl bg-slate-100/70 p-1">
     ${btn('PENDING', '대기', 'bg-white text-amber-700 shadow-sm')}
     ${btn('PROGRESS', '진행', 'bg-white text-blue-700 shadow-sm')}
     ${btn('COMPLETED', '완료', 'bg-white text-emerald-700 shadow-sm')}
+    ${btn('CANCELLED', '취소', 'bg-white text-slate-600 shadow-sm')}
   </div>`;
 }
 

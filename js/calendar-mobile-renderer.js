@@ -161,6 +161,7 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
     const eff = typeof getEffectiveStatus === 'function' ? getEffectiveStatus(task, todayStr) : (task.status || 'PENDING');
     if (eff === 'OVERDUE') return 'bg-rose-100 text-rose-800 border border-rose-200 font-semibold';
     if (eff === 'COMPLETED') return 'bg-emerald-100 text-emerald-800 border border-emerald-200';
+    if (eff === 'CANCELLED') return 'bg-slate-100 text-slate-500 border border-slate-200 opacity-70';
     if (useIndustryColor && typeof getIndustryBarClass === 'function') return getIndustryBarClass(task, false);
     if (eff === 'PROGRESS') return 'bg-blue-100 text-blue-800 border border-blue-200';
     return 'bg-slate-200 text-slate-700 border border-slate-300';
@@ -179,6 +180,7 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
     const eff = typeof getEffectiveStatus === 'function' ? getEffectiveStatus(task, todayStr) : (task.status || 'PENDING');
     if (eff === 'OVERDUE') return '🚨';
     if (eff === 'COMPLETED') return '⭐️';
+    if (eff === 'CANCELLED') return '🚫';
     if (eff === 'PROGRESS') return '⚙️';
     return '⌛';
   };
@@ -196,10 +198,11 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
   const getDisplayRank = function(task) {
     const eff = typeof getEffectiveStatus === 'function' ? getEffectiveStatus(task, todayStr) : (task.status || 'PENDING');
     if (eff === 'OVERDUE') return 0;
+    if (eff === 'CANCELLED') return 4;
     if ((task.priority || '').toUpperCase() === 'HIGH') return 1;
     if (eff === 'PROGRESS') return 2;
     if (eff === 'PENDING') return 3;
-    return 4;
+    return 5;
   };
   let displayedTasks = isDenseYear
     ? [...tasksInYear].sort(function(a, b) {
@@ -487,6 +490,7 @@ function _buildMobileTaskCard(task, startSubTasks, todayStr) {
   const eff = typeof getEffectiveStatus === 'function' ? getEffectiveStatus(task, todayStr) : (task.status || 'PENDING');
   const statusConfig = {
     COMPLETED: { icon: '✅', label: '완료', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+    CANCELLED: { icon: '🚫', label: '취소', cls: 'bg-slate-100 text-slate-500 border-slate-200' },
     OVERDUE:   { icon: '🚨', label: '지연', cls: 'bg-rose-50 text-rose-700 border-rose-200' },
     PROGRESS:  { icon: '⚙️', label: '진행 중', cls: 'bg-blue-50 text-blue-700 border-blue-200' },
     PENDING:   { icon: '⌛', label: '대기', cls: 'bg-amber-50 text-amber-700 border-amber-200' },

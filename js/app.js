@@ -395,10 +395,10 @@ async function bulkUpdateSelected(payloadBuilder, successMessage) {
   return { success: true, succeeded };
 }
 async function bulkChangeStatus() {
-  const raw = prompt('변경할 상태를 입력하세요: PENDING, PROGRESS, COMPLETED', 'PROGRESS');
+  const raw = prompt('변경할 상태를 입력하세요: PENDING, PROGRESS, COMPLETED, CANCELLED', 'PROGRESS');
   if (!raw) return;
   const status = raw.trim().toUpperCase();
-  if (!['PENDING', 'PROGRESS', 'COMPLETED'].includes(status)) return showToast('상태값은 PENDING, PROGRESS, COMPLETED 중 하나여야 합니다.', false);
+  if (!['PENDING', 'PROGRESS', 'COMPLETED', 'CANCELLED'].includes(status)) return showToast('상태값은 PENDING, PROGRESS, COMPLETED, CANCELLED 중 하나여야 합니다.', false);
   await bulkUpdateSelected({ status }, `선택 업무 상태가 ${getStatusKorean(status)}로 변경되었습니다.`);
 }
 async function bulkChangeAssignee() {
@@ -633,13 +633,15 @@ function renderStats() {
   const pending = scope.filter(t => getEffectiveStatus(t, today) === 'PENDING').length;
   const progress = scope.filter(t => getEffectiveStatus(t, today) === 'PROGRESS').length;
   const completed = scope.filter(t => getEffectiveStatus(t, today) === 'COMPLETED').length;
+  const cancelled = scope.filter(t => getEffectiveStatus(t, today) === 'CANCELLED').length;
+  const activeTotal = total - cancelled;
   const overdue = scope.filter(t => isTaskOverdueEffective(t, today)).length;
   const overdueUnits = scope.reduce((sum, t) => sum + countTaskOverdueUnits(t, today), 0);
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-  set('stat-total', total); set('stat-pending', pending); set('stat-progress', progress); set('stat-completed', completed); set('stat-overdue', overdue);
-  set('stat-pending-pct', total ? Math.round(pending / total * 100) + '%' : '0%');
-  set('stat-progress-pct', total ? Math.round(progress / total * 100) + '%' : '0%');
-  set('stat-completed-pct', total ? Math.round(completed / total * 100) + '%' : '0%');
+  set('stat-total', total); set('stat-pending', pending); set('stat-progress', progress); set('stat-completed', completed); set('stat-cancelled', cancelled); set('stat-overdue', overdue);
+  set('stat-pending-pct', activeTotal ? Math.round(pending / activeTotal * 100) + '%' : '0%');
+  set('stat-progress-pct', activeTotal ? Math.round(progress / activeTotal * 100) + '%' : '0%');
+  set('stat-completed-pct', activeTotal ? Math.round(completed / activeTotal * 100) + '%' : '0%');
   const lbl = document.getElementById('stat-overdue-lbl');
   if (lbl) {
     lbl.textContent = overdue ? `하위 포함 ${overdueUnits}항목` : '매우 양호';
@@ -678,6 +680,7 @@ function subTaskStatusSelect(parentId, subId, status, options = {}) {
       <option value="PENDING" ${status === 'PENDING' ? 'selected' : ''}>진행 대기</option>
       <option value="PROGRESS" ${status === 'PROGRESS' ? 'selected' : ''}>진행 중</option>
       <option value="COMPLETED" ${status === 'COMPLETED' ? 'selected' : ''}>완료</option>
+      <option value="CANCELLED" ${status === 'CANCELLED' ? 'selected' : ''}>취소</option>
     </select>`;
 }
 // Table renderer moved to js/table-mobile-renderer.js
@@ -736,12 +739,13 @@ function renderCalendar(filteredTasks) {
   const addInvisibleCalendarSpacer = container => { const sp = document.createElement('div'); sp.className = 'calendar-lane-spacer min-h-[17px] invisible'; container.appendChild(sp); };
   const isCalendarCriticalItem = item => item?.isSub
     ? isSubTaskOverdue(item, todayStr) || (normalizeStatus(item.status) !== 'COMPLETED' && !!item.dueDate && item.dueDate <= getFutureDateStr(3))
-    : getEffectiveStatus(item, todayStr) === 'OVERDUE' || item.priority === 'HIGH' || hasDueSoonRisk(item, todayStr, 3);
+    : getEffectiveStatus(item, todayStr) !== 'CANCELLED' && (getEffectiveStatus(item, todayStr) === 'OVERDUE' || item.priority === 'HIGH' || hasDueSoonRisk(item, todayStr, 3));
   const dimIfNotCritical = item => highlightRiskOnly && !isCalendarCriticalItem(item) ? ' opacity-25 grayscale' : '';
   const mainClass = item => {
     const effective = getEffectiveStatus(item, todayStr);
     if (effective === 'OVERDUE') return 'bg-rose-100 text-rose-800 border border-rose-200 font-semibold';
     if (effective === 'COMPLETED') return 'bg-emerald-100 text-emerald-800 border border-emerald-200';
+    if (effective === 'CANCELLED') return 'bg-slate-100 text-slate-500 border border-slate-200 opacity-70';
     if (useIndustryColor) return getIndustryBarClass(item, false);
     if (effective === 'PROGRESS') return 'bg-blue-100 text-blue-800 border border-blue-200';
     return 'bg-slate-200 text-slate-700';
@@ -1006,8 +1010,9 @@ function getKpiCompactValues() {
   const pending = scope.filter(t => getEffectiveStatus(t, today) === 'PENDING').length;
   const progress = scope.filter(t => getEffectiveStatus(t, today) === 'PROGRESS').length;
   const completed = scope.filter(t => getEffectiveStatus(t, today) === 'COMPLETED').length;
+  const cancelled = scope.filter(t => getEffectiveStatus(t, today) === 'CANCELLED').length;
   const overdue = scope.filter(t => isTaskOverdueEffective(t, today)).length;
-  return { total, pending, progress, completed, overdue };
+  return { total, pending, progress, completed, cancelled, overdue };
 }
 function relocateHeaderActionsToToolbar() {
   const actionHost = document.getElementById('ux-action-host');
@@ -1052,6 +1057,7 @@ function applyCompactDashboardStyles() {
     <span data-status="PENDING" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700 border border-amber-200 cursor-pointer hover:bg-amber-100 transition duration-150 ${activeClass('PENDING')}">대기 <b>${k.pending}</b></span>
     <span data-status="PROGRESS" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700 border border-blue-200 cursor-pointer hover:bg-blue-100 transition duration-150 ${activeClass('PROGRESS')}">진행 <b>${k.progress}</b></span>
     <span data-status="COMPLETED" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700 border border-emerald-200 cursor-pointer hover:bg-emerald-100 transition duration-150 ${activeClass('COMPLETED')}">완료 <b>${k.completed}</b></span>
+    <span data-status="CANCELLED" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-500 border border-slate-200 cursor-pointer hover:bg-slate-200 transition duration-150 ${activeClass('CANCELLED')}">취소 <b>${k.cancelled}</b></span>
     <span data-status="OVERDUE" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-rose-700 border border-rose-200 cursor-pointer hover:bg-rose-100 transition duration-150 ${activeClass('OVERDUE')}">지연 <b>${k.overdue}</b></span>`;
 }
 function ensureUXToolbar() {
@@ -1129,7 +1135,7 @@ function renderActiveViews(){
   const filtered=getFilteredTasks();
   const fStatus=document.getElementById('filter-status')?.value||'ALL';
   document.querySelectorAll('.filter-card').forEach(c=>c.classList.remove('ring-2','ring-indigo-600','bg-indigo-50/10'));
-  document.getElementById(`card-${['ALL','PENDING','PROGRESS','COMPLETED','OVERDUE'].includes(fStatus)?fStatus:'OVERDUE'}`)?.classList.add('ring-2','ring-indigo-600','bg-indigo-50/10');
+  document.getElementById(`card-${['ALL','PENDING','PROGRESS','COMPLETED','CANCELLED','OVERDUE'].includes(fStatus)?fStatus:'OVERDUE'}`)?.classList.add('ring-2','ring-indigo-600','bg-indigo-50/10');
   applyCompactDashboardStyles();
   const mode=currentViewMode==='CALENDAR'?'CALENDAR':currentViewMode==='KANBAN'?'KANBAN':'TABLE';
   setViewVisibility(mode);
@@ -1159,7 +1165,7 @@ function renderTrackerKpiBadge() {
   }
 
   const trackerTasks = tasks.filter(t => t.trackerId === currentTrackerId && !t.deleted);
-  const totalCount = trackerTasks.length;
+  const totalCount = trackerTasks.filter(t => getEffectiveStatus(t, getTodayStr()) !== 'CANCELLED').length;
   const today = getTodayStr();
   
   // Custom KPI configuration from tracker
