@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-summary-renderer.js v20260716-v4 loaded');
+console.info('Smart Task Flow calendar-summary-renderer.js v20260719-v1 loaded');
 
 function getSummaryNoteDate(note = {}) {
     if (note.noteDate && /^\d{4}-\d{2}-\d{2}$/.test(note.noteDate)) {
@@ -139,57 +139,6 @@ function getMonthlySubTaskSummary(task, monthStart, monthEnd) {
         completedInMonth,
         cancelledInMonth
     };
-}
-
-function buildMonthlySubTaskHTML(task, monthStart, monthEnd) {
-    const summary = getMonthlySubTaskSummary(task, monthStart, monthEnd);
-    if (summary.totalInMonth === 0) return '';
-
-    // 서브태스크 목록이 많아도 카드 높이가 무한정 늘어나지 않도록 스크롤 영역 제한
-    let html = '<div class="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2 max-h-36 overflow-y-auto pr-0.5">';
-
-    summary.inMonthSubTasks.forEach(st => {
-        const status = normalizeStatus(st.status);
-        const statusKorean = getStatusKorean(status);
-        const assigneeNames = Array.isArray(st.assignee) ? st.assignee.join(', ') : (st.assignee || '미지정');
-        const recurrenceLabel = st.isRecurringOccurrence && st.recurrenceLabel ? `반복 ${st.recurrenceLabel}` : '';
-        
-        let statusClass = '';
-        let textClass = 'text-slate-700 dark:text-slate-350';
-        if (status === 'COMPLETED') {
-            statusClass = 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50';
-            textClass = 'text-slate-400 line-through dark:text-slate-500';
-        } else if (status === 'CANCELLED') {
-            statusClass = 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700';
-            textClass = 'text-slate-400 line-through dark:text-slate-500';
-        } else if (status === 'PROGRESS') {
-            statusClass = 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/50';
-        } else {
-            statusClass = 'bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800/80 dark:text-slate-300 dark:border-slate-700';
-        }
-
-        html += `
-            <div class="text-[11px] flex flex-col gap-1.5 p-2 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20">
-                <div class="flex items-center justify-between gap-2">
-                    <div class="flex items-center gap-1.5 truncate ${textClass} font-semibold">
-                        <span class="truncate">${escapeHTML(st.title)}</span>
-                    </div>
-                    ${st.isRecurringOccurrence && typeof subTaskStatusSelect === 'function'
-                        ? subTaskStatusSelect(task.id, st.id, status, { sourceSubTaskId: st.sourceSubTaskId || st.id, occurrenceKey: st.occurrenceKey || st.startDate })
-                        : `<span class="shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold border ${statusClass} origin-right">${statusKorean}</span>`}
-                </div>
-                <div class="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400">
-                    <span class="truncate">👤 ${escapeHTML(assigneeNames)}</span>
-                    <span class="shrink-0 text-slate-400 dark:text-slate-500">
-                        ${st.dueDate ? '📅 ' + st.dueDate.substring(5) : ''}
-                    </span>
-                </div>
-                ${recurrenceLabel ? `<div class="truncate text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">${escapeHTML(recurrenceLabel)}</div>` : ''}
-            </div>`;
-    });
-
-    html += '</div>';
-    return html;
 }
 
 let _summaryRenderInProgress = false;

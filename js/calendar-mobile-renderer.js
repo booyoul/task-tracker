@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-mobile-renderer.js v20260716-v4 loaded');
+console.info('Smart Task Flow calendar-mobile-renderer.js v20260719-v1 loaded');
 
 // ============================================================
 //  모바일 전용 캘린더 렌더러
@@ -336,11 +336,16 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
   const barThickness = Math.max(minBarThickness, Math.min(22, Math.floor(rawBarThickness)));
   const groupWidth = maxBarsInGroup * barThickness + (maxBarsInGroup - 1) * barGap;
   const laneSlotWidth = groupWidth + groupGap;
+  const layoutWidth = startOffset + endPadding + (totalLanes * groupWidth) + (groupGap * Math.max(0, totalLanes - 1));
 
   container.innerHTML = '';
 
   const ganttWrapper = document.createElement('div');
   ganttWrapper.className = 'w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm';
+  ganttWrapper.dataset.mobileYearGantt = '';
+  ganttWrapper.dataset.layoutWidth = String(layoutWidth);
+  ganttWrapper.dataset.availableWidth = String(chartWidth);
+  ganttWrapper.dataset.layoutFits = String(layoutWidth <= chartWidth);
   
   const header = document.createElement('div');
   header.className = 'flex items-center justify-between gap-3 border-b border-slate-200/80 bg-slate-50 px-3.5 py-3 shadow-sm';

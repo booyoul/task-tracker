@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow app.js v20260626-final-stable loaded');
+console.info('Smart Task Flow app.js v20260719-v1 loaded');
 // --- UX optimization globals: must be declared before helper functions ---
 var focusState = window.focusState || { riskOnly: false, mineOnly: false, highOnly: false };
 window.focusState = focusState;
@@ -472,29 +472,13 @@ async function saveTrackerOrder() {
   pendingTrackerOrderSignature = getTrackerOrderSignature(trackers);
   isTrackerOrderSaving = true;
   updateTrackerUI();
-  const coll = getTrackersCollection();
-  if (!coll || !canWriteToFirestore()) {
-    markSaveError();
-    pendingTrackerOrderSignature = null;
-    isTrackerOrderSaving = false;
-    return { success: false, error: '인증 실패 또는 DB 접근 불가' };
-  }
-  try {
-    const batch = window.fs.writeBatch(window.db);
-    trackers.forEach((t, i) => batch.set(window.fs.doc(coll, t.id), { order: i + 1, updatedAt: getServerTimestamp() }, { merge: true }));
-    await batch.commit();
-    markSaved();
-  } catch (e) {
-    markSaveError();
-    console.warn('트래커 순서 저장 실패', e);
-    showToast('트래커 순서 저장 실패', false);
-    pendingTrackerOrderSignature = null;
-    isTrackerOrderSaving = false;
-    return { success: false, error: e.message || String(e) };
-  }
+  const result = await db_updateTrackerOrders(trackers.map((tracker, index) => ({
+    id: tracker.id,
+    order: index + 1
+  })));
   pendingTrackerOrderSignature = null;
   isTrackerOrderSaving = false;
-  return { success: true };
+  return result;
 }
 async function moveTrackerOrder(id, direction) {
   trackers = sortTrackersByOrder(trackers);
@@ -868,23 +852,15 @@ async function undoDelete() {
     showToast('복원 권한이 있는 업무가 없습니다.', false);
     return;
   }
-  const coll = getTasksCollection();
-  if (!coll || !canWriteToFirestore()) return;
-  try {
-    const batch = window.fs.writeBatch(window.db);
-    restorableItems.forEach(t => { const { id, ...data } = t; batch.set(window.fs.doc(coll, id), { ...data, deleted: false, deletedAt: null, updatedAt: getServerTimestamp() }, { merge: true }); });
-    await batch.commit();
-  } catch (e) {
-    markSaveError();
-    console.warn('Firebase 복원 실패', e);
-    showToast('Firebase 복원 실패', false);
-    return;
-  }
-  const restoredIds = new Set(restorableItems.map(task => task.id));
+  const result = await db_restoreTasks(restorableItems);
+  if (!result || !result.success) return;
+  const restoredIds = new Set(result.restoredIds || []);
   last.items = last.items.filter(task => !restoredIds.has(task.id));
   if (!last.items.length) deletionHistory.pop();
-  restorableItems.forEach(t => { if (!tasks.some(x => x.id === t.id)) tasks.push({ ...t, deleted: false, deletedAt: null }); });
-  showToast(`${restorableItems.length}개 복원됨.`);
+  restorableItems.filter(task => restoredIds.has(task.id)).forEach(t => {
+    if (!tasks.some(x => x.id === t.id)) tasks.push({ ...t, deleted: false, deletedAt: null });
+  });
+  showToast(`${restoredIds.size}개 복원됨.`);
   updateUI();
 }
 function handleTableClick(e) {

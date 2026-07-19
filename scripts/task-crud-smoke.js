@@ -89,6 +89,18 @@ async function main() {
   assert.equal(orderResult.success, false);
   assert.deepEqual(failedOrder.tasks.map(task => task.order), [1, 2], '순서 저장 실패 후 로컬 순서가 바뀌면 안 됩니다.');
 
+  const failedRestore = createContext();
+  failedRestore.fs.writeBatch = () => ({ set() {}, commit: async () => { throw new Error('batch denied'); } });
+  const restoreResult = await failedRestore.db_restoreTasks([{ ...failedRestore.tasks[0], deleted: true }]);
+  assert.equal(restoreResult.success, false);
+  assert.deepEqual(Array.from(restoreResult.restoredIds), [], '복원 저장 실패를 성공한 ID로 보고하면 안 됩니다.');
+
+  const failedTrackerOrder = createContext();
+  failedTrackerOrder.fs.writeBatch = () => ({ set() {}, commit: async () => { throw new Error('batch denied'); } });
+  const trackerOrderResult = await failedTrackerOrder.db_updateTrackerOrders([{ id: 'tracker-1', order: 2 }]);
+  assert.equal(trackerOrderResult.success, false);
+  assert.equal(failedTrackerOrder.trackers[0].order, 1, '트래커 순서 저장 실패 후 로컬 순서가 바뀌면 안 됩니다.');
+
   const failedTrackerUpdate = createContext();
   failedTrackerUpdate.fs.setDoc = async () => { throw new Error('write denied'); };
   const trackerResult = await failedTrackerUpdate.db_updateTracker('tracker-1', { name: '잘못된 성공 상태' });
@@ -107,6 +119,11 @@ async function main() {
   assert.equal(successResult.success, true);
   assert.equal(successfulUpdate.tasks[0].title, '저장된 업무');
   assert.equal(successfulUpdate.saveState, 'saved');
+
+  const successfulRestore = createContext();
+  const successfulRestoreResult = await successfulRestore.db_restoreTasks([{ ...successfulRestore.tasks[0], deleted: true }]);
+  assert.equal(successfulRestoreResult.success, true);
+  assert.deepEqual(Array.from(successfulRestoreResult.restoredIds), ['task-1']);
 
   const unavailable = createContext();
   unavailable.canWriteToFirestore = () => false;

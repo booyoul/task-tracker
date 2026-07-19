@@ -566,9 +566,6 @@
   .max-h-32 {
     max-height: calc(var(--spacing) * 32);
   }
-  .max-h-36 {
-    max-height: calc(var(--spacing) * 36);
-  }
   .max-h-52 {
     max-height: calc(var(--spacing) * 52);
   }
@@ -736,9 +733,6 @@
   }
   .flex-grow {
     flex-grow: 1;
-  }
-  .origin-right {
-    transform-origin: 100%;
   }
   .origin-top-left {
     transform-origin: 0 0;
@@ -1198,12 +1192,6 @@
       background-color: color-mix(in oklab, var(--color-amber-50) 20%, transparent);
     }
   }
-  .bg-amber-50\/30 {
-    background-color: color-mix(in srgb, oklch(98.7% 0.022 95.277) 30%, transparent);
-    @supports (color: color-mix(in lab, red, red)) {
-      background-color: color-mix(in oklab, var(--color-amber-50) 30%, transparent);
-    }
-  }
   .bg-amber-50\/50 {
     background-color: color-mix(in srgb, oklch(98.7% 0.022 95.277) 50%, transparent);
     @supports (color: color-mix(in lab, red, red)) {
@@ -1356,12 +1344,6 @@
   }
   .bg-rose-50 {
     background-color: var(--color-rose-50);
-  }
-  .bg-rose-50\/40 {
-    background-color: color-mix(in srgb, oklch(96.9% 0.015 12.422) 40%, transparent);
-    @supports (color: color-mix(in lab, red, red)) {
-      background-color: color-mix(in oklab, var(--color-rose-50) 40%, transparent);
-    }
   }
   .bg-rose-50\/60 {
     background-color: color-mix(in srgb, oklch(96.9% 0.015 12.422) 60%, transparent);
@@ -3019,14 +3001,6 @@
       }
     }
   }
-  .dark\:bg-slate-800\/80 {
-    &:where(.dark, .dark *) {
-      background-color: color-mix(in srgb, oklch(27.9% 0.041 260.031) 80%, transparent);
-      @supports (color: color-mix(in lab, red, red)) {
-        background-color: color-mix(in oklab, var(--color-slate-800) 80%, transparent);
-      }
-    }
-  }
   .dark\:bg-slate-900 {
     &:where(.dark, .dark *) {
       background-color: var(--color-slate-900);
@@ -3037,14 +3011,6 @@
       background-color: color-mix(in srgb, oklch(20.8% 0.042 265.755) 10%, transparent);
       @supports (color: color-mix(in lab, red, red)) {
         background-color: color-mix(in oklab, var(--color-slate-900) 10%, transparent);
-      }
-    }
-  }
-  .dark\:bg-slate-900\/20 {
-    &:where(.dark, .dark *) {
-      background-color: color-mix(in srgb, oklch(20.8% 0.042 265.755) 20%, transparent);
-      @supports (color: color-mix(in lab, red, red)) {
-        background-color: color-mix(in oklab, var(--color-slate-900) 20%, transparent);
       }
     }
   }
