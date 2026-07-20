@@ -170,6 +170,13 @@ function makeTasks() {
 }
 
 async function main() {
+  const indexDom = new JSDOM(fs.readFileSync(path.join(root, 'index.html'), 'utf8'));
+  const noteDateInput = indexDom.window.document.getElementById('input-note-date');
+  assert(noteDateInput && !noteDateInput.required, '숨겨진 진행 메모 기록일이 신규 업무 폼 제출을 차단합니다.');
+  indexDom.window.document.getElementById('input-task-title').value = '신규 업무 저장 회귀 테스트';
+  indexDom.window.document.getElementById('input-task-due').value = '2026-07-31';
+  assert(indexDom.window.document.getElementById('form-task').checkValidity(), '필수 업무값을 입력해도 신규 업무 폼이 제출 가능한 상태가 아닙니다.');
+
   const stateSource = fs.readFileSync(path.join(root, 'js/state.js'), 'utf8');
   assert(/let currentViewMode = ['"]CALENDAR['"]/.test(stateSource), '트래커 기본 진입 뷰가 캘린더가 아닙니다.');
 
