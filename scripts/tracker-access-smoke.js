@@ -4,7 +4,17 @@ const vm = require('node:vm');
 const { JSDOM } = require('jsdom');
 
 const dom = new JSDOM(`<!doctype html><body>
-  <div id="tracker-access-list"></div>
+  <form id="form-tracker"></form>
+  <div id="modal-tracker-title"></div>
+  <input id="input-tracker-id">
+  <input id="input-tracker-name">
+  <textarea id="input-tracker-desc"></textarea>
+  <div id="tracker-copy-summary" class="hidden"></div>
+  <section id="tracker-access-section"><div id="tracker-access-list"></div></section>
+  <button id="btn-delete-tracker" class="hidden"></button>
+  <button id="btn-save-tracker"></button>
+  <div id="tracker-dropdown-menu"></div>
+  <div id="modal-tracker" class="hidden"></div>
 </body>`);
 
 const context = {
@@ -18,6 +28,7 @@ const context = {
   currentTrackerId: '',
   currentSubTasks: [],
   approvedUsers: [],
+  showToast() {},
   escapeHTML: value => String(value ?? '').replace(/[&<>"']/g, character => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   })[character]),
@@ -68,4 +79,27 @@ assert.equal(savedMemberInputs.find(input => input.dataset.permission === 'view'
 assert.equal(savedMemberInputs.find(input => input.dataset.permission === 'update').checked, true);
 assert.equal(savedMemberInputs.find(input => input.dataset.permission === 'delete').checked, false);
 
-console.log('tracker access smoke passed: owner lock, permission dependencies, legacy compatibility');
+context.trackers = [{
+  id: 'source',
+  name: '원본 트래커',
+  desc: '원본 설명',
+  ownerId: 'another-owner',
+  accessControl: {
+    owner: { view: true, create: false, update: false, delete: false }
+  }
+}];
+context.tasks = [
+  { id: 'task-1', trackerId: 'source', deleted: false },
+  { id: 'task-deleted', trackerId: 'source', deleted: true }
+];
+context.currentTrackerId = 'source';
+context.hasTaskPermission = (_tracker, permission) => permission === 'view';
+context.openTrackerCopyModal('source');
+assert.equal(context.document.getElementById('input-tracker-id').value, '', '복사는 원본 트래커 ID를 재사용하면 안 됩니다.');
+assert.equal(context.document.getElementById('input-tracker-name').value, '원본 트래커 - 복사본');
+assert.match(context.document.getElementById('tracker-copy-summary').textContent, /활성 태스크 1개/);
+assert.match(context.document.getElementById('tracker-copy-summary').textContent, /태스크 메모, 진행 메모, 변경 이력, 원본 사용자 권한은 복사하지 않으며/);
+assert.equal(context.document.getElementById('btn-save-tracker').textContent, '복사하기');
+assert.equal(context.document.getElementById('tracker-access-section').classList.contains('hidden'), true, '복사 시 적용되지 않는 권한 편집 UI는 숨겨야 합니다.');
+
+console.log('tracker access smoke passed: owner lock, permission dependencies, legacy compatibility, copy mode');

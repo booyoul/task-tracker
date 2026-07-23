@@ -1,4 +1,4 @@
-console.info('Smart Task Flow task-service.js v20260719-v1 loaded');
+console.info('Smart Task Flow task-service.js v20260724-v1 loaded');
 // Task / tracker CRUD and Firebase realtime listener helpers.
 let taskSnapshotsByTracker = new Map();
 async function db_addTask(taskData) {
@@ -297,6 +297,126 @@ async function db_addTracker(data) {
   updateTrackerUI();
   updateUI();
   return { success: true, id, tracker: { id, ...payload } };
+}
+
+function cloneSubTasksForTrackerCopy(subTasks, copyToken, taskIndex) {
+  return (Array.isArray(subTasks) ? subTasks : []).map((subTask, subTaskIndex) => {
+    const copy = {
+      id: `sub_${copyToken}_${taskIndex}_${subTaskIndex}`,
+      title: subTask.title || '',
+      assignee: Array.isArray(subTask.assignee) ? [...subTask.assignee] : subTask.assignee,
+      startDate: subTask.startDate || '',
+      dueDate: subTask.dueDate || '',
+      status: subTask.status,
+    };
+    if (subTask.recurrence) copy.recurrence = JSON.parse(JSON.stringify(subTask.recurrence));
+    if (subTask.recurrenceCompletions) copy.recurrenceCompletions = { ...subTask.recurrenceCompletions };
+    return copy;
+  });
+}
+
+async function db_duplicateTracker(sourceTrackerId, data = {}) {
+  const sourceTracker = trackers.find(tracker => tracker.id === sourceTrackerId);
+  if (!sourceTracker || window.hasTaskPermission?.(sourceTracker, 'view') !== true) {
+    showToast('복사할 트래커의 조회 권한이 없습니다.', false);
+    return { success: false, error: '트래커 조회 권한이 없습니다.' };
+  }
+
+  const trackerColl = getTrackersCollection();
+  const taskColl = getTasksCollection();
+  const sourceTasks = tasks.filter(task => task.trackerId === sourceTrackerId && task.deleted !== true);
+  if (sourceTasks.length > 499) {
+    showToast('활성 태스크가 499개를 초과하여 한 번에 복사할 수 없습니다.', false);
+    return { success: false, error: '복사 가능한 태스크 수를 초과했습니다.' };
+  }
+  if (!trackerColl || !taskColl || !canWriteToFirestore()) {
+    markSaveError();
+    return { success: false, error: '인증 실패 또는 DB 접근 불가' };
+  }
+
+  const copyToken = `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const trackerId = `tracker_${copyToken}`;
+  const ownerId = window.currentUser ? window.currentUser.uid : 'anonymous';
+  const ownerName = window.currentUser ? (window.currentUser.displayName || window.currentUser.email) : 'anonymous';
+  const ownerPermissions = { view: true, create: true, update: true, delete: true };
+  const nextOrder = trackers.length ? Math.max(...trackers.map(tracker => typeof tracker.order === 'number' ? tracker.order : 0)) + 1 : 1;
+  const trackerPayload = {
+    name: String(data.name || `${sourceTracker.name || '트래커'} - 복사본`).trim(),
+    desc: String(data.desc ?? sourceTracker.desc ?? '').trim(),
+    accessControl: { [ownerId]: ownerPermissions },
+    kpiTitle: sourceTracker.kpiTitle || '업무 완료율',
+    kpiTarget: typeof sourceTracker.kpiTarget === 'number' ? sourceTracker.kpiTarget : 80,
+    kpiUnit: sourceTracker.kpiUnit || '%',
+    kpiType: sourceTracker.kpiType || 'AUTO_DONE_PCT',
+    kpiCurrent: typeof sourceTracker.kpiCurrent === 'number' ? sourceTracker.kpiCurrent : 0,
+    order: nextOrder,
+    deleted: false,
+    createdAt: getServerTimestamp(),
+    updatedAt: getServerTimestamp(),
+    createdBy: ownerId,
+    createdByName: ownerName,
+    ownerId,
+  };
+  const copiedTasks = sourceTasks.map((sourceTask, taskIndex) => {
+    const taskId = `task_${copyToken}_${taskIndex}`;
+    const payload = normalizeTaskForSchema({
+      title: sourceTask.title,
+      assignee: Array.isArray(sourceTask.assignee) ? [...sourceTask.assignee] : sourceTask.assignee,
+      startDate: sourceTask.startDate,
+      dueDate: sourceTask.dueDate,
+      priority: sourceTask.priority,
+      status: sourceTask.status,
+      industry: sourceTask.industry,
+      taskType: sourceTask.taskType,
+      notes: '',
+      order: sourceTask.order,
+      subTasks: cloneSubTasksForTrackerCopy(sourceTask.subTasks, copyToken, taskIndex),
+      trackerId,
+      trackerName: trackerPayload.name,
+      deleted: false,
+      createdAt: getServerTimestamp(),
+      updatedAt: getServerTimestamp(),
+      createdBy: ownerId,
+      createdByName: ownerName,
+      ownerId,
+    });
+    return { id: taskId, ...payload };
+  });
+
+  markSaving();
+  try {
+    const batch = window.fs.writeBatch(window.db);
+    batch.set(window.fs.doc(trackerColl, trackerId), trackerPayload);
+    copiedTasks.forEach(task => {
+      const { id, ...payload } = task;
+      batch.set(window.fs.doc(taskColl, id), payload);
+    });
+    await batch.commit();
+    markSaved();
+  } catch (e) {
+    markSaveError();
+    console.warn('트래커 복사 실패', e);
+    showToast('Firebase 트래커 복사 실패', false);
+    return { success: false, error: e.message || String(e) };
+  }
+
+  if (!trackers.some(tracker => tracker.id === trackerId)) {
+    trackers.push({ id: trackerId, ...trackerPayload });
+  }
+  copiedTasks.forEach(task => {
+    if (!tasks.some(item => item.id === task.id)) tasks.push(task);
+  });
+  currentTrackerId = trackerId;
+  localStorage.setItem('flow_current_tracker', trackerId);
+  updateTrackerUI();
+  updateUI();
+  return {
+    success: true,
+    id: trackerId,
+    tracker: { id: trackerId, ...trackerPayload },
+    tasks: copiedTasks,
+    taskCount: copiedTasks.length,
+  };
 }
 async function db_updateTracker(id, data) {
   const original = trackers.find(t => t.id === id);

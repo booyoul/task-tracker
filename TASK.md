@@ -1,6 +1,6 @@
 # Smart Task Flow Task
 
-Last updated: 2026-07-19
+Last updated: 2026-07-24
 
 ## Startup
 
@@ -31,6 +31,7 @@ Last updated: 2026-07-19
 - Recurring sub task occurrences can store per-cycle status overrides on the source sub task through `recurrenceCompletions`; status can be edited from the task modal or monthly summary, and yearly calendar views group occurrences from the same source sub task into one lane.
 - Tailwind dark mode is class-based via `.dark`, not OS preference.
 - Firestore batch writes for task restore and tracker ordering stay in `js/task-service.js`; render/orchestration code does not write directly.
+- Users with tracker view access can copy its active tasks and embedded sub tasks into a new tracker they own; task notes, progress notes, activity history, deleted tasks, and the source ACL are excluded.
 - Tailwind CSS generation uses the locally pinned 4.3.2 CLI for reproducible output.
 
 ## Key Files
@@ -63,7 +64,8 @@ Last updated: 2026-07-19
 - Missing user documents now enter approval-pending state, authentication lookup failures fail closed, and legacy ownerless tasks are editable only by admins.
 - `npm run smoke:security` guards the approval, role, ownership, and legacy-write contracts.
 - Task and tracker CRUD now mutate local state and show caller success messages only after Firestore confirms the write; `npm run smoke:crud` covers failed add/update/delete behavior.
-- Java 21, Firebase CLI, and `@firebase/rules-unit-testing` now run 40 allow/deny scenarios against the actual Firestore Emulator using the isolated `demo-task-tracker-security` project ID.
+- Tracker copy writes the new tracker and up to 499 active tasks in one Firestore batch so failed copies leave no partial local or remote state.
+- Java 21, Firebase CLI, and `@firebase/rules-unit-testing` now run 42 allow/deny scenarios against the actual Firestore Emulator using the isolated `demo-task-tracker-security` project ID.
 - Production project `task-tracker-99af4` denied unauthenticated reads to `tasks`, `trackers`, `users`, `activity_logs`, and `progress_notes` after the user published the rules.
 - Sub task execution cycle support is implemented end to end for input, schema normalization, calendar/monthly summary occurrence rendering, flat export rows, and per-cycle status overrides.
 - Task modal and monthly summary let recurring sub task occurrences be checked independently while preserving the source sub task's default status.
@@ -83,3 +85,4 @@ Last updated: 2026-07-19
 - Do not read or rewrite large files wholesale for small UI changes.
 - Do not change script architecture or split globals into modules unless explicitly requested.
 - When changing loaded JS/CSS, update the relevant query-string cache version in `index.html`.
+- A single tracker copy is limited to 499 active tasks by Firestore's 500-write batch limit.

@@ -1,4 +1,4 @@
-console.info('Smart Task Flow modal-controller.js v20260716-v2 loaded');
+console.info('Smart Task Flow modal-controller.js v20260724-v1 loaded');
 // Task modal, subtask modal list, tracker modal, and form submit handlers.
 function resetSubTaskButton() {
   const btn = document.getElementById('btn-add-subtask');
@@ -349,6 +349,7 @@ function closeConfirmModal() { document.getElementById('modal-confirm')?.classLi
 const TRACKER_ACCESS_LABELS = { view: '조회', create: '등록', update: '수정', delete: '삭제' };
 let trackerAccessMode = 'new';
 let trackerAccessWasEdited = false;
+let trackerCopySourceId = '';
 
 function getTrackerAccessUsers() {
   const usersById = new Map();
@@ -430,11 +431,17 @@ function collectTrackerAccessControl() {
 }
 
 function openTrackerModal(id = null) {
+  trackerCopySourceId = '';
   document.getElementById('form-tracker')?.reset();
   const del = document.getElementById('btn-delete-tracker');
   const saveBtn = document.getElementById('btn-save-tracker');
   const inputName = document.getElementById('input-tracker-name');
   const inputDesc = document.getElementById('input-tracker-desc');
+  const copySummary = document.getElementById('tracker-copy-summary');
+  document.getElementById('tracker-access-section')?.classList.remove('hidden');
+  copySummary?.classList.add('hidden');
+  if (copySummary) copySummary.textContent = '';
+  if (saveBtn) saveBtn.textContent = '저장하기';
   
   if (id) {
     const t = trackers.find(x => x.id === id); if (!t) return;
@@ -470,7 +477,34 @@ function openTrackerModal(id = null) {
   document.getElementById('tracker-dropdown-menu')?.classList.add('hidden');
   document.getElementById('modal-tracker')?.classList.remove('hidden');
 }
-function closeTrackerModal() { document.getElementById('modal-tracker')?.classList.add('hidden'); }
+
+function openTrackerCopyModal(id = currentTrackerId) {
+  const sourceTracker = trackers.find(tracker => tracker.id === id);
+  if (!sourceTracker || window.hasTaskPermission?.(sourceTracker, 'view') !== true) {
+    showToast('복사할 트래커의 조회 권한이 없습니다.', false);
+    return;
+  }
+
+  openTrackerModal();
+  trackerCopySourceId = sourceTracker.id;
+  const sourceTasks = tasks.filter(task => task.trackerId === sourceTracker.id && task.deleted !== true);
+  document.getElementById('modal-tracker-title').textContent = '트래커 복사';
+  document.getElementById('input-tracker-name').value = `${sourceTracker.name || '트래커'} - 복사본`;
+  document.getElementById('input-tracker-desc').value = sourceTracker.desc || '';
+  const copySummary = document.getElementById('tracker-copy-summary');
+  if (copySummary) {
+    copySummary.textContent = `활성 태스크 ${sourceTasks.length}개와 하위 업무를 복사합니다. 태스크 메모, 진행 메모, 변경 이력, 원본 사용자 권한은 복사하지 않으며 새 트래커는 본인이 소유합니다.`;
+    copySummary.classList.remove('hidden');
+  }
+  document.getElementById('tracker-access-section')?.classList.add('hidden');
+  const saveBtn = document.getElementById('btn-save-tracker');
+  if (saveBtn) saveBtn.textContent = '복사하기';
+}
+
+function closeTrackerModal() {
+  trackerCopySourceId = '';
+  document.getElementById('modal-tracker')?.classList.add('hidden');
+}
 
 async function handleTrackerSubmit(e) {
   e.preventDefault();
@@ -479,11 +513,16 @@ async function handleTrackerSubmit(e) {
     name: document.getElementById('input-tracker-name').value.trim(),
     desc: document.getElementById('input-tracker-desc').value.trim()
   };
-  const accessControl = collectTrackerAccessControl();
-  if (accessControl) data.accessControl = accessControl;
-  const result = id ? await db_updateTracker(id, data) : await db_addTracker(data);
+  let result;
+  if (trackerCopySourceId) {
+    result = await db_duplicateTracker(trackerCopySourceId, data);
+  } else {
+    const accessControl = collectTrackerAccessControl();
+    if (accessControl) data.accessControl = accessControl;
+    result = id ? await db_updateTracker(id, data) : await db_addTracker(data);
+  }
   if (!result || !result.success) return;
-  showToast(id ? '트래커가 수정되었습니다.' : '새 트래커 공간이 생성되었습니다.');
+  showToast(trackerCopySourceId ? `트래커와 태스크 ${result.taskCount}개가 복사되었습니다.` : (id ? '트래커가 수정되었습니다.' : '새 트래커 공간이 생성되었습니다.'));
   closeTrackerModal();
 }
 async function handleTaskSubmit(e) {
@@ -532,6 +571,7 @@ window.openTaskModal = openTaskModal;
 window.closeModal = closeModal;
 window.closeConfirmModal = closeConfirmModal;
 window.openTrackerModal = openTrackerModal;
+window.openTrackerCopyModal = openTrackerCopyModal;
 window.closeTrackerModal = closeTrackerModal;
 window.handleTrackerSubmit = handleTrackerSubmit;
 window.handleTaskSubmit = handleTaskSubmit;

@@ -168,6 +168,84 @@ async function main() {
   assert.equal(trackerUpdatePayload.accessControl['user-1'].delete, true, '권한 수정 시 소유자 전체 권한을 보존해야 합니다.');
   assert.equal(trackerUpdatePayload.accessControl['user-2'].view, true, '다른 사용자의 조회 권한을 저장해야 합니다.');
 
+  const trackerCopy = createContext();
+  trackerCopy.trackers[0] = {
+    ...trackerCopy.trackers[0],
+    ownerId: 'source-owner',
+    desc: '복사할 설명',
+    kpiTitle: '완료 목표',
+    kpiTarget: 90,
+    accessControl: {
+      'source-owner': { view: true, create: true, update: true, delete: true },
+      'user-1': { view: true, create: false, update: false, delete: false },
+    },
+  };
+  trackerCopy.tasks[0] = {
+    ...trackerCopy.tasks[0],
+    ownerId: 'source-owner',
+    createdBy: 'source-owner',
+    createdAt: 'old-time',
+    updatedAt: 'old-time',
+    notes: '태스크 본문 메모',
+    status: 'PROGRESS',
+    subTasks: [{
+      id: 'source-subtask',
+      title: '원본 하위 업무',
+      status: 'PENDING',
+      recurrence: { enabled: true, frequency: 'MONTHLY', interval: 1 },
+      recurrenceCompletions: { '2026-07-01': 'COMPLETED' },
+    }],
+  };
+  trackerCopy.hasTaskPermission = (_item, permission) => permission === 'view' || permission === 'create';
+  const copyWrites = [];
+  let copyCommits = 0;
+  let copyActivityWrites = 0;
+  trackerCopy.db_recordActivity = async () => { copyActivityWrites += 1; };
+  trackerCopy.fs.writeBatch = () => ({
+    set(ref, payload) { copyWrites.push({ ref, payload }); },
+    async commit() { copyCommits += 1; },
+  });
+  const trackerCopyResult = await trackerCopy.db_duplicateTracker('tracker-1', {
+    name: '복사된 트래커',
+    desc: '새 설명',
+  });
+  assert.equal(trackerCopyResult.success, true);
+  assert.equal(trackerCopyResult.taskCount, 1);
+  assert.equal(copyCommits, 1, '트래커와 태스크는 하나의 batch로 저장해야 합니다.');
+  assert.equal(copyWrites.length, 2, '트래커 1개와 활성 태스크 1개만 저장해야 합니다.');
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(copyWrites[0].payload.accessControl)),
+    { 'user-1': { view: true, create: true, update: true, delete: true } },
+    '원본 ACL 대신 복사한 사용자의 소유자 권한만 설정해야 합니다.'
+  );
+  const copiedTask = trackerCopyResult.tasks[0];
+  assert.notEqual(copiedTask.id, 'task-1', '복사된 태스크는 새 ID를 가져야 합니다.');
+  assert.notEqual(copiedTask.subTasks[0].id, 'source-subtask', '복사된 하위 업무는 새 ID를 가져야 합니다.');
+  assert.equal(copiedTask.ownerId, 'user-1');
+  assert.equal(copiedTask.createdBy, 'user-1');
+  assert.equal(copiedTask.createdAt, 'server-time');
+  assert.equal(copiedTask.notes, '', '태스크의 세부 안내 및 메모 필드는 복사하면 안 됩니다.');
+  assert.equal(copiedTask.subTasks[0].recurrenceCompletions['2026-07-01'], 'COMPLETED');
+  assert.equal(copyWrites.some(write => write.ref.collection === 'progress_notes'), false, '진행 메모는 복사하면 안 됩니다.');
+  assert.equal(copyActivityWrites, 0, '원본 변경 이력이나 새 CREATE 이력을 복사 과정에서 만들면 안 됩니다.');
+
+  const failedTrackerCopy = createContext();
+  failedTrackerCopy.fs.writeBatch = () => ({
+    set() {},
+    async commit() { throw new Error('copy denied'); },
+  });
+  const failedCopyResult = await failedTrackerCopy.db_duplicateTracker('tracker-1', { name: '실패 복사본' });
+  assert.equal(failedCopyResult.success, false);
+  assert.equal(failedTrackerCopy.trackers.length, 1, 'batch 실패 후 로컬 트래커가 늘어나면 안 됩니다.');
+  assert.equal(failedTrackerCopy.tasks.length, 1, 'batch 실패 후 로컬 태스크가 늘어나면 안 됩니다.');
+  assert.equal(failedTrackerCopy.currentTrackerId, 'tracker-1', 'batch 실패 후 현재 트래커가 바뀌면 안 됩니다.');
+
+  const deniedTrackerCopy = createContext();
+  deniedTrackerCopy.hasTaskPermission = () => false;
+  const deniedCopyResult = await deniedTrackerCopy.db_duplicateTracker('tracker-1', { name: '권한 없는 복사본' });
+  assert.equal(deniedCopyResult.success, false);
+  assert.equal(deniedTrackerCopy.trackers.length, 1);
+
   const noteCreate = createContext();
   let createdNotePayload = null;
   noteCreate.fs.setDoc = async (_ref, payload) => { createdNotePayload = payload; };
@@ -191,7 +269,7 @@ async function main() {
   assert.equal(noteUpdateResult.success, true);
   assert.equal(updatedNotePayload.noteDate, '2026-07-04', '메모 수정 시 변경한 기록일을 저장해야 합니다.');
 
-  console.log('task CRUD smoke passed: failed writes preserve local state and note dates persist');
+  console.log('task CRUD smoke passed: failed writes preserve local state, tracker copy is atomic, and note dates persist');
 }
 
 main().catch(error => {

@@ -13,7 +13,8 @@ const {
   query,
   setDoc,
   updateDoc,
-  where
+  where,
+  writeBatch
 } = require('firebase/firestore');
 
 const PROJECT_ID = 'demo-task-tracker-security';
@@ -178,6 +179,14 @@ async function main() {
       assertFails(setDoc(doc(bobDb, 'tasks', 'bob-acl-task'), taskData('bob', 'Bob 등록 시도', 'tracker-acl'))));
     await check('트래커 등록 권한 사용자의 업무 생성 허용', () =>
       assertSucceeds(setDoc(doc(creatorDb, 'tasks', 'creator-acl-task'), taskData('creator', 'Creator 업무', 'tracker-acl'))));
+    await check('조회 권한 사용자의 새 트래커와 태스크 일괄 복사 허용', () => {
+      const batch = writeBatch(bobDb);
+      batch.set(doc(bobDb, 'trackers', 'bob-copy'), trackerData('bob', {
+        bob: { view: true, create: true, update: true, delete: true }
+      }));
+      batch.set(doc(bobDb, 'tasks', 'bob-copy-task'), taskData('bob', '복사된 업무', 'bob-copy'));
+      return assertSucceeds(batch.commit());
+    });
     await check('트래커 수정 권한 사용자의 다른 작성자 업무 수정 허용', () =>
       assertSucceeds(updateDoc(doc(bobDb, 'tasks', 'acl-task'), { status: 'PROGRESS' })));
     await check('트래커 수정 권한 없는 사용자의 업무 수정 차단', () =>
@@ -256,6 +265,18 @@ async function main() {
       assertSucceeds(updateDoc(doc(bobDb, ...envAclTaskPath), { status: 'PROGRESS' })));
     await check('환경별 컬렉션에서 ACL 없는 사용자 읽기 차단', () =>
       assertFails(getDoc(doc(noAccessDb, ...envAclTaskPath))));
+    await check('환경별 컬렉션에서 새 트래커와 태스크 일괄 복사 허용', () => {
+      const batch = writeBatch(bobDb);
+      batch.set(
+        doc(bobDb, 'artifacts', ENV_APP_ID, 'public', 'data', 'trackers', 'bob-copy'),
+        trackerData('bob', { bob: { view: true, create: true, update: true, delete: true } })
+      );
+      batch.set(
+        doc(bobDb, 'artifacts', ENV_APP_ID, 'public', 'data', 'tasks', 'bob-copy-task'),
+        taskData('bob', '환경별 복사 업무', 'bob-copy')
+      );
+      return assertSucceeds(batch.commit());
+    });
     await check('사용자 문서가 없는 마스터 관리자의 업무 수정 허용', () =>
       assertSucceeds(updateDoc(doc(masterDb, 'tasks', 'alice-task'), { status: 'COMPLETED' })));
 

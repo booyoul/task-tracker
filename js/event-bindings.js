@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow event-bindings.js v20260714-v2 loaded');
+console.info('Smart Task Flow event-bindings.js v20260724-v1 loaded');
 
 function initEventBindings(){
   if(window.__eventBindingsInitialized)return;
@@ -47,6 +47,7 @@ function initEventBindings(){
   document.getElementById('btn-tracker-dropdown')?.addEventListener('click',e=>{e.stopPropagation();document.getElementById('tracker-dropdown-menu')?.classList.toggle('hidden');});
   document.addEventListener('click',e=>{if(!e.target.closest('#tracker-dropdown-container'))document.getElementById('tracker-dropdown-menu')?.classList.add('hidden');});
   document.getElementById('btn-create-tracker-open')?.addEventListener('click',()=>window.openTrackerModal?.());
+  document.getElementById('btn-copy-tracker-open')?.addEventListener('click',()=>window.openTrackerCopyModal?.(currentTrackerId));
   document.getElementById('btn-edit-tracker-open')?.addEventListener('click',()=>window.openTrackerModal?.(currentTrackerId));
   document.querySelectorAll('.filter-card').forEach(card=>card.addEventListener('click',()=>{const status=card.getAttribute('data-status');const el=document.getElementById('filter-status');if(el)el.value=status;renderActiveViews();}));
   ['filter-search','filter-search-desktop','filter-start-month','filter-end-month'].forEach(id=>document.getElementById(id)?.addEventListener('input',renderActiveViews));
