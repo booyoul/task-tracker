@@ -25,7 +25,7 @@ Last updated: 2026-07-24
 - Trackers open in the calendar view by default; users can still switch to list or Kanban views.
 - Tasks and sub tasks support a `CANCELLED` status shown as `취소`; cancelled items remain visible but are excluded from overdue, risk, progress, and completion-rate denominators.
 - Monthly summary is optimized for progress-note review with note-first layout, task-grouped note cards, author/type/search filters, and review labels for results, issues, decisions, and follow-up.
-- Monthly-summary notes group parent and sub task notes by their parent task and sort newest-first; the note detail panel shows older notes from that task as read-only history while editing only the selected note.
+- Monthly-summary notes group by their exact task or sub task ID and sort newest-first; the note detail panel shows older notes from only that exact task as read-only history while editing only the selected note.
 - Progress notes support a user-selected `noteDate`; existing notes fall back to `createdAt`, while feeds and monthly summaries use the effective record date.
 - New trackers store per-user `view/create/update/delete` permissions in `accessControl`; owners and admins retain full access, while legacy trackers keep their previous behavior until ACL settings are explicitly changed.
 - Sub task recurrence input, schema normalization, calendar/monthly summary occurrence rendering, and flat export rows are implemented.
@@ -74,7 +74,7 @@ Last updated: 2026-07-24
 - Monthly summary progress notes are automatically classified for review into results, issues, decisions, follow-up, and general notes.
 - Duplicate legacy mobile/monthly renderer globals and the stale patch instruction file were removed.
 - Mobile/list/calendar/summary QA coverage remains available through `npm run smoke:mobile`, including a 390px annual Gantt layout-width regression check.
-- The note side panel provides same-task history without changing the selected note ID used by update and delete operations.
+- The note side panel provides exact-task history without changing the selected note ID used by update and delete operations.
 
 ## Next Work
 

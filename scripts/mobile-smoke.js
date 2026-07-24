@@ -265,10 +265,11 @@ async function main() {
   assert(summary.textContent.includes('이번 달 메모 리뷰'), '월별 요약 메모 섹션이 없습니다.');
   assert(summary.textContent.includes('총 3건'), '월별 요약 메모 통계가 올바르지 않습니다.');
   assert(summary.textContent.includes('2026년 7월 10일'), '사용자가 지정한 메모 기록일이 월별 요약에 반영되지 않았습니다.');
-  assert(summary.querySelectorAll('[data-summary-note-card]').length === 1, '본 업무와 하위 업무의 메모가 동일 태스크 카드로 묶이지 않았습니다.');
+  assert(summary.querySelectorAll('[data-summary-note-card]').length === 2, '본 업무와 하위 업무 메모는 서로 다른 태스크 카드로 분리되어야 합니다.');
   const taskNoteEntries = [...summary.querySelector('[data-task-id="task-1"]')?.querySelectorAll('[data-summary-note-entry]') || []];
-  assert(taskNoteEntries.length === 3, '업무 카드 안에 같은 태스크의 메모가 모두 표시되지 않았습니다.');
-  assert(taskNoteEntries.map(entry => entry.textContent).join('|').match(/후속 검토.*하위 업무 점검.*리스크 회의 결과/s), '업무 카드 안의 메모가 기록일 최신순으로 정렬되지 않았습니다.');
+  assert(taskNoteEntries.length === 2, '본 업무 카드 안에 동일 태스크의 메모가 모두 표시되지 않았습니다.');
+  assert(taskNoteEntries.map(entry => entry.textContent).join('|').match(/후속 검토.*리스크 회의 결과/s), '본 업무 카드 안의 메모가 기록일 최신순으로 정렬되지 않았습니다.');
+  assert(summary.querySelector('[data-task-id="task-1__sub_sub-1"]')?.querySelectorAll('[data-summary-note-entry]').length === 1, '하위 업무 메모가 해당 하위 업무 카드에 분리되지 않았습니다.');
   assert(summary.textContent.includes('취소 1'), '월별 요약에 취소 업무 집계가 없습니다.');
 
   console.log('mobile smoke passed: calendar default, task and subtask cancelled status, list, calendar day, calendar year, summary');

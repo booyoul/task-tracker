@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-summary-renderer.js v20260724-v1 loaded');
+console.info('Smart Task Flow calendar-summary-renderer.js v20260724-v2 loaded');
 
 function getSummaryNoteDate(note = {}) {
     if (note.noteDate && /^\d{4}-\d{2}-\d{2}$/.test(note.noteDate)) {
@@ -271,7 +271,6 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
 
         const createTaskNoteCard = (taskNotes, isPinned = false) => {
             const latestNote = taskNotes[0];
-            const baseTaskId = String(latestNote.taskId || '').split('__sub_')[0];
             const hasMainNotes = taskNotes.some(note => !note.isSubTask);
             const hasSubTaskNotes = taskNotes.some(note => note.isSubTask);
             const scopeLabel = hasMainNotes && hasSubTaskNotes
@@ -279,7 +278,7 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
                 : (hasSubTaskNotes ? '하위 업무' : '본 업무');
             const card = document.createElement('div');
             card.dataset.summaryNoteCard = '';
-            card.dataset.taskId = baseTaskId;
+            card.dataset.taskId = latestNote.taskId || '';
             card.className = [
                 'w-full overflow-hidden rounded-lg border bg-white shadow-sm dark:bg-slate-900',
                 isPinned ? 'border-amber-200 dark:border-amber-900/60' : 'border-slate-200 dark:border-slate-800'
@@ -288,7 +287,7 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
                 <div class="flex items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/70 px-3 py-2 dark:border-slate-800 dark:bg-slate-800/50">
                     <div class="flex min-w-0 items-center gap-1.5">
                         ${isPinned ? '<span class="shrink-0 text-[11px] text-amber-500">★</span>' : ''}
-                        <span class="truncate text-xs font-bold text-slate-800 dark:text-slate-200">${escapeHTML(latestNote.taskTitle)}</span>
+                        <span class="truncate text-xs font-bold text-slate-800 dark:text-slate-200">${escapeHTML(latestNote.linkedTitle)}</span>
                         <span class="shrink-0 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-bold text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">${scopeLabel}</span>
                     </div>
                     <span class="shrink-0 text-[10px] font-bold text-amber-700 dark:text-amber-400">메모 ${taskNotes.length}건</span>
@@ -328,9 +327,7 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
         function groupNotesByTask(notes) {
             const groups = new Map();
             notes.forEach(note => {
-                const taskKey = note.taskId
-                    ? String(note.taskId).split('__sub_')[0]
-                    : `note:${note.id || note.createdAtTime}`;
+                const taskKey = note.taskId || `note:${note.id || note.createdAtTime}`;
                 if (!groups.has(taskKey)) groups.set(taskKey, []);
                 groups.get(taskKey).push(note);
             });

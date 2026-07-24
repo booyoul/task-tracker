@@ -1,4 +1,4 @@
-console.info('Smart Task Flow modal-controller.js v20260724-v2 loaded');
+console.info('Smart Task Flow modal-controller.js v20260724-v3 loaded');
 // Task modal, subtask modal list, tracker modal, and form submit handlers.
 function resetSubTaskButton() {
   const btn = document.getElementById('btn-add-subtask');
@@ -1071,12 +1071,12 @@ function renderNotePanelHistory(currentNote, notes) {
   const count = document.getElementById('note-panel-history-count');
   if (!section || !list) return;
 
-  const baseTaskId = String(currentNote.taskId || '').split('__sub_')[0];
+  const targetTaskId = String(currentNote.taskId || '');
   const currentTime = getNoteSortTime(currentNote);
   const historyNotes = (Array.isArray(notes) ? notes : [])
     .filter(note => {
       if (!note || note.id === currentNote.id) return false;
-      if (String(note.taskId || '').split('__sub_')[0] !== baseTaskId) return false;
+      if (String(note.taskId || '') !== targetTaskId) return false;
       return getNoteSortTime(note) < currentTime;
     })
     .sort((a, b) => getNoteSortTime(b) - getNoteSortTime(a));
@@ -1117,9 +1117,9 @@ async function loadNotePanelHistory(note) {
   section.classList.remove('hidden');
   list.innerHTML = '<p class="py-2 text-center text-[11px] text-slate-400">이전 메모를 불러오는 중...</p>';
   if (count) count.textContent = '';
-  const baseTaskId = String(note.taskId || '').split('__sub_')[0];
-  const notes = baseTaskId && typeof window.db_fetchProgressNotes === 'function'
-    ? await window.db_fetchProgressNotes(baseTaskId)
+  const targetTaskId = String(note.taskId || '');
+  const notes = targetTaskId && typeof window.db_fetchProgressNotes === 'function'
+    ? await window.db_fetchProgressNotes(targetTaskId)
     : [];
   if (requestId !== _notePanelHistoryRequestId || _currentNotePanelNote?.id !== note.id) return;
   renderNotePanelHistory(note, notes);

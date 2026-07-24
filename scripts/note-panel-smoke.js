@@ -61,6 +61,15 @@ const notes = [
     createdByName: 'old@example.com',
   },
   {
+    id: 'note-subtask-oldest',
+    taskId: 'task-1__sub_sub-1',
+    title: '하위 업무 더 과거 메모',
+    body: '하위 업무 첫 기록',
+    noteDate: '2026-07-09',
+    createdAt: new Date('2026-07-09T08:00:00+09:00'),
+    createdByName: 'sub-old@example.com',
+  },
+  {
     id: 'note-future',
     taskId: 'task-1',
     title: '선택 메모보다 최신',
@@ -104,7 +113,11 @@ async function main() {
   };
   context.window = context;
   context.db_fetchProgressNotes = async taskId => {
-    assert.equal(taskId, 'task-1', 'history 조회는 선택 메모의 본 업무 ID를 사용해야 합니다.');
+    assert.equal(
+      ['task-1', 'task-1__sub_sub-1'].includes(taskId),
+      true,
+      'history 조회는 선택 메모의 정확한 taskId를 사용해야 합니다.'
+    );
     return notes;
   };
   context.db_updateProgressNote = async (noteId, payload) => {
@@ -121,13 +134,23 @@ async function main() {
   const historyItems = [...context.document.querySelectorAll('[data-note-history-id]')];
   assert.deepEqual(
     historyItems.map(item => item.dataset.noteHistoryId),
-    ['note-subtask-history', 'note-oldest'],
-    '같은 본 업무의 과거 메모만 최신순으로 표시해야 합니다.'
+    ['note-oldest'],
+    '본 업무 메모를 열면 그 본 업무의 과거 메모만 표시해야 합니다.'
   );
-  assert.equal(context.document.getElementById('note-panel-history-count').textContent, '2건');
+  assert.equal(context.document.getElementById('note-panel-history-count').textContent, '1건');
+  assert.equal(context.document.getElementById('note-panel-history').textContent.includes('하위 업무 과거 메모'), false);
   assert.equal(context.document.getElementById('note-panel-history').textContent.includes('미래 내용'), false);
   assert.equal(context.document.getElementById('note-panel-history').textContent.includes('다른 내용'), false);
 
+  await context.openNoteDetailPanel(notes.find(note => note.id === 'note-subtask-history'));
+  assert.deepEqual(
+    [...context.document.querySelectorAll('[data-note-history-id]')].map(item => item.dataset.noteHistoryId),
+    ['note-subtask-oldest'],
+    '하위 업무 메모를 열면 그 하위 업무의 과거 메모만 표시해야 합니다.'
+  );
+  assert.equal(context.document.getElementById('note-panel-history').textContent.includes('첫 번째 과거 내용'), false);
+
+  await context.openNoteDetailPanel(currentNote);
   context.document.getElementById('btn-note-edit').click();
   context.document.getElementById('input-note-edit-title').value = '수정된 현재 메모';
   context.document.getElementById('input-note-edit-date').value = '2026-07-12';
@@ -140,7 +163,7 @@ async function main() {
   assert.equal(context.document.getElementById('note-panel-body').textContent, '수정된 현재 내용');
   assert.equal(context.document.querySelector('[data-note-history-id="note-oldest"]').textContent.includes('첫 번째 과거 내용'), true);
 
-  console.log('note panel smoke passed: task history is newest-first and edits target only the selected note');
+  console.log('note panel smoke passed: exact-task history is isolated and edits target only the selected note');
 }
 
 main().catch(error => {
