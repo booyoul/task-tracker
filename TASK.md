@@ -23,6 +23,8 @@ Last updated: 2026-07-24
 - JavaScript files are loaded as browser globals from `index.html`; script order and cache query strings matter.
 - Mobile calendar, list, monthly summary, KPI badge/settings, activity timeline, and mobile smoke QA are implemented.
 - Trackers open in the calendar view by default; users can still switch to list or Kanban views.
+- KPI/Risk 현황, 검색, 상태·우선순위·담당자·마감 월 필터는 하나의 통합 제어 영역에 있으며, CSV/Excel/Power BI/백업/가져오기는 기본 접힌 `도구` 메뉴에 있다.
+- `새 업무 추가`는 목록/캘린더/칸반/승인 관리 뷰 전환 행에 배치된다.
 - Undo, batch delete, and bulk-action controls appear only in task-selectable list and Kanban views; calendar and admin views keep any selection or deletion history hidden until returning to a supported view.
 - Tasks and sub tasks support a `CANCELLED` status shown as `취소`; cancelled items remain visible but are excluded from overdue, risk, progress, and completion-rate denominators.
 - Monthly summary is optimized for progress-note review with note-first layout, task-grouped note cards, author/type/search filters, and review labels for results, issues, decisions, and follow-up.

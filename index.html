@@ -8,7 +8,7 @@
     <link rel="icon" href="./favicon.ico?v=20260625-monthly-kpi">
     <!-- Immediately apply theme script to prevent FOUC -->
     <script src="./js/theme-service.js?v=20260710-v1"></script>
-    <link rel="stylesheet" href="./dist/output.css?v=20260724-v2">
+    <link rel="stylesheet" href="./dist/output.css?v=20260724-v3">
     <style>
         body {
             font-family: 'Noto Sans KR', sans-serif;
@@ -244,7 +244,7 @@
                         </div>
 
                         <!-- Option A: Minimal KPI Goal Badge Container -->
-                        <div id="tracker-kpi-badge-container" class="hidden inline-flex items-center gap-2 cursor-pointer select-none rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold shadow-sm hover:bg-slate-50 transition dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300 dark:hover:bg-slate-800" title="목표 완료율 설정 변경">
+                        <div id="tracker-kpi-badge-container" hidden class="hidden inline-flex items-center gap-2 cursor-pointer select-none rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold shadow-sm hover:bg-slate-50 transition dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300 dark:hover:bg-slate-800" title="목표 완료율 설정 변경">
                             <!-- JS에서 원형 SVG 및 배지 로드 -->
                         </div>
                     </div>
@@ -270,7 +270,7 @@
                 </button>
 
 
-                <button id="btn-export-csv"
+                <button id="btn-export-csv" hidden
                     class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition">
                     <svg class="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -279,19 +279,19 @@
                     CSV
                 </button>
 
-                <button id="btn-export-excel"
+                <button id="btn-export-excel" hidden
                     class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition">
                     <span class="text-emerald-600 font-black">XLS</span>
                     Excel
                 </button>
 
-                <button id="btn-export-powerbi"
+                <button id="btn-export-powerbi" hidden
                     class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition">
                     <span class="text-yellow-600 font-black">BI</span>
                     Power BI
                 </button>
 
-                <button id="btn-export-json"
+                <button id="btn-export-json" hidden
                     class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition">
                     <svg class="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -300,7 +300,7 @@
                     백업
                 </button>
 
-                <button id="btn-import-trigger"
+                <button id="btn-import-trigger" hidden
                     class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition">
                     <svg class="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -488,11 +488,33 @@
                     class="hidden flex-1 rounded-lg py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 transition">승인 관리</button>
             </div>
 
-            <!-- 필터 및 뷰 토글 -->
-            <div class="mb-3 rounded-2xl border border-slate-100 bg-white py-3 px-4 shadow-sm">
+            <!-- 업무 현황 · 검색 · 필터 통합 제어 영역 -->
+            <div id="unified-control-center" class="mb-3 rounded-2xl border border-slate-100 bg-white py-3 px-4 shadow-sm">
+                <div class="mb-3 flex flex-col gap-3 border-b border-slate-100 pb-3 dark:border-slate-800">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <div class="min-w-0">
+                            <div class="text-xs font-black text-slate-800 dark:text-slate-100">업무 현황 및 필터</div>
+                            <div class="text-[10px] font-medium text-slate-400">현황 확인과 업무 탐색을 한 곳에서 관리합니다.</div>
+                        </div>
+                        <div class="flex flex-wrap items-center justify-end gap-2">
+                            <div id="unified-goal-host" class="flex items-center"></div>
+                            <details id="secondary-tools-menu" class="group relative">
+                                <summary class="flex cursor-pointer list-none items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                                    도구
+                                    <svg class="h-3.5 w-3.5 transition group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                </summary>
+                                <div id="ux-tool-host" class="control-hub-actions absolute right-0 top-full z-40 mt-2 hidden w-52 flex-col gap-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl group-open:flex dark:border-slate-700 dark:bg-slate-900"></div>
+                            </details>
+                        </div>
+                    </div>
+                    <div id="unified-status-host" class="flex flex-wrap items-center gap-2"></div>
+                    <div id="unified-risk-host"></div>
+                </div>
                 <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <!-- 검색 영역 (모바일 w-full, 데스크톱에서는 숨김) -->
-                    <div class="relative w-full lg:hidden">
+                    <!-- 공통 검색 영역 -->
+                    <div class="relative w-full lg:max-w-sm">
                         <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
                             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -570,8 +592,8 @@
                     </div>
                 </div>
             </div>
-            <!-- 뷰 전환 토글 (포커스 모드 박스 아래에 위치, 모바일/데스크톱 모두 표시) -->
-            <div id="view-toggle-bar" class="flex items-center justify-between gap-2 mb-3">
+            <!-- 뷰 전환 및 주요 업무 액션 -->
+            <div id="view-toggle-bar" class="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <div class="inline-flex rounded-xl bg-slate-100 p-1 shrink-0">
                     <button id="btn-view-table"
                         class="rounded-lg bg-white px-4 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition">목록</button>
@@ -583,20 +605,9 @@
                         class="hidden rounded-lg px-4 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition">승인 관리</button>
                 </div>
                 
-                <!-- 데스크톱용 검색창 (뷰 토글과 되돌리기 버튼 사이, 데스크톱에서만 노출) -->
-                <div class="hidden lg:relative lg:block lg:flex-1 lg:max-w-xs mx-4">
-                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                    </span>
-                    <input type="text" id="filter-search-desktop" placeholder="업무명 또는 담당자 검색..."
-                        class="w-full rounded-xl border border-slate-200 bg-slate-50 py-1.5 pl-10 pr-4 text-xs outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100 placeholder:text-center">
-                </div>
-
-                <!-- 되돌리기 · 일괄 삭제 버튼 (뷰 토글 오른쪽) -->
+                <!-- 새 업무 · 되돌리기 · 일괄 삭제 버튼 -->
                 <div class="flex items-center gap-2">
+                    <div id="primary-task-action-host" class="flex items-center"></div>
                     <button id="btn-undo" hidden
                         class="hidden inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 shadow-sm hover:bg-amber-100 transition"
                         title="되돌리기">
@@ -1493,14 +1504,14 @@
     <script defer src="./js/calendar-month-renderer.js?v=20260716-v12"></script>
     <script defer src="./js/calendar-summary-renderer.js?v=20260724-v2"></script>
     <script defer src="./js/calendar-mobile-renderer.js?v=20260719-v1"></script>
-    <script defer src="./js/table-mobile-renderer.js?v=20260724-v2"></script>
+    <script defer src="./js/table-mobile-renderer.js?v=20260724-v3"></script>
     <script defer src="./js/kanban-renderer.js?v=20260716-v12"></script>
     <script defer src="./js/modal-controller.js?v=20260724-v3"></script>
     <script defer src="./js/admin-approvals.js?v=20260716-v1"></script>
     <script defer src="./js/month-picker-controller.js?v=20260724-v1"></script>
-    <script defer src="./js/event-bindings.js?v=20260724-v1"></script>
+    <script defer src="./js/event-bindings.js?v=20260724-v2"></script>
     <script defer src="./js/bootstrap-service.js?v=20260714-v11"></script>
-    <script defer src="./js/app.js?v=20260724-v3"></script>
+    <script defer src="./js/app.js?v=20260724-v4"></script>
     <script defer src="./js/task-service.js?v=20260724-v1"></script>
     <script defer src="./js/export-service.js?v=20260714-v2"></script>
 </body>

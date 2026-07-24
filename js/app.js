@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow app.js v20260724-v3 loaded');
+console.info('Smart Task Flow app.js v20260724-v4 loaded');
 // --- UX optimization globals: must be declared before helper functions ---
 var focusState = window.focusState || { riskOnly: false, mineOnly: false, highOnly: false };
 window.focusState = focusState;
@@ -137,17 +137,16 @@ function ensureAdvancedFilterOptions() {
   });
   sel.dataset.advanced = 'true';
 }
-function ensureRiskDashboardPanel() {  
-  const existing = document.getElementById('risk-dashboard-panel');  
-  if (existing) return existing;  
-  // Robust anchor: the KPI section class changed from mb-6 to mb-3, so do not rely on a fixed class selector.  
-  const cards = document.getElementById('card-ALL')?.parentElement || document.getElementById('kpi-dashboard-section') || document.querySelector('section.grid:has(.filter-card)') || document.querySelector('.filter-card')?.parentElement;  
-  if (!cards) return null;  
-  const panel = document.createElement('section');  
-  panel.id = 'risk-dashboard-panel';  
-  panel.className = 'mb-3';  
-  cards.insertAdjacentElement('afterend', panel);  
-  return panel;  
+function ensureRiskDashboardPanel() {
+  const host = document.getElementById('unified-risk-host');
+  if (!host) return null;
+  let panel = document.getElementById('risk-dashboard-panel');
+  if (!panel) {
+    panel = document.createElement('section');
+    panel.id = 'risk-dashboard-panel';
+  }
+  if (panel.parentElement !== host) host.appendChild(panel);
+  return panel;
 }
 
 
@@ -163,29 +162,17 @@ function renderRiskDashboard(scope) {
   }
   panel.classList.remove('hidden');
   
-  const critical = risky.filter(t => getTaskRiskInfo(t, today).level === 'CRITICAL').length;
-  const high = risky.filter(t => getTaskRiskInfo(t, today).level === 'HIGH').length;
-  const dueSoon = scope.filter(t => hasDueSoonRisk(t, today)).length;
-  
   const topRisk = risky[0];
   const topRiskInfo = topRisk ? getTaskRiskInfo(topRisk, today) : null;
   const bottleneck = topRisk ? getBottleneckSubTask(topRisk, today) : null;
   const topSummary = topRisk ? `${escapeHTML(topRisk.title)} · ${topRiskInfo.label} D+${topRiskInfo.delay}` : '현재 중대 지연 없음';
   const bottleneckSummary = bottleneck ? `병목: ${escapeHTML(bottleneck.title)} · ${bottleneck.dueDate || '마감 미정'}` : '병목 없음';
   
-  panel.className = 'mb-3';
+  panel.className = '';
   panel.innerHTML = `
-    <div class="rounded-xl border border-rose-100 bg-white px-3 py-2 shadow-sm">
-      <div class="flex flex-col gap-1 lg:flex-row lg:items-center lg:justify-between">
-        <div class="flex flex-wrap items-center gap-2 text-xs">
-          <span class="font-black text-slate-700">Risk</span>
-          <span class="rounded-lg bg-rose-50 px-2 py-0.5 font-black text-rose-600">${risky.length}</span>
-          <span class="text-slate-400">Critical ${critical}</span>
-          <span class="text-slate-400">High ${high}</span>
-          <span class="text-slate-400">3일 내 ${dueSoon}</span>
-        </div>
-        <div class="min-w-0 truncate text-[11px] font-semibold text-slate-500">Top: ${topSummary}${topRisk ? ` / ${bottleneckSummary}` : ''}</div>
-      </div>
+    <div class="flex min-w-0 items-center gap-2 rounded-xl bg-rose-50/70 px-3 py-2 text-[11px] dark:bg-rose-950/20">
+      <span class="shrink-0 font-black text-rose-700 dark:text-rose-300">우선 확인</span>
+      <span class="min-w-0 truncate font-semibold text-slate-600 dark:text-slate-300">${topSummary}${topRisk ? ` / ${bottleneckSummary}` : ''}</span>
     </div>`;
 }
 
@@ -516,7 +503,7 @@ async function moveTaskOrder(id, direction) {
 // Task and tracker CRUD helpers moved to js/task-service.js
 
 function getFilteredTasks() {
-  const searchVal = (document.getElementById('filter-search')?.value || '').trim() || (document.getElementById('filter-search-desktop')?.value || '').trim();
+  const searchVal = (document.getElementById('filter-search')?.value || '').trim();
   const search = searchVal.toLowerCase();
   const status = document.getElementById('filter-status')?.value || 'ALL';
   const priority = document.getElementById('filter-priority')?.value || 'ALL';
@@ -922,8 +909,11 @@ function updateUndoButton() {
   }
 }
 function resetFilters() {
-  ['filter-search', 'filter-search-desktop', 'filter-start-month', 'filter-end-month', 'mobile-filter-start-month', 'mobile-filter-end-month'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['filter-search', 'filter-start-month', 'filter-end-month', 'mobile-filter-start-month', 'mobile-filter-end-month'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   ['filter-status', 'filter-priority', 'mobile-filter-status', 'mobile-filter-priority'].forEach(id => { const el = document.getElementById(id); if (el) el.value = 'ALL'; });
+  focusState.riskOnly = false;
+  focusState.highOnly = false;
+  focusState.mineOnly = false;
   selectedAssigneeFilters.clear();
   window.selectedAssigneeFilters = selectedAssigneeFilters;
   updateAssigneeButton();
@@ -987,11 +977,16 @@ function ensureKpiCollapsedSummary(section) {
       const chip = e.target.closest('.kpi-compact-chip');
       if (chip) {
         const status = chip.getAttribute('data-status');
+        const priority = chip.getAttribute('data-priority');
         if (status) {
           const el = document.getElementById('filter-status');
           if (el) el.value = status;
-          renderActiveViews();
         }
+        if (priority) {
+          const el = document.getElementById('filter-priority');
+          if (el) el.value = priority;
+        }
+        renderActiveViews();
       }
     });
     section.insertAdjacentElement('beforebegin', summary);
@@ -1007,30 +1002,36 @@ function getKpiCompactValues() {
   const completed = scope.filter(t => getEffectiveStatus(t, today) === 'COMPLETED').length;
   const cancelled = scope.filter(t => getEffectiveStatus(t, today) === 'CANCELLED').length;
   const overdue = scope.filter(t => isTaskOverdueEffective(t, today)).length;
-  return { total, pending, progress, completed, cancelled, overdue };
+  const high = scope.filter(t => t.priority === 'HIGH').length;
+  return { total, pending, progress, completed, cancelled, overdue, high };
 }
 function relocateHeaderActionsToToolbar() {
-  const actionHost = document.getElementById('ux-action-host');
-  if (!actionHost) return;
-  const items = [
+  const toolHost = document.getElementById('ux-tool-host');
+  const primaryHost = document.getElementById('primary-task-action-host');
+  const goalHost = document.getElementById('unified-goal-host');
+  if (!toolHost || !primaryHost || !goalHost) return;
+  const tools = [
     ['btn-export-csv', 'CSV'],
     ['btn-export-excel', 'Excel'],
     ['btn-export-powerbi', 'Power BI'],
     ['btn-export-json', '백업'],
-    ['btn-import-trigger', '가져오기'],
-    ['btn-add-task', '+ 새 업무']
+    ['btn-import-trigger', '가져오기']
   ];
-  items.forEach(([id]) => {
+  tools.forEach(([id]) => {
     const el = document.getElementById(id);
-    if (!el || el.parentElement === actionHost) return;
-    el.className = id === 'btn-add-task'
-      ? 'control-action-btn inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-indigo-700 whitespace-nowrap'
-      : 'control-action-btn inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition whitespace-nowrap';
-    actionHost.appendChild(el);
+    if (!el || el.parentElement === toolHost) return;
+    el.hidden = false;
+    el.className = 'control-action-btn flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs font-bold text-slate-700 transition hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800';
+    toolHost.appendChild(el);
   });
-  const originalToolbar = document.querySelector('header .flex.flex-wrap.items-center.gap-2');
-  if (originalToolbar && !Array.from(originalToolbar.children).some(ch => ch.id && ['btn-export-csv','btn-export-excel','btn-export-powerbi','btn-export-json','btn-import-trigger','btn-add-task'].includes(ch.id))) {
-    originalToolbar.classList.add('hidden');
+  const addTask = document.getElementById('btn-add-task');
+  if (addTask && addTask.parentElement !== primaryHost) {
+    addTask.className = 'inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl bg-indigo-600 px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-indigo-700';
+    primaryHost.appendChild(addTask);
+  }
+  const goalBadge = document.getElementById('tracker-kpi-badge-container');
+  if (goalBadge && goalBadge.parentElement !== goalHost) {
+    goalHost.appendChild(goalBadge);
   }
 }
 function applyCompactDashboardStyles() {
@@ -1038,40 +1039,35 @@ function applyCompactDashboardStyles() {
   if (!section) return;
   section.id = section.id || 'kpi-dashboard-section';
   const summary = ensureKpiCollapsedSummary(section);
+  const statusHost = document.getElementById('unified-status-host');
+  if (statusHost && summary.parentElement !== statusHost) statusHost.appendChild(summary);
 
   const k = getKpiCompactValues();
   section.className = 'hidden';
-  summary.className = 'mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-sm';
+  summary.className = 'flex flex-wrap items-center gap-2';
   
   const currentStatus = document.getElementById('filter-status')?.value || 'ALL';
   const activeClass = (status) => currentStatus === status ? 'ring-2 ring-indigo-600 ring-offset-1 scale-[1.02]' : '';
 
   summary.innerHTML = `
-    <span class="text-[11px] font-black uppercase tracking-wide text-slate-400 mr-1">KPI</span>
+    <span class="text-[11px] font-black uppercase tracking-wide text-slate-400 mr-1">현황</span>
     <span data-status="ALL" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-700 border border-slate-200 cursor-pointer hover:bg-slate-100 transition duration-150 ${activeClass('ALL')}">전체 <b class="text-slate-900">${k.total}</b></span>
     <span data-status="PENDING" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700 border border-amber-200 cursor-pointer hover:bg-amber-100 transition duration-150 ${activeClass('PENDING')}">대기 <b>${k.pending}</b></span>
     <span data-status="PROGRESS" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700 border border-blue-200 cursor-pointer hover:bg-blue-100 transition duration-150 ${activeClass('PROGRESS')}">진행 <b>${k.progress}</b></span>
     <span data-status="COMPLETED" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700 border border-emerald-200 cursor-pointer hover:bg-emerald-100 transition duration-150 ${activeClass('COMPLETED')}">완료 <b>${k.completed}</b></span>
     <span data-status="CANCELLED" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-500 border border-slate-200 cursor-pointer hover:bg-slate-200 transition duration-150 ${activeClass('CANCELLED')}">취소 <b>${k.cancelled}</b></span>
-    <span data-status="OVERDUE" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-rose-700 border border-rose-200 cursor-pointer hover:bg-rose-100 transition duration-150 ${activeClass('OVERDUE')}">지연 <b>${k.overdue}</b></span>`;
+    <span data-status="OVERDUE" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-rose-700 border border-rose-200 cursor-pointer hover:bg-rose-100 transition duration-150 ${activeClass('OVERDUE')}">Risk <b>${k.overdue}</b></span>
+    <span data-priority="HIGH" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700 border border-amber-200 cursor-pointer hover:bg-amber-100 transition duration-150 ${document.getElementById('filter-priority')?.value === 'HIGH' ? 'ring-2 ring-indigo-600 ring-offset-1 scale-[1.02]' : ''}">High <b>${k.high}</b></span>`;
 }
 function ensureUXToolbar() {
-  const filterBox = document.getElementById('btn-reset-filters')?.closest('.mb-3');
+  const filterBox = document.getElementById('unified-control-center');
   if (!filterBox) return;
   let bar = document.getElementById('ux-toolbar');
   if (!bar) {
     bar = document.createElement('div');
     bar.id = 'ux-toolbar';
-    bar.className = 'mt-1.5';
+    bar.className = 'mt-3 border-t border-slate-100 pt-3 dark:border-slate-800';
     bar.innerHTML = `
-      <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-        <div class="flex flex-wrap items-center gap-2">
-          <span class="text-[11px] font-bold uppercase tracking-wide text-slate-400">Focus Mode</span>
-          <button type="button" id="btn-focus-risk" class="ux-focus-btn rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold transition hover:bg-slate-50">🚨 Risk Only</button>
-          <button type="button" id="btn-focus-high" class="ux-focus-btn rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold transition hover:bg-slate-50">🔥 High Priority</button>
-        </div>
-        <div id="ux-action-host" class="control-hub-actions flex flex-wrap items-center gap-2 lg:justify-end"></div>
-      </div>
       <div id="bulk-action-bar" class="hidden mt-3 flex-wrap items-center gap-2 rounded-xl border border-indigo-100 bg-indigo-50/60 p-2">
         <span id="bulk-selected-count" class="text-xs font-bold text-indigo-700">0개 선택됨</span>
         <button type="button" id="bulk-change-status" class="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50">상태 변경</button>
@@ -1082,7 +1078,6 @@ function ensureUXToolbar() {
     filterBox.appendChild(bar);
   }
   relocateHeaderActionsToToolbar();
-  updateFocusButtons();
   updateBulkActionBar();
 }
 
@@ -1156,6 +1151,7 @@ function renderTrackerKpiBadge() {
 
   const tracker = trackers.find(t => t.id === currentTrackerId);
   if (!tracker) {
+    container.hidden = true;
     container.classList.add('hidden');
     return;
   }
@@ -1251,6 +1247,7 @@ function renderTrackerKpiBadge() {
     </span>
     <span class="font-bold shrink-0 uppercase tracking-wide text-[9px] bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded border border-current/20">${statusText}</span>
   `;
+  container.hidden = false;
   container.classList.remove('hidden');
 
   // Bind click to open custom KPI settings modal

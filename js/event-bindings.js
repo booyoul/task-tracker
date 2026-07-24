@@ -50,7 +50,7 @@ function initEventBindings(){
   document.getElementById('btn-copy-tracker-open')?.addEventListener('click',()=>window.openTrackerCopyModal?.(currentTrackerId));
   document.getElementById('btn-edit-tracker-open')?.addEventListener('click',()=>window.openTrackerModal?.(currentTrackerId));
   document.querySelectorAll('.filter-card').forEach(card=>card.addEventListener('click',()=>{const status=card.getAttribute('data-status');const el=document.getElementById('filter-status');if(el)el.value=status;renderActiveViews();}));
-  ['filter-search','filter-search-desktop','filter-start-month','filter-end-month'].forEach(id=>document.getElementById(id)?.addEventListener('input',renderActiveViews));
+  ['filter-search','filter-start-month','filter-end-month'].forEach(id=>document.getElementById(id)?.addEventListener('input',renderActiveViews));
   ['filter-status','filter-priority','filter-assignee','filter-start-month','filter-end-month'].forEach(id=>document.getElementById(id)?.addEventListener('change',renderActiveViews));
   document.getElementById('filter-start-month')?.addEventListener('change', (e) => {
     const val = e.target.value;

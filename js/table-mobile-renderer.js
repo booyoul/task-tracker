@@ -1,4 +1,4 @@
-console.info('Smart Task Flow table-mobile-renderer.js v20260724-v2 loaded');
+console.info('Smart Task Flow table-mobile-renderer.js v20260724-v3 loaded');
 // Table and mobile card renderers. Extracted from app.js in Phase 5.
 function getSubTaskProgressLabel(subTasks) {
   const counts = getSubTaskCompletionCounts(subTasks);
@@ -222,43 +222,6 @@ function renderMobileCards(filtered) {
   emptyState?.classList.remove('flex');
 
   const todayStr = getTodayStr();
-  const riskyCount = filtered.filter(t => isTaskOverdueEffective(t, todayStr) || ['HIGH','CRITICAL'].includes(getTaskRiskInfo(t, todayStr).level)).length;
-  const completedCount = filtered.filter(t => getEffectiveStatus(t, todayStr) === 'COMPLETED').length;
-
-  const isRiskActive = typeof focusState !== 'undefined' && focusState.riskOnly;
-  const isHighActive = typeof focusState !== 'undefined' && focusState.highOnly;
-  const isAssigneeActive = typeof selectedAssigneeFilters !== 'undefined' && selectedAssigneeFilters.size > 0;
-
-  const riskClass = isRiskActive 
-    ? 'rounded-2xl border border-rose-600 bg-rose-600 px-3 py-2 text-xs font-black text-white transition shadow-sm' 
-    : 'rounded-2xl border border-rose-100 bg-rose-50 px-3 py-2 text-xs font-black text-rose-700 transition';
-
-  const highClass = isHighActive 
-    ? 'rounded-2xl border border-amber-600 bg-amber-600 px-3 py-2 text-xs font-black text-white transition shadow-sm' 
-    : 'rounded-2xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs font-black text-amber-700 transition';
-
-  const assigneeClass = isAssigneeActive 
-    ? 'rounded-2xl border border-indigo-600 bg-indigo-600 px-3 py-2 text-xs font-black text-white transition shadow-sm' 
-    : 'rounded-2xl border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs font-black text-indigo-700 transition';
-
-  const header = document.createElement('section');
-  header.className = 'mobile-command-deck sticky top-0 z-20 -mx-1 mb-3 rounded-b-3xl border border-slate-100 bg-white/90 p-3 shadow-sm backdrop-blur lg:hidden';
-  header.innerHTML = `<div class="flex items-center justify-between gap-3">
-    <div><div class="text-[11px] font-black uppercase tracking-wide text-slate-400">Mobile Focus</div><div class="text-base font-black text-slate-900">업무 ${filtered.length}건</div></div>
-    <div class="flex items-center gap-1.5 text-[11px] font-black">
-      <span class="rounded-full bg-rose-50 px-2 py-1 text-rose-600">Risk ${riskyCount}</span>
-      <span class="rounded-full bg-emerald-50 px-2 py-1 text-emerald-600">완료 ${completedCount}</span>
-    </div>
-  </div>
-  <div class="mt-3 grid grid-cols-3 gap-2">
-    <button type="button" id="mobile-focus-risk" class="${riskClass}">Risk</button>
-    <button type="button" id="mobile-focus-high" class="${highClass}">High</button>
-    <button type="button" id="mobile-open-assignee" class="${assigneeClass}">담당자</button>
-  </div>`;
-  container.appendChild(header);
-  header.querySelector('#mobile-focus-risk')?.addEventListener('click', () => toggleFocusMode('riskOnly'));
-  header.querySelector('#mobile-focus-high')?.addEventListener('click', () => toggleFocusMode('highOnly'));
-  header.querySelector('#mobile-open-assignee')?.addEventListener('click', openAssigneeModal);
 
   filtered.forEach(t => {
     const subTasks = Array.isArray(t.subTasks) ? t.subTasks : [];
@@ -315,9 +278,8 @@ function setViewVisibility(mode) {
   const isMobile = window.matchMedia ? window.matchMedia('(max-width: 1023px)').matches : window.innerWidth < 1024;
   [table, mobile, calendar, calendarMobile, kanban, adminView].forEach(el => { if (el) { el.classList.add('hidden'); el.style.display = 'none'; } });
   
-  // 어드민 승인 관리 뷰에서는 불필요한 필터 박스, 리스크 패널 감추기
-  const filterBox = document.getElementById('btn-reset-filters')?.closest('.mb-3');
-  const riskPanel = document.getElementById('risk-dashboard-panel');
+  // 어드민 승인 관리 뷰에서는 업무 탐색 제어 영역을 감춥니다.
+  const filterBox = document.getElementById('unified-control-center');
   if (filterBox) {
     if (mode === 'ADMIN') {
       filterBox.classList.add('hidden');
@@ -325,14 +287,6 @@ function setViewVisibility(mode) {
       filterBox.classList.remove('hidden');
     }
   }
-  if (riskPanel) {
-    if (mode === 'ADMIN') {
-      riskPanel.classList.add('hidden');
-    } else {
-      riskPanel.classList.remove('hidden');
-    }
-  }
-
   if (mode === 'ADMIN') { if (adminView) { adminView.classList.remove('hidden'); adminView.style.display = ''; } return; }
   if (mode === 'CALENDAR') {
     if (isMobile) {
