@@ -1,4 +1,4 @@
-console.info('Smart Task Flow modal-controller.js v20260724-v1 loaded');
+console.info('Smart Task Flow modal-controller.js v20260724-v2 loaded');
 // Task modal, subtask modal list, tracker modal, and form submit handlers.
 function resetSubTaskButton() {
   const btn = document.getElementById('btn-add-subtask');
@@ -856,6 +856,7 @@ let _currentSubNoteCounts = {};  // 서브태스크별 메모 개수 캐시
 let _currentFeedPage = 1;         // 현재 피드 페이지
 const FEED_PAGE_SIZE = 5;         // 페이지당 아이템 개수
 let _cachedFeedItems = [];        // 머지된 타임라인 데이터 캐시
+let _notePanelHistoryRequestId = 0;
 
 // ─── 날짜 포맷 헬퍼 ───────────────────────────────────────
 function getNoteDateValue(note = {}) {
@@ -1025,23 +1026,23 @@ function renderHistoryPagination(totalItems) {
 }
 
 // ─── 슬라이드오버 패널 열기 ──────────────────────────────
-function openNoteDetailPanel(note) {
+async function openNoteDetailPanel(note) {
   _currentNotePanelNote = note;
   const panel = document.getElementById('note-detail-panel');
   const backdrop = document.getElementById('note-panel-backdrop');
   if (!panel) return;
 
-  // 월별 요약 등의 모달 외부에서 직접 진입 시 _currentNoteTaskId가 비어있으므로 note.taskId 기반으로 보완
-  if (!_currentNoteTaskId && note.taskId) {
+  // 월별 요약 등 어떤 진입점에서도 선택한 메모의 본 업무를 현재 범위로 사용
+  if (note.taskId) {
     _currentNoteTaskId = note.taskId.split('__sub_')[0];
   }
 
   // 읽기 모드로 초기화
   setNotePanel_readMode(note);
-
   panel.classList.remove('translate-x-full');
   panel.classList.add('translate-x-0');
   if (backdrop) backdrop.classList.remove('hidden');
+  await loadNotePanelHistory(note);
 }
 
 function closeNoteDetailPanel() {
@@ -1049,7 +1050,79 @@ function closeNoteDetailPanel() {
   const backdrop = document.getElementById('note-panel-backdrop');
   if (panel) { panel.classList.add('translate-x-full'); panel.classList.remove('translate-x-0'); }
   if (backdrop) backdrop.classList.add('hidden');
+  _notePanelHistoryRequestId += 1;
   _currentNotePanelNote = null;
+}
+
+function getNoteScopeLabel(note = {}) {
+  const parts = String(note.taskId || '').split('__sub_');
+  if (parts.length < 2) return '본 업무';
+  const subTaskId = parts[1];
+  const parentTask = typeof tasks !== 'undefined' && Array.isArray(tasks)
+    ? tasks.find(task => task.id === parts[0])
+    : null;
+  const subTask = parentTask?.subTasks?.find(item => item.id === subTaskId);
+  return `하위 업무${subTask?.title ? ` · ${subTask.title}` : ''}`;
+}
+
+function renderNotePanelHistory(currentNote, notes) {
+  const section = document.getElementById('note-panel-history-section');
+  const list = document.getElementById('note-panel-history');
+  const count = document.getElementById('note-panel-history-count');
+  if (!section || !list) return;
+
+  const baseTaskId = String(currentNote.taskId || '').split('__sub_')[0];
+  const currentTime = getNoteSortTime(currentNote);
+  const historyNotes = (Array.isArray(notes) ? notes : [])
+    .filter(note => {
+      if (!note || note.id === currentNote.id) return false;
+      if (String(note.taskId || '').split('__sub_')[0] !== baseTaskId) return false;
+      return getNoteSortTime(note) < currentTime;
+    })
+    .sort((a, b) => getNoteSortTime(b) - getNoteSortTime(a));
+
+  list.innerHTML = '';
+  if (count) count.textContent = `${historyNotes.length}건`;
+  if (!historyNotes.length) {
+    section.classList.add('hidden');
+    return;
+  }
+
+  historyNotes.forEach(note => {
+    const item = document.createElement('article');
+    item.dataset.noteHistoryId = note.id || '';
+    item.className = 'rounded-xl border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-800/40';
+    item.innerHTML = `
+      <div class="flex items-start justify-between gap-2">
+        <div class="min-w-0">
+          <div class="truncate text-xs font-bold text-slate-700 dark:text-slate-200">${escapeHTML(note.title || '(제목 없음)')}</div>
+          <div class="mt-0.5 text-[10px] font-semibold text-slate-400">${escapeHTML(getNoteScopeLabel(note))} · ${formatNoteDate(note)} · ${escapeHTML((note.createdByName || '').split('@')[0] || '알 수 없음')}</div>
+        </div>
+        <span class="shrink-0 rounded-md bg-slate-200/70 px-1.5 py-0.5 text-[9px] font-bold text-slate-500 dark:bg-slate-700 dark:text-slate-300">과거 기록</span>
+      </div>
+      <p class="mt-2 whitespace-pre-wrap text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">${escapeHTML(note.body || '') || '<span class="italic text-slate-400">(내용 없음)</span>'}</p>
+    `;
+    list.appendChild(item);
+  });
+  section.classList.remove('hidden');
+}
+
+async function loadNotePanelHistory(note) {
+  const section = document.getElementById('note-panel-history-section');
+  const list = document.getElementById('note-panel-history');
+  const count = document.getElementById('note-panel-history-count');
+  if (!section || !list) return;
+
+  const requestId = ++_notePanelHistoryRequestId;
+  section.classList.remove('hidden');
+  list.innerHTML = '<p class="py-2 text-center text-[11px] text-slate-400">이전 메모를 불러오는 중...</p>';
+  if (count) count.textContent = '';
+  const baseTaskId = String(note.taskId || '').split('__sub_')[0];
+  const notes = baseTaskId && typeof window.db_fetchProgressNotes === 'function'
+    ? await window.db_fetchProgressNotes(baseTaskId)
+    : [];
+  if (requestId !== _notePanelHistoryRequestId || _currentNotePanelNote?.id !== note.id) return;
+  renderNotePanelHistory(note, notes);
 }
 
 function setNotePanel_readMode(note) {
@@ -1174,6 +1247,7 @@ function initProgressNotesEvents() {
     if (result && result.success) {
       _currentNotePanelNote = { ..._currentNotePanelNote, title, body, noteDate };
       setNotePanel_readMode(_currentNotePanelNote);
+      await loadNotePanelHistory(_currentNotePanelNote);
       showToast('메모가 수정되었습니다.');
       if (_currentNoteTaskId) await loadTaskHistory(_currentNoteTaskId, _currentFeedPage);
       if (typeof renderActiveViews === 'function') renderActiveViews();
