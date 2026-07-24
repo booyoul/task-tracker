@@ -27,7 +27,7 @@ Last updated: 2026-07-24
 - `새 업무 추가`는 목록/캘린더/칸반/승인 관리 뷰 전환 행에 배치된다.
 - Undo, batch delete, and bulk-action controls appear only in task-selectable list and Kanban views; calendar and admin views keep any selection or deletion history hidden until returning to a supported view.
 - Tasks and sub tasks support a `CANCELLED` status shown as `취소`; cancelled items remain visible but are excluded from overdue, risk, progress, and completion-rate denominators.
-- Monthly summary is optimized for progress-note review with note-first layout, task-grouped note cards, author/type/search filters, and review labels for results, issues, decisions, and follow-up.
+- Monthly summary is optimized for progress-note review with note-first layout, task-grouped note cards, author/work-type/search filters, important/comment toggles, and review labels for results, issues, decisions, and follow-up.
 - Monthly-summary notes group by their exact task or sub task ID and sort newest-first; the note detail panel shows older notes from only that exact task as read-only history while editing only the selected note.
 - Progress notes support a user-selected `noteDate`; existing notes fall back to `createdAt`, while feeds and monthly summaries use the effective record date.
 - Progress notes support sanitized font colors and bullet lists, plus customer name, Opp No, and a memo-level work type; monthly review search and cards include this context.
@@ -89,6 +89,7 @@ Last updated: 2026-07-24
 - The note editor stores plain text for search/review classification and sanitized rich HTML for color/list rendering; existing plain-text notes continue to render normally.
 - Customer name, Opp No, memo work type, review comments, and tracker-level work-type add/edit/delete settings are covered by note/CRUD/mobile/rules smoke tests.
 - Tracker-level task-category settings, registration-form placement, category-first list/calendar grouping, and tracker-copy preservation are covered by mobile/CRUD smoke tests.
+- Monthly-summary memo filtering supports author, work type, search, important-only, and comment-present combinations; mobile smoke covers the work-type and comment controls.
 
 ## Next Work
 
