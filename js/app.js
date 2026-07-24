@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow app.js v20260724-v2 loaded');
+console.info('Smart Task Flow app.js v20260724-v3 loaded');
 // --- UX optimization globals: must be declared before helper functions ---
 var focusState = window.focusState || { riskOnly: false, mineOnly: false, highOnly: false };
 window.focusState = focusState;
@@ -907,18 +907,18 @@ function updateSelectAllState(totalVisible, totalSelected) {
 function updateBatchButton() {
   const btn = document.getElementById('btn-batch-delete');
   if (btn) {
-    supportsTaskSelectionActions() && selectedTaskIds.size
-      ? btn.classList.remove('hidden')
-      : btn.classList.add('hidden');
+    const shouldShow = supportsTaskSelectionActions() && selectedTaskIds.size > 0;
+    btn.hidden = !shouldShow;
+    btn.classList.toggle('hidden', !shouldShow);
   }
   updateBulkActionBar();
 }
 function updateUndoButton() {
   const btn = document.getElementById('btn-undo');
   if (btn) {
-    supportsTaskSelectionActions() && deletionHistory.length
-      ? btn.classList.remove('hidden')
-      : btn.classList.add('hidden');
+    const shouldShow = supportsTaskSelectionActions() && deletionHistory.length > 0;
+    btn.hidden = !shouldShow;
+    btn.classList.toggle('hidden', !shouldShow);
   }
 }
 function resetFilters() {

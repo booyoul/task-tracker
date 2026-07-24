@@ -19,6 +19,8 @@ const dom = new JSDOM(`<!doctype html>
     <button id="btn-next-month-mobile"></button>
     <div id="cal-mobile-content"></div>
     <div id="calendar-month-year"></div>
+    <div id="calendar-weekday-header"></div>
+    <div id="calendar-grid"></div>
   </body>
 </html>`, {
   url: 'http://localhost/',
@@ -171,26 +173,98 @@ function makeTasks() {
 }
 
 async function main() {
-  const indexDom = new JSDOM(fs.readFileSync(path.join(root, 'index.html'), 'utf8'));
+  const indexDom = new JSDOM(fs.readFileSync(path.join(root, 'index.html'), 'utf8'), {
+    url: 'http://localhost/',
+    runScripts: 'outside-only'
+  });
   const noteDateInput = indexDom.window.document.getElementById('input-note-date');
   assert(noteDateInput && !noteDateInput.required, '숨겨진 진행 메모 기록일이 신규 업무 폼 제출을 차단합니다.');
   indexDom.window.document.getElementById('input-task-title').value = '신규 업무 저장 회귀 테스트';
   indexDom.window.document.getElementById('input-task-due').value = '2026-07-31';
   assert(indexDom.window.document.getElementById('form-task').checkValidity(), '필수 업무값을 입력해도 신규 업무 폼이 제출 가능한 상태가 아닙니다.');
 
+  const monthPickerSource = fs.readFileSync(path.join(root, 'js/month-picker-controller.js'), 'utf8');
+  indexDom.window.eval(monthPickerSource);
+  assert(indexDom.window.MonthPickerController.init({ force: true }), 'Firefox 월 선택 fallback을 초기화하지 못했습니다.');
+  const startMonthInput = indexDom.window.document.getElementById('filter-start-month');
+  const startMonthButton = indexDom.window.document.querySelector('[aria-label="시작 월 선택"]');
+  assert(startMonthButton, 'Firefox 월 선택 버튼이 생성되지 않았습니다.');
+  startMonthButton.click();
+  const monthPicker = indexDom.window.document.getElementById('month-picker-fallback');
+  assert(monthPicker && monthPicker.getAttribute('aria-hidden') === 'false', 'Firefox 월 선택 팝업이 열리지 않았습니다.');
+  monthPicker.querySelector('[data-month="7"]').click();
+  assert(startMonthInput.value === `${new Date().getFullYear()}-07`, 'Firefox 월 선택 결과가 YYYY-MM 형식으로 반영되지 않았습니다.');
+  assert(monthPicker.getAttribute('aria-hidden') === 'true', '월 선택 후 Firefox fallback 팝업이 닫히지 않았습니다.');
+
   const stateSource = fs.readFileSync(path.join(root, 'js/state.js'), 'utf8');
   assert(/let currentViewMode = ['"]CALENDAR['"]/.test(stateSource), '트래커 기본 진입 뷰가 캘린더가 아닙니다.');
   const appSource = fs.readFileSync(path.join(root, 'js/app.js'), 'utf8');
-  assert(/function updateBatchButton\(\)[\s\S]*?supportsTaskSelectionActions\(\) && selectedTaskIds\.size/.test(appSource), '일괄 삭제 버튼이 지원 화면으로 제한되지 않았습니다.');
-  assert(/function updateUndoButton\(\)[\s\S]*?supportsTaskSelectionActions\(\) && deletionHistory\.length/.test(appSource), '되돌리기 버튼이 지원 화면으로 제한되지 않았습니다.');
+  const batchDeleteButton = indexDom.window.document.getElementById('btn-batch-delete');
+  const undoButton = indexDom.window.document.getElementById('btn-undo');
+  assert(batchDeleteButton?.hidden && undoButton?.hidden, '일괄 삭제 또는 되돌리기 버튼의 초기 숨김 속성이 누락되었습니다.');
+  assert(/function updateBatchButton\(\)[\s\S]*?supportsTaskSelectionActions\(\) && selectedTaskIds\.size > 0[\s\S]*?btn\.hidden = !shouldShow/.test(appSource), '일괄 삭제 버튼이 지원 화면에서만 실제로 표시되도록 제한되지 않았습니다.');
+  assert(/function updateUndoButton\(\)[\s\S]*?supportsTaskSelectionActions\(\) && deletionHistory\.length > 0[\s\S]*?btn\.hidden = !shouldShow/.test(appSource), '되돌리기 버튼이 지원 화면에서만 실제로 표시되도록 제한되지 않았습니다.');
 
   loadScript('js/date-risk-utils.js');
   loadScript('js/calendar-utils.js');
+  loadScript('js/calendar-day-renderer.js');
   loadScript('js/calendar-summary-renderer.js');
   loadScript('js/calendar-mobile-renderer.js');
   loadScript('js/table-mobile-renderer.js');
 
   const tasks = makeTasks();
+  global.calendarUxState.groupByAssignee = true;
+  global.renderCalendarDayView({
+    weekdayHeader: document.getElementById('calendar-weekday-header'),
+    grid: document.getElementById('calendar-grid'),
+    year: 2026,
+    month: 6,
+    todayStr: '2026-07-12',
+    totalCalLanes: 7,
+    groups: [
+      {
+        id: 'late-lane-first-week',
+        title: '첫 주 높은 논리 lane 업무',
+        status: 'PENDING',
+        priority: 'NORMAL',
+        startDate: '2026-07-01',
+        dueDate: '2026-07-02',
+        globalLineStart: 6,
+        assigneeHeaderLine: 5,
+        assigneeGroupName: '후순위 담당자',
+        assigneeKpi: { total: 1, progress: 0, overdue: 0, completed: 0 },
+        assignee: ['담당자'],
+        notes: '',
+        monthSubTasks: []
+      },
+      {
+        id: 'early-lane-later-week',
+        title: '후반 주 업무',
+        status: 'PENDING',
+        priority: 'NORMAL',
+        startDate: '2026-07-20',
+        dueDate: '2026-07-20',
+        globalLineStart: 1,
+        assigneeHeaderLine: 0,
+        assigneeGroupName: '선순위 담당자',
+        assigneeKpi: { total: 1, progress: 0, overdue: 0, completed: 0 },
+        assignee: ['담당자'],
+        notes: '',
+        monthSubTasks: []
+      }
+    ],
+    showSubTaskBars: true,
+    mainClass: () => 'bg-slate-200 text-slate-700',
+    dimIfNotCritical: () => '',
+    useIndustryColor: false
+  });
+  const weekLaneCounts = document.getElementById('calendar-grid').dataset.weekLaneCounts.split(',').map(Number);
+  const compactedFirstWeekBar = document.querySelector('#calendar-grid [data-week-index="0"][data-logical-lane="6"]');
+  assert(weekLaneCounts[0] === 2, `첫 주에 활성 담당자 헤더와 업무 외 빈 줄이 남아 있습니다: ${weekLaneCounts[0]}`);
+  assert(compactedFirstWeekBar?.dataset.compactLane === '1', '첫 주의 높은 논리 lane 업무가 활성 담당자 헤더 바로 아래로 압축되지 않았습니다.');
+  assert(compactedFirstWeekBar?.style.top === '56px', `첫 주 업무 위에 비활성 담당자 빈 줄이 남아 있습니다: ${compactedFirstWeekBar?.style.top}`);
+  global.calendarUxState.groupByAssignee = false;
+
   const cancelledTask = {
     id: 'task-cancelled',
     title: '취소 상태 회귀 테스트',

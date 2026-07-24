@@ -35,6 +35,8 @@ Last updated: 2026-07-24
 - Firestore batch writes for task restore and tracker ordering stay in `js/task-service.js`; render/orchestration code does not write directly.
 - Users with tracker view access can copy its active tasks and embedded sub tasks into a new tracker they own; task notes, progress notes, activity history, deleted tasks, and the source ACL are excluded.
 - Tailwind CSS generation uses the locally pinned 4.3.2 CLI for reproducible output.
+- Firefox desktop uses a custom year/month picker fallback for the due-month filters while Chrome and Edge keep their native month controls.
+- The desktop monthly calendar compacts lanes independently for each week so inactive assignee/task rows do not leave vertical gaps.
 
 ## Key Files
 
@@ -43,6 +45,7 @@ Last updated: 2026-07-24
 - `js/app.js`: main render/update flow and filters. Search before reading.
 - `js/task-service.js`: Firestore CRUD and listeners.
 - `js/modal-controller.js`: task and KPI modals.
+- `js/month-picker-controller.js`: Firefox fallback for desktop and mobile due-month filters.
 - `js/calendar-*.js`: calendar, Gantt, and monthly summary renderers.
 - `js/table-mobile-renderer.js`: mobile/list rendering.
 - `docs/mobile_qa_checklist.md`: manual mobile QA checklist.
