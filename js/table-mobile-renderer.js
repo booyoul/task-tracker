@@ -1,4 +1,4 @@
-console.info('Smart Task Flow table-mobile-renderer.js v20260719-v1 loaded');
+console.info('Smart Task Flow table-mobile-renderer.js v20260724-v2 loaded');
 // Table and mobile card renderers. Extracted from app.js in Phase 5.
 function getSubTaskProgressLabel(subTasks) {
   const counts = getSubTaskCompletionCounts(subTasks);
@@ -190,13 +190,20 @@ function ensureMobileBulkActionBar() {
   document.getElementById('mobile-bulk-delete')?.addEventListener('click', confirmBatchDelete);
 }
 
+function supportsTaskSelectionActions(mode = currentViewMode) {
+  return mode === 'TABLE' || mode === 'KANBAN';
+}
+window.supportsTaskSelectionActions = supportsTaskSelectionActions;
+
 function updateMobileBulkActionBar() {
   ensureMobileBulkActionBar();
   const bar = document.getElementById('mobile-bulk-action-bar');
   const count = document.getElementById('mobile-bulk-count');
   if (!bar || !count) return;
   count.textContent = `${selectedTaskIds.size}개 선택됨`;
-  selectedTaskIds.size ? bar.classList.remove('hidden') : bar.classList.add('hidden');
+  supportsTaskSelectionActions() && selectedTaskIds.size
+    ? bar.classList.remove('hidden')
+    : bar.classList.add('hidden');
 }
 
 function renderMobileCards(filtered) {

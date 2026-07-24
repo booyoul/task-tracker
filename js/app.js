@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow app.js v20260719-v1 loaded');
+console.info('Smart Task Flow app.js v20260724-v2 loaded');
 // --- UX optimization globals: must be declared before helper functions ---
 var focusState = window.focusState || { riskOnly: false, mineOnly: false, highOnly: false };
 window.focusState = focusState;
@@ -365,7 +365,9 @@ function updateBulkActionBar() {
   const count = document.getElementById('bulk-selected-count');
   if (bar && count) {
     count.textContent = `${selectedTaskIds.size}개 선택됨`;
-    selectedTaskIds.size ? bar.classList.remove('hidden') : bar.classList.add('hidden');
+    supportsTaskSelectionActions() && selectedTaskIds.size
+      ? bar.classList.remove('hidden')
+      : bar.classList.add('hidden');
   }
   if (typeof updateMobileBulkActionBar === 'function') updateMobileBulkActionBar();
 }
@@ -902,8 +904,23 @@ function updateSelectAllState(totalVisible, totalSelected) {
   cb.indeterminate = totalSelected > 0 && totalSelected < totalVisible;
   updateBatchButton();
 }
-function updateBatchButton() { const btn = document.getElementById('btn-batch-delete'); if (btn) selectedTaskIds.size ? btn.classList.remove('hidden') : btn.classList.add('hidden'); updateBulkActionBar(); }
-function updateUndoButton() { const btn = document.getElementById('btn-undo'); if (btn) deletionHistory.length ? btn.classList.remove('hidden') : btn.classList.add('hidden'); }
+function updateBatchButton() {
+  const btn = document.getElementById('btn-batch-delete');
+  if (btn) {
+    supportsTaskSelectionActions() && selectedTaskIds.size
+      ? btn.classList.remove('hidden')
+      : btn.classList.add('hidden');
+  }
+  updateBulkActionBar();
+}
+function updateUndoButton() {
+  const btn = document.getElementById('btn-undo');
+  if (btn) {
+    supportsTaskSelectionActions() && deletionHistory.length
+      ? btn.classList.remove('hidden')
+      : btn.classList.add('hidden');
+  }
+}
 function resetFilters() {
   ['filter-search', 'filter-search-desktop', 'filter-start-month', 'filter-end-month', 'mobile-filter-start-month', 'mobile-filter-end-month'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   ['filter-status', 'filter-priority', 'mobile-filter-status', 'mobile-filter-priority'].forEach(id => { const el = document.getElementById(id); if (el) el.value = 'ALL'; });
@@ -1103,7 +1120,8 @@ function renderActiveViews(){
   if(typeof UX_STORAGE_KEYS==='undefined')window.UX_STORAGE_KEYS=UX_STORAGE_KEYS={myAssignee:'flow_my_assignee_name'};
   updateFocusButtons();
   updateAssigneeMultiSelect();
-  updateBulkActionBar();
+  updateBatchButton();
+  updateUndoButton();
   // ADMIN 뷰는 별도 렌더러 없이 HTML 정적 콘텐츠만 사용하므로 여기서 early return
   if(currentViewMode==='ADMIN'){
     setViewVisibility('ADMIN');

@@ -23,6 +23,7 @@ Last updated: 2026-07-24
 - JavaScript files are loaded as browser globals from `index.html`; script order and cache query strings matter.
 - Mobile calendar, list, monthly summary, KPI badge/settings, activity timeline, and mobile smoke QA are implemented.
 - Trackers open in the calendar view by default; users can still switch to list or Kanban views.
+- Undo, batch delete, and bulk-action controls appear only in task-selectable list and Kanban views; calendar and admin views keep any selection or deletion history hidden until returning to a supported view.
 - Tasks and sub tasks support a `CANCELLED` status shown as `취소`; cancelled items remain visible but are excluded from overdue, risk, progress, and completion-rate denominators.
 - Monthly summary is optimized for progress-note review with note-first layout, task-grouped note cards, author/type/search filters, and review labels for results, issues, decisions, and follow-up.
 - Monthly-summary notes group by their exact task or sub task ID and sort newest-first; the note detail panel shows older notes from only that exact task as read-only history while editing only the selected note.

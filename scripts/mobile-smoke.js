@@ -33,6 +33,7 @@ global.navigator = dom.window.navigator;
 global.currentCalDate = new Date('2026-07-12T00:00:00+09:00');
 global.currentCalMode = 'DAY';
 global.currentTrackerId = 'tracker-smoke';
+global.currentViewMode = 'TABLE';
 global.calendarUxState = {
   subtasksExpanded: true,
   criticalOnly: false,
@@ -179,6 +180,9 @@ async function main() {
 
   const stateSource = fs.readFileSync(path.join(root, 'js/state.js'), 'utf8');
   assert(/let currentViewMode = ['"]CALENDAR['"]/.test(stateSource), '트래커 기본 진입 뷰가 캘린더가 아닙니다.');
+  const appSource = fs.readFileSync(path.join(root, 'js/app.js'), 'utf8');
+  assert(/function updateBatchButton\(\)[\s\S]*?supportsTaskSelectionActions\(\) && selectedTaskIds\.size/.test(appSource), '일괄 삭제 버튼이 지원 화면으로 제한되지 않았습니다.');
+  assert(/function updateUndoButton\(\)[\s\S]*?supportsTaskSelectionActions\(\) && deletionHistory\.length/.test(appSource), '되돌리기 버튼이 지원 화면으로 제한되지 않았습니다.');
 
   loadScript('js/date-risk-utils.js');
   loadScript('js/calendar-utils.js');
@@ -227,6 +231,21 @@ async function main() {
   assert(document.querySelector('.mobile-command-deck'), '모바일 목록 상단 제어 영역이 없습니다.');
   assert(document.querySelector('.btn-toggle-subtasks[data-expanded="true"]'), '하위 업무 펼침 상태가 렌더링되지 않았습니다.');
   assert(document.querySelector('.line-clamp-2'), '긴 업무명 줄임 클래스가 누락되었습니다.');
+  global.selectedTaskIds.add(tasks[0].id);
+  global.currentViewMode = 'CALENDAR';
+  global.updateMobileBulkActionBar();
+  assert(document.getElementById('mobile-bulk-action-bar').classList.contains('hidden'), '캘린더에서 모바일 일괄 작업 바가 표시됩니다.');
+  global.currentViewMode = 'TABLE';
+  global.updateMobileBulkActionBar();
+  assert(!document.getElementById('mobile-bulk-action-bar').classList.contains('hidden'), '목록에서 모바일 일괄 작업 바가 표시되지 않습니다.');
+  global.currentViewMode = 'KANBAN';
+  global.updateMobileBulkActionBar();
+  assert(!document.getElementById('mobile-bulk-action-bar').classList.contains('hidden'), '칸반에서 모바일 일괄 작업 바가 표시되지 않습니다.');
+  global.currentViewMode = 'ADMIN';
+  global.updateMobileBulkActionBar();
+  assert(document.getElementById('mobile-bulk-action-bar').classList.contains('hidden'), '관리 화면에서 모바일 일괄 작업 바가 표시됩니다.');
+  global.selectedTaskIds.clear();
+  global.currentViewMode = 'TABLE';
 
   global.renderMobileCards([cancelledTask]);
   assert(document.getElementById('task-card-container').textContent.includes('취소'), '모바일 목록에 취소 상태가 표시되지 않습니다.');
