@@ -409,6 +409,7 @@ async function main() {
   const importantToggle = summary.querySelector('[data-summary-note-important]');
   const commentsToggle = summary.querySelector('[data-summary-note-comments]');
   assert(commentsToggle && importantToggle?.nextElementSibling === commentsToggle, '댓글 있음 토글이 중요만 토글 오른쪽에 배치되지 않았습니다.');
+  assert(importantToggle.classList.contains('whitespace-nowrap') && commentsToggle.classList.contains('whitespace-nowrap'), '월별 요약 토글 버튼 문구의 한 줄 유지 스타일이 없습니다.');
   commentsToggle.click();
   assert(summary.querySelectorAll('[data-summary-note-entry]').length === 1, '댓글 있음 토글이 코멘트가 있는 메모만 표시하지 않습니다.');
   assert(summary.textContent.includes('리스크 회의 결과'), '댓글 있음 필터 결과에 코멘트가 있는 메모가 없습니다.');

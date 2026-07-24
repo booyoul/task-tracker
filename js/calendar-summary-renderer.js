@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-summary-renderer.js v20260724-v4 loaded');
+console.info('Smart Task Flow calendar-summary-renderer.js v20260724-v5 loaded');
 
 function getSummaryNoteDate(note = {}) {
     if (note.noteDate && /^\d{4}-\d{2}-\d{2}$/.test(note.noteDate)) {
@@ -287,8 +287,8 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
             <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <input data-summary-note-search type="search" placeholder="메모 검색" class="min-w-0 flex-1 rounded-lg border border-amber-100 bg-white px-3 py-2 text-xs font-medium text-slate-700 outline-none placeholder:text-slate-400 focus:border-amber-300 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100" />
                 <div class="flex shrink-0 gap-2">
-                    <button type="button" data-summary-note-important class="flex-1 rounded-lg border border-amber-200 bg-white px-3 py-2 text-[11px] font-bold text-amber-700 shadow-sm transition hover:bg-amber-50 dark:bg-slate-900 dark:border-amber-900/50 dark:text-amber-300">중요만</button>
-                    <button type="button" data-summary-note-comments class="flex-1 rounded-lg border border-amber-200 bg-white px-3 py-2 text-[11px] font-bold text-amber-700 shadow-sm transition hover:bg-amber-50 dark:bg-slate-900 dark:border-amber-900/50 dark:text-amber-300">댓글 있음</button>
+                    <button type="button" data-summary-note-important class="flex-1 whitespace-nowrap rounded-lg border border-amber-200 bg-white px-3 py-2 text-[11px] font-bold text-amber-700 shadow-sm transition hover:bg-amber-50 dark:bg-slate-900 dark:border-amber-900/50 dark:text-amber-300">중요만</button>
+                    <button type="button" data-summary-note-comments class="flex-1 whitespace-nowrap rounded-lg border border-amber-200 bg-white px-3 py-2 text-[11px] font-bold text-amber-700 shadow-sm transition hover:bg-amber-50 dark:bg-slate-900 dark:border-amber-900/50 dark:text-amber-300">댓글 있음</button>
                 </div>
             </div>
             <div class="flex gap-1.5 overflow-x-auto pb-0.5 text-[11px] font-bold" data-summary-note-review-filter>
