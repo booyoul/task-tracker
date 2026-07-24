@@ -8,7 +8,7 @@
     <link rel="icon" href="./favicon.ico?v=20260625-monthly-kpi">
     <!-- Immediately apply theme script to prevent FOUC -->
     <script src="./js/theme-service.js?v=20260710-v1"></script>
-    <link rel="stylesheet" href="./dist/output.css?v=20260724-v4">
+    <link rel="stylesheet" href="./dist/output.css?v=20260724-v5">
     <style>
         body {
             font-family: 'Noto Sans KR', sans-serif;
@@ -491,12 +491,10 @@
             <!-- 업무 현황 · 검색 · 필터 통합 제어 영역 -->
             <div id="unified-control-center" class="mb-3 rounded-2xl border border-slate-100 bg-white py-3 px-4 shadow-sm">
                 <div class="mb-3 flex flex-col gap-3 border-b border-slate-100 pb-3 dark:border-slate-800">
-                    <div id="unified-dashboard-row" class="flex min-w-0 items-center gap-2">
-                        <div class="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-1">
-                            <div id="unified-goal-host" class="flex shrink-0 items-center"></div>
-                            <div id="unified-status-host" class="flex shrink-0 items-center gap-2"></div>
-                        </div>
-                        <details id="secondary-tools-menu" class="group relative shrink-0">
+                    <div id="unified-dashboard-row" class="flex min-w-0 flex-wrap items-center gap-2 lg:flex-nowrap">
+                        <div id="unified-goal-host" class="order-1 flex min-w-0 flex-1 items-center lg:flex-none"></div>
+                        <div id="unified-status-host" class="order-3 flex w-full flex-wrap items-center gap-2 lg:order-2 lg:min-w-0 lg:flex-1 lg:flex-nowrap lg:overflow-x-auto"></div>
+                        <details id="secondary-tools-menu" class="group relative order-2 shrink-0 lg:order-3">
                             <summary class="flex cursor-pointer list-none items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
                                 도구
                                 <svg class="h-3.5 w-3.5 transition group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1507,7 +1505,7 @@
     <script defer src="./js/month-picker-controller.js?v=20260724-v1"></script>
     <script defer src="./js/event-bindings.js?v=20260724-v2"></script>
     <script defer src="./js/bootstrap-service.js?v=20260714-v11"></script>
-    <script defer src="./js/app.js?v=20260724-v5"></script>
+    <script defer src="./js/app.js?v=20260724-v6"></script>
     <script defer src="./js/task-service.js?v=20260724-v1"></script>
     <script defer src="./js/export-service.js?v=20260714-v2"></script>
 </body>

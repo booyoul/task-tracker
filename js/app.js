@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow app.js v20260724-v5 loaded');
+console.info('Smart Task Flow app.js v20260724-v6 loaded');
 // --- UX optimization globals: must be declared before helper functions ---
 var focusState = window.focusState || { riskOnly: false, mineOnly: false, highOnly: false };
 window.focusState = focusState;
@@ -1048,7 +1048,7 @@ function applyCompactDashboardStyles() {
 
   const k = getKpiCompactValues();
   section.className = 'hidden';
-  summary.className = 'flex w-max flex-nowrap items-center gap-2';
+  summary.className = 'flex w-full flex-wrap items-center gap-2 lg:w-max lg:flex-nowrap';
   
   const currentStatus = document.getElementById('filter-status')?.value || 'ALL';
   const activeClass = (status) => currentStatus === status ? 'ring-2 ring-indigo-600 ring-offset-1 scale-[1.02]' : '';

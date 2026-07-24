@@ -207,6 +207,7 @@ async function main() {
   const dashboardRow = indexDom.window.document.getElementById('unified-dashboard-row');
   assert(dashboardRow?.contains(indexDom.window.document.getElementById('unified-status-host')) && dashboardRow?.contains(indexDom.window.document.getElementById('secondary-tools-menu')), '모바일에서 KPI와 도구가 같은 행에 배치되지 않았습니다.');
   assert(!dashboardRow.textContent.includes('업무 현황 및 필터') && !dashboardRow.textContent.includes('현황 확인과 업무 탐색'), '삭제하기로 한 통합 영역 제목 또는 설명이 남아 있습니다.');
+  assert(indexDom.window.document.getElementById('unified-status-host').classList.contains('w-full') && indexDom.window.document.getElementById('unified-status-host').classList.contains('order-3'), '모바일 현황 버튼이 KPI와 도구 아래의 별도 행에 배치되지 않았습니다.');
   const secondaryTools = indexDom.window.document.getElementById('secondary-tools-menu');
   assert(secondaryTools && !secondaryTools.open, '다운로드 및 백업 도구가 기본 접힘 상태가 아닙니다.');
   assert(indexDom.window.document.getElementById('ux-tool-host'), '접힌 보조 도구 영역이 없습니다.');
