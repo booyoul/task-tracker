@@ -235,6 +235,23 @@ async function main() {
         body: '',
         createdBy: 'alice'
       })));
+    await check('트래커 수정 권한 사용자의 리뷰 코멘트 추가 허용', async () => {
+      await setDoc(doc(aliceDb, 'progress_notes', 'acl-note'), {
+        taskId: 'acl-task',
+        trackerId: 'tracker-acl',
+        title: 'ACL 메모',
+        body: '검토 대상',
+        reviewComments: [],
+        createdBy: 'alice'
+      });
+      return assertSucceeds(updateDoc(doc(bobDb, 'progress_notes', 'acl-note'), {
+        reviewComments: [{ id: 'comment-1', body: '검토 의견', createdBy: 'bob' }]
+      }));
+    });
+    await check('트래커 수정 권한 없는 사용자의 리뷰 코멘트 추가 차단', () =>
+      assertFails(updateDoc(doc(creatorDb, 'progress_notes', 'acl-note'), {
+        reviewComments: [{ id: 'comment-2', body: '권한 없는 의견', createdBy: 'creator' }]
+      })));
     await check('다른 사용자의 메모 삭제 차단', () =>
       assertFails(deleteDoc(doc(bobDb, 'progress_notes', 'alice-note'))));
     await check('관리자의 다른 사용자 메모 삭제 허용', () =>

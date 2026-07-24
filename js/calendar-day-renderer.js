@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-day-renderer.js v20260724-v13 loaded');
+console.info('Smart Task Flow calendar-day-renderer.js v20260724-v14 loaded');
 // DAY calendar mini-Gantt renderer. Extracted from app.js in Phase 4B.
 function renderCalendarDayView(ctx) {
     const { weekdayHeader, grid, year, month, todayStr, groups, showSubTaskBars, mainClass, dimIfNotCritical, useIndustryColor } = ctx;
@@ -154,8 +154,8 @@ function renderCalendarDayView(ctx) {
         bar.onclick = () => openTaskModal(item.parentId);
         const detailAssignees = Array.isArray(item.assignee) ? item.assignee.join(', ') : (item.assignee || '미지정');
         bindGanttTooltip(bar, item.title, item.isSub
-          ? `[하위업무] 상위: ${escapeHTML(item.parentTitle)}<br>담당자: ${escapeHTML(detailAssignees)}<br>기간: ${item.start} ~ ${item.end}<br>상태: ${getStatusKorean(item.status)}<br>산업: ${escapeHTML(item.industry || 'AUTO')} · 유형: ${escapeHTML(item.taskType || 'GENERAL')}`
-          : `[본업무] 담당자: ${escapeHTML(detailAssignees)}<br>기간: ${item.start} ~ ${item.end}<br>진척: ${item.progressPct ?? 0}% · 하위 ${item.subDone ?? 0}/${item.subCount ?? 0}<br>Risk: ${getTaskRiskInfo(item, todayStr).label}${getTaskRiskInfo(item, todayStr).delay ? ' D+' + getTaskRiskInfo(item, todayStr).delay : ''}<br>산업: ${escapeHTML(item.industry || 'AUTO')} · 유형: ${escapeHTML(item.taskType || 'GENERAL')}<br>메모: ${escapeHTML(item.notes || '없음')}`);
+          ? `[하위업무] 상위: ${escapeHTML(item.parentTitle)}<br>담당자: ${escapeHTML(detailAssignees)}<br>기간: ${item.start} ~ ${item.end}<br>상태: ${getStatusKorean(item.status)}<br>산업: ${escapeHTML(item.industry || 'AUTO')}`
+          : `[본업무] 담당자: ${escapeHTML(detailAssignees)}<br>기간: ${item.start} ~ ${item.end}<br>진척: ${item.progressPct ?? 0}% · 하위 ${item.subDone ?? 0}/${item.subCount ?? 0}<br>Risk: ${getTaskRiskInfo(item, todayStr).label}${getTaskRiskInfo(item, todayStr).delay ? ' D+' + getTaskRiskInfo(item, todayStr).delay : ''}<br>산업: ${escapeHTML(item.industry || 'AUTO')}<br>메모: ${escapeHTML(item.notes || '없음')}`);
         if (showText) bar.innerHTML = `<span class="truncate">${barLabel(item)}</span>`;
         overlay.appendChild(bar);
       }

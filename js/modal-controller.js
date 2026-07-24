@@ -1,4 +1,4 @@
-console.info('Smart Task Flow modal-controller.js v20260724-v3 loaded');
+console.info('Smart Task Flow modal-controller.js v20260724-v4 loaded');
 // Task modal, subtask modal list, tracker modal, and form submit handlers.
 function resetSubTaskButton() {
   const btn = document.getElementById('btn-add-subtask');
@@ -309,13 +309,13 @@ function openTaskModal(id = null) {
   if (id) {
     const t = tasks.find(x => x.id === id); if (!t) return;
     if (title) title.textContent = canSave ? '업무 상세 변경' : '업무 상세 조회';
-    setVal('input-task-id', t.id); setVal('input-task-title', t.title || ''); setVal('input-task-start', t.startDate || ''); setVal('input-task-due', t.dueDate || ''); setVal('input-task-priority', t.priority || 'NORMAL'); setVal('input-task-status', t.status || 'PENDING'); setVal('input-task-industry', t.industry || 'AUTO'); setVal('input-task-type', t.taskType || 'GENERAL'); setVal('input-task-notes', t.notes || '');
+    setVal('input-task-id', t.id); setVal('input-task-title', t.title || ''); setVal('input-task-start', t.startDate || ''); setVal('input-task-due', t.dueDate || ''); setVal('input-task-priority', t.priority || 'NORMAL'); setVal('input-task-status', t.status || 'PENDING'); setVal('input-task-industry', t.industry || 'AUTO'); setVal('input-task-notes', t.notes || '');
     currentSubTasks = Array.isArray(t.subTasks) ? JSON.parse(JSON.stringify(t.subTasks)).map(st => ({ ...st, status: normalizeStatus(st.status) })) : [];
-    if (advancedSection) advancedSection.open = !!(t.notes || (t.industry && t.industry !== 'AUTO') || (t.taskType && t.taskType !== 'GENERAL'));
+    if (advancedSection) advancedSection.open = !!(t.notes || (t.industry && t.industry !== 'AUTO'));
     if (subTasksSection) subTasksSection.open = currentSubTasks.length > 0;
   } else {
     if (title) title.textContent = '새로운 업무 배정';
-    setVal('input-task-id', ''); setVal('input-task-start', getTodayStr()); setVal('input-task-due', getFutureDateStr(7)); setVal('input-task-industry', 'AUTO'); setVal('input-task-type', 'GENERAL');
+    setVal('input-task-id', ''); setVal('input-task-start', getTodayStr()); setVal('input-task-due', getFutureDateStr(7)); setVal('input-task-industry', 'AUTO');
     currentSubTasks = [];
     if (advancedSection) advancedSection.open = false;
     if (subTasksSection) subTasksSection.open = false;
@@ -547,7 +547,7 @@ async function handleTaskSubmit(e) {
       priority: document.getElementById('input-task-priority').value,
       status: document.getElementById('input-task-status').value,
       industry: document.getElementById('input-task-industry')?.value || 'AUTO',
-      taskType: document.getElementById('input-task-type')?.value || 'GENERAL',
+      taskType: id ? (tasks.find(task => task.id === id)?.taskType || 'GENERAL') : 'GENERAL',
       notes: document.getElementById('input-task-notes').value.trim(),
       subTasks: currentSubTasks.map(st => ({ ...st, status: normalizeStatus(st.status) }))
     };
@@ -890,6 +890,123 @@ function getNoteSortTime(note = {}) {
   return d.getTime();
 }
 
+const DEFAULT_NOTE_WORK_TYPES = [
+  { id: 'GENERAL', label: 'General' },
+  { id: 'PIPELINE_REVIEW', label: 'Pipeline Review' },
+  { id: 'CUSTOMER_VISIT', label: 'Customer Visit' },
+  { id: 'TECH_FOLLOWUP', label: 'Technical Follow-up' },
+  { id: 'QUOTATION', label: 'Quotation' },
+  { id: 'NPI_LAUNCH', label: 'NPI / Launch' },
+  { id: 'MARKETING', label: 'Marketing / Webinar' },
+  { id: 'DISTRIBUTOR', label: 'Distributor' },
+  { id: 'INTERNAL_REVIEW', label: 'Internal Review' },
+  { id: 'COMPLIANCE', label: 'Compliance / Certification' }
+];
+
+function normalizeNoteWorkTypes(options) {
+  const seen = new Set();
+  const normalized = [];
+  (Array.isArray(options) ? options : []).forEach((option, index) => {
+    const label = String(option?.label || '').trim().slice(0, 60);
+    const id = String(option?.id || `TYPE_${Date.now()}_${index}`).trim().slice(0, 80);
+    if (!label || !id || seen.has(id)) return;
+    seen.add(id);
+    normalized.push({ id, label });
+  });
+  return normalized;
+}
+
+function getCurrentNoteWorkTypes() {
+  const tracker = Array.isArray(trackers) ? trackers.find(item => item.id === currentTrackerId) : null;
+  const configured = normalizeNoteWorkTypes(tracker?.noteTypeOptions);
+  return configured.length ? configured : DEFAULT_NOTE_WORK_TYPES.map(option => ({ ...option }));
+}
+
+function populateNoteWorkTypeSelect(select, selectedValue = '') {
+  if (!select) return;
+  const options = getCurrentNoteWorkTypes();
+  const selected = selectedValue || options[0]?.id || '';
+  select.innerHTML = options.map(option =>
+    `<option value="${escapeHTML(option.id)}">${escapeHTML(option.label)}</option>`
+  ).join('');
+  if (selected && !options.some(option => option.id === selected)) {
+    const legacy = document.createElement('option');
+    legacy.value = selected;
+    legacy.textContent = selected;
+    select.appendChild(legacy);
+  }
+  select.value = selected;
+}
+
+function getSelectedNoteWorkType(select) {
+  const id = select?.value || '';
+  const option = getCurrentNoteWorkTypes().find(item => item.id === id);
+  return { workType: id, workTypeLabel: option?.label || select?.selectedOptions?.[0]?.textContent || id };
+}
+
+function sanitizeNoteBodyHtml(html, plainText = '') {
+  const source = String(html || '').trim();
+  if (!source) return escapeHTML(String(plainText || '')).replace(/\n/g, '<br>');
+  if (typeof DOMPurify !== 'undefined') {
+    return DOMPurify.sanitize(source, {
+      ALLOWED_TAGS: ['br', 'div', 'p', 'ul', 'ol', 'li', 'span', 'font'],
+      ALLOWED_ATTR: ['color']
+    });
+  }
+  return escapeHTML(String(plainText || '')).replace(/\n/g, '<br>');
+}
+
+function setNoteEditorContent(editor, note = {}) {
+  if (!editor) return;
+  editor.innerHTML = sanitizeNoteBodyHtml(note.bodyHtml, note.body);
+}
+
+function readNoteEditor(editor) {
+  const body = String(editor?.innerText || editor?.textContent || '').trim();
+  return {
+    body,
+    bodyHtml: sanitizeNoteBodyHtml(editor?.innerHTML || '', body)
+  };
+}
+
+function renderNoteBody(target, note = {}) {
+  if (!target) return;
+  target.innerHTML = sanitizeNoteBodyHtml(note.bodyHtml, note.body);
+}
+
+function formatReviewCommentDate(comment = {}) {
+  const value = comment.createdAt;
+  const date = value?.toDate ? value.toDate() : new Date(value || 0);
+  return Number.isNaN(date.getTime())
+    ? ''
+    : date.toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function renderNotePanelComments(note = {}) {
+  const list = document.getElementById('note-panel-comments');
+  const count = document.getElementById('note-panel-comment-count');
+  if (!list) return;
+  const comments = Array.isArray(note.reviewComments) ? note.reviewComments : [];
+  if (count) count.textContent = `${comments.length}건`;
+  list.innerHTML = '';
+  if (!comments.length) {
+    list.innerHTML = '<p class="rounded-xl bg-slate-50 px-3 py-2 text-[11px] text-slate-400 dark:bg-slate-800/50">아직 리뷰 코멘트가 없습니다.</p>';
+    return;
+  }
+  comments.forEach(comment => {
+    const item = document.createElement('article');
+    item.className = 'rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 dark:border-slate-800 dark:bg-slate-800/40';
+    item.innerHTML = `
+      <div class="flex items-center justify-between gap-2 text-[10px] font-semibold text-slate-400">
+        <span>${escapeHTML((comment.createdByName || '').split('@')[0] || '알 수 없음')}</span>
+        <span>${escapeHTML(formatReviewCommentDate(comment))}</span>
+      </div>
+      <p class="mt-1 whitespace-pre-wrap text-xs leading-relaxed text-slate-600 dark:text-slate-300">${escapeHTML(comment.body || '')}</p>
+    `;
+    list.appendChild(item);
+  });
+}
+
 // ─── 메모 카드 렌더러 ─────────────────────────────────────
 function renderNoteCard(note) {
   let subTaskLabel = '';
@@ -904,6 +1021,8 @@ function renderNoteCard(note) {
   const bodyPreview = escapeHTML((note.body || '').slice(0, 80)) + ((note.body || '').length > 80 ? '...' : '');
   const dateStr = formatNoteDate(note);
   const author = escapeHTML((note.createdByName || '').split('@')[0] || '알 수 없음');
+  const context = [note.customerName, note.oppNo, note.workTypeLabel || note.workType].filter(Boolean).map(escapeHTML).join(' · ');
+  const commentCount = Array.isArray(note.reviewComments) ? note.reviewComments.length : 0;
 
   const card = document.createElement('div');
   card.className = 'group flex items-start gap-2.5 rounded-xl border border-slate-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/40 p-3 cursor-pointer transition dark:bg-slate-900/50 dark:border-slate-800 dark:hover:border-indigo-700';
@@ -916,7 +1035,11 @@ function renderNoteCard(note) {
         <span class="text-[10px] text-slate-400 shrink-0">${dateStr}</span>
       </div>
       <p class="text-[11px] text-slate-500 leading-relaxed line-clamp-2">${bodyPreview || '<span class="italic">(내용 없음)</span>'}</p>
-      <span class="text-[10px] text-slate-400">${author}</span>
+      <div class="mt-1 flex flex-wrap gap-x-2 text-[10px] text-slate-400">
+        <span>${author}</span>
+        ${context ? `<span>${context}</span>` : ''}
+        ${commentCount ? `<span>💬 ${commentCount}</span>` : ''}
+      </div>
     </div>
   `;
   card.addEventListener('click', () => openNoteDetailPanel(note));
@@ -1039,6 +1162,8 @@ async function openNoteDetailPanel(note) {
 
   // 읽기 모드로 초기화
   setNotePanel_readMode(note);
+  const commentInput = document.getElementById('input-note-review-comment');
+  if (commentInput) commentInput.value = '';
   panel.classList.remove('translate-x-full');
   panel.classList.add('translate-x-0');
   if (backdrop) backdrop.classList.remove('hidden');
@@ -1100,8 +1225,11 @@ function renderNotePanelHistory(currentNote, notes) {
         </div>
         <span class="shrink-0 rounded-md bg-slate-200/70 px-1.5 py-0.5 text-[9px] font-bold text-slate-500 dark:bg-slate-700 dark:text-slate-300">과거 기록</span>
       </div>
-      <p class="mt-2 whitespace-pre-wrap text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">${escapeHTML(note.body || '') || '<span class="italic text-slate-400">(내용 없음)</span>'}</p>
+      <div class="mt-2 whitespace-pre-wrap text-[11px] leading-relaxed text-slate-600 dark:text-slate-400" data-note-history-body></div>
     `;
+    const historyBody = item.querySelector('[data-note-history-body]');
+    if (note.body || note.bodyHtml) renderNoteBody(historyBody, note);
+    else historyBody.innerHTML = '<span class="italic text-slate-400">(내용 없음)</span>';
     list.appendChild(item);
   });
   section.classList.remove('hidden');
@@ -1129,6 +1257,7 @@ function setNotePanel_readMode(note) {
   const title = document.getElementById('note-panel-title');
   const meta  = document.getElementById('note-panel-meta');
   const body  = document.getElementById('note-panel-body');
+  const fields = document.getElementById('note-panel-fields');
   const readMode = document.getElementById('note-panel-read-mode');
   const editMode = document.getElementById('note-panel-edit-mode');
   const readActions = document.getElementById('note-panel-read-actions');
@@ -1136,7 +1265,18 @@ function setNotePanel_readMode(note) {
 
   if (title) title.textContent = note.title || '(제목 없음)';
   if (meta)  meta.textContent  = `${(note.createdByName || '').split('@')[0] || '알 수 없음'} · 기록일 ${formatNoteDate(note)}`;
-  if (body)  body.textContent  = note.body || '';
+  renderNoteBody(body, note);
+  if (fields) {
+    const values = [
+      note.customerName ? `고객사 · ${note.customerName}` : '',
+      note.oppNo ? `Opp No · ${note.oppNo}` : '',
+      (note.workTypeLabel || note.workType) ? `업무 유형 · ${note.workTypeLabel || note.workType}` : ''
+    ].filter(Boolean);
+    fields.innerHTML = values.map(value =>
+      `<span class="rounded-lg border border-indigo-100 bg-indigo-50 px-2 py-1 text-[10px] font-bold text-indigo-700 dark:border-indigo-900 dark:bg-indigo-950/30 dark:text-indigo-300">${escapeHTML(value)}</span>`
+    ).join('');
+  }
+  renderNotePanelComments(note);
 
   readMode?.classList.remove('hidden');
   editMode?.classList.add('hidden');
@@ -1152,10 +1292,16 @@ function setNotePanel_editMode(note) {
   const editTitle  = document.getElementById('input-note-edit-title');
   const editDate   = document.getElementById('input-note-edit-date');
   const editBody   = document.getElementById('input-note-edit-body');
+  const editCustomer = document.getElementById('input-note-edit-customer');
+  const editOppNo = document.getElementById('input-note-edit-opp-no');
+  const editWorkType = document.getElementById('input-note-edit-work-type');
 
   if (editTitle) editTitle.value = note.title || '';
   if (editDate)  editDate.value  = getNoteDateValue(note);
-  if (editBody)  editBody.value  = note.body  || '';
+  if (editCustomer) editCustomer.value = note.customerName || '';
+  if (editOppNo) editOppNo.value = note.oppNo || '';
+  populateNoteWorkTypeSelect(editWorkType, note.workType || '');
+  setNoteEditorContent(editBody, note);
 
   readMode?.classList.add('hidden');
   editMode?.classList.remove('hidden');
@@ -1163,8 +1309,131 @@ function setNotePanel_editMode(note) {
   editActions?.classList.remove('hidden');
 }
 
+const _noteEditorRanges = new Map();
+let _noteFormattingInitialized = false;
+let _noteTypeSettingsInitialized = false;
+let _progressNotesInitialized = false;
+
+function restoreNoteEditorRange(editor) {
+  const range = _noteEditorRanges.get(editor?.id);
+  if (!editor || !range || typeof window.getSelection !== 'function') return;
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+function initNoteFormattingEvents() {
+  if (_noteFormattingInitialized) return;
+  _noteFormattingInitialized = true;
+  document.addEventListener('selectionchange', () => {
+    if (typeof window.getSelection !== 'function') return;
+    const selection = window.getSelection();
+    if (!selection?.rangeCount) return;
+    const node = selection.anchorNode?.nodeType === 3 ? selection.anchorNode.parentElement : selection.anchorNode;
+    const editor = node?.closest?.('[contenteditable="true"]');
+    if (editor?.id) _noteEditorRanges.set(editor.id, selection.getRangeAt(0).cloneRange());
+  });
+
+  document.querySelectorAll('[data-note-command]').forEach(button => {
+    button.addEventListener('mousedown', event => event.preventDefault());
+    button.addEventListener('click', () => {
+      const editor = document.getElementById(button.dataset.noteEditor || '');
+      if (!editor) return;
+      editor.focus();
+      restoreNoteEditorRange(editor);
+      document.execCommand(button.dataset.noteCommand, false, null);
+    });
+  });
+
+  document.querySelectorAll('[data-note-color]').forEach(input => {
+    input.addEventListener('change', () => {
+      const editor = document.getElementById(input.dataset.noteEditor || '');
+      if (!editor) return;
+      editor.focus();
+      restoreNoteEditorRange(editor);
+      document.execCommand('styleWithCSS', false, false);
+      document.execCommand('foreColor', false, input.value);
+    });
+  });
+}
+
+function renderNoteTypeSettings(options = getCurrentNoteWorkTypes()) {
+  const list = document.getElementById('note-type-settings-list');
+  if (!list) return;
+  list.innerHTML = '';
+  normalizeNoteWorkTypes(options).forEach(option => {
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-2';
+    row.dataset.noteTypeId = option.id;
+    row.innerHTML = `
+      <input type="text" maxlength="60" value="${escapeHTML(option.label)}"
+        class="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+      <button type="button" data-remove-note-type class="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-2 text-xs font-bold text-rose-600">삭제</button>
+    `;
+    row.querySelector('[data-remove-note-type]')?.addEventListener('click', () => row.remove());
+    list.appendChild(row);
+  });
+}
+
+function openNoteTypeSettings() {
+  const tracker = Array.isArray(trackers) ? trackers.find(item => item.id === currentTrackerId) : null;
+  if (typeof window.hasTrackerWritePermission === 'function' && !window.hasTrackerWritePermission(tracker)) {
+    showToast('업무 유형 설정은 트래커 소유자 또는 관리자만 변경할 수 있습니다.', false);
+    return;
+  }
+  renderNoteTypeSettings();
+  document.getElementById('modal-note-type-settings')?.classList.remove('hidden');
+}
+
+function closeNoteTypeSettings() {
+  document.getElementById('modal-note-type-settings')?.classList.add('hidden');
+}
+
+function initNoteTypeSettingsEvents() {
+  if (_noteTypeSettingsInitialized) return;
+  _noteTypeSettingsInitialized = true;
+  document.getElementById('btn-open-note-type-settings')?.addEventListener('click', openNoteTypeSettings);
+  ['btn-close-note-type-settings', 'btn-cancel-note-type-settings', 'note-type-settings-backdrop'].forEach(id => {
+    document.getElementById(id)?.addEventListener('click', closeNoteTypeSettings);
+  });
+  document.getElementById('btn-add-note-type')?.addEventListener('click', () => {
+    const current = [...document.querySelectorAll('#note-type-settings-list [data-note-type-id]')].map(row => ({
+      id: row.dataset.noteTypeId,
+      label: row.querySelector('input')?.value || ''
+    }));
+    current.push({ id: `TYPE_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, label: '새 업무 유형' });
+    renderNoteTypeSettings(current);
+    document.querySelector('#note-type-settings-list [data-note-type-id]:last-child input')?.select();
+  });
+  document.getElementById('btn-save-note-type-settings')?.addEventListener('click', async () => {
+    const options = normalizeNoteWorkTypes(
+      [...document.querySelectorAll('#note-type-settings-list [data-note-type-id]')].map(row => ({
+        id: row.dataset.noteTypeId,
+        label: row.querySelector('input')?.value || ''
+      }))
+    );
+    if (!options.length) {
+      showToast('업무 유형을 하나 이상 남겨주세요.', false);
+      return;
+    }
+    const result = await window.db_updateTracker?.(currentTrackerId, { noteTypeOptions: options });
+    if (!result?.success) {
+      showToast(`업무 유형 저장 실패: ${result?.error || '알 수 없는 오류'}`, false);
+      return;
+    }
+    populateNoteWorkTypeSelect(document.getElementById('input-note-work-type'));
+    if (_currentNotePanelNote) {
+      populateNoteWorkTypeSelect(document.getElementById('input-note-edit-work-type'), _currentNotePanelNote.workType || '');
+    }
+    closeNoteTypeSettings();
+    showToast('메모 업무 유형 설정이 저장되었습니다.');
+  });
+}
+
 // ─── 이벤트 바인딩 ───────────────────────────────────────
 function initProgressNotesEvents() {
+  if (_progressNotesInitialized) return;
+  _progressNotesInitialized = true;
   // 메모 추가 버튼 (폼 토글)
   document.getElementById('btn-add-progress-note')?.addEventListener('click', () => {
     const form = document.getElementById('progress-note-add-form');
@@ -1175,7 +1444,11 @@ function initProgressNotesEvents() {
       const now = new Date();
       const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
       document.getElementById('input-note-date').value = typeof getTodayStr === 'function' ? getTodayStr() : localToday;
-      document.getElementById('input-note-body').value  = '';
+      document.getElementById('input-note-customer').value = '';
+      document.getElementById('input-note-opp-no').value = '';
+      const legacyWorkType = tasks.find(task => task.id === _currentNoteTaskId)?.taskType || '';
+      populateNoteWorkTypeSelect(document.getElementById('input-note-work-type'), legacyWorkType);
+      document.getElementById('input-note-body').innerHTML = '';
       document.getElementById('input-note-body').focus();
     }
   });
@@ -1194,15 +1467,27 @@ function initProgressNotesEvents() {
     const titleEl = document.getElementById('input-note-title');
     const dateEl  = document.getElementById('input-note-date');
     const bodyEl  = document.getElementById('input-note-body');
-    const body = bodyEl?.value?.trim() || '';
+    const { body, bodyHtml } = readNoteEditor(bodyEl);
     if (!body) { showToast('메모 내용을 입력해 주세요.', false); return; }
+    if (body.length > 2000) { showToast('메모 내용은 2,000자 이내로 입력해 주세요.', false); return; }
     const title = titleEl?.value?.trim() || '';
     const noteDate = dateEl?.value || '';
+    const customerName = document.getElementById('input-note-customer')?.value?.trim() || '';
+    const oppNo = document.getElementById('input-note-opp-no')?.value?.trim() || '';
+    const workTypeInfo = getSelectedNoteWorkType(document.getElementById('input-note-work-type'));
     if (!/^\d{4}-\d{2}-\d{2}$/.test(noteDate)) { showToast('기록일을 선택해 주세요.', false); return; }
 
     const saveBtn = document.getElementById('btn-save-progress-note');
     if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '저장 중...'; }
-    const result = await window.db_addProgressNote?.(targetTaskId, { title, body, noteDate });
+    const result = await window.db_addProgressNote?.(targetTaskId, {
+      title,
+      body,
+      bodyHtml,
+      noteDate,
+      customerName,
+      oppNo,
+      ...workTypeInfo
+    });
     if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '저장'; }
 
     if (result && result.success) {
@@ -1219,6 +1504,38 @@ function initProgressNotesEvents() {
   document.getElementById('btn-close-note-panel')?.addEventListener('click', closeNoteDetailPanel);
   document.getElementById('note-panel-backdrop')?.addEventListener('click', closeNoteDetailPanel);
 
+  document.getElementById('btn-add-note-review-comment')?.addEventListener('click', async () => {
+    if (!_currentNotePanelNote) return;
+    const input = document.getElementById('input-note-review-comment');
+    const body = input?.value?.trim() || '';
+    if (!body) {
+      showToast('리뷰 코멘트를 입력해 주세요.', false);
+      return;
+    }
+    const button = document.getElementById('btn-add-note-review-comment');
+    if (button) button.disabled = true;
+    const result = await window.db_addProgressNoteComment?.(
+      _currentNotePanelNote.id,
+      _currentNotePanelNote.taskId,
+      body
+    );
+    if (button) button.disabled = false;
+    if (!result?.success) {
+      showToast(`코멘트 등록 실패: ${result?.error || '알 수 없는 오류'}`, false);
+      return;
+    }
+    _currentNotePanelNote = {
+      ..._currentNotePanelNote,
+      reviewComments: [...(_currentNotePanelNote.reviewComments || []), result.comment]
+    };
+    if (input) input.value = '';
+    renderNotePanelComments(_currentNotePanelNote);
+    showToast('리뷰 코멘트가 등록되었습니다.');
+    _cachedFeedItems = [];
+    if (_currentNoteTaskId) await loadTaskHistory(_currentNoteTaskId, _currentFeedPage);
+    if (typeof renderActiveViews === 'function') renderActiveViews();
+  });
+
   // 수정 버튼
   document.getElementById('btn-note-edit')?.addEventListener('click', () => {
     if (_currentNotePanelNote) setNotePanel_editMode(_currentNotePanelNote);
@@ -1234,21 +1551,39 @@ function initProgressNotesEvents() {
     if (!_currentNotePanelNote) return;
     const title = document.getElementById('input-note-edit-title')?.value?.trim() || '';
     const noteDate = document.getElementById('input-note-edit-date')?.value || '';
-    const body  = document.getElementById('input-note-edit-body')?.value?.trim()  || '';
+    const { body, bodyHtml } = readNoteEditor(document.getElementById('input-note-edit-body'));
     if (!body) { showToast('메모 내용을 입력해 주세요.', false); return; }
+    if (body.length > 2000) { showToast('메모 내용은 2,000자 이내로 입력해 주세요.', false); return; }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(noteDate)) { showToast('기록일을 선택해 주세요.', false); return; }
+    const customerName = document.getElementById('input-note-edit-customer')?.value?.trim() || '';
+    const oppNo = document.getElementById('input-note-edit-opp-no')?.value?.trim() || '';
+    const workTypeInfo = getSelectedNoteWorkType(document.getElementById('input-note-edit-work-type'));
 
     const result = await window.db_updateProgressNote?.(_currentNotePanelNote.id, {
       title,
       body,
+      bodyHtml,
       noteDate,
+      customerName,
+      oppNo,
+      ...workTypeInfo,
       taskId: _currentNotePanelNote.taskId
     });
     if (result && result.success) {
-      _currentNotePanelNote = { ..._currentNotePanelNote, title, body, noteDate };
+      _currentNotePanelNote = {
+        ..._currentNotePanelNote,
+        title,
+        body,
+        bodyHtml,
+        noteDate,
+        customerName,
+        oppNo,
+        ...workTypeInfo
+      };
       setNotePanel_readMode(_currentNotePanelNote);
       await loadNotePanelHistory(_currentNotePanelNote);
       showToast('메모가 수정되었습니다.');
+      _cachedFeedItems = [];
       if (_currentNoteTaskId) await loadTaskHistory(_currentNoteTaskId, _currentFeedPage);
       if (typeof renderActiveViews === 'function') renderActiveViews();
     } else {
@@ -1306,9 +1641,10 @@ window.openSubTaskNoteModal = async function(index) {
   const bodyEl = document.getElementById('input-note-body');
   if (titleEl) titleEl.value = '';
   if (bodyEl) {
-    bodyEl.value = '';
+    bodyEl.innerHTML = '';
     bodyEl.focus();
   }
+  populateNoteWorkTypeSelect(document.getElementById('input-note-work-type'));
 
   // 4. 작성 폼으로 부드러운 스크롤 이동
   if (form) {
@@ -1318,9 +1654,13 @@ window.openSubTaskNoteModal = async function(index) {
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
+    initNoteFormattingEvents();
+    initNoteTypeSettingsEvents();
     initProgressNotesEvents();
   });
 } else {
+  initNoteFormattingEvents();
+  initNoteTypeSettingsEvents();
   initProgressNotesEvents();
 }
 

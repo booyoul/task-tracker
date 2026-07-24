@@ -30,6 +30,9 @@ Last updated: 2026-07-24
 - Monthly summary is optimized for progress-note review with note-first layout, task-grouped note cards, author/type/search filters, and review labels for results, issues, decisions, and follow-up.
 - Monthly-summary notes group by their exact task or sub task ID and sort newest-first; the note detail panel shows older notes from only that exact task as read-only history while editing only the selected note.
 - Progress notes support a user-selected `noteDate`; existing notes fall back to `createdAt`, while feeds and monthly summaries use the effective record date.
+- Progress notes support sanitized font colors and bullet lists, plus customer name, Opp No, and a memo-level work type; monthly review search and cards include this context.
+- Review comments are appended to each progress note by users with tracker update permission and appear in the note detail panel and monthly-review comment counts.
+- Memo work types are configured per tracker through a separate owner/admin setting; existing task-level `taskType` values remain stored for compatibility but are no longer edited or displayed as task metadata.
 - New trackers store per-user `view/create/update/delete` permissions in `accessControl`; owners and admins retain full access, while legacy trackers keep their previous behavior until ACL settings are explicitly changed.
 - Sub task recurrence input, schema normalization, calendar/monthly summary occurrence rendering, and flat export rows are implemented.
 - Recurring sub task occurrences can store per-cycle status overrides on the source sub task through `recurrenceCompletions`; status can be edited from the task modal or monthly summary, and yearly calendar views group occurrences from the same source sub task into one lane.
@@ -73,7 +76,7 @@ Last updated: 2026-07-24
 - `npm run smoke:security` guards the approval, role, ownership, and legacy-write contracts.
 - Task and tracker CRUD now mutate local state and show caller success messages only after Firestore confirms the write; `npm run smoke:crud` covers failed add/update/delete behavior.
 - Tracker copy writes the new tracker and up to 499 active tasks in one Firestore batch so failed copies leave no partial local or remote state.
-- Java 21, Firebase CLI, and `@firebase/rules-unit-testing` now run 42 allow/deny scenarios against the actual Firestore Emulator using the isolated `demo-task-tracker-security` project ID.
+- Java 21, Firebase CLI, and `@firebase/rules-unit-testing` now run 44 allow/deny scenarios against the actual Firestore Emulator using the isolated `demo-task-tracker-security` project ID.
 - Production project `task-tracker-99af4` denied unauthenticated reads to `tasks`, `trackers`, `users`, `activity_logs`, and `progress_notes` after the user published the rules.
 - Sub task execution cycle support is implemented end to end for input, schema normalization, calendar/monthly summary occurrence rendering, flat export rows, and per-cycle status overrides.
 - Task modal and monthly summary let recurring sub task occurrences be checked independently while preserving the source sub task's default status.
@@ -81,9 +84,12 @@ Last updated: 2026-07-24
 - Duplicate legacy mobile/monthly renderer globals and the stale patch instruction file were removed.
 - Mobile/list/calendar/summary QA coverage remains available through `npm run smoke:mobile`, including a 390px annual Gantt layout-width regression check.
 - The note side panel provides exact-task history without changing the selected note ID used by update and delete operations.
+- The note editor stores plain text for search/review classification and sanitized rich HTML for color/list rendering; existing plain-text notes continue to render normally.
+- Customer name, Opp No, memo work type, review comments, and tracker-level work-type add/edit/delete settings are covered by note/CRUD/mobile/rules smoke tests.
 
 ## Next Work
 
+- Perform a real-browser pass for text selection/color application, bullet toggling, work-type settings, and review-comment submission on desktop and mobile; JSDOM does not prove selection behavior or production writes.
 - Verify owner, view-only, creator, editor, deleter, and no-access accounts against production using the published tracker-ACL Firestore rules.
 - Audit existing production user documents for unexpected `role: admin` or `status: approved` values created under the previous permissive rules.
 - Run approved-user owner/admin create, update, delete, and restore checks against production Firestore.
@@ -95,3 +101,4 @@ Last updated: 2026-07-24
 - Do not change script architecture or split globals into modules unless explicitly requested.
 - When changing loaded JS/CSS, update the relevant query-string cache version in `index.html`.
 - A single tracker copy is limited to 499 active tasks by Firestore's 500-write batch limit.
+- Deleting or renaming a memo work type does not rewrite old notes; each note keeps its saved work-type label for historical display.

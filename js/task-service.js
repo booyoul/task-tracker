@@ -1,4 +1,4 @@
-console.info('Smart Task Flow task-service.js v20260724-v1 loaded');
+console.info('Smart Task Flow task-service.js v20260724-v2 loaded');
 // Task / tracker CRUD and Firebase realtime listener helpers.
 let taskSnapshotsByTracker = new Map();
 async function db_addTask(taskData) {
@@ -349,6 +349,9 @@ async function db_duplicateTracker(sourceTrackerId, data = {}) {
     kpiUnit: sourceTracker.kpiUnit || '%',
     kpiType: sourceTracker.kpiType || 'AUTO_DONE_PCT',
     kpiCurrent: typeof sourceTracker.kpiCurrent === 'number' ? sourceTracker.kpiCurrent : 0,
+    ...(Array.isArray(sourceTracker.noteTypeOptions)
+      ? { noteTypeOptions: sourceTracker.noteTypeOptions.map(option => ({ ...option })) }
+      : {}),
     order: nextOrder,
     deleted: false,
     createdAt: getServerTimestamp(),
@@ -636,7 +639,16 @@ window.db_fetchActivityLogs = db_fetchActivityLogs;
 // 진행 메모(Progress Notes) CRUD
 // ──────────────────────────────────────────────────────
 
-async function db_addProgressNote(taskId, { title, body, noteDate }) {
+async function db_addProgressNote(taskId, {
+  title,
+  body,
+  bodyHtml,
+  noteDate,
+  customerName,
+  oppNo,
+  workType,
+  workTypeLabel
+}) {
   const coll = window.getProgressNotesCollection?.();
   if (!coll || !canWriteToFirestore()) return { success: false, error: '인증 실패 또는 DB 접근 불가' };
   const task = tasks.find(item => item.id === taskId.split('__sub_')[0]);
@@ -647,7 +659,13 @@ async function db_addProgressNote(taskId, { title, body, noteDate }) {
     trackerId: currentTrackerId,
     title: title || '',
     body: body || '',
+    bodyHtml: bodyHtml || '',
     noteDate: noteDate || '',
+    customerName: customerName || '',
+    oppNo: oppNo || '',
+    workType: workType || '',
+    workTypeLabel: workTypeLabel || '',
+    reviewComments: [],
     createdBy: window.currentUser ? window.currentUser.uid : 'anonymous',
     createdByName: window.currentUser ? (window.currentUser.displayName || window.currentUser.email) : 'anonymous',
     createdAt: getServerTimestamp(),
@@ -685,7 +703,17 @@ async function db_fetchProgressNotes(taskId) {
   }
 }
 
-async function db_updateProgressNote(noteId, { title, body, noteDate, taskId }) {
+async function db_updateProgressNote(noteId, {
+  title,
+  body,
+  bodyHtml,
+  noteDate,
+  customerName,
+  oppNo,
+  workType,
+  workTypeLabel,
+  taskId
+}) {
   const coll = window.getProgressNotesCollection?.();
   if (!coll || !canWriteToFirestore()) return { success: false, error: '인증 실패 또는 DB 접근 불가' };
   const task = tasks.find(item => item.id === String(taskId || '').split('__sub_')[0]);
@@ -694,12 +722,42 @@ async function db_updateProgressNote(noteId, { title, body, noteDate, taskId }) 
     await window.fs.updateDoc(window.fs.doc(coll, noteId), {
       title: title || '',
       body: body || '',
+      bodyHtml: bodyHtml || '',
       noteDate: noteDate || '',
+      customerName: customerName || '',
+      oppNo: oppNo || '',
+      workType: workType || '',
+      workTypeLabel: workTypeLabel || '',
       updatedAt: getServerTimestamp()
     });
     return { success: true };
   } catch (e) {
     console.warn('db_updateProgressNote 실패:', e);
+    return { success: false, error: e.message || String(e) };
+  }
+}
+
+async function db_addProgressNoteComment(noteId, taskId, body) {
+  const coll = window.getProgressNotesCollection?.();
+  if (!coll || !canWriteToFirestore()) return { success: false, error: '인증 실패 또는 DB 접근 불가' };
+  const task = tasks.find(item => item.id === String(taskId || '').split('__sub_')[0]);
+  if (!window.hasTaskPermission?.(task || null, 'update')) return { success: false, error: '리뷰 코멘트 등록 권한이 없습니다.' };
+  const comment = {
+    id: `comment_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    body: String(body || '').trim().slice(0, 500),
+    createdBy: window.currentUser ? window.currentUser.uid : 'anonymous',
+    createdByName: window.currentUser ? (window.currentUser.displayName || window.currentUser.email) : 'anonymous',
+    createdAt: new Date().toISOString()
+  };
+  if (!comment.body) return { success: false, error: '리뷰 코멘트를 입력해 주세요.' };
+  try {
+    await window.fs.updateDoc(window.fs.doc(coll, noteId), {
+      reviewComments: window.fs.arrayUnion(comment),
+      updatedAt: getServerTimestamp()
+    });
+    return { success: true, comment };
+  } catch (e) {
+    console.warn('db_addProgressNoteComment 실패:', e);
     return { success: false, error: e.message || String(e) };
   }
 }
@@ -744,5 +802,6 @@ async function db_fetchTrackerProgressNotes(trackerId) {
 window.db_addProgressNote    = db_addProgressNote;
 window.db_fetchProgressNotes = db_fetchProgressNotes;
 window.db_updateProgressNote = db_updateProgressNote;
+window.db_addProgressNoteComment = db_addProgressNoteComment;
 window.db_deleteProgressNote = db_deleteProgressNote;
 window.db_fetchTrackerProgressNotes = db_fetchTrackerProgressNotes;

@@ -43,6 +43,7 @@ function createContext() {
     doc: (_collection, id) => ({ id }),
     setDoc: async () => {},
     updateDoc: async () => {},
+    arrayUnion: value => ({ arrayUnion: value }),
     where: (...args) => args,
     query: (...args) => args,
     getDocs: async () => ({ docs: [], empty: true }),
@@ -252,11 +253,21 @@ async function main() {
   const noteCreateResult = await noteCreate.db_addProgressNote('task-1', {
     title: '지난 회의',
     body: '지정 날짜 기록',
+    bodyHtml: '<ul><li>지정 날짜 기록</li></ul>',
     noteDate: '2026-07-03',
+    customerName: 'ACME',
+    oppNo: 'OPP-101',
+    workType: 'CUSTOMER_VISIT',
+    workTypeLabel: 'Customer Visit',
   });
   assert.equal(noteCreateResult.success, true);
   assert.equal(createdNotePayload.noteDate, '2026-07-03', '메모 생성 시 지정 기록일을 저장해야 합니다.');
   assert.equal(createdNotePayload.createdAt, 'server-time', '기록일과 별개로 실제 작성 시각을 보존해야 합니다.');
+  assert.equal(createdNotePayload.bodyHtml, '<ul><li>지정 날짜 기록</li></ul>');
+  assert.equal(createdNotePayload.customerName, 'ACME');
+  assert.equal(createdNotePayload.oppNo, 'OPP-101');
+  assert.equal(createdNotePayload.workType, 'CUSTOMER_VISIT');
+  assert.deepEqual(Array.from(createdNotePayload.reviewComments), []);
 
   const noteUpdate = createContext();
   let updatedNotePayload = null;
@@ -264,12 +275,28 @@ async function main() {
   const noteUpdateResult = await noteUpdate.db_updateProgressNote('note-1', {
     title: '날짜 수정',
     body: '수정된 기록',
+    bodyHtml: '<font color="#ff0000">수정된 기록</font>',
     noteDate: '2026-07-04',
+    customerName: '새 고객사',
+    oppNo: 'OPP-202',
+    workType: 'QUOTATION',
+    workTypeLabel: 'Quotation',
+    taskId: 'task-1',
   });
   assert.equal(noteUpdateResult.success, true);
   assert.equal(updatedNotePayload.noteDate, '2026-07-04', '메모 수정 시 변경한 기록일을 저장해야 합니다.');
+  assert.equal(updatedNotePayload.customerName, '새 고객사');
+  assert.equal(updatedNotePayload.workType, 'QUOTATION');
 
-  console.log('task CRUD smoke passed: failed writes preserve local state, tracker copy is atomic, and note dates persist');
+  const noteComment = createContext();
+  let commentUpdatePayload = null;
+  noteComment.fs.updateDoc = async (_ref, payload) => { commentUpdatePayload = payload; };
+  const noteCommentResult = await noteComment.db_addProgressNoteComment('note-1', 'task-1', '검토 의견');
+  assert.equal(noteCommentResult.success, true);
+  assert.equal(commentUpdatePayload.reviewComments.arrayUnion.body, '검토 의견');
+  assert.equal(noteCommentResult.comment.createdBy, 'user-1');
+
+  console.log('task CRUD smoke passed: failed writes preserve local state, tracker copy is atomic, and note fields/comments persist');
 }
 
 main().catch(error => {

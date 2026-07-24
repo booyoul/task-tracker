@@ -8,7 +8,7 @@
     <link rel="icon" href="./favicon.ico?v=20260625-monthly-kpi">
     <!-- Immediately apply theme script to prevent FOUC -->
     <script src="./js/theme-service.js?v=20260710-v1"></script>
-    <link rel="stylesheet" href="./dist/output.css?v=20260724-v5">
+    <link rel="stylesheet" href="./dist/output.css?v=20260724-v6">
     <style>
         body {
             font-family: 'Noto Sans KR', sans-serif;
@@ -1052,7 +1052,7 @@
                                     <span class="text-slate-400">▼</span>
                                 </summary>
                                 <div class="space-y-4 border-t border-slate-100 p-3">
-                                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                    <div>
                                         <div>
                                             <label class="block text-xs font-semibold text-slate-500 mb-1">산업</label>
                                             <select id="input-task-industry"
@@ -1067,22 +1067,6 @@
                                                 <option value="SHIP">Shipbuilding</option>
                                                 <option value="BUILDING">Commercial Building</option>
                                                 <option value="GENERAL">General</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label class="block text-xs font-semibold text-slate-500 mb-1">업무 유형</label>
-                                            <select id="input-task-type"
-                                                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
-                                                <option value="GENERAL" selected>General</option>
-                                                <option value="PIPELINE_REVIEW">Pipeline Review</option>
-                                                <option value="CUSTOMER_VISIT">Customer Visit</option>
-                                                <option value="TECH_FOLLOWUP">Technical Follow-up</option>
-                                                <option value="QUOTATION">Quotation</option>
-                                                <option value="NPI_LAUNCH">NPI / Launch</option>
-                                                <option value="MARKETING">Marketing / Webinar</option>
-                                                <option value="DISTRIBUTOR">Distributor</option>
-                                                <option value="INTERNAL_REVIEW">Internal Review</option>
-                                                <option value="COMPLIANCE">Compliance / Certification</option>
                                             </select>
                                         </div>
                                     </div>
@@ -1207,13 +1191,39 @@
                                     </div>
                                     <input type="text" id="input-note-title" maxlength="80" placeholder="제목 (선택사항)"
                                         class="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs outline-none transition focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100">
+                                    <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                        <input type="text" id="input-note-customer" maxlength="100" placeholder="고객사 이름"
+                                            class="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs outline-none transition focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100">
+                                        <input type="text" id="input-note-opp-no" maxlength="60" placeholder="Opp No"
+                                            class="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs outline-none transition focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100">
+                                    </div>
+                                    <div class="flex items-end gap-2">
+                                        <div class="min-w-0 flex-1">
+                                            <label for="input-note-work-type" class="block text-[10px] font-bold text-indigo-700 dark:text-indigo-400 mb-1">업무 유형</label>
+                                            <select id="input-note-work-type"
+                                                class="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100"></select>
+                                        </div>
+                                        <button type="button" id="btn-open-note-type-settings"
+                                            class="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">유형 설정</button>
+                                    </div>
                                     <div>
                                         <label for="input-note-date" class="block text-[10px] font-bold text-indigo-700 dark:text-indigo-400 mb-1">기록일 *</label>
                                         <input type="date" id="input-note-date"
                                             class="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100">
                                     </div>
-                                    <textarea id="input-note-body" rows="3" maxlength="2000" placeholder="진행 상황, 결과, 이슈 등을 자유롭게 기록하세요."
-                                        class="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs outline-none transition focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100 resize-none"></textarea>
+                                    <div class="overflow-hidden rounded-lg border border-slate-200 bg-white focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-100">
+                                        <div class="flex items-center gap-1 border-b border-slate-100 px-2 py-1.5">
+                                            <button type="button" data-note-command="insertUnorderedList" data-note-editor="input-note-body"
+                                                class="rounded-md px-2 py-1 text-xs font-bold text-slate-600 hover:bg-slate-100" title="글머리 기호">• 목록</button>
+                                            <label class="flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-bold text-slate-500 hover:bg-slate-100">
+                                                글자색
+                                                <input type="color" value="#334155" data-note-color data-note-editor="input-note-body" class="h-5 w-6 cursor-pointer border-0 bg-transparent p-0">
+                                            </label>
+                                        </div>
+                                        <div id="input-note-body" contenteditable="true" role="textbox" aria-multiline="true"
+                                            data-placeholder="진행 상황, 결과, 이슈 등을 자유롭게 기록하세요."
+                                            class="note-rich-content min-h-24 max-h-56 overflow-y-auto px-3 py-2 text-xs leading-relaxed text-slate-700 outline-none empty:before:pointer-events-none empty:before:text-slate-400 empty:before:content-[attr(data-placeholder)] dark:text-slate-100"></div>
+                                    </div>
                                     <div class="flex items-center justify-end gap-2">
                                         <button type="button" id="btn-cancel-note-add"
                                             class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-50 transition">취소</button>
@@ -1405,6 +1415,31 @@
         </div>
     </div>
 
+    <!-- 4.5. 메모 업무 유형 설정 모달 -->
+    <div id="modal-note-type-settings" class="fixed inset-0 z-[70] hidden overflow-y-auto" role="dialog" aria-modal="true">
+        <div id="note-type-settings-backdrop" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm"></div>
+        <div class="relative flex min-h-full items-center justify-center p-4">
+            <div class="relative w-full max-w-md rounded-2xl bg-white shadow-2xl dark:bg-slate-900">
+                <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-900 dark:text-white">메모 업무 유형 설정</h3>
+                        <p class="mt-0.5 text-[11px] text-slate-400">현재 트래커에서 사용할 유형을 관리합니다.</p>
+                    </div>
+                    <button type="button" id="btn-close-note-type-settings" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">✕</button>
+                </div>
+                <div class="space-y-3 px-5 py-4">
+                    <div id="note-type-settings-list" class="max-h-72 space-y-2 overflow-y-auto"></div>
+                    <button type="button" id="btn-add-note-type"
+                        class="w-full rounded-xl border border-dashed border-indigo-300 px-3 py-2 text-xs font-bold text-indigo-600 hover:bg-indigo-50">+ 업무 유형 추가</button>
+                </div>
+                <div class="flex justify-end gap-2 border-t border-slate-100 px-5 py-4 dark:border-slate-800">
+                    <button type="button" id="btn-cancel-note-type-settings" class="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600">취소</button>
+                    <button type="button" id="btn-save-note-type-settings" class="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700">설정 저장</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 5. 진행 메모 Slide-over 상세 패널 -->
     <div id="note-detail-panel"
         class="fixed inset-y-0 right-0 z-[60] w-full max-w-md transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col bg-white shadow-2xl dark:bg-slate-900 dark:border-l dark:border-slate-800"
@@ -1429,7 +1464,21 @@
             <!-- 읽기 모드 -->
             <div id="note-panel-read-mode" class="space-y-5">
                 <section>
-                    <p id="note-panel-body" class="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed"></p>
+                    <div id="note-panel-fields" class="mb-3 flex flex-wrap gap-1.5"></div>
+                    <div id="note-panel-body" class="note-rich-content text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed"></div>
+                </section>
+                <section id="note-panel-comments-section" class="border-t border-slate-100 pt-4 dark:border-slate-800">
+                    <div class="mb-2 flex items-center justify-between gap-2">
+                        <h4 class="text-xs font-bold text-slate-700 dark:text-slate-200">리뷰 코멘트</h4>
+                        <span id="note-panel-comment-count" class="text-[10px] font-semibold text-slate-400"></span>
+                    </div>
+                    <div id="note-panel-comments" class="mb-3 space-y-2"></div>
+                    <div class="flex items-end gap-2">
+                        <textarea id="input-note-review-comment" rows="2" maxlength="500" placeholder="검토 의견이나 후속 요청을 남겨주세요."
+                            class="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"></textarea>
+                        <button id="btn-add-note-review-comment" type="button"
+                            class="rounded-xl bg-slate-800 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-900">등록</button>
+                    </div>
                 </section>
                 <section id="note-panel-history-section" class="hidden border-t border-slate-100 pt-4 dark:border-slate-800">
                     <div class="mb-2 flex items-center justify-between gap-2">
@@ -1448,8 +1497,27 @@
                     <input type="date" id="input-note-edit-date" required
                         class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
                 </div>
-                <textarea id="input-note-edit-body" rows="8" maxlength="2000" placeholder="메모 내용"
-                    class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white resize-none"></textarea>
+                <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <input type="text" id="input-note-edit-customer" maxlength="100" placeholder="고객사 이름"
+                        class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+                    <input type="text" id="input-note-edit-opp-no" maxlength="60" placeholder="Opp No"
+                        class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+                </div>
+                <select id="input-note-edit-work-type"
+                    class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"></select>
+                <div class="overflow-hidden rounded-xl border border-slate-200 bg-slate-50 focus-within:border-indigo-500 dark:border-slate-700 dark:bg-slate-800">
+                    <div class="flex items-center gap-1 border-b border-slate-200 px-2 py-1.5 dark:border-slate-700">
+                        <button type="button" data-note-command="insertUnorderedList" data-note-editor="input-note-edit-body"
+                            class="rounded-md px-2 py-1 text-xs font-bold text-slate-600 hover:bg-slate-200 dark:text-slate-300">• 목록</button>
+                        <label class="flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-bold text-slate-500">
+                            글자색
+                            <input type="color" value="#334155" data-note-color data-note-editor="input-note-edit-body" class="h-5 w-6 cursor-pointer border-0 bg-transparent p-0">
+                        </label>
+                    </div>
+                    <div id="input-note-edit-body" contenteditable="true" role="textbox" aria-multiline="true"
+                        data-placeholder="메모 내용"
+                        class="note-rich-content min-h-48 max-h-96 overflow-y-auto px-3.5 py-2 text-sm leading-relaxed outline-none empty:before:pointer-events-none empty:before:text-slate-400 empty:before:content-[attr(data-placeholder)] dark:text-slate-100"></div>
+                </div>
             </div>
         </div>
         <!-- 패널 하단 액션 버튼 -->
@@ -1488,25 +1556,25 @@
     </div>
 
     <!-- 스크립트 비즈니스 로직 연동 시작 -->
-    <script type="module" src="./js/firebase.js?v=20260629-v1"></script>
+    <script type="module" src="./js/firebase.js?v=20260724-v2"></script>
     <script defer src="./js/state.js?v=20260716-v6"></script>
     <script defer src="./js/auth-service.js?v=20260716-v1"></script>
     <script defer src="./js/date-risk-utils.js?v=20260716-v4"></script>
     <script defer src="./js/schema-service.js?v=20260714-v3"></script>
     <script defer src="./js/calendar-utils.js?v=20260716-v5"></script>
-    <script defer src="./js/calendar-day-renderer.js?v=20260724-v13"></script>
+    <script defer src="./js/calendar-day-renderer.js?v=20260724-v14"></script>
     <script defer src="./js/calendar-month-renderer.js?v=20260716-v12"></script>
-    <script defer src="./js/calendar-summary-renderer.js?v=20260724-v2"></script>
+    <script defer src="./js/calendar-summary-renderer.js?v=20260724-v3"></script>
     <script defer src="./js/calendar-mobile-renderer.js?v=20260719-v1"></script>
     <script defer src="./js/table-mobile-renderer.js?v=20260724-v3"></script>
     <script defer src="./js/kanban-renderer.js?v=20260716-v12"></script>
-    <script defer src="./js/modal-controller.js?v=20260724-v3"></script>
+    <script defer src="./js/modal-controller.js?v=20260724-v4"></script>
     <script defer src="./js/admin-approvals.js?v=20260716-v1"></script>
     <script defer src="./js/month-picker-controller.js?v=20260724-v1"></script>
     <script defer src="./js/event-bindings.js?v=20260724-v2"></script>
     <script defer src="./js/bootstrap-service.js?v=20260714-v11"></script>
     <script defer src="./js/app.js?v=20260724-v6"></script>
-    <script defer src="./js/task-service.js?v=20260724-v1"></script>
+    <script defer src="./js/task-service.js?v=20260724-v2"></script>
     <script defer src="./js/export-service.js?v=20260714-v2"></script>
 </body>
 

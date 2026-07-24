@@ -9,7 +9,14 @@ const dom = new JSDOM(`<!doctype html><body>
   <div id="note-panel-title"></div>
   <div id="note-panel-meta"></div>
   <div id="note-panel-read-mode">
+    <div id="note-panel-fields"></div>
     <div id="note-panel-body"></div>
+    <section id="note-panel-comments-section">
+      <span id="note-panel-comment-count"></span>
+      <div id="note-panel-comments"></div>
+      <textarea id="input-note-review-comment"></textarea>
+      <button id="btn-add-note-review-comment"></button>
+    </section>
     <section id="note-panel-history-section" class="hidden">
       <span id="note-panel-history-count"></span>
       <div id="note-panel-history"></div>
@@ -18,7 +25,10 @@ const dom = new JSDOM(`<!doctype html><body>
   <div id="note-panel-edit-mode" class="hidden">
     <input id="input-note-edit-title">
     <input id="input-note-edit-date">
-    <textarea id="input-note-edit-body"></textarea>
+    <input id="input-note-edit-customer">
+    <input id="input-note-edit-opp-no">
+    <select id="input-note-edit-work-type"></select>
+    <div id="input-note-edit-body" contenteditable="true"></div>
   </div>
   <div id="note-panel-read-actions">
     <button id="btn-note-edit"></button>
@@ -29,6 +39,15 @@ const dom = new JSDOM(`<!doctype html><body>
     <button id="btn-note-edit-save"></button>
   </div>
   <button id="btn-close-note-panel"></button>
+  <button id="btn-open-note-type-settings"></button>
+  <div id="modal-note-type-settings" class="hidden">
+    <button id="btn-close-note-type-settings"></button>
+    <button id="btn-cancel-note-type-settings"></button>
+    <div id="note-type-settings-backdrop"></div>
+    <div id="note-type-settings-list"></div>
+    <button id="btn-add-note-type"></button>
+    <button id="btn-save-note-type-settings"></button>
+  </div>
 </body>`);
 
 const currentNote = {
@@ -36,9 +55,15 @@ const currentNote = {
   taskId: 'task-1',
   title: '현재 메모',
   body: '현재 내용',
+  bodyHtml: '<ul><li><font color="#dc2626">현재 내용</font></li></ul>',
   noteDate: '2026-07-12',
   createdAt: new Date('2026-07-12T10:00:00+09:00'),
   createdByName: 'current@example.com',
+  customerName: 'ACME',
+  oppNo: 'OPP-123',
+  workType: 'CUSTOMER_VISIT',
+  workTypeLabel: 'Customer Visit',
+  reviewComments: [],
 };
 const notes = [
   currentNote,
@@ -91,6 +116,8 @@ const notes = [
 
 async function main() {
   let updatedNote = null;
+  let addedComment = null;
+  let updatedTracker = null;
   const context = {
     console: { info() {}, warn() {}, error() {} },
     document: dom.window.document,
@@ -101,12 +128,21 @@ async function main() {
       id: 'task-1',
       subTasks: [{ id: 'sub-1', title: '현장 확인' }],
     }],
-    trackers: [],
+    trackers: [{
+      id: 'tracker-1',
+      ownerId: 'user-1',
+      noteTypeOptions: [
+        { id: 'CUSTOMER_VISIT', label: 'Customer Visit' },
+        { id: 'QUOTATION', label: 'Quotation' },
+      ],
+    }],
     currentTrackerId: 'tracker-1',
     currentSubTasks: [],
     approvedUsers: [],
     showToast() {},
     renderActiveViews() {},
+    hasTrackerWritePermission: () => true,
+    DOMPurify: { sanitize: html => html },
     escapeHTML: value => String(value ?? '').replace(/[&<>"']/g, character => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
     })[character]),
@@ -122,6 +158,18 @@ async function main() {
   };
   context.db_updateProgressNote = async (noteId, payload) => {
     updatedNote = { noteId, payload };
+    return { success: true };
+  };
+  context.db_addProgressNoteComment = async (noteId, taskId, body) => {
+    addedComment = { noteId, taskId, body };
+    return {
+      success: true,
+      comment: { id: 'comment-1', body, createdByName: 'reviewer@example.com', createdAt: '2026-07-12T12:00:00+09:00' }
+    };
+  };
+  context.db_updateTracker = async (trackerId, payload) => {
+    updatedTracker = { trackerId, payload };
+    context.trackers[0] = { ...context.trackers[0], ...payload };
     return { success: true };
   };
 
@@ -141,6 +189,36 @@ async function main() {
   assert.equal(context.document.getElementById('note-panel-history').textContent.includes('하위 업무 과거 메모'), false);
   assert.equal(context.document.getElementById('note-panel-history').textContent.includes('미래 내용'), false);
   assert.equal(context.document.getElementById('note-panel-history').textContent.includes('다른 내용'), false);
+  assert.match(context.document.getElementById('note-panel-fields').textContent, /ACME/);
+  assert.match(context.document.getElementById('note-panel-fields').textContent, /OPP-123/);
+  assert.match(context.document.getElementById('note-panel-fields').textContent, /Customer Visit/);
+  assert.equal(context.document.querySelector('#note-panel-body ul li')?.textContent, '현재 내용');
+  assert.equal(context.document.querySelector('#note-panel-body font')?.getAttribute('color'), '#dc2626');
+
+  context.document.getElementById('input-note-review-comment').value = '다음 회의 전에 확인해 주세요.';
+  context.document.getElementById('btn-add-note-review-comment').click();
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.deepEqual(addedComment, {
+    noteId: 'note-current',
+    taskId: 'task-1',
+    body: '다음 회의 전에 확인해 주세요.'
+  });
+  assert.match(context.document.getElementById('note-panel-comments').textContent, /다음 회의 전에 확인해 주세요/);
+
+  context.document.getElementById('btn-open-note-type-settings').click();
+  assert.equal(context.document.getElementById('modal-note-type-settings').classList.contains('hidden'), false);
+  const typeRows = [...context.document.querySelectorAll('#note-type-settings-list [data-note-type-id]')];
+  typeRows[0].querySelector('input').value = 'Customer Meeting';
+  typeRows[1].querySelector('[data-remove-note-type]').click();
+  context.document.getElementById('btn-add-note-type').click();
+  context.document.querySelector('#note-type-settings-list [data-note-type-id]:last-child input').value = 'New Type';
+  context.document.getElementById('btn-save-note-type-settings').click();
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.equal(updatedTracker.trackerId, 'tracker-1');
+  assert.deepEqual(
+    Array.from(updatedTracker.payload.noteTypeOptions, option => option.label),
+    ['Customer Meeting', 'New Type']
+  );
 
   await context.openNoteDetailPanel(notes.find(note => note.id === 'note-subtask-history'));
   assert.deepEqual(
@@ -154,16 +232,23 @@ async function main() {
   context.document.getElementById('btn-note-edit').click();
   context.document.getElementById('input-note-edit-title').value = '수정된 현재 메모';
   context.document.getElementById('input-note-edit-date').value = '2026-07-12';
-  context.document.getElementById('input-note-edit-body').value = '수정된 현재 내용';
+  context.document.getElementById('input-note-edit-customer').value = '새 고객사';
+  context.document.getElementById('input-note-edit-opp-no').value = 'OPP-999';
+  context.document.getElementById('input-note-edit-work-type').value = 'CUSTOMER_VISIT';
+  context.document.getElementById('input-note-edit-body').innerHTML = '<ul><li><font color="#2563eb">수정된 현재 내용</font></li></ul>';
   context.document.getElementById('btn-note-edit-save').click();
   await new Promise(resolve => setTimeout(resolve, 0));
 
   assert.equal(updatedNote.noteId, 'note-current', 'history가 보여도 선택한 현재 메모 ID만 수정해야 합니다.');
   assert.equal(updatedNote.payload.body, '수정된 현재 내용');
+  assert.match(updatedNote.payload.bodyHtml, /<ul>/);
+  assert.match(updatedNote.payload.bodyHtml, /#2563eb/);
+  assert.equal(updatedNote.payload.customerName, '새 고객사');
+  assert.equal(updatedNote.payload.oppNo, 'OPP-999');
   assert.equal(context.document.getElementById('note-panel-body').textContent, '수정된 현재 내용');
   assert.equal(context.document.querySelector('[data-note-history-id="note-oldest"]').textContent.includes('첫 번째 과거 내용'), true);
 
-  console.log('note panel smoke passed: exact-task history is isolated and edits target only the selected note');
+  console.log('note panel smoke passed: rich fields, comments, work-type settings, exact-task history, and selected-note edits');
 }
 
 main().catch(error => {

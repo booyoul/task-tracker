@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-summary-renderer.js v20260724-v2 loaded');
+console.info('Smart Task Flow calendar-summary-renderer.js v20260724-v3 loaded');
 
 function getSummaryNoteDate(note = {}) {
     if (note.noteDate && /^\d{4}-\d{2}-\d{2}$/.test(note.noteDate)) {
@@ -26,6 +26,17 @@ function getSummaryNoteTime(note) {
     }
     const time = d.getTime();
     return Number.isFinite(time) ? time : 0;
+}
+
+function sanitizeSummaryNoteHtml(note = {}) {
+    const source = String(note.bodyHtml || '').trim();
+    if (source && typeof DOMPurify !== 'undefined') {
+        return DOMPurify.sanitize(source, {
+            ALLOWED_TAGS: ['br', 'div', 'p', 'ul', 'ol', 'li', 'span', 'font'],
+            ALLOWED_ATTR: ['color']
+        });
+    }
+    return escapeHTML(note.body || '').replace(/\n/g, '<br>');
 }
 
 const SUMMARY_REVIEW_TYPES = {
@@ -71,7 +82,11 @@ function buildSummaryNoteItem(note, taskList) {
         taskTitle,
         subTaskTitle,
         note.createdByName || '',
-        reviewConfig.label
+        reviewConfig.label,
+        note.customerName || '',
+        note.oppNo || '',
+        note.workTypeLabel || note.workType || '',
+        ...(Array.isArray(note.reviewComments) ? note.reviewComments.map(comment => comment.body || '') : [])
     ].join(' ').toLowerCase();
 
     return {
@@ -311,8 +326,12 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
                         <span class="rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${note.reviewClassName}">${escapeHTML(note.reviewLabel)}</span>
                         <span class="text-[10px] font-semibold text-slate-400">${formatSummaryNoteDate(note)}</span>
                         <span class="text-[10px] font-semibold text-slate-400">👤 ${escapeHTML(note.author)}</span>
+                        ${note.customerName ? `<span class="text-[10px] font-semibold text-slate-400">고객사 ${escapeHTML(note.customerName)}</span>` : ''}
+                        ${note.oppNo ? `<span class="text-[10px] font-semibold text-slate-400">Opp ${escapeHTML(note.oppNo)}</span>` : ''}
+                        ${(note.workTypeLabel || note.workType) ? `<span class="rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-300">${escapeHTML(note.workTypeLabel || note.workType)}</span>` : ''}
+                        ${Array.isArray(note.reviewComments) && note.reviewComments.length ? `<span class="text-[10px] font-semibold text-slate-400">💬 ${note.reviewComments.length}</span>` : ''}
                     </div>
-                    <p class="mt-2 line-clamp-2 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">${escapeHTML(note.body || '') || '<span class="italic text-slate-400">(내용 없음)</span>'}</p>
+                    <div class="note-rich-content mt-2 line-clamp-2 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">${sanitizeSummaryNoteHtml(note) || '<span class="italic text-slate-400">(내용 없음)</span>'}</div>
                 `;
                 entry.addEventListener('click', () => {
                     if (typeof window.openNoteDetailPanel === 'function') {
