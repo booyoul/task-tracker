@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-month-renderer.js v20260714-v11 loaded');
+console.info('Smart Task Flow calendar-month-renderer.js v20260724-v12 loaded');
 // MONTH calendar Gantt renderer. Extracted from app.js in Phase 4C.
 function renderCalendarMonthView(ctx) {
   const { weekdayHeader, grid, year, groups, lines, mainClass, subClass, dimIfNotCritical, showSubTaskBars, todayStr } = ctx;
@@ -40,18 +40,18 @@ function renderCalendarMonthView(ctx) {
     body.appendChild(tiles);
     const overlay = document.createElement('div');
     overlay.className = 'absolute inset-0 pointer-events-none';
-    if (calendarUxState.groupByAssignee) {
-      const renderedAssigneeLabels = new Set();
+    {
+      const renderedCategoryLabels = new Set();
       groups.forEach(g => {
-        if (g.assigneeHeaderLine == null || renderedAssigneeLabels.has(g.assigneeGroupName)) return;
-        renderedAssigneeLabels.add(g.assigneeGroupName);
-        const k = g.assigneeKpi || { total: 0, progress: 0, overdue: 0, completed: 0 };
+        if (g.categoryHeaderLine == null || renderedCategoryLabels.has(g.categoryGroupKey)) return;
+        renderedCategoryLabels.add(g.categoryGroupKey);
         const label = document.createElement('div');
-        label.className = 'absolute rounded-md bg-slate-800/85 px-2 py-0.5 text-[10px] font-black text-white shadow-sm';
+        label.dataset.calendarCategoryHeader = g.categoryGroupKey;
+        label.className = 'absolute rounded-md bg-indigo-700/90 px-2 py-0.5 text-[10px] font-black text-white shadow-sm';
         label.style.left = '4px';
-        label.style.top = `${g.assigneeHeaderLine * rowHeight + 10}px`;
+        label.style.top = `${g.categoryHeaderLine * rowHeight + 10}px`;
         label.style.zIndex = 30;
-        label.textContent = `👤 ${g.assigneeGroupName} · 전체 ${k.total} · 진행 ${k.progress} · 지연 ${k.overdue} · 완료 ${k.completed}`;
+        label.textContent = `${g.categoryGroupLabel} · 본 업무 ${g.categoryTaskCount}개`;
         overlay.appendChild(label);
       });
     }

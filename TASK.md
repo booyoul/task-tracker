@@ -33,6 +33,8 @@ Last updated: 2026-07-24
 - Progress notes support sanitized font colors and bullet lists, plus customer name, Opp No, and a memo-level work type; monthly review search and cards include this context.
 - Review comments are appended to each progress note by users with tracker update permission and appear in the note detail panel and monthly-review comment counts.
 - Memo work types are configured per tracker through a separate owner/admin setting; existing task-level `taskType` values remain stored for compatibility but are no longer edited or displayed as task metadata.
+- Task `industry` is presented as `업무 분류` at the top of the registration form; owner/admin users manage its options per tracker through `분류 설정`.
+- List and desktop/mobile calendar views group work in the fixed hierarchy `업무 분류 → 본 태스크 → 서브 태스크`.
 - New trackers store per-user `view/create/update/delete` permissions in `accessControl`; owners and admins retain full access, while legacy trackers keep their previous behavior until ACL settings are explicitly changed.
 - Sub task recurrence input, schema normalization, calendar/monthly summary occurrence rendering, and flat export rows are implemented.
 - Recurring sub task occurrences can store per-cycle status overrides on the source sub task through `recurrenceCompletions`; status can be edited from the task modal or monthly summary, and yearly calendar views group occurrences from the same source sub task into one lane.
@@ -41,7 +43,7 @@ Last updated: 2026-07-24
 - Users with tracker view access can copy its active tasks and embedded sub tasks into a new tracker they own; task notes, progress notes, activity history, deleted tasks, and the source ACL are excluded.
 - Tailwind CSS generation uses the locally pinned 4.3.2 CLI for reproducible output.
 - Firefox desktop uses a custom year/month picker fallback for the due-month filters while Chrome and Edge keep their native month controls.
-- The desktop monthly calendar compacts lanes independently for each week so inactive assignee/task rows do not leave vertical gaps.
+- The desktop monthly calendar compacts lanes independently for each week so inactive category/task rows do not leave vertical gaps.
 
 ## Key Files
 
@@ -86,6 +88,7 @@ Last updated: 2026-07-24
 - The note side panel provides exact-task history without changing the selected note ID used by update and delete operations.
 - The note editor stores plain text for search/review classification and sanitized rich HTML for color/list rendering; existing plain-text notes continue to render normally.
 - Customer name, Opp No, memo work type, review comments, and tracker-level work-type add/edit/delete settings are covered by note/CRUD/mobile/rules smoke tests.
+- Tracker-level task-category settings, registration-form placement, category-first list/calendar grouping, and tracker-copy preservation are covered by mobile/CRUD smoke tests.
 
 ## Next Work
 
@@ -102,3 +105,4 @@ Last updated: 2026-07-24
 - When changing loaded JS/CSS, update the relevant query-string cache version in `index.html`.
 - A single tracker copy is limited to 499 active tasks by Firestore's 500-write batch limit.
 - Deleting or renaming a memo work type does not rewrite old notes; each note keeps its saved work-type label for historical display.
+- Renaming a task category changes its display across the current tracker; deleting one removes it from future selection while tasks already using it keep their saved `industryLabel`.

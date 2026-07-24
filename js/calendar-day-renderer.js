@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-day-renderer.js v20260724-v14 loaded');
+console.info('Smart Task Flow calendar-day-renderer.js v20260724-v15 loaded');
 // DAY calendar mini-Gantt renderer. Extracted from app.js in Phase 4B.
 function renderCalendarDayView(ctx) {
     const { weekdayHeader, grid, year, month, todayStr, groups, showSubTaskBars, mainClass, dimIfNotCritical, useIndustryColor } = ctx;
@@ -46,8 +46,8 @@ function renderCalendarDayView(ctx) {
             }
           });
         }
-        if (calendarUxState.groupByAssignee && groupHasVisibleItem && g.assigneeHeaderLine != null) {
-          activeLanes.add(g.assigneeHeaderLine);
+        if (groupHasVisibleItem && g.categoryHeaderLine != null) {
+          activeLanes.add(g.categoryHeaderLine);
         }
       });
       const orderedLanes = Array.from(activeLanes).sort((a, b) => a - b);
@@ -154,29 +154,29 @@ function renderCalendarDayView(ctx) {
         bar.onclick = () => openTaskModal(item.parentId);
         const detailAssignees = Array.isArray(item.assignee) ? item.assignee.join(', ') : (item.assignee || '미지정');
         bindGanttTooltip(bar, item.title, item.isSub
-          ? `[하위업무] 상위: ${escapeHTML(item.parentTitle)}<br>담당자: ${escapeHTML(detailAssignees)}<br>기간: ${item.start} ~ ${item.end}<br>상태: ${getStatusKorean(item.status)}<br>산업: ${escapeHTML(item.industry || 'AUTO')}`
-          : `[본업무] 담당자: ${escapeHTML(detailAssignees)}<br>기간: ${item.start} ~ ${item.end}<br>진척: ${item.progressPct ?? 0}% · 하위 ${item.subDone ?? 0}/${item.subCount ?? 0}<br>Risk: ${getTaskRiskInfo(item, todayStr).label}${getTaskRiskInfo(item, todayStr).delay ? ' D+' + getTaskRiskInfo(item, todayStr).delay : ''}<br>산업: ${escapeHTML(item.industry || 'AUTO')}<br>메모: ${escapeHTML(item.notes || '없음')}`);
+          ? `[하위업무] 상위: ${escapeHTML(item.parentTitle)}<br>담당자: ${escapeHTML(detailAssignees)}<br>기간: ${item.start} ~ ${item.end}<br>상태: ${getStatusKorean(item.status)}<br>업무 분류: ${escapeHTML(getTaskCategoryLabel(item))}`
+          : `[본업무] 담당자: ${escapeHTML(detailAssignees)}<br>기간: ${item.start} ~ ${item.end}<br>진척: ${item.progressPct ?? 0}% · 하위 ${item.subDone ?? 0}/${item.subCount ?? 0}<br>Risk: ${getTaskRiskInfo(item, todayStr).label}${getTaskRiskInfo(item, todayStr).delay ? ' D+' + getTaskRiskInfo(item, todayStr).delay : ''}<br>업무 분류: ${escapeHTML(getTaskCategoryLabel(item))}<br>메모: ${escapeHTML(item.notes || '없음')}`);
         if (showText) bar.innerHTML = `<span class="truncate">${barLabel(item)}</span>`;
         overlay.appendChild(bar);
       }
     };
 
-    if (calendarUxState.groupByAssignee) {
-      const renderedAssigneeLabels = new Set();
+    {
+      const renderedCategoryLabels = new Set();
       groups.forEach(g => {
-        if (g.assigneeHeaderLine == null || renderedAssigneeLabels.has(g.assigneeGroupName)) return;
-        renderedAssigneeLabels.add(g.assigneeGroupName);
-        const k = g.assigneeKpi || { total: 0, progress: 0, overdue: 0, completed: 0 };
+        if (g.categoryHeaderLine == null || renderedCategoryLabels.has(g.categoryGroupKey)) return;
+        renderedCategoryLabels.add(g.categoryGroupKey);
         for (let week = 0; week < weekCount; week++) {
-          const compactHeaderLane = weekLayouts[week].laneMap.get(g.assigneeHeaderLine);
+          const compactHeaderLane = weekLayouts[week].laneMap.get(g.categoryHeaderLine);
           if (compactHeaderLane == null) continue;
 
           const label = document.createElement('div');
-          label.className = 'absolute z-20 pointer-events-none rounded-md bg-slate-800/85 px-2 py-0.5 text-[10px] font-black text-white shadow-sm';
+          label.dataset.calendarCategoryHeader = g.categoryGroupKey;
+          label.className = 'absolute z-20 pointer-events-none rounded-md bg-indigo-700/90 px-2 py-0.5 text-[10px] font-black text-white shadow-sm';
           label.style.left = '4px';
           label.style.top = `${weekOffsets[week] + rowDateHeight + compactHeaderLane * laneHeight + 1}px`;
           label.style.maxWidth = 'calc(100% - 8px)';
-          label.textContent = `👤 ${g.assigneeGroupName} · 전체 ${k.total} · 진행 ${k.progress} · 지연 ${k.overdue} · 완료 ${k.completed}`;
+          label.textContent = `${g.categoryGroupLabel} · 본 업무 ${g.categoryTaskCount}개`;
           overlay.appendChild(label);
         }
       });
@@ -185,7 +185,7 @@ function renderCalendarDayView(ctx) {
     groups.forEach(g => {
       // Main task bar
       if (g.startDate <= lastDayStr && g.dueDate >= monthFirstStr) {
-        drawWeekFragment({ id: g.id, title: g.title, isSub: false, status: g.status, priority: g.priority, industry: g.industry, taskType: g.taskType, lane: g.globalLineStart, start: g.startDate, end: g.dueDate, parentId: g.id, assignee: g.assignee, notes: g.notes, dueDate: g.dueDate, subCount: getSubTaskCompletionCounts(g.monthSubTasks || []).active, subDone: getSubTaskCompletionCounts(g.monthSubTasks || []).completed, progressPct: getTaskProgress(g) });
+        drawWeekFragment({ id: g.id, title: g.title, isSub: false, status: g.status, priority: g.priority, industry: g.industry, industryLabel: g.industryLabel, taskType: g.taskType, lane: g.globalLineStart, start: g.startDate, end: g.dueDate, parentId: g.id, assignee: g.assignee, notes: g.notes, dueDate: g.dueDate, subCount: getSubTaskCompletionCounts(g.monthSubTasks || []).active, subDone: getSubTaskCompletionCounts(g.monthSubTasks || []).completed, progressPct: getTaskProgress(g) });
       }
       // Stable sub-task lane within the current month. Do not calculate by visible day; calculate once per month.
       if (showSubTaskBars) {

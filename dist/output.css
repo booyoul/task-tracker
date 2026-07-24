@@ -1059,6 +1059,10 @@
     border-style: var(--tw-border-style);
     border-width: 0px;
   }
+  .border-y {
+    border-block-style: var(--tw-border-style);
+    border-block-width: 1px;
+  }
   .border-t {
     border-top-style: var(--tw-border-style);
     border-top-width: 1px;
@@ -1348,10 +1352,28 @@
       background-color: color-mix(in oklab, var(--color-indigo-50) 40%, transparent);
     }
   }
+  .bg-indigo-50\/50 {
+    background-color: color-mix(in srgb, oklch(96.2% 0.018 272.314) 50%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-indigo-50) 50%, transparent);
+    }
+  }
   .bg-indigo-50\/60 {
     background-color: color-mix(in srgb, oklch(96.2% 0.018 272.314) 60%, transparent);
     @supports (color: color-mix(in lab, red, red)) {
       background-color: color-mix(in oklab, var(--color-indigo-50) 60%, transparent);
+    }
+  }
+  .bg-indigo-50\/70 {
+    background-color: color-mix(in srgb, oklch(96.2% 0.018 272.314) 70%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-indigo-50) 70%, transparent);
+    }
+  }
+  .bg-indigo-50\/80 {
+    background-color: color-mix(in srgb, oklch(96.2% 0.018 272.314) 80%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-indigo-50) 80%, transparent);
     }
   }
   .bg-indigo-50\/95 {
@@ -1363,8 +1385,17 @@
   .bg-indigo-100 {
     background-color: var(--color-indigo-100);
   }
+  .bg-indigo-500 {
+    background-color: var(--color-indigo-500);
+  }
   .bg-indigo-600 {
     background-color: var(--color-indigo-600);
+  }
+  .bg-indigo-700\/90 {
+    background-color: color-mix(in srgb, oklch(45.7% 0.24 277.023) 90%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-indigo-700) 90%, transparent);
+    }
   }
   .bg-orange-50 {
     background-color: var(--color-orange-50);
@@ -1494,12 +1525,6 @@
   }
   .bg-slate-800 {
     background-color: var(--color-slate-800);
-  }
-  .bg-slate-800\/85 {
-    background-color: color-mix(in srgb, oklch(27.9% 0.041 260.031) 85%, transparent);
-    @supports (color: color-mix(in lab, red, red)) {
-      background-color: color-mix(in oklab, var(--color-slate-800) 85%, transparent);
-    }
   }
   .bg-slate-900 {
     background-color: var(--color-slate-900);
@@ -1933,6 +1958,9 @@
   }
   .text-indigo-400 {
     color: var(--color-indigo-400);
+  }
+  .text-indigo-500 {
+    color: var(--color-indigo-500);
   }
   .text-indigo-600 {
     color: var(--color-indigo-600);

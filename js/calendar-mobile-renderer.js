@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-mobile-renderer.js v20260719-v1 loaded');
+console.info('Smart Task Flow calendar-mobile-renderer.js v20260724-v2 loaded');
 
 // ============================================================
 //  모바일 전용 캘린더 렌더러
@@ -124,9 +124,17 @@ function _renderMobileDayView(container, filtered, year, month, todayStr) {
     const taskList = document.createElement('div');
     taskList.className = 'space-y-2';
     
-    const dateTasksMap = dayMap.get(dateStr);
-    dateTasksMap.forEach(function(entry) {
-      taskList.appendChild(_buildMobileTaskCard(entry.task, entry.startSubTasks, todayStr));
+    const dateEntries = Array.from(dayMap.get(dateStr).values());
+    groupTasksByCategory(dateEntries.map(function(entry) { return entry.task; })).forEach(function(category) {
+      const categoryHeader = document.createElement('div');
+      categoryHeader.dataset.mobileCalendarCategory = category.key;
+      categoryHeader.className = 'flex items-center justify-between rounded-xl border border-indigo-100 bg-indigo-50/80 px-3 py-1.5 text-[11px] font-black text-indigo-800';
+      categoryHeader.innerHTML = `<span>${escapeHTML(category.label)}</span><span class="font-semibold text-indigo-500">본 업무 ${category.tasks.length}개</span>`;
+      taskList.appendChild(categoryHeader);
+      category.tasks.forEach(function(task) {
+        const entry = dayMap.get(dateStr).get(task.id);
+        taskList.appendChild(_buildMobileTaskCard(task, entry ? entry.startSubTasks : [], todayStr));
+      });
     });
     container.appendChild(taskList);
   });
@@ -214,6 +222,7 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
         return dueA.localeCompare(dueB);
       }).slice(0, denseTaskLimit)
     : tasksInYear;
+  displayedTasks = groupTasksByCategory(displayedTasks).flatMap(function(category) { return category.tasks; });
   let usesCompactYear = isDenseYear;
   let hideSubTaskBarsForFit = false;
 
@@ -257,34 +266,40 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
   };
 
   const buildLaneLayout = function(tasksForLayout) {
-    const lanes = [];
     const taskLanes = new Map();
+    const categoryLayouts = [];
+    let laneOffset = 0;
 
-    tasksForLayout.forEach(function(task) {
-      const s = task.startDate || task.dueDate;
-      const e = task.dueDate || task.startDate;
-      const sDate = new Date(s.replace(/-/g, '/'));
-      const eDate = new Date(e.replace(/-/g, '/'));
+    groupTasksByCategory(tasksForLayout).forEach(function(category) {
+      const localLanes = [];
+      category.tasks.forEach(function(task) {
+        const s = task.startDate || task.dueDate;
+        const e = task.dueDate || task.startDate;
+        const sDate = new Date(s.replace(/-/g, '/'));
+        const eDate = new Date(e.replace(/-/g, '/'));
 
-      const startMonth = sDate.getFullYear() < year ? 0 : sDate.getMonth();
-      const endMonth = eDate.getFullYear() > year ? 11 : eDate.getMonth();
+        const startMonth = sDate.getFullYear() < year ? 0 : sDate.getMonth();
+        const endMonth = eDate.getFullYear() > year ? 11 : eDate.getMonth();
 
-      let assignedLane = -1;
-      for (let i = 0; i < lanes.length; i++) {
-        if (startMonth > lanes[i]) {
-          assignedLane = i;
-          lanes[i] = endMonth;
-          break;
+        let assignedLane = -1;
+        for (let i = 0; i < localLanes.length; i++) {
+          if (startMonth > localLanes[i]) {
+            assignedLane = i;
+            localLanes[i] = endMonth;
+            break;
+          }
         }
-      }
-      if (assignedLane === -1) {
-        lanes.push(endMonth);
-        assignedLane = lanes.length - 1;
-      }
-      taskLanes.set(task.id, { startMonth: startMonth, endMonth: endMonth, laneIndex: assignedLane });
+        if (assignedLane === -1) {
+          localLanes.push(endMonth);
+          assignedLane = localLanes.length - 1;
+        }
+        taskLanes.set(task.id, { startMonth: startMonth, endMonth: endMonth, laneIndex: laneOffset + assignedLane });
+      });
+      categoryLayouts.push({ key: category.key, label: category.label, taskCount: category.tasks.length, startLane: laneOffset, laneCount: Math.max(localLanes.length, 1) });
+      laneOffset += Math.max(localLanes.length, 1);
     });
 
-    return { taskLanes: taskLanes, totalLanes: lanes.length > 0 ? lanes.length : 1 };
+    return { taskLanes: taskLanes, totalLanes: laneOffset || 1, categoryLayouts: categoryLayouts };
   };
 
   const estimateLayoutWidth = function(totalLaneCount, barsInGroup) {
@@ -322,12 +337,14 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
       const dueB = b.dueDate || b.startDate || '';
       return dueA.localeCompare(dueB);
     }).slice(0, maxMainBars);
+    displayedTasks = groupTasksByCategory(displayedTasks).flatMap(function(category) { return category.tasks; });
     buildSubTaskLayout(false);
     laneLayout = buildLaneLayout(displayedTasks);
   }
 
   const taskLanes = laneLayout.taskLanes;
   const totalLanes = laneLayout.totalLanes;
+  const categoryLayouts = laneLayout.categoryLayouts || [];
 
   // 3. 모바일 세로형 간트: 데스크탑의 막대 질감은 유지하고, 월 축만 세로로 전환
   const groupGap = totalLanes > 1 ? 12 : 0;
@@ -354,6 +371,17 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
     <span class="shrink-0 rounded-md bg-white px-2 py-1 text-[10px] font-bold text-slate-500 shadow-sm ring-1 ring-slate-200">${displayedTasks.length < tasksInYear.length ? `주요 ${displayedTasks.length}/${tasksInYear.length}` : (hideSubTaskBarsForFit ? `총 ${tasksInYear.length}개 · 본 업무` : `총 ${tasksInYear.length}개`)}</span>
   `;
   ganttWrapper.appendChild(header);
+
+  const categoryLegend = document.createElement('div');
+  categoryLegend.className = 'flex flex-wrap gap-1.5 border-b border-indigo-100 bg-indigo-50/60 px-3 py-2';
+  categoryLayouts.forEach(function(category) {
+    const chip = document.createElement('span');
+    chip.dataset.mobileCalendarCategory = category.key;
+    chip.className = 'inline-flex items-center gap-1 rounded-full border border-indigo-100 bg-white px-2 py-1 text-[10px] font-black text-indigo-700';
+    chip.textContent = `${category.label} · ${category.taskCount}`;
+    categoryLegend.appendChild(chip);
+  });
+  ganttWrapper.appendChild(categoryLegend);
 
   const rowHeight = 46;
   const totalHeight = rowHeight * 12;

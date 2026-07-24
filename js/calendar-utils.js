@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-utils.js v20260716-v5 loaded');
+console.info('Smart Task Flow calendar-utils.js v20260724-v6 loaded');
 function dateRangeOverlaps(item, monthStart, monthEnd, fallbackDate) { const start = new Date(String(item.startDate || item.dueDate || fallbackDate).replace(/-/g, '/')); const end = new Date(String(item.dueDate || item.startDate || fallbackDate).replace(/-/g, '/')); return !isNaN(start.getTime()) && !isNaN(end.getTime()) && start <= monthEnd && end >= monthStart; }
 function parseDateOnlyValue(value) {
   if (!value) return null;
@@ -180,6 +180,7 @@ function bindGanttTooltip(el, title, details) { const tip = document.getElementB
 function calendarComputeLaneLayout(groups, options = {}) {
   const currentCalMode = options.currentCalMode || 'DAY';
   const showSubTaskBars = options.showSubTaskBars !== false;
+  const groupByCategory = options.groupByCategory !== false;
   const groupByAssignee = options.groupByAssignee === true;
   const duplicateMultiAssignee = options.duplicateMultiAssignee !== false;
   const todayStr = options.todayStr || getTodayStr();
@@ -228,7 +229,26 @@ function calendarComputeLaneLayout(groups, options = {}) {
   });
   
   const layoutGroups = [];
-  if (groupByAssignee) {
+  if (groupByCategory) {
+    let lineOffset = 0;
+    groupTasksByCategory(groups).forEach(category => {
+      const headerLine = lineOffset;
+      lines[headerLine] = [{ start: '0000-01-01', end: '9999-12-31', type: 'category-header' }];
+      const localLines = [];
+      category.tasks.forEach(g => {
+        g.categoryHeaderLine = headerLine;
+        g.categoryGroupKey = category.key;
+        g.categoryGroupLabel = category.label;
+        g.categoryTaskCount = category.tasks.length;
+        packGroupIntoLines(g, localLines, headerLine + 1);
+        layoutGroups.push(g);
+      });
+      localLines.forEach((line, index) => {
+        lines[headerLine + 1 + index] = line;
+      });
+      lineOffset = headerLine + 1 + Math.max(localLines.length, 1);
+    });
+  } else if (groupByAssignee) {
     const buckets = new Map();
     groups.forEach(g => {
       let keys;

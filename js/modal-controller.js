@@ -1,4 +1,4 @@
-console.info('Smart Task Flow modal-controller.js v20260724-v4 loaded');
+console.info('Smart Task Flow modal-controller.js v20260724-v5 loaded');
 // Task modal, subtask modal list, tracker modal, and form submit handlers.
 function resetSubTaskButton() {
   const btn = document.getElementById('btn-add-subtask');
@@ -269,6 +269,32 @@ window.removeSubTaskFromModal = function(index) {
   if (editingSubTaskIndex === index) { editingSubTaskIndex = -1; resetSubTaskButton(); }
   renderModalSubTasks();
 };
+function populateTaskCategorySelect(select, selectedValue = '') {
+  if (!select) return;
+  const options = typeof getCurrentTaskCategoryOptions === 'function'
+    ? getCurrentTaskCategoryOptions()
+    : [{ id: 'AUTO', label: '미분류' }];
+  const selected = selectedValue || options[0]?.id || 'AUTO';
+  select.innerHTML = options.map(option =>
+    `<option value="${escapeHTML(option.id)}">${escapeHTML(option.label)}</option>`
+  ).join('');
+  if (!options.some(option => option.id === selected)) {
+    const legacy = document.createElement('option');
+    legacy.value = selected;
+    legacy.textContent = typeof getTaskCategoryLabel === 'function' ? getTaskCategoryLabel(selected) : selected;
+    select.appendChild(legacy);
+  }
+  select.value = selected;
+}
+function getSelectedTaskCategory(select) {
+  const industry = select?.value || 'AUTO';
+  const option = (typeof getCurrentTaskCategoryOptions === 'function' ? getCurrentTaskCategoryOptions() : [])
+    .find(item => item.id === industry);
+  return {
+    industry,
+    industryLabel: option?.label || select?.selectedOptions?.[0]?.textContent || industry
+  };
+}
 function openTaskModal(id = null) {
   const targetTask = id ? tasks.find(task => task.id === id) : null;
   const targetTracker = trackers.find(tracker => tracker.id === currentTrackerId);
@@ -309,13 +335,15 @@ function openTaskModal(id = null) {
   if (id) {
     const t = tasks.find(x => x.id === id); if (!t) return;
     if (title) title.textContent = canSave ? '업무 상세 변경' : '업무 상세 조회';
-    setVal('input-task-id', t.id); setVal('input-task-title', t.title || ''); setVal('input-task-start', t.startDate || ''); setVal('input-task-due', t.dueDate || ''); setVal('input-task-priority', t.priority || 'NORMAL'); setVal('input-task-status', t.status || 'PENDING'); setVal('input-task-industry', t.industry || 'AUTO'); setVal('input-task-notes', t.notes || '');
+    setVal('input-task-id', t.id); setVal('input-task-title', t.title || ''); setVal('input-task-start', t.startDate || ''); setVal('input-task-due', t.dueDate || ''); setVal('input-task-priority', t.priority || 'NORMAL'); setVal('input-task-status', t.status || 'PENDING'); setVal('input-task-notes', t.notes || '');
+    populateTaskCategorySelect(document.getElementById('input-task-industry'), t.industry || 'AUTO');
     currentSubTasks = Array.isArray(t.subTasks) ? JSON.parse(JSON.stringify(t.subTasks)).map(st => ({ ...st, status: normalizeStatus(st.status) })) : [];
-    if (advancedSection) advancedSection.open = !!(t.notes || (t.industry && t.industry !== 'AUTO'));
+    if (advancedSection) advancedSection.open = !!t.notes;
     if (subTasksSection) subTasksSection.open = currentSubTasks.length > 0;
   } else {
     if (title) title.textContent = '새로운 업무 배정';
-    setVal('input-task-id', ''); setVal('input-task-start', getTodayStr()); setVal('input-task-due', getFutureDateStr(7)); setVal('input-task-industry', 'AUTO');
+    setVal('input-task-id', ''); setVal('input-task-start', getTodayStr()); setVal('input-task-due', getFutureDateStr(7));
+    populateTaskCategorySelect(document.getElementById('input-task-industry'));
     currentSubTasks = [];
     if (advancedSection) advancedSection.open = false;
     if (subTasksSection) subTasksSection.open = false;
@@ -538,6 +566,7 @@ async function handleTaskSubmit(e) {
       if (scoped.length) order = Math.max(...scoped.map(t => t.order ?? 0)) + 1;
     }
     const taskAssignees = Array.from(document.querySelectorAll('.task-assignee-checkbox:checked')).map(cb => cb.value);
+    const taskCategory = getSelectedTaskCategory(document.getElementById('input-task-industry'));
     const data = {
       trackerId: currentTrackerId,
       title: document.getElementById('input-task-title').value.trim(),
@@ -546,7 +575,7 @@ async function handleTaskSubmit(e) {
       dueDate: due,
       priority: document.getElementById('input-task-priority').value,
       status: document.getElementById('input-task-status').value,
-      industry: document.getElementById('input-task-industry')?.value || 'AUTO',
+      ...taskCategory,
       taskType: id ? (tasks.find(task => task.id === id)?.taskType || 'GENERAL') : 'GENERAL',
       notes: document.getElementById('input-task-notes').value.trim(),
       subTasks: currentSubTasks.map(st => ({ ...st, status: normalizeStatus(st.status) }))
@@ -1312,6 +1341,7 @@ function setNotePanel_editMode(note) {
 const _noteEditorRanges = new Map();
 let _noteFormattingInitialized = false;
 let _noteTypeSettingsInitialized = false;
+let _taskCategorySettingsInitialized = false;
 let _progressNotesInitialized = false;
 
 function restoreNoteEditorRange(editor) {
@@ -1354,6 +1384,84 @@ function initNoteFormattingEvents() {
       document.execCommand('styleWithCSS', false, false);
       document.execCommand('foreColor', false, input.value);
     });
+  });
+}
+
+function renderTaskCategorySettings(options = getCurrentTaskCategoryOptions()) {
+  const list = document.getElementById('task-category-settings-list');
+  if (!list) return;
+  list.innerHTML = '';
+  normalizeTaskCategoryOptions(options).forEach(option => {
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-2';
+    row.dataset.taskCategoryId = option.id;
+    row.innerHTML = `
+      <input type="text" maxlength="60" value="${escapeHTML(option.label)}"
+        class="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+      <button type="button" data-remove-task-category class="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-2 text-xs font-bold text-rose-600">삭제</button>
+    `;
+    row.querySelector('[data-remove-task-category]')?.addEventListener('click', () => row.remove());
+    list.appendChild(row);
+  });
+}
+
+function openTaskCategorySettings() {
+  const tracker = Array.isArray(trackers) ? trackers.find(item => item.id === currentTrackerId) : null;
+  if (typeof window.hasTrackerWritePermission === 'function' && !window.hasTrackerWritePermission(tracker)) {
+    showToast('업무 분류 설정은 트래커 소유자 또는 관리자만 변경할 수 있습니다.', false);
+    return;
+  }
+  renderTaskCategorySettings();
+  document.getElementById('modal-task-category-settings')?.classList.remove('hidden');
+}
+
+function closeTaskCategorySettings() {
+  document.getElementById('modal-task-category-settings')?.classList.add('hidden');
+}
+
+function initTaskCategorySettingsEvents() {
+  if (_taskCategorySettingsInitialized) return;
+  _taskCategorySettingsInitialized = true;
+  document.getElementById('btn-open-task-category-settings')?.addEventListener('click', openTaskCategorySettings);
+  ['btn-close-task-category-settings', 'btn-cancel-task-category-settings', 'task-category-settings-backdrop'].forEach(id => {
+    document.getElementById(id)?.addEventListener('click', closeTaskCategorySettings);
+  });
+  document.getElementById('btn-add-task-category')?.addEventListener('click', () => {
+    const current = [...document.querySelectorAll('#task-category-settings-list [data-task-category-id]')].map(row => ({
+      id: row.dataset.taskCategoryId,
+      label: row.querySelector('input')?.value || ''
+    }));
+    current.push({ id: `CATEGORY_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, label: '새 업무 분류' });
+    renderTaskCategorySettings(current);
+    document.querySelector('#task-category-settings-list [data-task-category-id]:last-child input')?.select();
+  });
+  document.getElementById('btn-save-task-category-settings')?.addEventListener('click', async () => {
+    const options = normalizeTaskCategoryOptions(
+      [...document.querySelectorAll('#task-category-settings-list [data-task-category-id]')].map(row => ({
+        id: row.dataset.taskCategoryId,
+        label: row.querySelector('input')?.value || ''
+      }))
+    );
+    if (!options.length) {
+      showToast('업무 분류를 하나 이상 남겨주세요.', false);
+      return;
+    }
+    const select = document.getElementById('input-task-industry');
+    const previousValue = select?.value || '';
+    const editingTaskId = document.getElementById('input-task-id')?.value || '';
+    const editingTask = editingTaskId ? tasks.find(task => task.id === editingTaskId) : null;
+    const result = await window.db_updateTracker?.(currentTrackerId, { taskCategoryOptions: options });
+    if (!result?.success) {
+      showToast(`업무 분류 저장 실패: ${result?.error || '알 수 없는 오류'}`, false);
+      return;
+    }
+    const selectedAfterSave = options.some(option => option.id === previousValue) || editingTask?.industry === previousValue
+      ? previousValue
+      : options[0].id;
+    populateTaskCategorySelect(select, selectedAfterSave);
+    closeTaskCategorySettings();
+    showToast('업무 분류 설정이 저장되었습니다.');
+    if (typeof renderActiveViews === 'function') renderActiveViews();
   });
 }
 
@@ -1655,11 +1763,13 @@ window.openSubTaskNoteModal = async function(index) {
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
     initNoteFormattingEvents();
+    initTaskCategorySettingsEvents();
     initNoteTypeSettingsEvents();
     initProgressNotesEvents();
   });
 } else {
   initNoteFormattingEvents();
+  initTaskCategorySettingsEvents();
   initNoteTypeSettingsEvents();
   initProgressNotesEvents();
 }

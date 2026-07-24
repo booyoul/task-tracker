@@ -137,6 +137,8 @@ function makeTasks() {
       title: '장기 프로젝트 리스크 점검 및 모바일 줄임 처리 확인용 긴 업무명',
       status: 'PROGRESS',
       priority: 'HIGH',
+      industry: 'FNB',
+      industryLabel: '식음료',
       startDate: '2026-01-10',
       dueDate: '2026-09-25',
       assignee: ['김BD', '박엔지니어'],
@@ -151,6 +153,8 @@ function makeTasks() {
       title: '완료된 KPI 검토',
       status: 'COMPLETED',
       priority: 'NORMAL',
+      industry: 'PHARMA',
+      industryLabel: '제약',
       startDate: '2026-03-01',
       dueDate: '2026-04-30',
       assignee: ['이매니저'],
@@ -167,6 +171,7 @@ function makeTasks() {
       title: `연간 간트 밀집 테스트 업무 ${i}`,
       status: i % 4 === 0 ? 'PENDING' : 'PROGRESS',
       priority: i % 5 === 0 ? 'HIGH' : 'NORMAL',
+      industry: i % 2 === 0 ? 'CHEM' : 'BUILDING',
       startDate: `2026-${month}-01`,
       dueDate: `2026-${month}-20`,
       assignee: ['담당자'],
@@ -187,6 +192,11 @@ async function main() {
   indexDom.window.document.getElementById('input-task-title').value = '신규 업무 저장 회귀 테스트';
   indexDom.window.document.getElementById('input-task-due').value = '2026-07-31';
   assert(indexDom.window.document.getElementById('form-task').checkValidity(), '필수 업무값을 입력해도 신규 업무 폼이 제출 가능한 상태가 아닙니다.');
+  const taskCategorySelect = indexDom.window.document.getElementById('input-task-industry');
+  const taskTitleInput = indexDom.window.document.getElementById('input-task-title');
+  assert(taskCategorySelect && taskCategorySelect.previousElementSibling?.textContent.includes('업무 분류'), '업무 등록 화면의 산업 분류가 업무 분류로 변경되지 않았습니다.');
+  assert(taskCategorySelect.compareDocumentPosition(taskTitleInput) & indexDom.window.Node.DOCUMENT_POSITION_FOLLOWING, '업무 분류가 업무 등록 화면 최상단에 있지 않습니다.');
+  assert(indexDom.window.document.getElementById('btn-open-task-category-settings') && indexDom.window.document.getElementById('modal-task-category-settings'), '업무 분류 설정 진입점 또는 설정 모달이 없습니다.');
 
   const monthPickerSource = fs.readFileSync(path.join(root, 'js/month-picker-controller.js'), 'utf8');
   indexDom.window.eval(monthPickerSource);
@@ -232,7 +242,6 @@ async function main() {
   loadScript('js/table-mobile-renderer.js');
 
   const tasks = makeTasks();
-  global.calendarUxState.groupByAssignee = true;
   global.renderCalendarDayView({
     weekdayHeader: document.getElementById('calendar-weekday-header'),
     grid: document.getElementById('calendar-grid'),
@@ -249,9 +258,11 @@ async function main() {
         startDate: '2026-07-01',
         dueDate: '2026-07-02',
         globalLineStart: 6,
-        assigneeHeaderLine: 5,
-        assigneeGroupName: '후순위 담당자',
-        assigneeKpi: { total: 1, progress: 0, overdue: 0, completed: 0 },
+        categoryHeaderLine: 5,
+        categoryGroupKey: 'FNB',
+        categoryGroupLabel: '식음료',
+        categoryTaskCount: 1,
+        industry: 'FNB',
         assignee: ['담당자'],
         notes: '',
         monthSubTasks: []
@@ -264,9 +275,11 @@ async function main() {
         startDate: '2026-07-20',
         dueDate: '2026-07-20',
         globalLineStart: 1,
-        assigneeHeaderLine: 0,
-        assigneeGroupName: '선순위 담당자',
-        assigneeKpi: { total: 1, progress: 0, overdue: 0, completed: 0 },
+        categoryHeaderLine: 0,
+        categoryGroupKey: 'PHARMA',
+        categoryGroupLabel: '제약',
+        categoryTaskCount: 1,
+        industry: 'PHARMA',
         assignee: ['담당자'],
         notes: '',
         monthSubTasks: []
@@ -279,10 +292,10 @@ async function main() {
   });
   const weekLaneCounts = document.getElementById('calendar-grid').dataset.weekLaneCounts.split(',').map(Number);
   const compactedFirstWeekBar = document.querySelector('#calendar-grid [data-week-index="0"][data-logical-lane="6"]');
-  assert(weekLaneCounts[0] === 2, `첫 주에 활성 담당자 헤더와 업무 외 빈 줄이 남아 있습니다: ${weekLaneCounts[0]}`);
-  assert(compactedFirstWeekBar?.dataset.compactLane === '1', '첫 주의 높은 논리 lane 업무가 활성 담당자 헤더 바로 아래로 압축되지 않았습니다.');
-  assert(compactedFirstWeekBar?.style.top === '56px', `첫 주 업무 위에 비활성 담당자 빈 줄이 남아 있습니다: ${compactedFirstWeekBar?.style.top}`);
-  global.calendarUxState.groupByAssignee = false;
+  assert(weekLaneCounts[0] === 2, `첫 주에 활성 업무 분류 헤더와 업무 외 빈 줄이 남아 있습니다: ${weekLaneCounts[0]}`);
+  assert(document.querySelector('#calendar-grid [data-calendar-category-header="FNB"]'), '캘린더의 최상위 업무 분류 헤더가 없습니다.');
+  assert(compactedFirstWeekBar?.dataset.compactLane === '1', '첫 주의 높은 논리 lane 업무가 활성 업무 분류 헤더 바로 아래로 압축되지 않았습니다.');
+  assert(compactedFirstWeekBar?.style.top === '56px', `첫 주 업무 위에 비활성 업무 분류 빈 줄이 남아 있습니다: ${compactedFirstWeekBar?.style.top}`);
 
   const cancelledTask = {
     id: 'task-cancelled',
@@ -321,6 +334,7 @@ async function main() {
 
   global.renderMobileCards(tasks.slice(0, 2));
   assert(document.querySelectorAll('.mobile-task-card').length === 2, '모바일 목록 카드가 렌더링되지 않았습니다.');
+  assert(document.querySelectorAll('#task-card-container [data-task-category-group]').length === 2, '모바일 목록이 업무 분류 최상위 그룹으로 나뉘지 않았습니다.');
   assert(!document.querySelector('.mobile-command-deck'), '모바일 목록에 중복 Focus 및 Risk 제어 영역이 남아 있습니다.');
   assert(document.querySelector('.btn-toggle-subtasks[data-expanded="true"]'), '하위 업무 펼침 상태가 렌더링되지 않았습니다.');
   assert(document.querySelector('.line-clamp-2'), '긴 업무명 줄임 클래스가 누락되었습니다.');
@@ -353,6 +367,7 @@ async function main() {
   window.renderMobileCalendar(tasks.slice(0, 2));
   assert(document.getElementById('cal-mobile-month-year').textContent.includes('2026년 7월'), '모바일 월간 헤더가 올바르지 않습니다.');
   assert(document.querySelectorAll('#cal-mobile-content .mobile-cal-card').length >= 1, '모바일 월간 업무 카드가 없습니다.');
+  assert(document.querySelector('#cal-mobile-content [data-mobile-calendar-category]'), '모바일 일별 캘린더에 업무 분류 헤더가 없습니다.');
   assert(document.getElementById('cal-mobile-content').textContent.includes('월간 정기 완료 체크'), '반복 하위 업무가 모바일 월간에 반영되지 않았습니다.');
 
   global.currentCalMode = 'MONTH';
@@ -360,6 +375,7 @@ async function main() {
   const yearText = document.getElementById('cal-mobile-content').textContent;
   assert(yearText.includes('2026년 연간 타임라인'), '모바일 연간 간트 헤더가 없습니다.');
   assert(/주요 \d+\/14|총 14개/.test(yearText), '모바일 연간 밀집 상태 배지가 없습니다.');
+  assert(document.querySelectorAll('#cal-mobile-content [data-mobile-calendar-category]').length >= 2, '모바일 연간 캘린더에 업무 분류 그룹이 없습니다.');
   assert(document.querySelectorAll('#cal-mobile-content [title$="월 일별 보기로 이동"]').length >= 12, '월 축 이동 타깃이 부족합니다.');
   const mobileYearGantt = document.querySelector('[data-mobile-year-gantt]');
   assert(mobileYearGantt?.dataset.layoutFits === 'true', `390px 연간 간트 계산 폭(${mobileYearGantt?.dataset.layoutWidth})이 가용 폭(${mobileYearGantt?.dataset.availableWidth})을 넘습니다.`);

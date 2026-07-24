@@ -1,4 +1,4 @@
-console.info('Smart Task Flow task-service.js v20260724-v2 loaded');
+console.info('Smart Task Flow task-service.js v20260724-v3 loaded');
 // Task / tracker CRUD and Firebase realtime listener helpers.
 let taskSnapshotsByTracker = new Map();
 async function db_addTask(taskData) {
@@ -352,6 +352,9 @@ async function db_duplicateTracker(sourceTrackerId, data = {}) {
     ...(Array.isArray(sourceTracker.noteTypeOptions)
       ? { noteTypeOptions: sourceTracker.noteTypeOptions.map(option => ({ ...option })) }
       : {}),
+    ...(Array.isArray(sourceTracker.taskCategoryOptions)
+      ? { taskCategoryOptions: sourceTracker.taskCategoryOptions.map(option => ({ ...option })) }
+      : {}),
     order: nextOrder,
     deleted: false,
     createdAt: getServerTimestamp(),
@@ -370,6 +373,7 @@ async function db_duplicateTracker(sourceTrackerId, data = {}) {
       priority: sourceTask.priority,
       status: sourceTask.status,
       industry: sourceTask.industry,
+      ...(sourceTask.industryLabel ? { industryLabel: sourceTask.industryLabel } : {}),
       taskType: sourceTask.taskType,
       notes: '',
       order: sourceTask.order,

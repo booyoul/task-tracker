@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow app.js v20260724-v6 loaded');
+console.info('Smart Task Flow app.js v20260724-v7 loaded');
 // --- UX optimization globals: must be declared before helper functions ---
 var focusState = window.focusState || { riskOnly: false, mineOnly: false, highOnly: false };
 window.focusState = focusState;
@@ -45,8 +45,6 @@ function updateCalendarUxButtons() {
   const subBtn = document.getElementById('btn-cal-ux-subtasks');
   const riskBtn = document.getElementById('btn-cal-ux-risk');
   const industryBtn = document.getElementById('btn-cal-ux-industry');
-  const assigneeBtn = document.getElementById('btn-cal-ux-assignee');
-  const duplicateBtn = document.getElementById('btn-cal-ux-duplicate-assignee');
   if (subBtn) {
     subBtn.textContent = calendarUxState.subtasksExpanded ? '하위 펼침' : '하위 접힘';
     subBtn.className = getCalendarUxButtonClass(calendarUxState.subtasksExpanded);
@@ -56,21 +54,8 @@ function updateCalendarUxButtons() {
     riskBtn.className = getCalendarUxButtonClass(calendarUxState.criticalOnly);
   }
   if (industryBtn) {
-    industryBtn.textContent = calendarUxState.colorByIndustry ? '산업 색상 ON' : '산업 색상';
+    industryBtn.textContent = calendarUxState.colorByIndustry ? '업무 분류 색상 ON' : '업무 분류 색상';
     industryBtn.className = getCalendarUxButtonClass(calendarUxState.colorByIndustry);
-  }
-  if (assigneeBtn) {
-    assigneeBtn.textContent = calendarUxState.groupByAssignee ? '담당자 보기 ON' : '담당자 보기';
-    assigneeBtn.className = getCalendarUxButtonClass(calendarUxState.groupByAssignee);
-  }
-  if (duplicateBtn) {
-    duplicateBtn.textContent = calendarUxState.duplicateMultiAssignee ? '공동 개별표시 ON' : '공동 개별표시';
-    duplicateBtn.className = getCalendarUxButtonClass(calendarUxState.duplicateMultiAssignee);
-    if (calendarUxState.groupByAssignee) {
-      duplicateBtn.classList.remove('hidden');
-    } else {
-      duplicateBtn.classList.add('hidden');
-    }
   }
 }
 function ensureCalendarUxControls() {
@@ -84,9 +69,7 @@ function ensureCalendarUxControls() {
   controls.innerHTML = `
     <button type="button" id="btn-cal-ux-subtasks"></button>
     <button type="button" id="btn-cal-ux-risk"></button>
-    <button type="button" id="btn-cal-ux-industry"></button>
-    <button type="button" id="btn-cal-ux-assignee"></button>
-    <button type="button" id="btn-cal-ux-duplicate-assignee" class="hidden"></button>`;
+    <button type="button" id="btn-cal-ux-industry"></button>`;
   anchor.insertAdjacentElement('afterend', controls);
   document.getElementById('btn-cal-ux-subtasks')?.addEventListener('click', e => {
     e.preventDefault(); e.stopPropagation();
@@ -103,18 +86,6 @@ function ensureCalendarUxControls() {
   document.getElementById('btn-cal-ux-industry')?.addEventListener('click', e => {
     e.preventDefault(); e.stopPropagation();
     calendarUxState.colorByIndustry = !calendarUxState.colorByIndustry;
-    window.calendarUxState = calendarUxState;
-    saveCalendarUxState(); updateCalendarUxButtons(); renderActiveViews();
-  });
-  document.getElementById('btn-cal-ux-assignee')?.addEventListener('click', e => {
-    e.preventDefault(); e.stopPropagation();
-    calendarUxState.groupByAssignee = !calendarUxState.groupByAssignee;
-    window.calendarUxState = calendarUxState;
-    saveCalendarUxState(); updateCalendarUxButtons(); renderActiveViews();
-  });
-  document.getElementById('btn-cal-ux-duplicate-assignee')?.addEventListener('click', e => {
-    e.preventDefault(); e.stopPropagation();
-    calendarUxState.duplicateMultiAssignee = !calendarUxState.duplicateMultiAssignee;
     window.calendarUxState = calendarUxState;
     saveCalendarUxState(); updateCalendarUxButtons(); renderActiveViews();
   });
@@ -686,12 +657,12 @@ function renderCalendar(filteredTasks) {
       : (t.subTasks || []);
     const g = {
       id: t.id, title: t.title, startDate: start > end ? end : start, dueDate: end, status: t.status || 'PENDING',
-      priority: t.priority || 'NORMAL', industry: t.industry || 'AUTO', taskType: t.taskType || 'GENERAL', assignee: taskAssignees, notes: t.notes || '', order: t.order ?? 999,
+      priority: t.priority || 'NORMAL', industry: t.industry || 'AUTO', industryLabel: t.industryLabel || '', taskType: t.taskType || 'GENERAL', assignee: taskAssignees, notes: t.notes || '', order: t.order ?? 999,
       subTasks: sourceSubTasks.map(st => {
         const ss = st.startDate || st.dueDate || end;
         const dd = st.dueDate || end;
         const subAssignees = Array.isArray(st.assignee) ? [...st.assignee] : (st.assignee ? [st.assignee] : [...taskAssignees]);
-        return { id: st.id, title: st.title, startDate: ss > dd ? dd : ss, dueDate: dd, status: normalizeStatus(st.status), assignee: subAssignees, parentId: t.id, parentTitle: t.title, industry: t.industry || 'AUTO', taskType: t.taskType || 'GENERAL', isRecurringOccurrence: st.isRecurringOccurrence === true, sourceSubTaskId: st.sourceSubTaskId || '', occurrenceKey: st.occurrenceKey || '', recurrenceLabel: st.recurrenceLabel || '' };
+        return { id: st.id, title: st.title, startDate: ss > dd ? dd : ss, dueDate: dd, status: normalizeStatus(st.status), assignee: subAssignees, parentId: t.id, parentTitle: t.title, industry: t.industry || 'AUTO', industryLabel: t.industryLabel || '', taskType: t.taskType || 'GENERAL', isRecurringOccurrence: st.isRecurringOccurrence === true, sourceSubTaskId: st.sourceSubTaskId || '', occurrenceKey: st.occurrenceKey || '', recurrenceLabel: st.recurrenceLabel || '' };
       })
     };
     // Calendar lane calculation must use only the sub tasks relevant to the current view.
@@ -704,7 +675,7 @@ function renderCalendar(filteredTasks) {
     return g;
   }).sort((a, b) => a.order - b.order || a.rangeStart.localeCompare(b.rangeStart));
 
-  const laneLayout = calendarComputeLaneLayout(groups, { currentCalMode, showSubTaskBars, groupByAssignee: calendarUxState.groupByAssignee, duplicateMultiAssignee: calendarUxState.duplicateMultiAssignee, todayStr });
+  const laneLayout = calendarComputeLaneLayout(groups, { currentCalMode, showSubTaskBars, groupByCategory: true, groupByAssignee: false, todayStr });
   const lines = laneLayout.lines;
   const totalCalLanes = laneLayout.totalCalLanes;
   const layoutGroups = laneLayout.layoutGroups || groups;

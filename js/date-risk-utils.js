@@ -1,4 +1,62 @@
-console.info('Smart Task Flow date-risk-utils.js v20260716-v4 loaded');
+console.info('Smart Task Flow date-risk-utils.js v20260724-v5 loaded');
+const DEFAULT_TASK_CATEGORY_OPTIONS = [
+  { id: 'AUTO', label: '미분류' },
+  { id: 'GENERAL', label: 'General' },
+  { id: 'FNB', label: 'F&B' },
+  { id: 'PHARMA', label: 'Healthcare / Pharma / Bio' },
+  { id: 'SEMI', label: 'Semiconductor' },
+  { id: 'DISPLAY', label: 'Display' },
+  { id: 'OILGAS', label: 'Oil & Gas' },
+  { id: 'CHEM', label: 'Chemical / Petrochemical' },
+  { id: 'SHIP', label: 'Shipbuilding' },
+  { id: 'BUILDING', label: 'Commercial Building' }
+];
+function normalizeTaskCategoryOptions(options) {
+  const seen = new Set();
+  const normalized = [];
+  (Array.isArray(options) ? options : []).forEach((option, index) => {
+    const label = String(option?.label || '').trim().slice(0, 60);
+    const id = String(option?.id || `CATEGORY_${Date.now()}_${index}`).trim().slice(0, 80);
+    if (!label || !id || seen.has(id)) return;
+    seen.add(id);
+    normalized.push({ id, label });
+  });
+  return normalized;
+}
+function getCurrentTaskCategoryOptions() {
+  const tracker = typeof trackers !== 'undefined' && Array.isArray(trackers)
+    ? trackers.find(item => item.id === (typeof currentTrackerId !== 'undefined' ? currentTrackerId : null))
+    : null;
+  const configured = normalizeTaskCategoryOptions(tracker?.taskCategoryOptions);
+  return configured.length ? configured : DEFAULT_TASK_CATEGORY_OPTIONS.map(option => ({ ...option }));
+}
+function getTaskCategoryKey(task = {}) {
+  return String(task.industry || 'AUTO');
+}
+function getTaskCategoryLabel(taskOrKey = {}) {
+  const task = typeof taskOrKey === 'object' && taskOrKey !== null ? taskOrKey : null;
+  const key = task ? getTaskCategoryKey(task) : String(taskOrKey || 'AUTO');
+  const configured = getCurrentTaskCategoryOptions().find(option => option.id === key);
+  const fallback = DEFAULT_TASK_CATEGORY_OPTIONS.find(option => option.id === key);
+  return configured?.label || task?.industryLabel || fallback?.label || key;
+}
+function groupTasksByCategory(taskList = []) {
+  const options = getCurrentTaskCategoryOptions();
+  const optionOrder = new Map(options.map((option, index) => [option.id, index]));
+  const buckets = new Map();
+  (Array.isArray(taskList) ? taskList : []).forEach(task => {
+    const key = getTaskCategoryKey(task);
+    if (!buckets.has(key)) {
+      buckets.set(key, { key, label: getTaskCategoryLabel(task), tasks: [] });
+    }
+    buckets.get(key).tasks.push(task);
+  });
+  return [...buckets.values()].sort((a, b) => {
+    const aOrder = optionOrder.has(a.key) ? optionOrder.get(a.key) : Number.MAX_SAFE_INTEGER;
+    const bOrder = optionOrder.has(b.key) ? optionOrder.get(b.key) : Number.MAX_SAFE_INTEGER;
+    return aOrder - bOrder || a.label.localeCompare(b.label, 'ko');
+  });
+}
 function getStatusKorean(status) { return ({ PENDING: '진행 대기', PROGRESS: '진행 중', COMPLETED: '완료됨', CANCELLED: '취소', OVERDUE: '기한 초과' })[status] || '전체'; }
 function getPriorityBadge(priority) { if (priority === 'HIGH') return '높음'; if (priority === 'NORMAL') return '보통'; return '낮음'; }
 function getStatusIcon(status) { if (status === 'COMPLETED') return '✅'; if (status === 'CANCELLED') return '🚫'; if (status === 'PROGRESS') return '⚙️'; return '⌛'; }

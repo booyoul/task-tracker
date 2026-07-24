@@ -176,6 +176,7 @@ async function main() {
     desc: '복사할 설명',
     kpiTitle: '완료 목표',
     kpiTarget: 90,
+    taskCategoryOptions: [{ id: 'FNB', label: '식음료' }],
     accessControl: {
       'source-owner': { view: true, create: true, update: true, delete: true },
       'user-1': { view: true, create: false, update: false, delete: false },
@@ -188,6 +189,8 @@ async function main() {
     createdAt: 'old-time',
     updatedAt: 'old-time',
     notes: '태스크 본문 메모',
+    industry: 'FNB',
+    industryLabel: '식음료',
     status: 'PROGRESS',
     subTasks: [{
       id: 'source-subtask',
@@ -226,6 +229,8 @@ async function main() {
   assert.equal(copiedTask.createdBy, 'user-1');
   assert.equal(copiedTask.createdAt, 'server-time');
   assert.equal(copiedTask.notes, '', '태스크의 세부 안내 및 메모 필드는 복사하면 안 됩니다.');
+  assert.deepEqual(JSON.parse(JSON.stringify(copyWrites[0].payload.taskCategoryOptions)), [{ id: 'FNB', label: '식음료' }], '업무 분류 설정이 새 트래커에 복사되지 않았습니다.');
+  assert.equal(copiedTask.industryLabel, '식음료', '업무 분류 표시명이 복사된 태스크에 유지되지 않았습니다.');
   assert.equal(copiedTask.subTasks[0].recurrenceCompletions['2026-07-01'], 'COMPLETED');
   assert.equal(copyWrites.some(write => write.ref.collection === 'progress_notes'), false, '진행 메모는 복사하면 안 됩니다.');
   assert.equal(copyActivityWrites, 0, '원본 변경 이력이나 새 CREATE 이력을 복사 과정에서 만들면 안 됩니다.');
