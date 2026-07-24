@@ -8,7 +8,7 @@
     <link rel="icon" href="./favicon.ico?v=20260625-monthly-kpi">
     <!-- Immediately apply theme script to prevent FOUC -->
     <script src="./js/theme-service.js?v=20260710-v1"></script>
-    <link rel="stylesheet" href="./dist/output.css?v=20260724-v3">
+    <link rel="stylesheet" href="./dist/output.css?v=20260724-v4">
     <style>
         body {
             font-family: 'Noto Sans KR', sans-serif;
@@ -491,30 +491,26 @@
             <!-- 업무 현황 · 검색 · 필터 통합 제어 영역 -->
             <div id="unified-control-center" class="mb-3 rounded-2xl border border-slate-100 bg-white py-3 px-4 shadow-sm">
                 <div class="mb-3 flex flex-col gap-3 border-b border-slate-100 pb-3 dark:border-slate-800">
-                    <div class="flex flex-wrap items-center justify-between gap-2">
-                        <div class="min-w-0">
-                            <div class="text-xs font-black text-slate-800 dark:text-slate-100">업무 현황 및 필터</div>
-                            <div class="text-[10px] font-medium text-slate-400">현황 확인과 업무 탐색을 한 곳에서 관리합니다.</div>
+                    <div id="unified-dashboard-row" class="flex min-w-0 items-center gap-2">
+                        <div class="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-1">
+                            <div id="unified-goal-host" class="flex shrink-0 items-center"></div>
+                            <div id="unified-status-host" class="flex shrink-0 items-center gap-2"></div>
                         </div>
-                        <div class="flex flex-wrap items-center justify-end gap-2">
-                            <div id="unified-goal-host" class="flex items-center"></div>
-                            <details id="secondary-tools-menu" class="group relative">
-                                <summary class="flex cursor-pointer list-none items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-                                    도구
-                                    <svg class="h-3.5 w-3.5 transition group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
-                                    </svg>
-                                </summary>
-                                <div id="ux-tool-host" class="control-hub-actions absolute right-0 top-full z-40 mt-2 hidden w-52 flex-col gap-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl group-open:flex dark:border-slate-700 dark:bg-slate-900"></div>
-                            </details>
-                        </div>
+                        <details id="secondary-tools-menu" class="group relative shrink-0">
+                            <summary class="flex cursor-pointer list-none items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                                도구
+                                <svg class="h-3.5 w-3.5 transition group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </summary>
+                            <div id="ux-tool-host" class="control-hub-actions absolute right-0 top-full z-40 mt-2 hidden w-52 flex-col gap-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl group-open:flex dark:border-slate-700 dark:bg-slate-900"></div>
+                        </details>
                     </div>
-                    <div id="unified-status-host" class="flex flex-wrap items-center gap-2"></div>
                     <div id="unified-risk-host"></div>
                 </div>
-                <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div class="flex flex-col gap-3">
                     <!-- 공통 검색 영역 -->
-                    <div class="relative w-full lg:max-w-sm">
+                    <div class="relative w-full">
                         <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
                             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -545,7 +541,7 @@
                     </div>
 
                     <!-- 데스크톱용 상세 필터 및 뷰 토글 (lg 이상에서만 보임) -->
-                    <div class="hidden lg:flex lg:flex-wrap lg:items-center lg:gap-3">
+                    <div class="hidden lg:flex lg:w-full lg:flex-nowrap lg:items-center lg:gap-3 lg:overflow-x-auto">
                         <div
                             class="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
                             <span class="font-semibold text-slate-500">마감 월:</span>
@@ -1511,7 +1507,7 @@
     <script defer src="./js/month-picker-controller.js?v=20260724-v1"></script>
     <script defer src="./js/event-bindings.js?v=20260724-v2"></script>
     <script defer src="./js/bootstrap-service.js?v=20260714-v11"></script>
-    <script defer src="./js/app.js?v=20260724-v4"></script>
+    <script defer src="./js/app.js?v=20260724-v5"></script>
     <script defer src="./js/task-service.js?v=20260724-v1"></script>
     <script defer src="./js/export-service.js?v=20260714-v2"></script>
 </body>

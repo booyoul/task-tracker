@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow app.js v20260724-v4 loaded');
+console.info('Smart Task Flow app.js v20260724-v5 loaded');
 // --- UX optimization globals: must be declared before helper functions ---
 var focusState = window.focusState || { riskOnly: false, mineOnly: false, highOnly: false };
 window.focusState = focusState;
@@ -978,13 +978,17 @@ function ensureKpiCollapsedSummary(section) {
       if (chip) {
         const status = chip.getAttribute('data-status');
         const priority = chip.getAttribute('data-priority');
-        if (status) {
-          const el = document.getElementById('filter-status');
-          if (el) el.value = status;
-        }
-        if (priority) {
-          const el = document.getElementById('filter-priority');
-          if (el) el.value = priority;
+        const statusFilter = document.getElementById('filter-status');
+        const priorityFilter = document.getElementById('filter-priority');
+        if (status === 'ALL') {
+          if (statusFilter) statusFilter.value = 'ALL';
+          if (priorityFilter) priorityFilter.value = 'ALL';
+          focusState.riskOnly = false;
+          focusState.highOnly = false;
+        } else if (status && statusFilter) {
+          statusFilter.value = statusFilter.value === status ? 'ALL' : status;
+        } else if (priority && priorityFilter) {
+          priorityFilter.value = priorityFilter.value === priority ? 'ALL' : priority;
         }
         renderActiveViews();
       }
@@ -1044,7 +1048,7 @@ function applyCompactDashboardStyles() {
 
   const k = getKpiCompactValues();
   section.className = 'hidden';
-  summary.className = 'flex flex-wrap items-center gap-2';
+  summary.className = 'flex w-max flex-nowrap items-center gap-2';
   
   const currentStatus = document.getElementById('filter-status')?.value || 'ALL';
   const activeClass = (status) => currentStatus === status ? 'ring-2 ring-indigo-600 ring-offset-1 scale-[1.02]' : '';
@@ -1232,7 +1236,7 @@ function renderTrackerKpiBadge() {
   }
 
   // Renders the mini badge HTML with custom KPI info
-  container.className = `inline-flex items-center gap-2.5 cursor-pointer select-none rounded-xl border px-3 py-1.5 text-xs font-semibold shadow-sm transition hover:scale-[1.02] ${badgeColor}`;
+  container.className = `inline-flex min-w-0 max-w-full items-center gap-2 cursor-pointer select-none rounded-xl border px-2.5 py-1.5 text-xs font-semibold shadow-sm transition hover:scale-[1.02] ${badgeColor}`;
   container.innerHTML = `
     <span class="relative flex h-5 w-5 items-center justify-center shrink-0">
       <svg class="h-5 w-5 -rotate-90" viewBox="0 0 36 36">
@@ -1242,10 +1246,10 @@ function renderTrackerKpiBadge() {
       <span class="absolute text-[7.5px] font-black tracking-tighter" style="line-height: 1;">${currentVal}</span>
     </span>
     <span class="h-1.5 w-1.5 rounded-full bg-current"></span>
-    <span class="truncate max-w-[150px] font-semibold text-slate-700 dark:text-slate-350" title="${escapeHTML(kpiTitle)}: ${currentVal}${kpiUnit} / 목표 ${kpiTarget}${kpiUnit}">
+    <span class="max-w-[110px] truncate font-semibold text-slate-700 dark:text-slate-350 sm:max-w-[150px]" title="${escapeHTML(kpiTitle)}: ${currentVal}${kpiUnit} / 목표 ${kpiTarget}${kpiUnit}">
       ${escapeHTML(kpiTitle)}: ${currentVal}${kpiUnit} <span class="text-slate-400 dark:text-slate-500 font-medium">/ 목표 ${kpiTarget}${kpiUnit}</span>
     </span>
-    <span class="font-bold shrink-0 uppercase tracking-wide text-[9px] bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded border border-current/20">${statusText}</span>
+    <span class="hidden shrink-0 rounded border border-current/20 bg-white px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide dark:bg-slate-900 sm:inline-flex">${statusText}</span>
   `;
   container.hidden = false;
   container.classList.remove('hidden');

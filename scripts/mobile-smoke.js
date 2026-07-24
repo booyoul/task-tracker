@@ -204,6 +204,9 @@ async function main() {
   assert(batchDeleteButton?.hidden && undoButton?.hidden, '일괄 삭제 또는 되돌리기 버튼의 초기 숨김 속성이 누락되었습니다.');
   assert(indexDom.window.document.querySelectorAll('#filter-search').length === 1 && !indexDom.window.document.getElementById('filter-search-desktop'), '업무 검색 입력이 하나의 통합 영역으로 정리되지 않았습니다.');
   assert(indexDom.window.document.getElementById('unified-status-host') && indexDom.window.document.getElementById('unified-risk-host'), 'KPI와 Risk를 수용할 통합 현황 영역이 없습니다.');
+  const dashboardRow = indexDom.window.document.getElementById('unified-dashboard-row');
+  assert(dashboardRow?.contains(indexDom.window.document.getElementById('unified-status-host')) && dashboardRow?.contains(indexDom.window.document.getElementById('secondary-tools-menu')), '모바일에서 KPI와 도구가 같은 행에 배치되지 않았습니다.');
+  assert(!dashboardRow.textContent.includes('업무 현황 및 필터') && !dashboardRow.textContent.includes('현황 확인과 업무 탐색'), '삭제하기로 한 통합 영역 제목 또는 설명이 남아 있습니다.');
   const secondaryTools = indexDom.window.document.getElementById('secondary-tools-menu');
   assert(secondaryTools && !secondaryTools.open, '다운로드 및 백업 도구가 기본 접힘 상태가 아닙니다.');
   assert(indexDom.window.document.getElementById('ux-tool-host'), '접힌 보조 도구 영역이 없습니다.');
@@ -211,6 +214,9 @@ async function main() {
   assert(/function updateBatchButton\(\)[\s\S]*?supportsTaskSelectionActions\(\) && selectedTaskIds\.size > 0[\s\S]*?btn\.hidden = !shouldShow/.test(appSource), '일괄 삭제 버튼이 지원 화면에서만 실제로 표시되도록 제한되지 않았습니다.');
   assert(/function updateUndoButton\(\)[\s\S]*?supportsTaskSelectionActions\(\) && deletionHistory\.length > 0[\s\S]*?btn\.hidden = !shouldShow/.test(appSource), '되돌리기 버튼이 지원 화면에서만 실제로 표시되도록 제한되지 않았습니다.');
   assert(/const toolHost = document\.getElementById\('ux-tool-host'\)[\s\S]*?const primaryHost = document\.getElementById\('primary-task-action-host'\)/.test(appSource), '보조 도구와 새 업무 버튼 이동 로직이 누락되었습니다.');
+  assert(/if \(status === 'ALL'\)[\s\S]*?statusFilter\.value = 'ALL'[\s\S]*?priorityFilter\.value = 'ALL'/.test(appSource), '전체 KPI 버튼이 Risk와 High 필터를 함께 해제하지 않습니다.');
+  assert(/statusFilter\.value = statusFilter\.value === status \? 'ALL' : status/.test(appSource), '활성 상태 KPI 버튼을 다시 눌렀을 때 필터가 해제되지 않습니다.');
+  assert(/priorityFilter\.value = priorityFilter\.value === priority \? 'ALL' : priority/.test(appSource), '활성 High KPI 버튼을 다시 눌렀을 때 필터가 해제되지 않습니다.');
 
   loadScript('js/date-risk-utils.js');
   loadScript('js/calendar-utils.js');
