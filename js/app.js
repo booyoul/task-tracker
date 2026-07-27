@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow app.js v20260724-v7 loaded');
+console.info('Smart Task Flow app.js v20260727-v8 loaded');
 // --- UX optimization globals: must be declared before helper functions ---
 var focusState = window.focusState || { riskOnly: false, mineOnly: false, highOnly: false };
 window.focusState = focusState;
@@ -606,6 +606,7 @@ function buildTaskDetailCellHTML(t, subTasks, isExpanded, doneSubs, progressPct,
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2">
             <button type="button" class="btn-edit text-left block min-w-0 max-w-full rounded px-1 -mx-1 text-base font-black leading-snug text-slate-900 hover:text-indigo-600 outline-none" data-id="${t.id}" title="클릭해서 업무 수정">${escapeHTML(t.title)}</button>
+            ${buildListNoteButtonHTML(t.id)}
           </div>
           <div class="mt-1 text-xs text-slate-400">${escapeHTML(t.notes || '추가 지침 없음')} · 진척 ${progressPct}%${subInfo}</div>
           ${bottleneckHTML}
@@ -835,11 +836,16 @@ async function undoDelete() {
   updateUI();
 }
 function handleTableClick(e) {
+  const note = e.target.closest('.btn-list-note');
   const edit = e.target.closest('.btn-edit');
   const del = e.target.closest('.btn-delete');
   const toggle = e.target.closest('.btn-toggle-subtasks');
   const up = e.target.closest('.btn-order-up');
   const down = e.target.closest('.btn-order-down');
+  if (note) {
+    window.openTaskNoteFromList?.(note.dataset.taskId, note.dataset.subtaskId || '');
+    return;
+  }
   if (edit) openTaskModal(edit.dataset.id);
   if (del) confirmDelete(del.dataset.id);
   if (toggle) {

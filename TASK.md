@@ -39,6 +39,7 @@ Last updated: 2026-07-27
 - Memo work types are configured per tracker through a separate owner/admin setting; existing task-level `taskType` values remain stored for compatibility but are no longer edited or displayed as task metadata.
 - Task `industry` is presented as `업무 분류` at the top of the registration form; owner/admin users manage its options per tracker through `분류 설정`.
 - List and desktop/mobile calendar views group work in the fixed hierarchy `업무 분류 → 본 태스크 → 서브 태스크`.
+- The desktop list header can open or fold all sub tasks for the currently filtered tasks while preserving explicit fold state; desktop and mobile list titles use pin buttons to open the linked note composer and history, without per-task delete buttons.
 - New trackers store per-user `view/create/update/delete` permissions in `accessControl`; owners and admins retain full access, while legacy trackers keep their previous behavior until ACL settings are explicitly changed.
 - Sub task recurrence input, schema normalization, calendar/monthly summary occurrence rendering, and flat export rows are implemented.
 - Recurring sub task occurrences can store per-cycle status overrides on the source sub task through `recurrenceCompletions`; status can be edited from the task modal or monthly summary, and yearly calendar views group occurrences from the same source sub task into one lane.

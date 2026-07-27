@@ -1,4 +1,4 @@
-console.info('Smart Task Flow modal-controller.js v20260727-v1 loaded');
+console.info('Smart Task Flow modal-controller.js v20260727-v2 loaded');
 // Task modal, subtask modal list, tracker modal, and form submit handlers.
 function resetSubTaskButton() {
   const btn = document.getElementById('btn-add-subtask');
@@ -1780,6 +1780,12 @@ window.openSubTaskNoteModal = async function(index) {
     return;
   }
   openProgressNoteComposer(`${_currentNoteTaskId}__sub_${st.id}`);
+};
+
+window.openTaskNoteFromList = function(taskId, subTaskId = '') {
+  if (!taskId) return;
+  openTaskModal(taskId);
+  openProgressNoteComposer(subTaskId ? `${taskId}__sub_${subTaskId}` : taskId);
 };
 
 if (document.readyState === 'loading') {

@@ -798,12 +798,21 @@
                                     <input type="checkbox" id="checkbox-select-all"
                                         class="rounded border border-slate-300 cursor-pointer text-indigo-600 focus:ring-indigo-500">
                                 </th>
-                                <th class="w-[37%] px-4 py-4">업무 상세</th>
+                                <th class="w-[44%] px-4 py-4">
+                                    <div class="flex items-center gap-2">
+                                        <button type="button" id="btn-toggle-all-table-subtasks" disabled
+                                            class="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] font-bold normal-case tracking-normal text-slate-500 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-40"
+                                            aria-expanded="false" title="현재 목록의 서브 태스크 전체 펼치기">
+                                            <span data-table-subtask-toggle-icon aria-hidden="true">▸</span>
+                                            <span data-table-subtask-toggle-label>전체 펼치기</span>
+                                        </button>
+                                        <span>업무 상세</span>
+                                    </div>
+                                </th>
                                 <th class="w-[13%] px-3 py-4 whitespace-nowrap">담당자</th>
                                 <th class="w-[17%] px-3 py-4 whitespace-nowrap">마감 및 타임라인</th>
                                 <th class="w-[6%] px-2 py-4 text-center">우선순위</th>
                                 <th class="w-[12%] px-3 py-4 text-center whitespace-nowrap">진행 상태</th>
-                                <th class="w-[7%] px-2 py-4 text-center whitespace-nowrap">작업</th>
                             </tr>
                         </thead>
                         <tbody id="task-table-body" class="divide-y divide-slate-100 text-sm"></tbody>
@@ -1740,16 +1749,16 @@
     <script defer src="./js/calendar-month-renderer.js?v=20260724-v12"></script>
     <script defer src="./js/calendar-summary-renderer.js?v=20260724-v5"></script>
     <script defer src="./js/calendar-mobile-renderer.js?v=20260724-v2"></script>
-    <script defer src="./js/table-mobile-renderer.js?v=20260727-v9"></script>
+    <script defer src="./js/table-mobile-renderer.js?v=20260727-v11"></script>
     <script defer src="./js/kanban-renderer.js?v=20260716-v12"></script>
-    <script defer src="./js/modal-controller.js?v=20260727-v1"></script>
+    <script defer src="./js/modal-controller.js?v=20260727-v2"></script>
     <script defer src="./js/todo-service.js?v=20260727-v1"></script>
     <script defer src="./js/todo-controller.js?v=20260727-v1"></script>
     <script defer src="./js/admin-approvals.js?v=20260716-v1"></script>
     <script defer src="./js/month-picker-controller.js?v=20260724-v1"></script>
-    <script defer src="./js/event-bindings.js?v=20260724-v2"></script>
+    <script defer src="./js/event-bindings.js?v=20260727-v1"></script>
     <script defer src="./js/bootstrap-service.js?v=20260727-v12"></script>
-    <script defer src="./js/app.js?v=20260727-v8"></script>
+    <script defer src="./js/app.js?v=20260727-v9"></script>
     <script defer src="./js/task-service.js?v=20260724-v3"></script>
     <script defer src="./js/export-service.js?v=20260714-v2"></script>
 </body>

@@ -1,8 +1,46 @@
-console.info('Smart Task Flow table-mobile-renderer.js v20260727-v9 loaded');
+console.info('Smart Task Flow table-mobile-renderer.js v20260727-v11 loaded');
 // Table and mobile card renderers. Extracted from app.js in Phase 5.
 function getSubTaskProgressLabel(subTasks) {
   const counts = getSubTaskCompletionCounts(subTasks);
   return `${counts.completed}/${counts.active}${counts.cancelled ? ` · 취소 ${counts.cancelled}` : ''}`;
+}
+function buildListNoteButtonHTML(taskId, subTaskId = '') {
+  const scopeLabel = subTaskId ? '서브 태스크' : '본 업무';
+  return `<button type="button" class="btn-list-note inline-flex h-7 min-w-7 shrink-0 items-center justify-center rounded-lg bg-amber-50 px-1.5 text-xs font-bold text-amber-700 transition hover:bg-amber-100" data-task-id="${escapeHTML(taskId)}"${subTaskId ? ` data-subtask-id="${escapeHTML(subTaskId)}"` : ''} title="${scopeLabel} 메모 작성 및 보기" aria-label="${scopeLabel} 메모 작성 및 보기">📌</button>`;
+}
+function getVisibleTableSubTaskToggles() {
+  return Array.from(document.querySelectorAll('#task-table-body .btn-toggle-subtasks:not(.invisible)'));
+}
+function updateTableSubTaskToggleButton() {
+  const button = document.getElementById('btn-toggle-all-table-subtasks');
+  if (!button) return;
+  const toggles = getVisibleTableSubTaskToggles();
+  const allExpanded = toggles.length > 0 && toggles.every(toggle => toggle.dataset.expanded === 'true');
+  const label = button.querySelector('[data-table-subtask-toggle-label]');
+  const icon = button.querySelector('[data-table-subtask-toggle-icon]');
+  button.disabled = toggles.length === 0;
+  button.dataset.expanded = allExpanded ? 'true' : 'false';
+  button.setAttribute('aria-expanded', allExpanded ? 'true' : 'false');
+  button.title = allExpanded ? '현재 목록의 서브 태스크 전체 접기' : '현재 목록의 서브 태스크 전체 펼치기';
+  if (label) label.textContent = allExpanded ? '전체 접기' : '전체 펼치기';
+  if (icon) icon.textContent = allExpanded ? '⌄' : '▸';
+}
+function toggleAllTableSubTasks() {
+  const toggles = getVisibleTableSubTaskToggles();
+  if (!toggles.length) return;
+  const shouldExpand = toggles.some(toggle => toggle.dataset.expanded !== 'true');
+  toggles.forEach(toggle => {
+    const taskId = toggle.dataset.id;
+    if (!taskId) return;
+    if (shouldExpand) {
+      collapsedTaskIds.delete(taskId);
+      expandedTaskIds.add(taskId);
+    } else {
+      expandedTaskIds.delete(taskId);
+      collapsedTaskIds.add(taskId);
+    }
+  });
+  renderActiveViews();
 }
 function renderTable(filtered) {
   const tbody = document.getElementById('task-table-body');
@@ -12,6 +50,7 @@ function renderTable(filtered) {
   if (filtered.length === 0) {
     emptyState?.classList.replace('hidden', 'flex');
     updateSelectAllState(0, 0);
+    updateTableSubTaskToggleButton();
     return;
   }
   emptyState?.classList.replace('flex', 'hidden');
@@ -30,7 +69,7 @@ function renderTable(filtered) {
     const categoryRow = document.createElement('tr');
     categoryRow.dataset.taskCategoryGroup = category.key;
     categoryRow.className = 'bg-indigo-50/70';
-    categoryRow.innerHTML = `<td colspan="8" class="border-y border-indigo-100 px-4 py-2 text-xs font-black text-indigo-800">
+    categoryRow.innerHTML = `<td colspan="7" class="border-y border-indigo-100 px-4 py-2 text-xs font-black text-indigo-800">
       <span class="inline-flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-indigo-500"></span>${escapeHTML(category.label)}</span>
       <span class="ml-2 font-semibold text-indigo-500">본 업무 ${category.tasks.length}개</span>
     </td>`;
@@ -69,8 +108,7 @@ function renderTable(filtered) {
       <td class="px-3 py-4 align-top whitespace-nowrap">${typeof window.renderAssignees === 'function' ? window.renderAssignees(t.assignee) : escapeHTML(t.assignee)}</td>
       <td class="px-3 py-4 align-top whitespace-nowrap"><div class="inline-flex items-center gap-2 whitespace-nowrap text-xs font-semibold text-slate-600"><span>${t.startDate ? t.startDate.substring(5) : '미정'} ~ ${(t.dueDate || '').substring(5)}</span><span class="inline-flex shrink-0 rounded-lg border px-2 py-0.5 text-[11px] ${timeline.class}">${timeline.text}</span></div></td>
       <td class="px-2 py-4 text-center align-top"><span class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold">${getPriorityBadge(t.priority)}</span></td>
-      <td class="px-3 py-4 text-center align-top whitespace-nowrap"><div class="mb-1 text-[10px] font-bold text-slate-400 whitespace-nowrap">${getStatusKorean(effectiveStatus)}</div><select class="sel-status rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 outline-none focus:border-indigo-500 task-status-compact" data-id="${t.id}"><option value="PENDING" ${t.status === 'PENDING' ? 'selected' : ''}>진행 대기 ⌛</option><option value="PROGRESS" ${t.status === 'PROGRESS' ? 'selected' : ''}>진행 중 ⚙️</option><option value="COMPLETED" ${t.status === 'COMPLETED' ? 'selected' : ''}>완료됨 ⭐️</option><option value="CANCELLED" ${t.status === 'CANCELLED' ? 'selected' : ''}>취소 🚫</option></select></td>
-      <td class="px-2 py-4 text-center align-top whitespace-nowrap"><button type="button" class="btn-delete text-slate-400 hover:text-rose-600 px-2" data-id="${t.id}">🗑</button></td>`;
+      <td class="px-3 py-4 text-center align-top whitespace-nowrap"><div class="mb-1 text-[10px] font-bold text-slate-400 whitespace-nowrap">${getStatusKorean(effectiveStatus)}</div><select class="sel-status rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 outline-none focus:border-indigo-500 task-status-compact" data-id="${t.id}"><option value="PENDING" ${t.status === 'PENDING' ? 'selected' : ''}>진행 대기 ⌛</option><option value="PROGRESS" ${t.status === 'PROGRESS' ? 'selected' : ''}>진행 중 ⚙️</option><option value="COMPLETED" ${t.status === 'COMPLETED' ? 'selected' : ''}>완료됨 ⭐️</option><option value="CANCELLED" ${t.status === 'CANCELLED' ? 'selected' : ''}>취소 🚫</option></select></td>`;
     tbody.appendChild(tr);
     if (subTasks.length && isExpanded) {
       subTasks.forEach(st => {
@@ -82,18 +120,18 @@ function renderTable(filtered) {
         sr.className = isSubTaskOverdue(st) ? 'bg-rose-50/70 border-l-2 border-l-rose-500/60 hover:bg-rose-50 transition-colors text-xs' : 'bg-slate-50/70 border-l-2 border-l-indigo-500/40 hover:bg-indigo-50/30 transition-colors text-xs';
         sr.innerHTML = `
           <td colspan="2"></td>
-          <td class="px-4 py-2 text-slate-600"><div class="flex items-center gap-2 pl-8"><span class="text-slate-300">└─</span><button type="button" class="btn-edit font-semibold text-left ${['COMPLETED', 'CANCELLED'].includes(status) ? 'line-through text-slate-400' : isSubTaskOverdue(st) ? 'text-rose-700' : 'text-slate-700'} hover:text-indigo-600 outline-none" data-id="${t.id}" title="클릭해서 업무 수정">${isSubTaskOverdue(st) ? '🚨 ' : ''}${escapeHTML(st.title)}</button><span class="shrink-0 max-w-[120px] truncate rounded border border-indigo-100 bg-indigo-50 px-1 py-0.5 text-[10px] font-bold text-indigo-700" title="${escapeHTML(subAssigneeLabel)}">👤 ${escapeHTML(subAssigneeLabel)}</span></div></td>
+          <td class="px-4 py-2 text-slate-600"><div class="flex items-center gap-2 pl-8"><span class="text-slate-300">└─</span><button type="button" class="btn-edit font-semibold text-left ${['COMPLETED', 'CANCELLED'].includes(status) ? 'line-through text-slate-400' : isSubTaskOverdue(st) ? 'text-rose-700' : 'text-slate-700'} hover:text-indigo-600 outline-none" data-id="${t.id}" title="클릭해서 업무 수정">${isSubTaskOverdue(st) ? '🚨 ' : ''}${escapeHTML(st.title)}</button>${buildListNoteButtonHTML(t.id, st.id)}<span class="shrink-0 max-w-[120px] truncate rounded border border-indigo-100 bg-indigo-50 px-1 py-0.5 text-[10px] font-bold text-indigo-700" title="${escapeHTML(subAssigneeLabel)}">👤 ${escapeHTML(subAssigneeLabel)}</span></div></td>
           <td class="px-3 py-2 text-center text-slate-400">-</td>
           <td class="px-3 py-2 text-slate-500 whitespace-nowrap"><div class="inline-flex items-center gap-1.5 whitespace-nowrap"><span>📅 ${st.startDate ? st.startDate.substring(5) : '미정'} ~ ${st.dueDate ? st.dueDate.substring(5) : '미정'}</span><span class="inline-flex shrink-0 rounded-lg border px-2 py-0.5 text-[10px] ${stTimeline.class}">${stTimeline.text}</span></div></td>
           <td class="px-4 py-2 text-center text-slate-400">-</td>
-          <td class="px-3 py-2 text-center">${subTaskStatusSelect(t.id, st.id, status)}</td>
-          <td class="px-2 py-2 text-center text-slate-300">-</td>`;
+          <td class="px-3 py-2 text-center">${subTaskStatusSelect(t.id, st.id, status)}</td>`;
         tbody.appendChild(sr);
       });
     }
     });
   });
   updateSelectAllState(filtered.length, selectedCount);
+  updateTableSubTaskToggleButton();
 }
 // === Phase 11 Mobile Redesign: compact executive mobile cards + sticky bulk action ===
 console.info('Smart Task Flow mobile redesign v20260626-phase11 loaded');
@@ -171,12 +209,15 @@ function buildMobileSubTaskHTML(t, subTasks) {
             <div class="truncate text-xs font-black ${overdue ? 'text-rose-700' : 'text-slate-700'}">${overdue ? '🚨 ' : ''}${escapeHTML(st.title || '')}</div>
             <div class="mt-1 text-[11px] text-slate-400">👤 ${escapeHTML(subAssigneeLabel)} · ${st.startDate ? st.startDate.substring(5) : '미정'}~${st.dueDate ? st.dueDate.substring(5) : '미정'} ${stTimeline.text || ''}</div>
           </div>
-          <select class="sel-subtask-status rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-600" data-task-id="${escapeHTML(t.id)}" data-subtask-id="${escapeHTML(st.id)}">
-            <option value="PENDING" ${status === 'PENDING' ? 'selected' : ''}>대기</option>
-            <option value="PROGRESS" ${status === 'PROGRESS' ? 'selected' : ''}>진행</option>
-            <option value="COMPLETED" ${status === 'COMPLETED' ? 'selected' : ''}>완료</option>
-            <option value="CANCELLED" ${status === 'CANCELLED' ? 'selected' : ''}>취소</option>
-          </select>
+          <div class="flex shrink-0 items-center gap-1.5">
+            ${buildListNoteButtonHTML(t.id, st.id)}
+            <select class="sel-subtask-status rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-600" data-task-id="${escapeHTML(t.id)}" data-subtask-id="${escapeHTML(st.id)}">
+              <option value="PENDING" ${status === 'PENDING' ? 'selected' : ''}>대기</option>
+              <option value="PROGRESS" ${status === 'PROGRESS' ? 'selected' : ''}>진행</option>
+              <option value="COMPLETED" ${status === 'COMPLETED' ? 'selected' : ''}>완료</option>
+              <option value="CANCELLED" ${status === 'CANCELLED' ? 'selected' : ''}>취소</option>
+            </select>
+          </div>
         </div>
       </div>`;
     }).join('')}
@@ -256,9 +297,7 @@ function renderMobileCards(filtered) {
           <button type="button" class="btn-edit min-w-0 flex-1 text-left" data-id="${escapeHTML(t.id)}">
             <div class="line-clamp-2 text-[15px] font-black leading-snug text-slate-900">${escapeHTML(t.title || '')}</div>
           </button>
-          <div class="flex shrink-0 items-center gap-1">
-            <button type="button" class="btn-delete rounded-xl bg-white/80 px-2 py-1 text-xs font-black text-rose-500 shadow-sm" data-id="${escapeHTML(t.id)}">삭제</button>
-          </div>
+          ${buildListNoteButtonHTML(t.id)}
         </div>
         <div class="mt-2 flex flex-wrap items-center gap-1.5">
           <span class="inline-flex items-center rounded-full border px-2 py-1 text-[11px] font-bold ${getMobileStatusClass(effectiveStatus)}">${getStatusIcon(effectiveStatus)} ${getStatusKorean(effectiveStatus)}</span>

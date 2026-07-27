@@ -17,6 +17,11 @@ const dom = new JSDOM(`<!doctype html>
     <button id="btn-prev-month-mobile"></button>
     <button id="btn-today-month-mobile"></button>
     <button id="btn-next-month-mobile"></button>
+    <button id="btn-toggle-all-table-subtasks" disabled>
+      <span data-table-subtask-toggle-icon></span>
+      <span data-table-subtask-toggle-label></span>
+    </button>
+    <div id="task-table-body"></div>
     <div id="cal-mobile-content"></div>
     <div id="calendar-month-year"></div>
     <div id="calendar-weekday-header"></div>
@@ -221,6 +226,9 @@ async function main() {
   const stateSource = fs.readFileSync(path.join(root, 'js/state.js'), 'utf8');
   assert(/let currentViewMode = ['"]CALENDAR['"]/.test(stateSource), '트래커 기본 진입 뷰가 캘린더가 아닙니다.');
   const appSource = fs.readFileSync(path.join(root, 'js/app.js'), 'utf8');
+  const eventBindingsSource = fs.readFileSync(path.join(root, 'js/event-bindings.js'), 'utf8');
+  const modalControllerSource = fs.readFileSync(path.join(root, 'js/modal-controller.js'), 'utf8');
+  const tableRendererSource = fs.readFileSync(path.join(root, 'js/table-mobile-renderer.js'), 'utf8');
   const batchDeleteButton = indexDom.window.document.getElementById('btn-batch-delete');
   const undoButton = indexDom.window.document.getElementById('btn-undo');
   assert(batchDeleteButton?.hidden && undoButton?.hidden, '일괄 삭제 또는 되돌리기 버튼의 초기 숨김 속성이 누락되었습니다.');
@@ -231,7 +239,13 @@ async function main() {
   assert(!dashboardRow.textContent.includes('업무 현황 및 필터') && !dashboardRow.textContent.includes('현황 확인과 업무 탐색'), '삭제하기로 한 통합 영역 제목 또는 설명이 남아 있습니다.');
   assert(indexDom.window.document.getElementById('unified-status-host').classList.contains('w-full') && indexDom.window.document.getElementById('unified-status-host').classList.contains('order-3'), '모바일 현황 버튼이 KPI와 도구 아래의 별도 행에 배치되지 않았습니다.');
   const secondaryTools = indexDom.window.document.getElementById('secondary-tools-menu');
+  const tableSubTaskToggle = indexDom.window.document.getElementById('btn-toggle-all-table-subtasks');
+  const taskDetailHeader = [...indexDom.window.document.querySelectorAll('#view-table th')]
+    .find(header => header.textContent.includes('업무 상세'));
   assert(secondaryTools && !secondaryTools.open, '다운로드 및 백업 도구가 기본 접힘 상태가 아닙니다.');
+  assert(tableSubTaskToggle && taskDetailHeader?.contains(tableSubTaskToggle), '목록 테이블 업무 상세 왼쪽에 서브 태스크 전체 펼치기 버튼이 없습니다.');
+  assert(taskDetailHeader.querySelector('button')?.nextElementSibling?.textContent.includes('업무 상세'), '서브 태스크 전체 펼치기 버튼이 업무 상세 왼쪽에 배치되지 않았습니다.');
+  assert(![...indexDom.window.document.querySelectorAll('#view-table th')].some(header => header.textContent.trim() === '작업'), '목록 테이블에 개별 삭제용 작업 열이 남아 있습니다.');
   assert(indexDom.window.document.getElementById('ux-tool-host'), '접힌 보조 도구 영역이 없습니다.');
   assert(indexDom.window.document.getElementById('primary-task-action-host'), '새 업무 버튼을 배치할 뷰 전환 행 영역이 없습니다.');
   assert(/function updateBatchButton\(\)[\s\S]*?supportsTaskSelectionActions\(\) && selectedTaskIds\.size > 0[\s\S]*?btn\.hidden = !shouldShow/.test(appSource), '일괄 삭제 버튼이 지원 화면에서만 실제로 표시되도록 제한되지 않았습니다.');
@@ -240,6 +254,12 @@ async function main() {
   assert(/if \(status === 'ALL'\)[\s\S]*?statusFilter\.value = 'ALL'[\s\S]*?priorityFilter\.value = 'ALL'/.test(appSource), '전체 KPI 버튼이 Risk와 High 필터를 함께 해제하지 않습니다.');
   assert(/statusFilter\.value = statusFilter\.value === status \? 'ALL' : status/.test(appSource), '활성 상태 KPI 버튼을 다시 눌렀을 때 필터가 해제되지 않습니다.');
   assert(/priorityFilter\.value = priorityFilter\.value === priority \? 'ALL' : priority/.test(appSource), '활성 High KPI 버튼을 다시 눌렀을 때 필터가 해제되지 않습니다.');
+  assert(/btn-toggle-all-table-subtasks[^]*addEventListener\('click',toggleAllTableSubTasks\)/.test(eventBindingsSource), '서브 태스크 전체 펼치기 버튼의 클릭 연결이 없습니다.');
+  assert(/btn-list-note[^]*openTaskNoteFromList/.test(appSource), '목록 메모 핀의 클릭 연결이 없습니다.');
+  assert(/openTaskNoteFromList[^]*openTaskModal\(taskId\)[^]*openProgressNoteComposer/.test(modalControllerSource), '목록 메모 핀이 작성 폼과 기존 이력을 함께 여는 경로로 연결되지 않았습니다.');
+  assert(/buildTaskDetailCellHTML[^]*buildListNoteButtonHTML\(t.id\)/.test(appSource), '데스크톱 본 업무 제목 옆 메모 핀이 없습니다.');
+  assert(tableRendererSource.includes('buildListNoteButtonHTML(t.id, st.id)'), '목록 서브 태스크 제목 옆 메모 핀이 없습니다.');
+  assert(!tableRendererSource.includes('class="btn-delete'), '목록 렌더러에 개별 삭제 버튼이 남아 있습니다.');
 
   loadScript('js/date-risk-utils.js');
   loadScript('js/calendar-utils.js');
@@ -249,6 +269,23 @@ async function main() {
   loadScript('js/table-mobile-renderer.js');
 
   const tasks = makeTasks();
+  const tableBody = document.getElementById('task-table-body');
+  tableBody.innerHTML = `
+    <button class="btn-toggle-subtasks" data-id="task-1" data-expanded="false"></button>
+    <button class="btn-toggle-subtasks" data-id="task-2" data-expanded="false"></button>
+  `;
+  global.updateTableSubTaskToggleButton();
+  assert(document.querySelector('[data-table-subtask-toggle-label]').textContent === '전체 펼치기', '일괄 버튼이 접힌 목록에서 전체 펼치기로 표시되지 않습니다.');
+  global.toggleAllTableSubTasks();
+  assert(global.expandedTaskIds.has('task-1') && global.expandedTaskIds.has('task-2'), '일괄 버튼이 보이는 업무의 서브 태스크를 모두 펼치지 않습니다.');
+  tableBody.querySelectorAll('.btn-toggle-subtasks').forEach(toggle => { toggle.dataset.expanded = 'true'; });
+  global.updateTableSubTaskToggleButton();
+  assert(document.querySelector('[data-table-subtask-toggle-label]').textContent === '전체 접기', '모두 펼친 목록에서 일괄 버튼이 전체 접기로 바뀌지 않습니다.');
+  global.toggleAllTableSubTasks();
+  assert(global.collapsedTaskIds.has('task-1') && global.collapsedTaskIds.has('task-2'), '일괄 버튼이 보이는 업무의 서브 태스크를 모두 접지 않습니다.');
+  tableBody.innerHTML = '';
+  global.expandedTaskIds.clear();
+  global.collapsedTaskIds.clear();
   global.renderCalendarDayView({
     weekdayHeader: document.getElementById('calendar-weekday-header'),
     grid: document.getElementById('calendar-grid'),
@@ -343,6 +380,9 @@ async function main() {
   assert(document.querySelectorAll('.mobile-task-card').length === 2, '모바일 목록 카드가 렌더링되지 않았습니다.');
   assert(document.querySelectorAll('#task-card-container [data-task-category-group]').length === 2, '모바일 목록이 업무 분류 최상위 그룹으로 나뉘지 않았습니다.');
   assert(!document.querySelector('.mobile-command-deck'), '모바일 목록에 중복 Focus 및 Risk 제어 영역이 남아 있습니다.');
+  assert(document.querySelector('#task-card-container .btn-list-note[data-task-id="task-1"]:not([data-subtask-id])'), '모바일 본 업무 제목 옆 메모 핀이 없습니다.');
+  assert(document.querySelector('#task-card-container .btn-list-note[data-task-id="task-1"][data-subtask-id="sub-1"]'), '모바일 서브 태스크 제목 옆 메모 핀이 없습니다.');
+  assert(!document.querySelector('#task-card-container .btn-delete'), '모바일 목록에 개별 삭제 버튼이 남아 있습니다.');
   assert(document.querySelector('.btn-toggle-subtasks[data-expanded="true"]'), '하위 업무 펼침 상태가 렌더링되지 않았습니다.');
   assert(document.querySelector('.line-clamp-2'), '긴 업무명 줄임 클래스가 누락되었습니다.');
   global.selectedTaskIds.add(tasks[0].id);

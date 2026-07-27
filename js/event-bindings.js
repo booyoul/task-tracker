@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow event-bindings.js v20260724-v1 loaded');
+console.info('Smart Task Flow event-bindings.js v20260727-v1 loaded');
 
 function initEventBindings(){
   if(window.__eventBindingsInitialized)return;
@@ -64,6 +64,7 @@ function initEventBindings(){
   });
   document.getElementById('btn-reset-filters')?.addEventListener('click',resetFilters);
   document.getElementById('checkbox-select-all')?.addEventListener('change',toggleSelectAll);
+  document.getElementById('btn-toggle-all-table-subtasks')?.addEventListener('click',toggleAllTableSubTasks);
   document.getElementById('task-table-body')?.addEventListener('click',handleTableClick);
   document.getElementById('task-table-body')?.addEventListener('change',handleTableChange);
   document.getElementById('task-card-container')?.addEventListener('click',handleTableClick);
