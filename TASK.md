@@ -12,7 +12,7 @@ Last updated: 2026-07-28
 
 ## Current State
 
-- Status: Personal To-do implementation, production rule publication, authenticated production To-do CRUD/isolation, tracker ACL role checks, rich-note browser/production-write QA, automated Chrome desktop/mobile verification, and the production user-document audit are complete. Seven additional approved corporate user accounts await business confirmation.
+- Status: Personal To-do implementation, production rule publication, authenticated production To-do CRUD/isolation, tracker ACL role checks, rich-note browser/production-write QA, automated Chrome desktop/mobile verification, and the production user-document/activity audit are complete. No required operational verification remains.
 - Main app: `/home/booyoul/projects/task-tracker-main`
 - Task file: `TASK.md`
 - Project rules: `.agents/AGENTS.md`
@@ -106,7 +106,7 @@ Last updated: 2026-07-28
 - Approved production user A completed personal To-do create/read/update/complete/list/delete checks, while approved admin B was denied cross-user single reads, list queries, updates, and deletes; the temporary test record was removed.
 - Production tracker ACL checks passed for owner, view-only, creator, editor, deleter, no-access, and admin behavior, including soft-delete/restore and hard-delete paths. A second pass used six isolated disposable Firebase Auth accounts; all Auth accounts, user documents, trackers, and tasks were removed, and the production user count returned to its baseline.
 - Headless Chrome verifies desktop/mobile note selection, colors, bullet lists, work-type settings, review comments, and responsive layout; production A/B checks verify formatted note CRUD and admin review-comment persistence, with all temporary data removed.
-- The read-only production user audit found 10 approved documents: eight users and two expected admins, with no duplicate emails, schema issues, or unexpected admins; seven approved corporate users beyond the A/B/master test set require owner confirmation before any status change.
+- The read-only production user audit found 10 approved documents: eight users and two expected admins, with no duplicate emails, schema issues, or unexpected admins. The seven additional corporate users all have active tracker/task, note, activity-log, or ACL participation records, so their approved status was retained without modification.
 - `npm run smoke:todo:browser` verifies rendered desktop and 390×844 mobile layout, add/edit/complete/delete interactions, date filtering, entry reminder/daily dismissal, and returning to the task view in headless Chrome. It uses mocked CRUD and does not prove authenticated production writes.
 - Task/To-do view routing restores both CSS display and native `hidden` state for list, calendar, Kanban, admin, and To-do views; the Chrome smoke checks desktop and mobile task-view restoration so the task list cannot remain hidden after To-do routing.
 - The legacy full-size KPI card section stays hidden after task/To-do routing; the compact status-filter chips remain visible in task views and are covered by Chrome smoke.
@@ -114,7 +114,6 @@ Last updated: 2026-07-28
 ## Next Work
 
 - When task integration is requested, add explicit link/unlink UI using the existing optional `taskLink`; keep To-do dates/completion independent unless a user-selectable synchronization policy is defined.
-- Confirm whether the seven additional approved corporate user accounts should remain approved; do not change their status without explicit owner direction.
 
 ## Cautions
 
