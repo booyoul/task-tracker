@@ -32,6 +32,7 @@ Last updated: 2026-07-27
 - Tasks and sub tasks support a `CANCELLED` status shown as `취소`; cancelled items remain visible but are excluded from overdue, risk, progress, and completion-rate denominators.
 - Monthly summary is optimized for progress-note review with note-first layout, task-grouped note cards, author/work-type/search filters, important/comment toggles, and review labels for results, issues, decisions, and follow-up.
 - Monthly-summary notes group by their exact task or sub task ID and sort newest-first; the note detail panel shows older notes from only that exact task as read-only history while editing only the selected note.
+- Existing main tasks and sub tasks open their progress-note composer from a pin beside the task title; the note detail panel identifies the linked main task and sub task.
 - Progress notes support a user-selected `noteDate`; existing notes fall back to `createdAt`, while feeds and monthly summaries use the effective record date.
 - Progress notes support sanitized font colors and bullet lists, plus customer name, Opp No, and a memo-level work type; monthly review search and cards include this context.
 - Review comments are appended to each progress note by users with tracker update permission and appear in the note detail panel and monthly-review comment counts.

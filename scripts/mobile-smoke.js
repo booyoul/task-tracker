@@ -194,9 +194,13 @@ async function main() {
   assert(indexDom.window.document.getElementById('form-task').checkValidity(), '필수 업무값을 입력해도 신규 업무 폼이 제출 가능한 상태가 아닙니다.');
   const taskCategorySelect = indexDom.window.document.getElementById('input-task-industry');
   const taskTitleInput = indexDom.window.document.getElementById('input-task-title');
+  const mainTaskNoteButton = indexDom.window.document.getElementById('btn-modal-note-task');
   assert(taskCategorySelect && taskCategorySelect.previousElementSibling?.textContent.includes('업무 분류'), '업무 등록 화면의 산업 분류가 업무 분류로 변경되지 않았습니다.');
   assert(taskCategorySelect.compareDocumentPosition(taskTitleInput) & indexDom.window.Node.DOCUMENT_POSITION_FOLLOWING, '업무 분류가 업무 등록 화면 최상단에 있지 않습니다.');
   assert(indexDom.window.document.getElementById('btn-open-task-category-settings') && indexDom.window.document.getElementById('modal-task-category-settings'), '업무 분류 설정 진입점 또는 설정 모달이 없습니다.');
+  assert(mainTaskNoteButton && taskTitleInput.parentElement?.contains(mainTaskNoteButton), '본 업무 제목 옆에 진행 메모 핀 버튼이 없습니다.');
+  assert(mainTaskNoteButton.hidden && mainTaskNoteButton.classList.contains('hidden'), '신규 업무에서 본 업무 메모 핀 버튼이 숨겨지지 않았습니다.');
+  assert(!indexDom.window.document.getElementById('btn-add-progress-note'), '하단 메모 추가 버튼이 남아 있습니다.');
 
   const monthPickerSource = fs.readFileSync(path.join(root, 'js/month-picker-controller.js'), 'utf8');
   indexDom.window.eval(monthPickerSource);

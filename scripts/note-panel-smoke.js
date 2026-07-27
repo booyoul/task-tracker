@@ -7,6 +7,7 @@ const dom = new JSDOM(`<!doctype html><body>
   <div id="note-detail-panel" class="translate-x-full"></div>
   <div id="note-panel-backdrop" class="hidden"></div>
   <div id="note-panel-title"></div>
+  <div id="note-panel-task-title"></div>
   <div id="note-panel-meta"></div>
   <div id="note-panel-read-mode">
     <div id="note-panel-fields"></div>
@@ -38,6 +39,18 @@ const dom = new JSDOM(`<!doctype html><body>
     <button id="btn-note-edit-cancel"></button>
     <button id="btn-note-edit-save"></button>
   </div>
+  <button id="btn-modal-note-task" hidden class="hidden"></button>
+  <div id="progress-note-add-form" class="hidden">
+    <select id="input-note-scope"><option value="task-1">본 업무</option></select>
+    <input id="input-note-title">
+    <input id="input-note-date">
+    <input id="input-note-customer">
+    <input id="input-note-opp-no">
+    <select id="input-note-work-type"></select>
+    <div id="input-note-body" contenteditable="true"></div>
+  </div>
+  <button id="btn-cancel-note-add"></button>
+  <button id="btn-save-progress-note"></button>
   <button id="btn-close-note-panel"></button>
   <button id="btn-open-note-type-settings"></button>
   <div id="modal-note-type-settings" class="hidden">
@@ -126,6 +139,7 @@ async function main() {
     clearTimeout,
     tasks: [{
       id: 'task-1',
+      title: '보일러 교체 프로젝트',
       subTasks: [{ id: 'sub-1', title: '현장 확인' }],
     }],
     trackers: [{
@@ -141,6 +155,7 @@ async function main() {
     approvedUsers: [],
     showToast() {},
     renderActiveViews() {},
+    getTodayStr: () => '2026-07-12',
     hasTrackerWritePermission: () => true,
     DOMPurify: { sanitize: html => html },
     escapeHTML: value => String(value ?? '').replace(/[&<>"']/g, character => ({
@@ -175,9 +190,13 @@ async function main() {
 
   vm.createContext(context);
   vm.runInContext(fs.readFileSync('js/modal-controller.js', 'utf8'), context, { filename: 'js/modal-controller.js' });
+  context.document.getElementById('progress-note-add-form').scrollIntoView = () => {};
   context.document.dispatchEvent(new dom.window.Event('DOMContentLoaded'));
 
   await context.openNoteDetailPanel(currentNote);
+  context.document.getElementById('btn-modal-note-task').click();
+  assert.equal(context.document.getElementById('progress-note-add-form').classList.contains('hidden'), false);
+  assert.equal(context.document.getElementById('input-note-scope').value, 'task-1', '본 업무 핀은 본 업무를 메모 대상으로 지정해야 합니다.');
   assert.equal(context.document.getElementById('note-detail-panel').classList.contains('translate-x-0'), true);
   const historyItems = [...context.document.querySelectorAll('[data-note-history-id]')];
   assert.deepEqual(
@@ -186,6 +205,7 @@ async function main() {
     '본 업무 메모를 열면 그 본 업무의 과거 메모만 표시해야 합니다.'
   );
   assert.equal(context.document.getElementById('note-panel-history-count').textContent, '1건');
+  assert.equal(context.document.getElementById('note-panel-task-title').textContent, '업무 · 보일러 교체 프로젝트');
   assert.equal(context.document.getElementById('note-panel-history').textContent.includes('하위 업무 과거 메모'), false);
   assert.equal(context.document.getElementById('note-panel-history').textContent.includes('미래 내용'), false);
   assert.equal(context.document.getElementById('note-panel-history').textContent.includes('다른 내용'), false);
@@ -221,6 +241,7 @@ async function main() {
   );
 
   await context.openNoteDetailPanel(notes.find(note => note.id === 'note-subtask-history'));
+  assert.equal(context.document.getElementById('note-panel-task-title').textContent, '업무 · 보일러 교체 프로젝트 › 현장 확인');
   assert.deepEqual(
     [...context.document.querySelectorAll('[data-note-history-id]')].map(item => item.dataset.noteHistoryId),
     ['note-subtask-oldest'],

@@ -1,4 +1,4 @@
-console.info('Smart Task Flow modal-controller.js v20260724-v5 loaded');
+console.info('Smart Task Flow modal-controller.js v20260727-v1 loaded');
 // Task modal, subtask modal list, tracker modal, and form submit handlers.
 function resetSubTaskButton() {
   const btn = document.getElementById('btn-add-subtask');
@@ -308,6 +308,7 @@ function openTaskModal(id = null) {
   bindSubTaskRecurrenceControls();
   document.getElementById('form-task')?.reset();
   _currentNoteTaskId = id; // Set task ID immediately for subtask notes visibility
+  _currentMainNoteCount = 0;
   _currentSubNoteCounts = {}; // Reset subtask notes counts cache
 
   
@@ -349,6 +350,7 @@ function openTaskModal(id = null) {
     if (subTasksSection) subTasksSection.open = false;
   }
   renderModalSubTasks();
+  updateMainTaskNoteButton();
   document.querySelector('#form-task button[type="submit"]')?.classList.toggle('hidden', !canSave);
 
   // Load and render Unified Task History (Progress Notes & Activity Logs)
@@ -881,6 +883,7 @@ window.openKpiSettingsModal = openKpiSettingsModal;
 
 let _currentNotePanelNote = null; // 현재 패널에 표시 중인 메모 객체
 let _currentNoteTaskId = null;    // 현재 메모가 속한 태스크 ID
+let _currentMainNoteCount = 0;    // 본 태스크 메모 개수 캐시
 let _currentSubNoteCounts = {};  // 서브태스크별 메모 개수 캐시
 let _currentFeedPage = 1;         // 현재 피드 페이지
 const FEED_PAGE_SIZE = 5;         // 페이지당 아이템 개수
@@ -1106,6 +1109,7 @@ async function loadTaskHistory(taskId, page = 1) {
 
     _cachedFeedItems = items;
 
+    _currentMainNoteCount = notes.filter(n => String(n.taskId || '') === String(taskId)).length;
     _currentSubNoteCounts = {};
     notes.forEach(n => {
       if (n.taskId && n.taskId.includes('__sub_')) {
@@ -1114,6 +1118,7 @@ async function loadTaskHistory(taskId, page = 1) {
       }
     });
 
+    updateMainTaskNoteButton();
     renderModalSubTasks();
   }
 
@@ -1219,6 +1224,18 @@ function getNoteScopeLabel(note = {}) {
   return `하위 업무${subTask?.title ? ` · ${subTask.title}` : ''}`;
 }
 
+function getNoteLinkedTaskTitle(note = {}) {
+  const parts = String(note.taskId || '').split('__sub_');
+  const parentTask = typeof tasks !== 'undefined' && Array.isArray(tasks)
+    ? tasks.find(task => task.id === parts[0])
+    : null;
+  const parentTitle = note.taskTitle || parentTask?.title || '알 수 없는 업무';
+  if (parts.length < 2) return parentTitle;
+  const subTask = parentTask?.subTasks?.find(item => item.id === parts[1]);
+  const subTaskTitle = note.subTaskTitle || subTask?.title || '알 수 없는 하위 업무';
+  return `${parentTitle} › ${subTaskTitle}`;
+}
+
 function renderNotePanelHistory(currentNote, notes) {
   const section = document.getElementById('note-panel-history-section');
   const list = document.getElementById('note-panel-history');
@@ -1284,6 +1301,7 @@ async function loadNotePanelHistory(note) {
 
 function setNotePanel_readMode(note) {
   const title = document.getElementById('note-panel-title');
+  const taskTitle = document.getElementById('note-panel-task-title');
   const meta  = document.getElementById('note-panel-meta');
   const body  = document.getElementById('note-panel-body');
   const fields = document.getElementById('note-panel-fields');
@@ -1293,6 +1311,7 @@ function setNotePanel_readMode(note) {
   const editActions = document.getElementById('note-panel-edit-actions');
 
   if (title) title.textContent = note.title || '(제목 없음)';
+  if (taskTitle) taskTitle.textContent = `업무 · ${getNoteLinkedTaskTitle(note)}`;
   if (meta)  meta.textContent  = `${(note.createdByName || '').split('@')[0] || '알 수 없음'} · 기록일 ${formatNoteDate(note)}`;
   renderNoteBody(body, note);
   if (fields) {
@@ -1542,23 +1561,8 @@ function initNoteTypeSettingsEvents() {
 function initProgressNotesEvents() {
   if (_progressNotesInitialized) return;
   _progressNotesInitialized = true;
-  // 메모 추가 버튼 (폼 토글)
-  document.getElementById('btn-add-progress-note')?.addEventListener('click', () => {
-    const form = document.getElementById('progress-note-add-form');
-    if (!form) return;
-    form.classList.toggle('hidden');
-    if (!form.classList.contains('hidden')) {
-      document.getElementById('input-note-title').value = '';
-      const now = new Date();
-      const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-      document.getElementById('input-note-date').value = typeof getTodayStr === 'function' ? getTodayStr() : localToday;
-      document.getElementById('input-note-customer').value = '';
-      document.getElementById('input-note-opp-no').value = '';
-      const legacyWorkType = tasks.find(task => task.id === _currentNoteTaskId)?.taskType || '';
-      populateNoteWorkTypeSelect(document.getElementById('input-note-work-type'), legacyWorkType);
-      document.getElementById('input-note-body').innerHTML = '';
-      document.getElementById('input-note-body').focus();
-    }
+  document.getElementById('btn-modal-note-task')?.addEventListener('click', () => {
+    openProgressNoteComposer(_currentNoteTaskId);
   });
 
   // 메모 추가 취소
@@ -1723,41 +1727,59 @@ window.closeKpiSettingsModal = closeKpiSettingsModal;
 window.renderTrackerAccessControl = renderTrackerAccessControl;
 
 // ──────────────────────────────────────────────────────
-// 하위 업무 진행 메모(Sub-task Progress Notes) 통합 라우터
+// 본/하위 업무 진행 메모 통합 라우터
 // ──────────────────────────────────────────────────────
+function updateMainTaskNoteButton() {
+  const button = document.getElementById('btn-modal-note-task');
+  if (!button) return;
+  const shouldShow = Boolean(_currentNoteTaskId);
+  button.hidden = !shouldShow;
+  button.classList.toggle('hidden', !shouldShow);
+  button.classList.toggle('flex', shouldShow);
+  button.textContent = _currentMainNoteCount > 0 ? `📌 ${_currentMainNoteCount}` : '📌';
+}
+
+function openProgressNoteComposer(targetTaskId) {
+  if (!targetTaskId || !_currentNoteTaskId) {
+    showToast('신규 업무는 먼저 저장한 후에 메모를 등록할 수 있습니다.', false);
+    return;
+  }
+
+  const form = document.getElementById('progress-note-add-form');
+  if (!form) return;
+  form.classList.remove('hidden');
+
+  const scopeSelect = document.getElementById('input-note-scope');
+  if (scopeSelect) scopeSelect.value = targetTaskId;
+
+  const titleEl = document.getElementById('input-note-title');
+  const dateEl = document.getElementById('input-note-date');
+  const customerEl = document.getElementById('input-note-customer');
+  const oppNoEl = document.getElementById('input-note-opp-no');
+  const bodyEl = document.getElementById('input-note-body');
+  if (titleEl) titleEl.value = '';
+  const now = new Date();
+  const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  if (dateEl) dateEl.value = typeof getTodayStr === 'function' ? getTodayStr() : localToday;
+  if (customerEl) customerEl.value = '';
+  if (oppNoEl) oppNoEl.value = '';
+  const legacyWorkType = tasks.find(task => task.id === _currentNoteTaskId)?.taskType || '';
+  populateNoteWorkTypeSelect(document.getElementById('input-note-work-type'), legacyWorkType);
+  if (bodyEl) {
+    bodyEl.innerHTML = '';
+    bodyEl.focus();
+  }
+
+  form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
 window.openSubTaskNoteModal = async function(index) {
   const st = currentSubTasks[index];
   if (!st || !_currentNoteTaskId) {
     showToast('신규 업무는 먼저 저장한 후에 메모를 등록할 수 있습니다.', false);
     return;
   }
-  
-  // 1. 메모 작성 폼 활성화
-  const form = document.getElementById('progress-note-add-form');
-  if (form && form.classList.contains('hidden')) {
-    form.classList.remove('hidden');
-  }
-
-  // 2. 기록 대상 자동 세팅
-  const scopeSelect = document.getElementById('input-note-scope');
-  if (scopeSelect) {
-    scopeSelect.value = `${_currentNoteTaskId}__sub_${st.id}`;
-  }
-
-  // 3. 필드 클리어 및 포커스
-  const titleEl = document.getElementById('input-note-title');
-  const bodyEl = document.getElementById('input-note-body');
-  if (titleEl) titleEl.value = '';
-  if (bodyEl) {
-    bodyEl.innerHTML = '';
-    bodyEl.focus();
-  }
-  populateNoteWorkTypeSelect(document.getElementById('input-note-work-type'));
-
-  // 4. 작성 폼으로 부드러운 스크롤 이동
-  if (form) {
-    form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }
+  openProgressNoteComposer(`${_currentNoteTaskId}__sub_${st.id}`);
 };
 
 if (document.readyState === 'loading') {
