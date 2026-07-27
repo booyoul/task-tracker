@@ -12,6 +12,7 @@
     "smoke:crud": "node scripts/task-crud-smoke.js",
     "smoke:access": "node scripts/tracker-access-smoke.js",
     "smoke:notes": "node scripts/note-panel-smoke.js",
+    "smoke:notes:browser": "node scripts/note-browser-smoke.js",
     "smoke:todo": "node scripts/todo-smoke.js",
     "smoke:todo:browser": "node scripts/todo-browser-smoke.js",
     "test:rules": "firebase emulators:exec --only firestore --project demo-task-tracker-security \"node scripts/firestore-rules.test.js\"",

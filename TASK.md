@@ -1,6 +1,6 @@
 # Smart Task Flow Task
 
-Last updated: 2026-07-27
+Last updated: 2026-07-28
 
 ## Startup
 
@@ -12,7 +12,7 @@ Last updated: 2026-07-27
 
 ## Current State
 
-- Status: Personal To-do implementation, production rule publication, unauthenticated production access check, and automated Chrome desktop/mobile verification are complete. Authenticated production CRUD and tracker ACL live-account verification remain.
+- Status: Personal To-do implementation, production rule publication, authenticated production To-do CRUD/isolation, tracker ACL role checks, rich-note browser/production-write QA, and automated Chrome desktop/mobile verification are complete. The production user-document audit remains.
 - Main app: `/home/booyoul/projects/task-tracker-main`
 - Task file: `TASK.md`
 - Project rules: `.agents/AGENTS.md`
@@ -103,18 +103,17 @@ Last updated: 2026-07-27
 - Personal To-do uses separate per-item Firestore documents, owner-only standard/environment rules, dedicated desktop/mobile-safe UI, date-overlap filters, completion CRUD, and entry reminders.
 - `npm run smoke:todo` covers failed-write preservation, future `taskLink` normalization, date-boundary grouping, overdue-first today rendering, and To-do/task-view isolation; the Firestore emulator suite now covers 55 scenarios including private To-do ownership and linked-reference writes.
 - The user published the To-do Firestore rules; an unauthenticated production REST read of `todos` returned `403 PERMISSION_DENIED`.
+- Approved production user A completed personal To-do create/read/update/complete/list/delete checks, while approved admin B was denied cross-user single reads, list queries, updates, and deletes; the temporary test record was removed.
+- Production tracker ACL checks passed for owner, view-only, creator, editor, deleter, no-access, and admin behavior, including soft-delete/restore and hard-delete paths; all temporary trackers and tasks were removed.
+- Headless Chrome verifies desktop/mobile note selection, colors, bullet lists, work-type settings, review comments, and responsive layout; production A/B checks verify formatted note CRUD and admin review-comment persistence, with all temporary data removed.
 - `npm run smoke:todo:browser` verifies rendered desktop and 390×844 mobile layout, add/edit/complete/delete interactions, date filtering, entry reminder/daily dismissal, and returning to the task view in headless Chrome. It uses mocked CRUD and does not prove authenticated production writes.
 - Task/To-do view routing restores both CSS display and native `hidden` state for list, calendar, Kanban, admin, and To-do views; the Chrome smoke checks desktop and mobile task-view restoration so the task list cannot remain hidden after To-do routing.
 - The legacy full-size KPI card section stays hidden after task/To-do routing; the compact status-filter chips remain visible in task views and are covered by Chrome smoke.
 
 ## Next Work
 
-- Using an approved production account, verify personal To-do create/edit/complete/delete and confirm a second account, including an admin, cannot read or change the first account's To-do documents.
 - When task integration is requested, add explicit link/unlink UI using the existing optional `taskLink`; keep To-do dates/completion independent unless a user-selectable synchronization policy is defined.
-- Perform a real-browser pass for text selection/color application, bullet toggling, work-type settings, and review-comment submission on desktop and mobile; JSDOM does not prove selection behavior or production writes.
-- Verify owner, view-only, creator, editor, deleter, and no-access accounts against production using the published tracker-ACL Firestore rules.
 - Audit existing production user documents for unexpected `role: admin` or `status: approved` values created under the previous permissive rules.
-- Run approved-user owner/admin create, update, delete, and restore checks against production Firestore.
 
 ## Cautions
 
