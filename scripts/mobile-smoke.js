@@ -230,6 +230,13 @@ async function main() {
 
   const stateSource = fs.readFileSync(path.join(root, 'js/state.js'), 'utf8');
   assert(/let currentViewMode = ['"]CALENDAR['"]/.test(stateSource), '트래커 기본 진입 뷰가 캘린더가 아닙니다.');
+  assert(/let currentCalMode = ['"]MONTH['"]/.test(stateSource), '캘린더 기본 진입 모드가 년간 보기가 아닙니다.');
+  const desktopMonthModeButton = indexDom.window.document.getElementById('btn-cal-mode-day');
+  const desktopYearModeButton = indexDom.window.document.getElementById('btn-cal-mode-month');
+  const mobileMonthModeButton = indexDom.window.document.getElementById('btn-cal-mode-day-m');
+  const mobileYearModeButton = indexDom.window.document.getElementById('btn-cal-mode-month-m');
+  assert(desktopYearModeButton?.classList.contains('bg-white') && !desktopMonthModeButton?.classList.contains('bg-white'), '데스크톱 캘린더의 초기 활성 버튼이 년간 보기가 아닙니다.');
+  assert(mobileYearModeButton?.classList.contains('bg-white') && !mobileMonthModeButton?.classList.contains('bg-white'), '모바일 캘린더의 초기 활성 버튼이 년간 보기가 아닙니다.');
   const appSource = fs.readFileSync(path.join(root, 'js/app.js'), 'utf8');
   const eventBindingsSource = fs.readFileSync(path.join(root, 'js/event-bindings.js'), 'utf8');
   const modalControllerSource = fs.readFileSync(path.join(root, 'js/modal-controller.js'), 'utf8');

@@ -219,10 +219,24 @@ async function main() {
           return { success: true, id };
         };
         updateUI();
+        window.__todoBrowserInitialCalendarState = {
+          mode: currentCalMode,
+          desktopYearActive: document.getElementById('btn-cal-mode-month')?.classList.contains('bg-white') || false,
+          desktopMonthActive: document.getElementById('btn-cal-mode-day')?.classList.contains('bg-white') || false,
+          mobileYearActive: document.getElementById('btn-cal-mode-month-m')?.classList.contains('bg-white') || false,
+          mobileMonthActive: document.getElementById('btn-cal-mode-day-m')?.classList.contains('bg-white') || false
+        };
         switchView('TODO');
         return true;
       })()
     `);
+
+    const initialCalendarState = await evaluate(client, 'window.__todoBrowserInitialCalendarState');
+    assert.equal(initialCalendarState.mode, 'MONTH');
+    assert.equal(initialCalendarState.desktopYearActive, true);
+    assert.equal(initialCalendarState.desktopMonthActive, false);
+    assert.equal(initialCalendarState.mobileYearActive, true);
+    assert.equal(initialCalendarState.mobileMonthActive, false);
 
     const desktop = await evaluate(client, `(() => {
       const view = document.getElementById('view-todo');

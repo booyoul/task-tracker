@@ -105,7 +105,7 @@
         let currentViewMode = 'CALENDAR';
         let lastTaskViewMode = 'CALENDAR';
         let currentCalDate = new Date(); 
-        let currentCalMode = 'DAY'; 
+        let currentCalMode = 'MONTH';
         let isCalSubTaskVisible = true; // 캘린더에서 하위 업무 표시 토글 상태
         let currentSubTasks = []; 
         let editingSubTaskIndex = -1; 
