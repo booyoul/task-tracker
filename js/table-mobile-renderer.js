@@ -1,4 +1,4 @@
-console.info('Smart Task Flow table-mobile-renderer.js v20260727-v6 loaded');
+console.info('Smart Task Flow table-mobile-renderer.js v20260727-v7 loaded');
 // Table and mobile card renderers. Extracted from app.js in Phase 5.
 function getSubTaskProgressLabel(subTasks) {
   const counts = getSubTaskCompletionCounts(subTasks);
@@ -308,6 +308,12 @@ function setViewVisibility(mode) {
     element.classList.toggle('hidden', !visible);
     if (displayClass) element.classList.toggle(displayClass, visible);
   };
+  const showView = element => {
+    if (!element) return;
+    element.hidden = false;
+    element.classList.remove('hidden');
+    element.style.display = '';
+  };
   setVisible(document.getElementById('task-dashboard-summary'), !isTodo);
   setVisible(document.getElementById('view-toggle-bar'), !isTodo);
   setVisible(document.getElementById('tracker-header-context'), !isTodo, 'flex');
@@ -320,27 +326,28 @@ function setViewVisibility(mode) {
   const filterBox = document.getElementById('unified-control-center');
   setVisible(filterBox, mode !== 'ADMIN' && !isTodo);
   if (isTodo) {
-    if (todoView) {
-      todoView.hidden = false;
-      todoView.classList.remove('hidden');
-      todoView.style.display = '';
-    }
+    showView(todoView);
     return;
   }
-  if (mode === 'ADMIN') { if (adminView) { adminView.classList.remove('hidden'); adminView.style.display = ''; } return; }
+  if (mode === 'ADMIN') {
+    showView(adminView);
+    return;
+  }
   if (mode === 'CALENDAR') {
     if (isMobile) {
       // 모바일: 모바일 전용 캘린더 뷰 표시
-      if (calendarMobile) { calendarMobile.classList.remove('hidden'); calendarMobile.style.display = ''; }
+      showView(calendarMobile);
     } else {
       // 데스크탑: 기존 간트 캘린더 뷰 표시
-      if (calendar) { calendar.classList.remove('hidden'); calendar.style.display = ''; }
+      showView(calendar);
     }
     return;
   }
-  if (mode === 'KANBAN') { if (kanban) { kanban.classList.remove('hidden'); kanban.style.display = ''; } return; }
-  if (isMobile) { if (mobile) { mobile.classList.remove('hidden'); mobile.style.display = ''; } }
-  else { if (table) { table.classList.remove('hidden'); table.style.display = ''; } }
+  if (mode === 'KANBAN') {
+    showView(kanban);
+    return;
+  }
+  showView(isMobile ? mobile : table);
 }
 function updateViewToggleButtons(mode) {
   const mappings = [

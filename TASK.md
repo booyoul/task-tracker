@@ -102,6 +102,7 @@ Last updated: 2026-07-27
 - `npm run smoke:todo` covers failed-write preservation, future `taskLink` normalization, date-boundary grouping, overdue-first today rendering, and To-do/task-view isolation; the Firestore emulator suite now covers 55 scenarios including private To-do ownership and linked-reference writes.
 - The user published the To-do Firestore rules; an unauthenticated production REST read of `todos` returned `403 PERMISSION_DENIED`.
 - `npm run smoke:todo:browser` verifies rendered desktop and 390×844 mobile layout, add/edit/complete/delete interactions, date filtering, entry reminder/daily dismissal, and returning to the task view in headless Chrome. It uses mocked CRUD and does not prove authenticated production writes.
+- Task/To-do view routing restores both CSS display and native `hidden` state for list, calendar, Kanban, admin, and To-do views; the Chrome smoke checks desktop and mobile task-view restoration so the task list cannot remain hidden after To-do routing.
 
 ## Next Work
 

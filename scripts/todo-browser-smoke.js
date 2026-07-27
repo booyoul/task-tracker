@@ -168,6 +168,12 @@ async function main() {
     await client.ready();
     await client.send('Page.enable');
     await client.send('Runtime.enable');
+    await client.send('Emulation.setDeviceMetricsOverride', {
+      width: 1440,
+      height: 900,
+      deviceScaleFactor: 1,
+      mobile: false
+    });
     await client.send('Page.addScriptToEvaluateOnNewDocument', {
       source: `
         window.__todoBrowserSmokeErrors = [];
@@ -233,6 +239,27 @@ async function main() {
     assert.equal(desktop.trackerHeaderHidden, true);
     assert.equal(desktop.noOverflow, true);
     assert.deepEqual(desktop.resultIds.slice(0, 2), ['overdue', 'today']);
+
+    await evaluate(client, `document.getElementById('btn-open-todo').click()`);
+    const desktopTaskView = await evaluate(client, `(() => {
+      const taskView = document.getElementById('view-calendar');
+      const filterBox = document.getElementById('unified-control-center');
+      return {
+        mode: currentViewMode,
+        todoHidden: document.getElementById('view-todo').hidden,
+        taskHidden: taskView.hidden,
+        taskDisplay: getComputedStyle(taskView).display,
+        filterHidden: filterBox.hidden,
+        filterDisplay: getComputedStyle(filterBox).display
+      };
+    })()`);
+    assert.equal(desktopTaskView.mode, 'CALENDAR');
+    assert.equal(desktopTaskView.todoHidden, true);
+    assert.equal(desktopTaskView.taskHidden, false);
+    assert.notEqual(desktopTaskView.taskDisplay, 'none');
+    assert.equal(desktopTaskView.filterHidden, false);
+    assert.notEqual(desktopTaskView.filterDisplay, 'none');
+    await evaluate(client, `document.getElementById('btn-open-todo').click()`);
 
     await evaluate(client, `
       document.getElementById('btn-add-todo').click();
@@ -311,7 +338,19 @@ async function main() {
     assert.equal(mobile.modalOverflow, false);
 
     await evaluate(client, `document.getElementById('btn-open-todo').click()`);
-    assert.equal(await evaluate(client, `currentViewMode !== 'TODO' && document.getElementById('view-todo').hidden`), true);
+    const returnedTaskView = await evaluate(client, `(() => {
+      const taskView = document.getElementById('view-calendar-mobile');
+      return {
+        mode: currentViewMode,
+        todoHidden: document.getElementById('view-todo').hidden,
+        taskHidden: taskView.hidden,
+        taskDisplay: getComputedStyle(taskView).display
+      };
+    })()`);
+    assert.equal(returnedTaskView.mode, 'CALENDAR');
+    assert.equal(returnedTaskView.todoHidden, true);
+    assert.equal(returnedTaskView.taskHidden, false);
+    assert.notEqual(returnedTaskView.taskDisplay, 'none');
 
     console.log('todo browser smoke passed: desktop/mobile layout, CRUD interactions, filters, reminder, and task-view return');
   } catch (error) {
