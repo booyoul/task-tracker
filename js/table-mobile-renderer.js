@@ -1,4 +1,4 @@
-console.info('Smart Task Flow table-mobile-renderer.js v20260727-v7 loaded');
+console.info('Smart Task Flow table-mobile-renderer.js v20260727-v9 loaded');
 // Table and mobile card renderers. Extracted from app.js in Phase 5.
 function getSubTaskProgressLabel(subTasks) {
   const counts = getSubTaskCompletionCounts(subTasks);
@@ -314,7 +314,11 @@ function setViewVisibility(mode) {
     element.classList.remove('hidden');
     element.style.display = '';
   };
-  setVisible(document.getElementById('task-dashboard-summary'), !isTodo);
+  const fullKpiDashboard = document.getElementById('task-dashboard-summary');
+  if (fullKpiDashboard) {
+    fullKpiDashboard.hidden = true;
+    fullKpiDashboard.classList.add('hidden');
+  }
   setVisible(document.getElementById('view-toggle-bar'), !isTodo);
   setVisible(document.getElementById('tracker-header-context'), !isTodo, 'flex');
   setVisible(document.getElementById('todo-header-context'), isTodo, 'flex');

@@ -244,13 +244,18 @@ async function main() {
     const desktopTaskView = await evaluate(client, `(() => {
       const taskView = document.getElementById('view-calendar');
       const filterBox = document.getElementById('unified-control-center');
+      const dashboard = document.getElementById('task-dashboard-summary');
+      const compactDashboard = document.getElementById('kpi-collapsed-summary');
       return {
         mode: currentViewMode,
         todoHidden: document.getElementById('view-todo').hidden,
         taskHidden: taskView.hidden,
         taskDisplay: getComputedStyle(taskView).display,
         filterHidden: filterBox.hidden,
-        filterDisplay: getComputedStyle(filterBox).display
+        filterDisplay: getComputedStyle(filterBox).display,
+        dashboardDisplay: getComputedStyle(dashboard).display,
+        compactDashboardDisplay: getComputedStyle(compactDashboard).display,
+        compactDashboardChipCount: compactDashboard.querySelectorAll('.kpi-compact-chip').length
       };
     })()`);
     assert.equal(desktopTaskView.mode, 'CALENDAR');
@@ -259,6 +264,9 @@ async function main() {
     assert.notEqual(desktopTaskView.taskDisplay, 'none');
     assert.equal(desktopTaskView.filterHidden, false);
     assert.notEqual(desktopTaskView.filterDisplay, 'none');
+    assert.equal(desktopTaskView.dashboardDisplay, 'none');
+    assert.equal(desktopTaskView.compactDashboardDisplay, 'flex');
+    assert.equal(desktopTaskView.compactDashboardChipCount, 7);
     await evaluate(client, `document.getElementById('btn-open-todo').click()`);
 
     await evaluate(client, `
@@ -340,17 +348,23 @@ async function main() {
     await evaluate(client, `document.getElementById('btn-open-todo').click()`);
     const returnedTaskView = await evaluate(client, `(() => {
       const taskView = document.getElementById('view-calendar-mobile');
+      const dashboard = document.getElementById('task-dashboard-summary');
+      const compactDashboard = document.getElementById('kpi-collapsed-summary');
       return {
         mode: currentViewMode,
         todoHidden: document.getElementById('view-todo').hidden,
         taskHidden: taskView.hidden,
-        taskDisplay: getComputedStyle(taskView).display
+        taskDisplay: getComputedStyle(taskView).display,
+        dashboardDisplay: getComputedStyle(dashboard).display,
+        compactDashboardDisplay: getComputedStyle(compactDashboard).display
       };
     })()`);
     assert.equal(returnedTaskView.mode, 'CALENDAR');
     assert.equal(returnedTaskView.todoHidden, true);
     assert.equal(returnedTaskView.taskHidden, false);
     assert.notEqual(returnedTaskView.taskDisplay, 'none');
+    assert.equal(returnedTaskView.dashboardDisplay, 'none');
+    assert.equal(returnedTaskView.compactDashboardDisplay, 'flex');
 
     console.log('todo browser smoke passed: desktop/mobile layout, CRUD interactions, filters, reminder, and task-view return');
   } catch (error) {
@@ -360,6 +374,17 @@ async function main() {
           readyState: document.readyState,
           errors: window.__todoBrowserSmokeErrors || [],
           scripts: [...document.scripts].map(script => ({ src: script.src, defer: script.defer })),
+          stylesheets: [...document.styleSheets].map(sheet => sheet.href || 'inline'),
+          viewport: document.documentElement.clientWidth,
+          dashboard: (() => {
+            const element = document.getElementById('task-dashboard-summary');
+            return element ? {
+              className: element.className,
+              hidden: element.hidden,
+              display: getComputedStyle(element).display,
+              columns: getComputedStyle(element).gridTemplateColumns
+            } : null;
+          })(),
           todoController: typeof window.renderTodoView,
           switchView: typeof window.switchView
         })`);

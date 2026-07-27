@@ -103,6 +103,7 @@ Last updated: 2026-07-27
 - The user published the To-do Firestore rules; an unauthenticated production REST read of `todos` returned `403 PERMISSION_DENIED`.
 - `npm run smoke:todo:browser` verifies rendered desktop and 390×844 mobile layout, add/edit/complete/delete interactions, date filtering, entry reminder/daily dismissal, and returning to the task view in headless Chrome. It uses mocked CRUD and does not prove authenticated production writes.
 - Task/To-do view routing restores both CSS display and native `hidden` state for list, calendar, Kanban, admin, and To-do views; the Chrome smoke checks desktop and mobile task-view restoration so the task list cannot remain hidden after To-do routing.
+- The legacy full-size KPI card section stays hidden after task/To-do routing; the compact status-filter chips remain visible in task views and are covered by Chrome smoke.
 
 ## Next Work
 
