@@ -12,21 +12,24 @@
     "smoke:crud": "node scripts/task-crud-smoke.js",
     "smoke:access": "node scripts/tracker-access-smoke.js",
     "smoke:notes": "node scripts/note-panel-smoke.js",
+    "smoke:todo": "node scripts/todo-smoke.js",
+    "smoke:todo:browser": "node scripts/todo-browser-smoke.js",
     "test:rules": "firebase emulators:exec --only firestore --project demo-task-tracker-security \"node scripts/firestore-rules.test.js\"",
-    "test": "npm run smoke:security && npm run smoke:crud && npm run smoke:access && npm run smoke:notes && npm run test:rules && npm run smoke:mobile"
+    "test": "npm run smoke:security && npm run smoke:crud && npm run smoke:access && npm run smoke:notes && npm run smoke:todo && npm run test:rules && npm run smoke:mobile"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@tailwindcss/cli": "4.3.2",
     "@firebase/rules-unit-testing": "^5.0.1",
+    "@tailwindcss/cli": "4.3.2",
     "autoprefixer": "^10.5.2",
     "canvas": "^3.2.3",
     "firebase": "^12.16.0",
     "firebase-tools": "^15.23.0",
     "jsdom": "^29.1.1",
     "postcss": "^8.5.15",
-    "tailwindcss": "4.3.2"
+    "tailwindcss": "4.3.2",
+    "ws": "^8.21.1"
   }
 }

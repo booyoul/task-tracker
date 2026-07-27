@@ -117,6 +117,17 @@ window.getProgressNotesCollection = function () {
     return null;
 };
 
+window.getTodosCollection = function () {
+    if (isFirebaseAvailable && db) {
+        if (useEnvFirebase) {
+            return collection(db, 'artifacts', envAppId, 'public', 'data', 'todos');
+        } else {
+            return collection(db, 'todos');
+        }
+    }
+    return null;
+};
+
 // Execute checkAuth explicitly if it was waiting
 if (typeof checkAuth === 'function') {
     checkAuth();

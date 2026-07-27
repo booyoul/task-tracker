@@ -1,4 +1,4 @@
-console.info('Smart Task Flow table-mobile-renderer.js v20260724-v4 loaded');
+console.info('Smart Task Flow table-mobile-renderer.js v20260727-v6 loaded');
 // Table and mobile card renderers. Extracted from app.js in Phase 5.
 function getSubTaskProgressLabel(subTasks) {
   const counts = getSubTaskCompletionCounts(subTasks);
@@ -292,17 +292,40 @@ function setViewVisibility(mode) {
   const calendarMobile = document.getElementById('view-calendar-mobile');
   const kanban = document.getElementById('view-kanban');
   const adminView = document.getElementById('view-admin-approvals');
+  const todoView = document.getElementById('view-todo');
   const isMobile = window.matchMedia ? window.matchMedia('(max-width: 1023px)').matches : window.innerWidth < 1024;
-  [table, mobile, calendar, calendarMobile, kanban, adminView].forEach(el => { if (el) { el.classList.add('hidden'); el.style.display = 'none'; } });
+  [table, mobile, calendar, calendarMobile, kanban, adminView, todoView].forEach(el => {
+    if (!el) return;
+    el.hidden = true;
+    el.classList.add('hidden');
+    el.style.display = 'none';
+  });
+
+  const isTodo = mode === 'TODO';
+  const setVisible = (element, visible, displayClass = '') => {
+    if (!element) return;
+    element.hidden = !visible;
+    element.classList.toggle('hidden', !visible);
+    if (displayClass) element.classList.toggle(displayClass, visible);
+  };
+  setVisible(document.getElementById('task-dashboard-summary'), !isTodo);
+  setVisible(document.getElementById('view-toggle-bar'), !isTodo);
+  setVisible(document.getElementById('tracker-header-context'), !isTodo, 'flex');
+  setVisible(document.getElementById('todo-header-context'), isTodo, 'flex');
+  setVisible(document.getElementById('btn-add-task'), !isTodo, 'inline-flex');
+  const todoButtonLabel = document.getElementById('btn-open-todo-label');
+  if (todoButtonLabel) todoButtonLabel.textContent = isTodo ? '업무 보기' : '내 To-do';
   
-  // 어드민 승인 관리 뷰에서는 업무 탐색 제어 영역을 감춥니다.
+  // 어드민 및 개인 To-do 뷰에서는 업무 탐색 제어 영역을 감춥니다.
   const filterBox = document.getElementById('unified-control-center');
-  if (filterBox) {
-    if (mode === 'ADMIN') {
-      filterBox.classList.add('hidden');
-    } else {
-      filterBox.classList.remove('hidden');
+  setVisible(filterBox, mode !== 'ADMIN' && !isTodo);
+  if (isTodo) {
+    if (todoView) {
+      todoView.hidden = false;
+      todoView.classList.remove('hidden');
+      todoView.style.display = '';
     }
+    return;
   }
   if (mode === 'ADMIN') { if (adminView) { adminView.classList.remove('hidden'); adminView.style.display = ''; } return; }
   if (mode === 'CALENDAR') {
@@ -346,7 +369,9 @@ function updateViewToggleButtons(mode) {
   });
 }
 function switchView(mode) {
-  currentViewMode = mode === 'CALENDAR' ? 'CALENDAR' : mode === 'KANBAN' ? 'KANBAN' : mode === 'ADMIN' ? 'ADMIN' : 'TABLE';
+  const nextMode = mode === 'TODO' ? 'TODO' : mode === 'CALENDAR' ? 'CALENDAR' : mode === 'KANBAN' ? 'KANBAN' : mode === 'ADMIN' ? 'ADMIN' : 'TABLE';
+  if (nextMode !== 'TODO') lastTaskViewMode = nextMode;
+  currentViewMode = nextMode;
   window.currentViewMode = currentViewMode;
   if (currentViewMode === 'CALENDAR') {
     if (typeof setCalMode === 'function') {

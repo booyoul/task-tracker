@@ -85,6 +85,37 @@ service cloud.firestore {
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['createdBy', 'ownerId', 'trackerId']);
     }
 
+    function isValidTodoData(data) {
+      return data.keys().hasOnly([
+          'ownerId', 'title', 'memo', 'startDate', 'dueDate', 'completed',
+          'completedAt', 'createdAt', 'updatedAt', 'taskLink'
+        ]) &&
+        data.ownerId is string &&
+        data.title is string &&
+        data.title.size() > 0 &&
+        data.title.size() <= 100 &&
+        data.memo is string &&
+        data.memo.size() <= 500 &&
+        data.startDate is string &&
+        data.dueDate is string &&
+        data.startDate <= data.dueDate &&
+        data.completed is bool &&
+        (!('taskLink' in data) || data.taskLink == null || data.taskLink is map);
+    }
+
+    function isCreatingOwnTodo() {
+      return request.resource.data.ownerId == request.auth.uid &&
+        isValidTodoData(request.resource.data);
+    }
+
+    function isTodoOwner() {
+      return resource.data.ownerId == request.auth.uid;
+    }
+
+    function keepsTodoOwnership() {
+      return request.resource.data.ownerId == resource.data.ownerId;
+    }
+
     function changesOnlyDeleteState() {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deleted', 'deletedAt', 'updatedAt']);
     }
@@ -164,6 +195,14 @@ service cloud.firestore {
       );
     }
 
+    match /todos/{todoId} {
+      allow read: if isApproved() && isTodoOwner();
+      allow create: if isApproved() && isCreatingOwnTodo();
+      allow update: if isApproved() && isTodoOwner() && keepsTodoOwnership() &&
+        isValidTodoData(request.resource.data);
+      allow delete: if isApproved() && isTodoOwner();
+    }
+
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin() || (isApproved() && resource.data.status == 'approved');
       allow create: if (isMasterAdmin() && isOwner(userId)) || isValidSelfRegistration(userId);
@@ -198,6 +237,14 @@ service cloud.firestore {
         (envTrackerUsesAcl(envAppId, resource.data.trackerId) && hasEnvTrackerPermission(envAppId, resource.data.trackerId, 'delete')) ||
         (!envTrackerUsesAcl(envAppId, resource.data.trackerId) && isResourceOwner())
       );
+    }
+
+    match /artifacts/{envAppId}/public/data/todos/{todoId} {
+      allow read: if isEnvApproved(envAppId) && isTodoOwner();
+      allow create: if isEnvApproved(envAppId) && isCreatingOwnTodo();
+      allow update: if isEnvApproved(envAppId) && isTodoOwner() && keepsTodoOwnership() &&
+        isValidTodoData(request.resource.data);
+      allow delete: if isEnvApproved(envAppId) && isTodoOwner();
     }
 
     match /artifacts/{envAppId}/public/data/users/{userId} {

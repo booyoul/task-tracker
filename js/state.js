@@ -103,6 +103,7 @@
         let confirmActionCb = null; 
         
         let currentViewMode = 'CALENDAR';
+        let lastTaskViewMode = 'CALENDAR';
         let currentCalDate = new Date(); 
         let currentCalMode = 'DAY'; 
         let isCalSubTaskVisible = true; // 캘린더에서 하위 업무 표시 토글 상태
@@ -112,6 +113,8 @@
         let collapsedTaskIds = new Set();
         let unsubscribeTasks = null;
         let unsubscribeTrackers = null;
+        let todoItems = [];
+        let unsubscribeTodos = null;
         let isAuthReady = false;
         window.currentUser = null;
         window.currentUserRole = null;

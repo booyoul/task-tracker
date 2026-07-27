@@ -1,6 +1,6 @@
 # Smart Task Flow Task
 
-Last updated: 2026-07-24
+Last updated: 2026-07-27
 
 ## Startup
 
@@ -12,7 +12,7 @@ Last updated: 2026-07-24
 
 ## Current State
 
-- Status: Tracker-level access control is implemented and the updated Firestore rules are published; live account permission verification remains.
+- Status: Personal To-do implementation, production rule publication, unauthenticated production access check, and automated Chrome desktop/mobile verification are complete. Authenticated production CRUD and tracker ACL live-account verification remain.
 - Main app: `/home/booyoul/projects/task-tracker-main`
 - Task file: `TASK.md`
 - Project rules: `.agents/AGENTS.md`
@@ -21,6 +21,9 @@ Last updated: 2026-07-24
 
 - Static HTML/JavaScript task tracker backed by Firebase/Firestore.
 - JavaScript files are loaded as browser globals from `index.html`; script order and cache query strings matter.
+- Each approved user has a tracker-independent personal To-do view backed by individual `todos` documents; other users and admins cannot read those private items.
+- Personal To-do supports separate create/edit input, start/end dates, today/7-day/current-month/overdue filters, completion/search filters, and a once-per-session entry reminder with an optional daily dismissal.
+- To-do documents accept an optional `taskLink` reference (`trackerId`, `taskId`, optional `subTaskId`/`occurrenceKey`) for future task integration, but dates and completion remain independent and no linking UI is active yet.
 - Mobile calendar, list, monthly summary, KPI badge/settings, activity timeline, and mobile smoke QA are implemented.
 - Trackers open in the calendar view by default; users can still switch to list or Kanban views.
 - KPI/Risk 현황, 검색, 상태·우선순위·담당자·마감 월 필터는 하나의 통합 제어 영역에 있으며, CSV/Excel/Power BI/백업/가져오기는 기본 접힌 `도구` 메뉴에 있다.
@@ -51,12 +54,15 @@ Last updated: 2026-07-24
 - `js/state.js`: global task/tracker/user state.
 - `js/app.js`: main render/update flow and filters. Search before reading.
 - `js/task-service.js`: Firestore CRUD and listeners.
+- `js/todo-service.js`: personal To-do normalization, CRUD, and owner-scoped realtime listener.
+- `js/todo-controller.js`: To-do date grouping, dedicated view/modal rendering, and entry reminder.
 - `js/modal-controller.js`: task and KPI modals.
 - `js/month-picker-controller.js`: Firefox fallback for desktop and mobile due-month filters.
 - `js/calendar-*.js`: calendar, Gantt, and monthly summary renderers.
 - `js/table-mobile-renderer.js`: mobile/list rendering.
 - `docs/mobile_qa_checklist.md`: manual mobile QA checklist.
 - `scripts/mobile-smoke.js`: automated mobile smoke checks.
+- `scripts/todo-browser-smoke.js`: headless Chrome desktop/mobile To-do interaction and layout check.
 
 ## Verification
 
@@ -65,6 +71,8 @@ Last updated: 2026-07-24
 - Security contract: `npm run smoke:security`
 - Tracker access UI: `npm run smoke:access`
 - Note detail history: `npm run smoke:notes`
+- Personal To-do: `npm run smoke:todo`
+- Personal To-do real browser: `npm run smoke:todo:browser`
 - Firestore Rules Emulator: `npm run test:rules`
 - Combined regression: `npm test`
 - JS syntax: `node --check path/to/file.js`
@@ -78,7 +86,7 @@ Last updated: 2026-07-24
 - `npm run smoke:security` guards the approval, role, ownership, and legacy-write contracts.
 - Task and tracker CRUD now mutate local state and show caller success messages only after Firestore confirms the write; `npm run smoke:crud` covers failed add/update/delete behavior.
 - Tracker copy writes the new tracker and up to 499 active tasks in one Firestore batch so failed copies leave no partial local or remote state.
-- Java 21, Firebase CLI, and `@firebase/rules-unit-testing` now run 44 allow/deny scenarios against the actual Firestore Emulator using the isolated `demo-task-tracker-security` project ID.
+- Java 21, Firebase CLI, and `@firebase/rules-unit-testing` now run 55 allow/deny scenarios against the actual Firestore Emulator using the isolated `demo-task-tracker-security` project ID.
 - Production project `task-tracker-99af4` denied unauthenticated reads to `tasks`, `trackers`, `users`, `activity_logs`, and `progress_notes` after the user published the rules.
 - Sub task execution cycle support is implemented end to end for input, schema normalization, calendar/monthly summary occurrence rendering, flat export rows, and per-cycle status overrides.
 - Task modal and monthly summary let recurring sub task occurrences be checked independently while preserving the source sub task's default status.
@@ -90,9 +98,15 @@ Last updated: 2026-07-24
 - Customer name, Opp No, memo work type, review comments, and tracker-level work-type add/edit/delete settings are covered by note/CRUD/mobile/rules smoke tests.
 - Tracker-level task-category settings, registration-form placement, category-first list/calendar grouping, and tracker-copy preservation are covered by mobile/CRUD smoke tests.
 - Monthly-summary memo filtering supports author, work type, search, important-only, and comment-present combinations; mobile smoke covers the work-type and comment controls.
+- Personal To-do uses separate per-item Firestore documents, owner-only standard/environment rules, dedicated desktop/mobile-safe UI, date-overlap filters, completion CRUD, and entry reminders.
+- `npm run smoke:todo` covers failed-write preservation, future `taskLink` normalization, date-boundary grouping, overdue-first today rendering, and To-do/task-view isolation; the Firestore emulator suite now covers 55 scenarios including private To-do ownership and linked-reference writes.
+- The user published the To-do Firestore rules; an unauthenticated production REST read of `todos` returned `403 PERMISSION_DENIED`.
+- `npm run smoke:todo:browser` verifies rendered desktop and 390×844 mobile layout, add/edit/complete/delete interactions, date filtering, entry reminder/daily dismissal, and returning to the task view in headless Chrome. It uses mocked CRUD and does not prove authenticated production writes.
 
 ## Next Work
 
+- Using an approved production account, verify personal To-do create/edit/complete/delete and confirm a second account, including an admin, cannot read or change the first account's To-do documents.
+- When task integration is requested, add explicit link/unlink UI using the existing optional `taskLink`; keep To-do dates/completion independent unless a user-selectable synchronization policy is defined.
 - Perform a real-browser pass for text selection/color application, bullet toggling, work-type settings, and review-comment submission on desktop and mobile; JSDOM does not prove selection behavior or production writes.
 - Verify owner, view-only, creator, editor, deleter, and no-access accounts against production using the published tracker-ACL Firestore rules.
 - Audit existing production user documents for unexpected `role: admin` or `status: approved` values created under the previous permissive rules.
@@ -104,6 +118,8 @@ Last updated: 2026-07-24
 - Do not read or rewrite large files wholesale for small UI changes.
 - Do not change script architecture or split globals into modules unless explicitly requested.
 - When changing loaded JS/CSS, update the relevant query-string cache version in `index.html`.
+- Personal To-do is private to `ownerId`; do not grant admins implicit read access or expose cached task titles after linked-task access is lost.
+- Task/tracker copy must not copy personal To-do, and deleting a linked task must not delete the independent To-do.
 - A single tracker copy is limited to 499 active tasks by Firestore's 500-write batch limit.
 - Deleting or renaming a memo work type does not rewrite old notes; each note keeps its saved work-type label for historical display.
 - Renaming a task category changes its display across the current tracker; deleting one removes it from future selection while tasks already using it keep their saved `industryLabel`.

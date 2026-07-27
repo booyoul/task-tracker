@@ -50,6 +50,20 @@ function trackerData(ownerId, accessControl = null) {
   return data;
 }
 
+function todoData(ownerId, title = `${ownerId} 개인 할 일`) {
+  return {
+    ownerId,
+    title,
+    memo: '',
+    startDate: '2026-07-27',
+    dueDate: '2026-07-31',
+    completed: false,
+    completedAt: null,
+    createdAt: new Date('2026-07-27T00:00:00Z'),
+    updatedAt: new Date('2026-07-27T00:00:00Z')
+  };
+}
+
 async function seedData(testEnv) {
   await testEnv.withSecurityRulesDisabled(async context => {
     const db = context.firestore();
@@ -94,6 +108,11 @@ async function seedData(testEnv) {
     await setDoc(
       doc(db, 'artifacts', ENV_APP_ID, 'public', 'data', 'tasks', 'acl-task'),
       taskData('alice', '환경별 ACL 업무', 'tracker-acl')
+    );
+    await setDoc(doc(db, 'todos', 'alice-todo'), todoData('alice'));
+    await setDoc(
+      doc(db, 'artifacts', ENV_APP_ID, 'public', 'data', 'todos', 'alice-todo'),
+      todoData('alice', '환경별 Alice 개인 할 일')
     );
   });
 }
@@ -218,6 +237,37 @@ async function main() {
       assertSucceeds(getDoc(doc(aliceDb, 'users', 'bob'))));
     await check('일반 사용자의 승인 대기 사용자 조회 차단', () =>
       assertFails(getDoc(doc(aliceDb, 'users', 'pending-user'))));
+
+    await check('승인 사용자의 자신의 To-do 조회 허용', () =>
+      assertSucceeds(getDoc(doc(aliceDb, 'todos', 'alice-todo'))));
+    await check('다른 사용자의 개인 To-do 직접 조회 차단', () =>
+      assertFails(getDoc(doc(bobDb, 'todos', 'alice-todo'))));
+    await check('관리자의 다른 사용자 개인 To-do 조회 차단', () =>
+      assertFails(getDoc(doc(adminDb, 'todos', 'alice-todo'))));
+    await check('승인 사용자의 자신의 To-do 목록 조회 허용', () =>
+      assertSucceeds(getDocs(query(collection(aliceDb, 'todos'), where('ownerId', '==', 'alice')))));
+    await check('자신의 To-do 생성 허용', () =>
+      assertSucceeds(setDoc(doc(aliceDb, 'todos', 'alice-new-todo'), todoData('alice', '새 개인 할 일'))));
+    await check('향후 Task 연결 정보가 포함된 자신의 To-do 생성 허용', () =>
+      assertSucceeds(setDoc(doc(aliceDb, 'todos', 'alice-linked-todo'), {
+        ...todoData('alice', '업무 연결 개인 할 일'),
+        taskLink: {
+          trackerId: 'tracker-acl',
+          taskId: 'acl-task',
+          subTaskId: 'sub-1',
+          occurrenceKey: '2026-07-27'
+        }
+      })));
+    await check('다른 사용자의 UID로 To-do 생성 차단', () =>
+      assertFails(setDoc(doc(aliceDb, 'todos', 'spoofed-todo'), todoData('bob', '위조 개인 할 일'))));
+    await check('자신의 To-do 완료 처리 허용', () =>
+      assertSucceeds(updateDoc(doc(aliceDb, 'todos', 'alice-todo'), { completed: true })));
+    await check('To-do 소유자 변경 차단', () =>
+      assertFails(updateDoc(doc(aliceDb, 'todos', 'alice-todo'), { ownerId: 'bob' })));
+    await check('환경별 컬렉션에서 자신의 To-do 조회 허용', () =>
+      assertSucceeds(getDoc(doc(aliceDb, 'artifacts', ENV_APP_ID, 'public', 'data', 'todos', 'alice-todo'))));
+    await check('환경별 컬렉션에서 다른 사용자의 To-do 조회 차단', () =>
+      assertFails(getDoc(doc(bobDb, 'artifacts', ENV_APP_ID, 'public', 'data', 'todos', 'alice-todo'))));
 
     await check('메모 작성자 UID 위조 차단', () =>
       assertFails(setDoc(doc(aliceDb, 'progress_notes', 'spoofed-note'), {

@@ -726,11 +726,22 @@ function updateUI() {
     if (isAuthReady && !window.currentUser) {
       gateway.classList.remove('hidden');
       mainContent.classList.add('hidden');
+      const todoButton = document.getElementById('btn-open-todo');
+      if (todoButton) {
+        todoButton.hidden = true;
+        todoButton.classList.add('hidden');
+      }
       return;
     } else {
       gateway.classList.add('hidden');
       mainContent.classList.remove('hidden');
     }
+  }
+  const todoButton = document.getElementById('btn-open-todo');
+  if (todoButton) {
+    todoButton.hidden = !window.currentUser;
+    todoButton.classList.toggle('hidden', !window.currentUser);
+    todoButton.classList.toggle('inline-flex', !!window.currentUser);
   }
   renderStats();
   const currentTracker = trackers.find(tracker => tracker.id === currentTrackerId);
@@ -1060,6 +1071,12 @@ function ensureUXToolbar() {
 
 // === Final Stable Render Orchestration Override ===
 function renderActiveViews(){
+  if(currentViewMode==='TODO'){
+    setViewVisibility('TODO');
+    updateViewToggleButtons('TODO');
+    if(typeof window.renderTodoView==='function')window.renderTodoView();
+    return;
+  }
   ensureAdvancedFilterOptions();
   ensureUXToolbar();
 

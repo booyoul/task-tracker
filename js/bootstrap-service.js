@@ -1,4 +1,4 @@
-console.info('Smart Task Flow bootstrap-service.js v20260629-v1 loaded');
+console.info('Smart Task Flow bootstrap-service.js v20260727-v2 loaded');
 
 async function initializeAuthAndData(){
   if(window.isFirebaseAvailable && window.auth){
@@ -57,12 +57,16 @@ async function initializeAuthAndData(){
                 if (typeof window.isAdminUser === 'function' && window.isAdminUser() && typeof window.listenUsersForAdmin === 'function') {
                   window.listenUsersForAdmin();
                 }
+                if (typeof window.startTodoRealtimeListener === 'function') {
+                  window.startTodoRealtimeListener();
+                }
                 fetchInitialData();
               } else if (userDoc.status === 'pending') {
                 alert('회원가입 승인 대기 중입니다. 관리자의 승인을 기다려 주세요.');
                 window.currentUser = null;
                 window.currentUserDoc = null;
                 window.currentUserRole = null;
+                if (typeof window.stopTodoRealtimeListener === 'function') window.stopTodoRealtimeListener();
                 await window.signOut(window.auth);
                 tasks = [];
                 trackers = [];
@@ -77,6 +81,7 @@ async function initializeAuthAndData(){
                 window.currentUser = null;
                 window.currentUserDoc = null;
                 window.currentUserRole = null;
+                if (typeof window.stopTodoRealtimeListener === 'function') window.stopTodoRealtimeListener();
                 await window.signOut(window.auth);
                 tasks = [];
                 trackers = [];
@@ -95,6 +100,9 @@ async function initializeAuthAndData(){
               if (typeof window.renderAuthHeader === 'function') {
                 window.renderAuthHeader();
               }
+              if (typeof window.startTodoRealtimeListener === 'function') {
+                window.startTodoRealtimeListener();
+              }
               fetchInitialData();
             }
           } catch (e) {
@@ -102,6 +110,7 @@ async function initializeAuthAndData(){
             window.currentUser = null;
             window.currentUserDoc = null;
             window.currentUserRole = null;
+            if (typeof window.stopTodoRealtimeListener === 'function') window.stopTodoRealtimeListener();
             if (typeof window.stopRealtimeListeners === 'function') window.stopRealtimeListeners();
             tasks = [];
             trackers = [];
@@ -115,6 +124,7 @@ async function initializeAuthAndData(){
         window.currentUser = null;
         window.currentUserDoc = null;
         window.currentUserRole = null;
+        if (typeof window.stopTodoRealtimeListener === 'function') window.stopTodoRealtimeListener();
         if (typeof window.renderAuthHeader === 'function') {
           window.renderAuthHeader();
         }
@@ -147,6 +157,7 @@ function restoreCurrentTrackerSelection(){
 function initializeApplicationEvents(){
   if (typeof window.initEventBindings === 'function') window.initEventBindings();
   else console.warn('initEventBindings missing; UI loaded without extra event binding.');
+  if (typeof window.initTodoController === 'function') window.initTodoController();
 }
 
 async function bootstrapApp(){
