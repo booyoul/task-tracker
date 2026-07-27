@@ -1,12 +1,85 @@
-console.info('Smart Task Flow table-mobile-renderer.js v20260727-v11 loaded');
+console.info('Smart Task Flow table-mobile-renderer.js v20260727-v12 loaded');
 // Table and mobile card renderers. Extracted from app.js in Phase 5.
+const listProgressNoteSummaryCache = {
+  trackerId: '',
+  loaded: false,
+  loading: false,
+  requestId: 0,
+  byTaskId: new Map()
+};
+function getListProgressNoteSortTime(note = {}) {
+  if (typeof getNoteSortTime === 'function') return getNoteSortTime(note);
+  if (note.noteDate && /^\d{4}-\d{2}-\d{2}$/.test(note.noteDate)) {
+    const [year, month, day] = note.noteDate.split('-').map(Number);
+    const recordDate = new Date(year, month - 1, day);
+    const createdAt = note.createdAt?.toDate ? note.createdAt.toDate() : new Date(note.createdAt || 0);
+    if (!Number.isNaN(createdAt.getTime())) {
+      recordDate.setHours(createdAt.getHours(), createdAt.getMinutes(), createdAt.getSeconds(), createdAt.getMilliseconds());
+    }
+    return recordDate.getTime();
+  }
+  const createdAt = note.createdAt?.toDate ? note.createdAt.toDate() : new Date(note.createdAt || 0);
+  return Number.isNaN(createdAt.getTime()) ? 0 : createdAt.getTime();
+}
+function getListProgressNoteSummary(taskId) {
+  return listProgressNoteSummaryCache.byTaskId.get(String(taskId || '')) || { count: 0, latestNote: null };
+}
+async function ensureListProgressNoteSummaryLoaded(trackerId) {
+  const normalizedTrackerId = String(trackerId || '');
+  if (!normalizedTrackerId || typeof window.db_fetchTrackerProgressNotes !== 'function') return;
+  if (listProgressNoteSummaryCache.trackerId === normalizedTrackerId
+      && (listProgressNoteSummaryCache.loaded || listProgressNoteSummaryCache.loading)) return;
+
+  const requestId = ++listProgressNoteSummaryCache.requestId;
+  listProgressNoteSummaryCache.trackerId = normalizedTrackerId;
+  listProgressNoteSummaryCache.loaded = false;
+  listProgressNoteSummaryCache.loading = true;
+  listProgressNoteSummaryCache.byTaskId = new Map();
+  let notes = [];
+  try {
+    notes = await window.db_fetchTrackerProgressNotes(normalizedTrackerId);
+  } catch (error) {
+    console.warn('목록 메모 수 조회 실패:', error);
+  }
+  if (requestId !== listProgressNoteSummaryCache.requestId) return;
+
+  (Array.isArray(notes) ? notes : []).forEach(note => {
+    const taskId = String(note?.taskId || '');
+    if (!taskId) return;
+    const current = listProgressNoteSummaryCache.byTaskId.get(taskId) || { count: 0, latestNote: null };
+    current.count += 1;
+    if (!current.latestNote || getListProgressNoteSortTime(note) > getListProgressNoteSortTime(current.latestNote)) {
+      current.latestNote = note;
+    }
+    listProgressNoteSummaryCache.byTaskId.set(taskId, current);
+  });
+  listProgressNoteSummaryCache.loaded = true;
+  listProgressNoteSummaryCache.loading = false;
+  const activeTrackerId = String(window.currentTrackerId || (typeof currentTrackerId !== 'undefined' ? currentTrackerId : ''));
+  if (activeTrackerId === normalizedTrackerId && typeof renderActiveViews === 'function') renderActiveViews();
+}
+function invalidateListProgressNoteSummary() {
+  listProgressNoteSummaryCache.requestId += 1;
+  listProgressNoteSummaryCache.loaded = false;
+  listProgressNoteSummaryCache.loading = false;
+  listProgressNoteSummaryCache.byTaskId = new Map();
+}
+function openLatestListTaskNote(taskId) {
+  const latestNote = getListProgressNoteSummary(taskId).latestNote;
+  if (latestNote && typeof window.openNoteDetailPanel === 'function') window.openNoteDetailPanel(latestNote);
+}
 function getSubTaskProgressLabel(subTasks) {
   const counts = getSubTaskCompletionCounts(subTasks);
   return `${counts.completed}/${counts.active}${counts.cancelled ? ` · 취소 ${counts.cancelled}` : ''}`;
 }
 function buildListNoteButtonHTML(taskId, subTaskId = '') {
   const scopeLabel = subTaskId ? '서브 태스크' : '본 업무';
-  return `<button type="button" class="btn-list-note inline-flex h-7 min-w-7 shrink-0 items-center justify-center rounded-lg bg-amber-50 px-1.5 text-xs font-bold text-amber-700 transition hover:bg-amber-100" data-task-id="${escapeHTML(taskId)}"${subTaskId ? ` data-subtask-id="${escapeHTML(subTaskId)}"` : ''} title="${scopeLabel} 메모 작성 및 보기" aria-label="${scopeLabel} 메모 작성 및 보기">📌</button>`;
+  const noteTaskId = subTaskId ? `${taskId}__sub_${subTaskId}` : taskId;
+  const summary = getListProgressNoteSummary(noteTaskId);
+  const countButton = summary.count > 0
+    ? `<button type="button" class="btn-list-note-count inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-100 px-1 text-[10px] font-black text-amber-800 transition hover:bg-amber-200" data-task-id="${escapeHTML(noteTaskId)}" title="${scopeLabel} 최근 메모 보기" aria-label="${scopeLabel} 메모 ${summary.count}건, 최근 메모 보기">${summary.count}</button>`
+    : '';
+  return `<span class="inline-flex shrink-0 items-center gap-1"><button type="button" class="btn-list-note inline-flex h-7 min-w-7 items-center justify-center rounded-lg bg-amber-50 px-1.5 text-xs font-bold text-amber-700 transition hover:bg-amber-100" data-task-id="${escapeHTML(taskId)}"${subTaskId ? ` data-subtask-id="${escapeHTML(subTaskId)}"` : ''} title="${scopeLabel} 메모 작성 및 보기" aria-label="${scopeLabel} 메모 작성 및 보기">📌</button>${countButton}</span>`;
 }
 function getVisibleTableSubTaskToggles() {
   return Array.from(document.querySelectorAll('#task-table-body .btn-toggle-subtasks:not(.invisible)'));
@@ -43,6 +116,7 @@ function toggleAllTableSubTasks() {
   renderActiveViews();
 }
 function renderTable(filtered) {
+  ensureListProgressNoteSummaryLoaded(window.currentTrackerId || (typeof currentTrackerId !== 'undefined' ? currentTrackerId : ''));
   const tbody = document.getElementById('task-table-body');
   const emptyState = document.getElementById('empty-state-table');
   if (!tbody) return;
@@ -258,6 +332,7 @@ function updateMobileBulkActionBar() {
 }
 
 function renderMobileCards(filtered) {
+  ensureListProgressNoteSummaryLoaded(window.currentTrackerId || (typeof currentTrackerId !== 'undefined' ? currentTrackerId : ''));
   const container = document.getElementById('task-card-container');
   const emptyState = document.getElementById('empty-state-mobile');
   if (!container) return;

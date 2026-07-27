@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow app.js v20260727-v8 loaded');
+console.info('Smart Task Flow app.js v20260727-v10 loaded');
 // --- UX optimization globals: must be declared before helper functions ---
 var focusState = window.focusState || { riskOnly: false, mineOnly: false, highOnly: false };
 window.focusState = focusState;
@@ -836,12 +836,17 @@ async function undoDelete() {
   updateUI();
 }
 function handleTableClick(e) {
+  const noteCount = e.target.closest('.btn-list-note-count');
   const note = e.target.closest('.btn-list-note');
   const edit = e.target.closest('.btn-edit');
   const del = e.target.closest('.btn-delete');
   const toggle = e.target.closest('.btn-toggle-subtasks');
   const up = e.target.closest('.btn-order-up');
   const down = e.target.closest('.btn-order-down');
+  if (noteCount) {
+    openLatestListTaskNote(noteCount.dataset.taskId);
+    return;
+  }
   if (note) {
     window.openTaskNoteFromList?.(note.dataset.taskId, note.dataset.subtaskId || '');
     return;

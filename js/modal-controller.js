@@ -1,4 +1,4 @@
-console.info('Smart Task Flow modal-controller.js v20260727-v2 loaded');
+console.info('Smart Task Flow modal-controller.js v20260727-v3 loaded');
 // Task modal, subtask modal list, tracker modal, and form submit handlers.
 function resetSubTaskButton() {
   const btn = document.getElementById('btn-add-subtask');
@@ -1605,7 +1605,9 @@ function initProgressNotesEvents() {
     if (result && result.success) {
       showToast('진행 메모가 저장되었습니다.');
       document.getElementById('progress-note-add-form')?.classList.add('hidden');
+      window.invalidateListProgressNoteSummary?.();
       await loadTaskHistory(_currentNoteTaskId, 1);
+      if (typeof renderActiveViews === 'function') renderActiveViews();
     } else {
       const errMsg = result?.error || '알 수 없는 오류';
       showToast(`저장 실패: ${errMsg}`, false);
@@ -1696,6 +1698,7 @@ function initProgressNotesEvents() {
       await loadNotePanelHistory(_currentNotePanelNote);
       showToast('메모가 수정되었습니다.');
       _cachedFeedItems = [];
+      window.invalidateListProgressNoteSummary?.();
       if (_currentNoteTaskId) await loadTaskHistory(_currentNoteTaskId, _currentFeedPage);
       if (typeof renderActiveViews === 'function') renderActiveViews();
     } else {
@@ -1713,6 +1716,7 @@ function initProgressNotesEvents() {
     if (result && result.success) {
       closeNoteDetailPanel();
       showToast('메모가 삭제되었습니다.');
+      window.invalidateListProgressNoteSummary?.();
       if (_currentNoteTaskId) await loadTaskHistory(_currentNoteTaskId, 1);
       if (typeof renderActiveViews === 'function') renderActiveViews();
     } else {

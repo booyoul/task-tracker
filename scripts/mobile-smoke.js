@@ -59,6 +59,7 @@ window.currentTrackerId = global.currentTrackerId;
 window.calendarUxState = global.calendarUxState;
 window.db_fetchTrackerProgressNotes = async () => [
   {
+    id: 'note-main-older',
     taskId: 'task-1',
     title: '리스크 회의 결과',
     body: '설비 인터락 이슈를 확인하고 후속 조치 담당자를 지정함',
@@ -72,6 +73,7 @@ window.db_fetchTrackerProgressNotes = async () => [
     createdAt: new Date('2026-06-30T09:30:00+09:00')
   },
   {
+    id: 'note-sub-latest',
     taskId: 'task-1__sub_sub-1',
     title: '하위 업무 점검',
     body: '현장 확인 완료',
@@ -79,6 +81,7 @@ window.db_fetchTrackerProgressNotes = async () => [
     createdAt: new Date('2026-07-11T15:00:00+09:00')
   },
   {
+    id: 'note-main-latest',
     taskId: 'task-1',
     title: '후속 검토',
     body: '회의 결과 후속 조치 확인',
@@ -112,6 +115,8 @@ expose('openAssigneeModal', () => {});
 expose('bulkChangeStatus', () => {});
 expose('bulkChangeDueDate', () => {});
 expose('confirmBatchDelete', () => {});
+let openedListNote = null;
+expose('openNoteDetailPanel', note => { openedListNote = note; });
 expose('setCalMode', (mode) => {
   global.currentCalMode = mode;
   window.currentCalMode = mode;
@@ -256,7 +261,9 @@ async function main() {
   assert(/priorityFilter\.value = priorityFilter\.value === priority \? 'ALL' : priority/.test(appSource), '활성 High KPI 버튼을 다시 눌렀을 때 필터가 해제되지 않습니다.');
   assert(/btn-toggle-all-table-subtasks[^]*addEventListener\('click',toggleAllTableSubTasks\)/.test(eventBindingsSource), '서브 태스크 전체 펼치기 버튼의 클릭 연결이 없습니다.');
   assert(/btn-list-note[^]*openTaskNoteFromList/.test(appSource), '목록 메모 핀의 클릭 연결이 없습니다.');
+  assert(/btn-list-note-count[^]*openLatestListTaskNote/.test(appSource), '목록 메모 수 버튼의 최근 메모 연결이 없습니다.');
   assert(/openTaskNoteFromList[^]*openTaskModal\(taskId\)[^]*openProgressNoteComposer/.test(modalControllerSource), '목록 메모 핀이 작성 폼과 기존 이력을 함께 여는 경로로 연결되지 않았습니다.');
+  assert((modalControllerSource.match(/invalidateListProgressNoteSummary/g) || []).length >= 3, '메모 추가·수정·삭제 후 목록 메모 수 캐시가 갱신되지 않습니다.');
   assert(/buildTaskDetailCellHTML[^]*buildListNoteButtonHTML\(t.id\)/.test(appSource), '데스크톱 본 업무 제목 옆 메모 핀이 없습니다.');
   assert(tableRendererSource.includes('buildListNoteButtonHTML(t.id, st.id)'), '목록 서브 태스크 제목 옆 메모 핀이 없습니다.');
   assert(!tableRendererSource.includes('class="btn-delete'), '목록 렌더러에 개별 삭제 버튼이 남아 있습니다.');
@@ -269,6 +276,11 @@ async function main() {
   loadScript('js/table-mobile-renderer.js');
 
   const tasks = makeTasks();
+  await global.ensureListProgressNoteSummaryLoaded(global.currentTrackerId);
+  assert(global.getListProgressNoteSummary('task-1').count === 2, '본 업무의 메모 수가 정확히 집계되지 않습니다.');
+  assert(global.getListProgressNoteSummary('task-1__sub_sub-1').count === 1, '서브 태스크의 메모 수가 정확히 집계되지 않습니다.');
+  global.openLatestListTaskNote('task-1');
+  assert(openedListNote?.id === 'note-main-latest', '메모 수 버튼이 본 업무의 가장 최근 메모를 열지 않습니다.');
   const tableBody = document.getElementById('task-table-body');
   tableBody.innerHTML = `
     <button class="btn-toggle-subtasks" data-id="task-1" data-expanded="false"></button>
@@ -382,6 +394,8 @@ async function main() {
   assert(!document.querySelector('.mobile-command-deck'), '모바일 목록에 중복 Focus 및 Risk 제어 영역이 남아 있습니다.');
   assert(document.querySelector('#task-card-container .btn-list-note[data-task-id="task-1"]:not([data-subtask-id])'), '모바일 본 업무 제목 옆 메모 핀이 없습니다.');
   assert(document.querySelector('#task-card-container .btn-list-note[data-task-id="task-1"][data-subtask-id="sub-1"]'), '모바일 서브 태스크 제목 옆 메모 핀이 없습니다.');
+  assert(document.querySelector('#task-card-container .btn-list-note-count[data-task-id="task-1"]')?.textContent.trim() === '2', '모바일 본 업무 메모 수가 핀 옆에 표시되지 않습니다.');
+  assert(document.querySelector('#task-card-container .btn-list-note-count[data-task-id="task-1__sub_sub-1"]')?.textContent.trim() === '1', '모바일 서브 태스크 메모 수가 핀 옆에 표시되지 않습니다.');
   assert(!document.querySelector('#task-card-container .btn-delete'), '모바일 목록에 개별 삭제 버튼이 남아 있습니다.');
   assert(document.querySelector('.btn-toggle-subtasks[data-expanded="true"]'), '하위 업무 펼침 상태가 렌더링되지 않았습니다.');
   assert(document.querySelector('.line-clamp-2'), '긴 업무명 줄임 클래스가 누락되었습니다.');
