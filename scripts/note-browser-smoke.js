@@ -331,6 +331,10 @@ async function main() {
         window.__noteDesktopFormatting = {
           palette: [...toolbar.querySelectorAll('[data-note-color-value]')].map(button => button.dataset.noteColorValue),
           customLast: controls[controls.length - 1]?.matches('[data-note-color]') || false,
+          customSize: {
+            width: customColor.getBoundingClientRect().width,
+            height: customColor.getBoundingClientRect().height
+          },
           rootStyle: editor.querySelector('ul')?.dataset.noteListStyle || '',
           nestedList: !!editor.querySelector('ul ul'),
           nestedMarker: editor.querySelector('ul ul') ? getComputedStyle(editor.querySelector('ul ul')).listStyleType : ''
@@ -362,6 +366,7 @@ async function main() {
     assert.equal(desktopNote.hasListStyle, true);
     assert.deepEqual(desktopNote.formatting.palette, ['#000000', '#dc2626', '#16a34a', '#2563eb']);
     assert.equal(desktopNote.formatting.customLast, true);
+    assert.deepEqual(desktopNote.formatting.customSize, { width: 12, height: 12 });
     assert.equal(desktopNote.formatting.rootStyle, 'square');
     assert.equal(desktopNote.formatting.nestedList, true);
     assert.equal(desktopNote.formatting.nestedMarker, 'disc');
