@@ -192,6 +192,15 @@
             margin: 0.25rem 0;
             padding-left: 1.25rem;
         }
+        .note-rich-content ul ul { list-style-type: circle; }
+        .note-rich-content ul ul ul { list-style-type: square; }
+        .note-rich-content ul ul ul ul { list-style-type: disc; }
+        .note-rich-content ul[data-note-list-style="circle"] { list-style-type: circle; }
+        .note-rich-content ul[data-note-list-style="circle"] ul { list-style-type: square; }
+        .note-rich-content ul[data-note-list-style="circle"] ul ul { list-style-type: disc; }
+        .note-rich-content ul[data-note-list-style="square"] { list-style-type: square; }
+        .note-rich-content ul[data-note-list-style="square"] ul { list-style-type: disc; }
+        .note-rich-content ul[data-note-list-style="square"] ul ul { list-style-type: circle; }
         .note-rich-content ol {
             list-style: decimal;
             margin: 0.25rem 0;

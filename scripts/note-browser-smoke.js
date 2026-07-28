@@ -300,16 +300,41 @@ async function main() {
         selection.removeAllRanges();
         selection.addRange(range);
         document.dispatchEvent(new Event('selectionchange'));
-        document.querySelector('[data-note-command][data-note-editor="input-note-body"]').click();
+        const listStyle = document.querySelector('[data-note-list-style][data-note-editor="input-note-body"]');
+        listStyle.value = 'square';
+        listStyle.dispatchEvent(new Event('change', { bubbles: true }));
+        const items = editor.querySelectorAll('li');
+        const indentRange = document.createRange();
+        indentRange.selectNodeContents(items[1]);
+        indentRange.collapse(false);
+        selection.removeAllRanges();
+        selection.addRange(indentRange);
+        editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
         const firstItem = editor.querySelector('li') || editor.firstChild;
         const colorRange = document.createRange();
         colorRange.selectNodeContents(firstItem);
         selection.removeAllRanges();
         selection.addRange(colorRange);
         document.dispatchEvent(new Event('selectionchange'));
-        const color = document.querySelector('[data-note-color][data-note-editor="input-note-body"]');
-        color.value = '#dc2626';
-        color.dispatchEvent(new Event('change', { bubbles: true }));
+        document.querySelector('[data-note-color-value="#dc2626"][data-note-editor="input-note-body"]').click();
+        const nestedItem = editor.querySelector('ul ul li');
+        const customRange = document.createRange();
+        customRange.selectNodeContents(nestedItem);
+        selection.removeAllRanges();
+        selection.addRange(customRange);
+        document.dispatchEvent(new Event('selectionchange'));
+        const customColor = document.querySelector('[data-note-color][data-note-editor="input-note-body"]');
+        customColor.value = '#7c3aed';
+        customColor.dispatchEvent(new Event('change', { bubbles: true }));
+        const toolbar = listStyle.parentElement;
+        const controls = [...toolbar.querySelectorAll('select, button, input')];
+        window.__noteDesktopFormatting = {
+          palette: [...toolbar.querySelectorAll('[data-note-color-value]')].map(button => button.dataset.noteColorValue),
+          customLast: controls[controls.length - 1]?.matches('[data-note-color]') || false,
+          rootStyle: editor.querySelector('ul')?.dataset.noteListStyle || '',
+          nestedList: !!editor.querySelector('ul ul'),
+          nestedMarker: editor.querySelector('ul ul') ? getComputedStyle(editor.querySelector('ul ul')).listStyleType : ''
+        };
         document.getElementById('input-note-title').value = '데스크톱 서식 메모';
         document.getElementById('input-note-date').value = getTodayStr();
         document.getElementById('input-note-work-type').value =
@@ -323,6 +348,9 @@ async function main() {
       return {
         hasList: /<(ul|ol)[\\s>]/i.test(note.bodyHtml) && /<li[\\s>]/i.test(note.bodyHtml),
         hasColor: /<(font|span)[^>]*(color|style)/i.test(note.bodyHtml),
+        hasCustomColor: /#7c3aed|rgb\\(124,\\s*58,\\s*237\\)/i.test(note.bodyHtml),
+        hasListStyle: /data-note-list-style="square"/i.test(note.bodyHtml),
+        formatting: window.__noteDesktopFormatting,
         workType: note.workTypeLabel,
         modalFits: document.getElementById('modal-task').scrollWidth <= document.documentElement.clientWidth + 1,
         pageFits: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1
@@ -330,6 +358,13 @@ async function main() {
     })()`);
     assert.equal(desktopNote.hasList, true);
     assert.equal(desktopNote.hasColor, true);
+    assert.equal(desktopNote.hasCustomColor, true);
+    assert.equal(desktopNote.hasListStyle, true);
+    assert.deepEqual(desktopNote.formatting.palette, ['#000000', '#dc2626', '#16a34a', '#2563eb']);
+    assert.equal(desktopNote.formatting.customLast, true);
+    assert.equal(desktopNote.formatting.rootStyle, 'square');
+    assert.equal(desktopNote.formatting.nestedList, true);
+    assert.equal(desktopNote.formatting.nestedMarker, 'disc');
     assert.equal(desktopNote.workType, '브라우저 QA 유형');
     assert.equal(desktopNote.modalFits, true);
     assert.equal(desktopNote.pageFits, true);
@@ -362,16 +397,28 @@ async function main() {
         selection.removeAllRanges();
         selection.addRange(range);
         document.dispatchEvent(new Event('selectionchange'));
-        document.querySelector('[data-note-command][data-note-editor="input-note-edit-body"]').click();
+        const listStyle = document.querySelector('[data-note-list-style][data-note-editor="input-note-edit-body"]');
+        listStyle.value = 'circle';
+        listStyle.dispatchEvent(new Event('change', { bubbles: true }));
+        const items = editor.querySelectorAll('li');
+        const indentRange = document.createRange();
+        indentRange.selectNodeContents(items[1]);
+        indentRange.collapse(false);
+        selection.removeAllRanges();
+        selection.addRange(indentRange);
+        editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
         const firstItem = editor.querySelector('li') || editor.firstChild;
         const colorRange = document.createRange();
         colorRange.selectNodeContents(firstItem);
         selection.removeAllRanges();
         selection.addRange(colorRange);
         document.dispatchEvent(new Event('selectionchange'));
-        const color = document.querySelector('[data-note-color][data-note-editor="input-note-edit-body"]');
-        color.value = '#2563eb';
-        color.dispatchEvent(new Event('change', { bubbles: true }));
+        document.querySelector('[data-note-color-value="#2563eb"][data-note-editor="input-note-edit-body"]').click();
+        window.__noteMobileFormatting = {
+          rootStyle: editor.querySelector('ul')?.dataset.noteListStyle || '',
+          nestedList: !!editor.querySelector('ul ul'),
+          nestedMarker: editor.querySelector('ul ul') ? getComputedStyle(editor.querySelector('ul ul')).listStyleType : ''
+        };
         document.getElementById('input-note-edit-title').value = '모바일 서식 메모';
         document.getElementById('btn-note-edit-save').click();
       })()
@@ -394,6 +441,8 @@ async function main() {
         viewport: document.documentElement.clientWidth,
         hasList: /<(ul|ol)[\\s>]/i.test(note.bodyHtml) && /<li[\\s>]/i.test(note.bodyHtml),
         hasColor: /<(font|span)[^>]*(color|style)/i.test(note.bodyHtml),
+        hasListStyle: /data-note-list-style="circle"/i.test(note.bodyHtml),
+        formatting: window.__noteMobileFormatting,
         panelFits: panel.scrollWidth <= document.documentElement.clientWidth + 1,
         settingsFits: settingsCard.scrollWidth <= document.documentElement.clientWidth + 1,
         pageFits: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1,
@@ -405,6 +454,10 @@ async function main() {
     assert.equal(mobileState.viewport, 390);
     assert.equal(mobileState.hasList, true);
     assert.equal(mobileState.hasColor, true);
+    assert.equal(mobileState.hasListStyle, true);
+    assert.equal(mobileState.formatting.rootStyle, 'circle');
+    assert.equal(mobileState.formatting.nestedList, true);
+    assert.equal(mobileState.formatting.nestedMarker, 'square');
     assert.equal(mobileState.panelFits, true);
     assert.equal(mobileState.settingsFits, true);
     assert.equal(mobileState.pageFits, true);

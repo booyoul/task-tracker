@@ -1,4 +1,4 @@
-console.info('Smart Task Flow modal-controller.js v20260727-v3 loaded');
+console.info('Smart Task Flow modal-controller.js v20260728-v1 loaded');
 // Task modal, subtask modal list, tracker modal, and form submit handlers.
 function resetSubTaskButton() {
   const btn = document.getElementById('btn-add-subtask');
@@ -982,7 +982,7 @@ function sanitizeNoteBodyHtml(html, plainText = '') {
   if (typeof DOMPurify !== 'undefined') {
     return DOMPurify.sanitize(source, {
       ALLOWED_TAGS: ['br', 'div', 'p', 'ul', 'ol', 'li', 'span', 'font'],
-      ALLOWED_ATTR: ['color']
+      ALLOWED_ATTR: ['color', 'data-note-list-style']
     });
   }
   return escapeHTML(String(plainText || '')).replace(/\n/g, '<br>');
@@ -1371,6 +1371,51 @@ function restoreNoteEditorRange(editor) {
   selection.addRange(range);
 }
 
+function applyNoteEditorColor(editor, color) {
+  if (!editor || !/^#[0-9a-f]{6}$/i.test(String(color || ''))) return;
+  editor.focus();
+  restoreNoteEditorRange(editor);
+  document.execCommand('styleWithCSS', false, false);
+  document.execCommand('foreColor', false, color);
+}
+
+function getNoteEditorList(editor) {
+  if (!editor || typeof window.getSelection !== 'function') return null;
+  const selection = window.getSelection();
+  const anchor = selection?.anchorNode;
+  const element = anchor?.nodeType === 3 ? anchor.parentElement : anchor;
+  const list = element?.closest?.('ul');
+  return list && editor.contains(list) ? list : null;
+}
+
+function applyNoteListStyle(editor, style) {
+  if (!editor || !['disc', 'circle', 'square'].includes(style)) return;
+  editor.focus();
+  restoreNoteEditorRange(editor);
+  let list = getNoteEditorList(editor);
+  if (!list) {
+    document.execCommand('insertUnorderedList', false, null);
+    list = getNoteEditorList(editor);
+  }
+  if (!list) {
+    const lists = editor.querySelectorAll('ul');
+    list = lists[lists.length - 1] || null;
+  }
+  list?.setAttribute('data-note-list-style', style);
+}
+
+function handleNoteEditorTab(event) {
+  if (event.key !== 'Tab' || typeof window.getSelection !== 'function') return;
+  const editor = event.currentTarget;
+  const selection = window.getSelection();
+  const anchor = selection?.anchorNode;
+  const element = anchor?.nodeType === 3 ? anchor.parentElement : anchor;
+  const listItem = element?.closest?.('li');
+  if (!listItem || !editor.contains(listItem)) return;
+  event.preventDefault();
+  document.execCommand(event.shiftKey ? 'outdent' : 'indent', false, null);
+}
+
 function initNoteFormattingEvents() {
   if (_noteFormattingInitialized) return;
   _noteFormattingInitialized = true;
@@ -1383,26 +1428,31 @@ function initNoteFormattingEvents() {
     if (editor?.id) _noteEditorRanges.set(editor.id, selection.getRangeAt(0).cloneRange());
   });
 
-  document.querySelectorAll('[data-note-command]').forEach(button => {
+  document.querySelectorAll('[data-note-list-style]').forEach(select => {
+    select.addEventListener('change', () => {
+      const editor = document.getElementById(select.dataset.noteEditor || '');
+      applyNoteListStyle(editor, select.value);
+      select.value = '';
+    });
+  });
+
+  document.querySelectorAll('[data-note-color-value]').forEach(button => {
     button.addEventListener('mousedown', event => event.preventDefault());
     button.addEventListener('click', () => {
       const editor = document.getElementById(button.dataset.noteEditor || '');
-      if (!editor) return;
-      editor.focus();
-      restoreNoteEditorRange(editor);
-      document.execCommand(button.dataset.noteCommand, false, null);
+      applyNoteEditorColor(editor, button.dataset.noteColorValue);
     });
   });
 
   document.querySelectorAll('[data-note-color]').forEach(input => {
     input.addEventListener('change', () => {
       const editor = document.getElementById(input.dataset.noteEditor || '');
-      if (!editor) return;
-      editor.focus();
-      restoreNoteEditorRange(editor);
-      document.execCommand('styleWithCSS', false, false);
-      document.execCommand('foreColor', false, input.value);
+      applyNoteEditorColor(editor, input.value);
     });
+  });
+
+  document.querySelectorAll('[data-note-rich-editor]').forEach(editor => {
+    editor.addEventListener('keydown', handleNoteEditorTab);
   });
 }
 

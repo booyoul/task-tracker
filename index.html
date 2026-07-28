@@ -1290,15 +1290,31 @@
                                             class="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100">
                                     </div>
                                     <div class="overflow-hidden rounded-lg border border-slate-200 bg-white focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-100">
-                                        <div class="flex items-center gap-1 border-b border-slate-100 px-2 py-1.5">
-                                            <button type="button" data-note-command="insertUnorderedList" data-note-editor="input-note-body"
-                                                class="rounded-md px-2 py-1 text-xs font-bold text-slate-600 hover:bg-slate-100" title="글머리 기호">• 목록</button>
+                                        <div class="flex flex-wrap items-center gap-1 border-b border-slate-100 px-2 py-1.5">
+                                            <select data-note-list-style data-note-editor="input-note-body" aria-label="블렛 포인트 선택"
+                                                class="rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-600 outline-none hover:bg-slate-50">
+                                                <option value="">블렛 선택</option>
+                                                <option value="disc">• 원형</option>
+                                                <option value="circle">◦ 빈 원</option>
+                                                <option value="square">▪ 사각형</option>
+                                            </select>
+                                            <span class="mx-0.5 h-5 w-px bg-slate-200" aria-hidden="true"></span>
+                                            <button type="button" data-note-color-value="#000000" data-note-editor="input-note-body"
+                                                class="h-6 w-6 rounded-full border border-slate-300 bg-black shadow-sm" title="검정" aria-label="글자색 검정"></button>
+                                            <button type="button" data-note-color-value="#dc2626" data-note-editor="input-note-body"
+                                                class="h-6 w-6 rounded-full border border-red-300 bg-red-600 shadow-sm" title="빨강" aria-label="글자색 빨강"></button>
+                                            <button type="button" data-note-color-value="#16a34a" data-note-editor="input-note-body"
+                                                class="h-6 w-6 rounded-full border border-green-300 bg-green-600 shadow-sm" title="초록" aria-label="글자색 초록"></button>
+                                            <button type="button" data-note-color-value="#2563eb" data-note-editor="input-note-body"
+                                                class="h-6 w-6 rounded-full border border-blue-300 bg-blue-600 shadow-sm" title="청색" aria-label="글자색 청색"></button>
                                             <label class="flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-bold text-slate-500 hover:bg-slate-100">
-                                                글자색
-                                                <input type="color" value="#334155" data-note-color data-note-editor="input-note-body" class="h-5 w-6 cursor-pointer border-0 bg-transparent p-0">
+                                                커스텀
+                                                <input type="color" value="#334155" data-note-color data-note-editor="input-note-body" aria-label="커스텀 글자색"
+                                                    class="h-5 w-6 cursor-pointer border-0 bg-transparent p-0">
                                             </label>
                                         </div>
                                         <div id="input-note-body" contenteditable="true" role="textbox" aria-multiline="true"
+                                            data-note-rich-editor
                                             data-placeholder="진행 상황, 결과, 이슈 등을 자유롭게 기록하세요."
                                             class="note-rich-content min-h-24 max-h-56 overflow-y-auto px-3 py-2 text-xs leading-relaxed text-slate-700 outline-none empty:before:pointer-events-none empty:before:text-slate-400 empty:before:content-[attr(data-placeholder)] dark:text-slate-100"></div>
                                     </div>
@@ -1689,15 +1705,31 @@
                 <select id="input-note-edit-work-type"
                     class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"></select>
                 <div class="overflow-hidden rounded-xl border border-slate-200 bg-slate-50 focus-within:border-indigo-500 dark:border-slate-700 dark:bg-slate-800">
-                    <div class="flex items-center gap-1 border-b border-slate-200 px-2 py-1.5 dark:border-slate-700">
-                        <button type="button" data-note-command="insertUnorderedList" data-note-editor="input-note-edit-body"
-                            class="rounded-md px-2 py-1 text-xs font-bold text-slate-600 hover:bg-slate-200 dark:text-slate-300">• 목록</button>
+                    <div class="flex flex-wrap items-center gap-1 border-b border-slate-200 px-2 py-1.5 dark:border-slate-700">
+                        <select data-note-list-style data-note-editor="input-note-edit-body" aria-label="블렛 포인트 선택"
+                            class="rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-600 outline-none hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                            <option value="">블렛 선택</option>
+                            <option value="disc">• 원형</option>
+                            <option value="circle">◦ 빈 원</option>
+                            <option value="square">▪ 사각형</option>
+                        </select>
+                        <span class="mx-0.5 h-5 w-px bg-slate-200 dark:bg-slate-700" aria-hidden="true"></span>
+                        <button type="button" data-note-color-value="#000000" data-note-editor="input-note-edit-body"
+                            class="h-6 w-6 rounded-full border border-slate-300 bg-black shadow-sm" title="검정" aria-label="글자색 검정"></button>
+                        <button type="button" data-note-color-value="#dc2626" data-note-editor="input-note-edit-body"
+                            class="h-6 w-6 rounded-full border border-red-300 bg-red-600 shadow-sm" title="빨강" aria-label="글자색 빨강"></button>
+                        <button type="button" data-note-color-value="#16a34a" data-note-editor="input-note-edit-body"
+                            class="h-6 w-6 rounded-full border border-green-300 bg-green-600 shadow-sm" title="초록" aria-label="글자색 초록"></button>
+                        <button type="button" data-note-color-value="#2563eb" data-note-editor="input-note-edit-body"
+                            class="h-6 w-6 rounded-full border border-blue-300 bg-blue-600 shadow-sm" title="청색" aria-label="글자색 청색"></button>
                         <label class="flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-bold text-slate-500">
-                            글자색
-                            <input type="color" value="#334155" data-note-color data-note-editor="input-note-edit-body" class="h-5 w-6 cursor-pointer border-0 bg-transparent p-0">
+                            커스텀
+                            <input type="color" value="#334155" data-note-color data-note-editor="input-note-edit-body" aria-label="커스텀 글자색"
+                                class="h-5 w-6 cursor-pointer border-0 bg-transparent p-0">
                         </label>
                     </div>
                     <div id="input-note-edit-body" contenteditable="true" role="textbox" aria-multiline="true"
+                        data-note-rich-editor
                         data-placeholder="메모 내용"
                         class="note-rich-content min-h-48 max-h-96 overflow-y-auto px-3.5 py-2 text-sm leading-relaxed outline-none empty:before:pointer-events-none empty:before:text-slate-400 empty:before:content-[attr(data-placeholder)] dark:text-slate-100"></div>
                 </div>
@@ -1747,11 +1779,11 @@
     <script defer src="./js/calendar-utils.js?v=20260724-v6"></script>
     <script defer src="./js/calendar-day-renderer.js?v=20260724-v15"></script>
     <script defer src="./js/calendar-month-renderer.js?v=20260724-v12"></script>
-    <script defer src="./js/calendar-summary-renderer.js?v=20260724-v5"></script>
+    <script defer src="./js/calendar-summary-renderer.js?v=20260728-v1"></script>
     <script defer src="./js/calendar-mobile-renderer.js?v=20260724-v2"></script>
     <script defer src="./js/table-mobile-renderer.js?v=20260727-v12"></script>
     <script defer src="./js/kanban-renderer.js?v=20260716-v12"></script>
-    <script defer src="./js/modal-controller.js?v=20260727-v3"></script>
+    <script defer src="./js/modal-controller.js?v=20260728-v1"></script>
     <script defer src="./js/todo-service.js?v=20260727-v1"></script>
     <script defer src="./js/todo-controller.js?v=20260727-v1"></script>
     <script defer src="./js/admin-approvals.js?v=20260716-v1"></script>

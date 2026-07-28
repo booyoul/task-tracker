@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-summary-renderer.js v20260724-v5 loaded');
+console.info('Smart Task Flow calendar-summary-renderer.js v20260728-v1 loaded');
 
 function getSummaryNoteDate(note = {}) {
     if (note.noteDate && /^\d{4}-\d{2}-\d{2}$/.test(note.noteDate)) {
@@ -33,7 +33,7 @@ function sanitizeSummaryNoteHtml(note = {}) {
     if (source && typeof DOMPurify !== 'undefined') {
         return DOMPurify.sanitize(source, {
             ALLOWED_TAGS: ['br', 'div', 'p', 'ul', 'ol', 'li', 'span', 'font'],
-            ALLOWED_ATTR: ['color']
+            ALLOWED_ATTR: ['color', 'data-note-list-style']
         });
     }
     return escapeHTML(note.body || '').replace(/\n/g, '<br>');

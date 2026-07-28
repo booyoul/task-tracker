@@ -12,7 +12,7 @@ Last updated: 2026-07-28
 
 ## Current State
 
-- Status: Personal To-do implementation, production rule publication, authenticated production To-do CRUD/isolation, tracker ACL role checks, rich-note browser/production-write QA, automated Chrome desktop/mobile verification, and the production user-document/activity audit are complete. No required operational verification remains.
+- Status: Personal To-do implementation, production rule publication, authenticated production To-do CRUD/isolation, tracker ACL role checks, rich-note formatting/browser/production-write QA, automated Chrome desktop/mobile verification, and the production user-document/activity audit are complete. No required operational verification remains.
 - Main app: `/home/booyoul/projects/task-tracker-main`
 - Task file: `TASK.md`
 - Project rules: `.agents/AGENTS.md`
@@ -34,7 +34,7 @@ Last updated: 2026-07-28
 - Monthly-summary notes group by their exact task or sub task ID and sort newest-first; the note detail panel shows older notes from only that exact task as read-only history while editing only the selected note.
 - Existing main tasks and sub tasks open their progress-note composer from a pin beside the task title; the note detail panel identifies the linked main task and sub task.
 - Progress notes support a user-selected `noteDate`; existing notes fall back to `createdAt`, while feeds and monthly summaries use the effective record date.
-- Progress notes support sanitized font colors and bullet lists, plus customer name, Opp No, and a memo-level work type; monthly review search and cards include this context.
+- Progress notes support sanitized preset/custom font colors, selectable bullet styles, and hierarchical bullets using `Tab`/`Shift+Tab`, plus customer name, Opp No, and a memo-level work type; monthly review search and cards include this context.
 - Review comments are appended to each progress note by users with tracker update permission and appear in the note detail panel and monthly-review comment counts.
 - Memo work types are configured per tracker through a separate owner/admin setting; existing task-level `taskType` values remain stored for compatibility but are no longer edited or displayed as task metadata.
 - Task `industry` is presented as `업무 분류` at the top of the registration form; owner/admin users manage its options per tracker through `분류 설정`.
@@ -113,7 +113,7 @@ Last updated: 2026-07-28
 
 ## Next Work
 
-- When task integration is requested, add explicit link/unlink UI using the existing optional `taskLink`; keep To-do dates/completion independent unless a user-selectable synchronization policy is defined.
+- To-do/task linking through the existing optional `taskLink` is intentionally deferred; wait for the user's next priority before resuming it.
 
 ## Cautions
 
@@ -121,6 +121,7 @@ Last updated: 2026-07-28
 - Do not read or rewrite large files wholesale for small UI changes.
 - Do not change script architecture or split globals into modules unless explicitly requested.
 - When changing loaded JS/CSS, update the relevant query-string cache version in `index.html`.
+- Keep `data-note-list-style` allowed in both note sanitizers so saved hierarchical bullet styles render in the detail panel and monthly summary.
 - Personal To-do is private to `ownerId`; do not grant admins implicit read access or expose cached task titles after linked-task access is lost.
 - Task/tracker copy must not copy personal To-do, and deleting a linked task must not delete the independent To-do.
 - A single tracker copy is limited to 499 active tasks by Firestore's 500-write batch limit.
