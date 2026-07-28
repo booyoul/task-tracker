@@ -330,6 +330,10 @@ async function main() {
         const controls = [...toolbar.querySelectorAll('select, button, input')];
         window.__noteDesktopFormatting = {
           palette: [...toolbar.querySelectorAll('[data-note-color-value]')].map(button => button.dataset.noteColorValue),
+          paletteSizes: [...toolbar.querySelectorAll('[data-note-color-value]')].map(button => ({
+            width: button.getBoundingClientRect().width,
+            height: button.getBoundingClientRect().height
+          })),
           customLast: controls[controls.length - 1]?.matches('[data-note-color]') || false,
           customSize: {
             width: customColor.getBoundingClientRect().width,
@@ -365,8 +369,9 @@ async function main() {
     assert.equal(desktopNote.hasCustomColor, true);
     assert.equal(desktopNote.hasListStyle, true);
     assert.deepEqual(desktopNote.formatting.palette, ['#000000', '#dc2626', '#16a34a', '#2563eb']);
+    assert.deepEqual(desktopNote.formatting.paletteSizes, Array(4).fill({ width: 12, height: 12 }));
     assert.equal(desktopNote.formatting.customLast, true);
-    assert.deepEqual(desktopNote.formatting.customSize, { width: 12, height: 12 });
+    assert.deepEqual(desktopNote.formatting.customSize, { width: 24, height: 20 });
     assert.equal(desktopNote.formatting.rootStyle, 'square');
     assert.equal(desktopNote.formatting.nestedList, true);
     assert.equal(desktopNote.formatting.nestedMarker, 'disc');
