@@ -1,4 +1,4 @@
-console.info('Smart Task Flow todo-controller.js v20260729-v1 loaded');
+console.info('Smart Task Flow todo-controller.js v20260729-v2 loaded');
 
 let todoDateFilter = 'TODAY';
 let todoCompletionFilter = 'ACTIVE';
@@ -117,12 +117,6 @@ function getTodoCalendarItemClass(todo) {
   return 'border-violet-200 bg-violet-100 text-violet-700';
 }
 
-function getTodoCalendarDayClass(items) {
-  if (items.some(item => isTodoOverdue(item))) return 'border-rose-200 bg-rose-100 text-rose-700';
-  if (items.some(item => item.completed !== true)) return 'border-violet-200 bg-violet-100 text-violet-700';
-  return 'border-slate-200 bg-slate-100 text-slate-500';
-}
-
 function syncTodoCalendarControls() {
   const monthButton = document.getElementById('btn-todo-calendar-month');
   const yearButton = document.getElementById('btn-todo-calendar-year');
@@ -132,112 +126,287 @@ function syncTodoCalendarControls() {
   if (yearButton) yearButton.className = todoCalendarMode === 'YEAR' ? activeClass : inactiveClass;
 }
 
-function renderTodoMonthCalendar(items, date) {
-  const content = document.getElementById('todo-calendar-content');
+function isTodoCalendarMobile() {
+  return window.matchMedia
+    ? window.matchMedia('(max-width: 1023px)').matches
+    : window.innerWidth < 1024;
+}
+
+function getTodoCalendarStatus(todo) {
+  if (todo.completed === true) return { icon: '⭐️', label: '완료' };
+  if (isTodoOverdue(todo)) return { icon: '🚨', label: '기한 경과' };
+  return { icon: '⌛', label: '미완료' };
+}
+
+function setTodoCalendarMeta(titleText, itemCount) {
   const title = document.getElementById('todo-calendar-title');
   const count = document.getElementById('todo-calendar-count');
-  if (!content) return;
-  const year = date.getFullYear();
-  const month = date.getMonth();
-  const firstDay = new Date(year, month, 1).getDay();
-  const monthStart = `${year}-${String(month + 1).padStart(2, '0')}-01`;
-  const monthEnd = formatTodoCalendarDate(new Date(year, month + 1, 0));
-  const monthItems = items.filter(item => todoOverlapsRange(item, monthStart, monthEnd));
-  if (title) title.textContent = `${year}년 ${month + 1}월`;
-  if (count) count.textContent = `${monthItems.length}개 일정`;
+  if (title) title.textContent = titleText;
+  if (count) count.textContent = `${itemCount}개 일정`;
+}
 
-  const header = TODO_CALENDAR_WEEKDAYS.map((weekday, index) =>
-    `<div class="py-1 text-center text-[10px] font-black ${index === 0 ? 'text-rose-500' : index === 6 ? 'text-blue-500' : 'text-slate-400'}">${weekday}</div>`
-  ).join('');
+function renderTodoDesktopMonthCalendar(content, monthItems, year, month) {
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const totalCells = firstDay + daysInMonth;
+  const fullCells = totalCells + (totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7));
+  const weekCount = fullCells / 7;
+  const rowDateHeight = 34;
+  const laneHeight = 22;
+  const monthValue = `${year}-${String(month + 1).padStart(2, '0')}`;
+  const monthStart = `${monthValue}-01`;
+  const monthEnd = `${monthValue}-${String(daysInMonth).padStart(2, '0')}`;
+  const weekBounds = Array.from({ length: weekCount }, (_, week) => {
+    const startDay = Math.max(1, week * 7 - firstDay + 1);
+    const endDay = Math.min(daysInMonth, week * 7 + 7 - firstDay);
+    return {
+      start: `${monthValue}-${String(startDay).padStart(2, '0')}`,
+      end: `${monthValue}-${String(endDay).padStart(2, '0')}`
+    };
+  });
+  const weekLayouts = weekBounds.map(({ start, end }) => {
+    const activeItems = monthItems.filter(item => todoOverlapsRange(item, start, end));
+    return {
+      laneMap: new Map(activeItems.map((item, index) => [String(item.id), index])),
+      laneCount: activeItems.length,
+      height: rowDateHeight + activeItems.length * laneHeight + 14
+    };
+  });
+  const weekOffsets = [];
+  weekLayouts.reduce((offset, layout, week) => {
+    weekOffsets[week] = offset;
+    return offset + layout.height;
+  }, 0);
+
   const cells = [];
-  for (let index = 0; index < 42; index += 1) {
-    const cellDate = new Date(year, month, 1 - firstDay + index);
-    const dateString = formatTodoCalendarDate(cellDate);
-    const inMonth = cellDate.getMonth() === month;
-    const dayItems = items.filter(item => todoOverlapsRange(item, dateString, dateString));
-    const visibleItems = dayItems.slice(0, 3);
-    const today = dateString === getTodayStr();
+  for (let index = 0; index < fullCells; index += 1) {
+    const day = index - firstDay + 1;
+    const dateString = day >= 1 && day <= daysInMonth
+      ? `${monthValue}-${String(day).padStart(2, '0')}`
+      : '';
+    const dayOfWeek = index % 7;
     cells.push(`
-      <div data-todo-calendar-date="${dateString}"
-        class="min-w-0 border-b border-r border-slate-100 p-1 min-h-20 sm:min-h-28 sm:p-1.5 ${inMonth ? 'bg-white' : 'bg-slate-50/70'} ${today ? 'ring-2 ring-inset ring-violet-400' : ''}">
-        <div class="mb-1 flex items-center justify-between gap-1">
-          <span class="inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-black ${today ? 'bg-violet-600 text-white' : inMonth ? 'text-slate-600' : 'text-slate-300'}">${cellDate.getDate()}</span>
-          ${dayItems.length ? `<span class="text-[8px] font-bold text-slate-400">${dayItems.length}</span>` : ''}
-        </div>
-        <div class="space-y-0.5">
-          ${visibleItems.map(todo => `
-            <button type="button" data-todo-calendar-id="${escapeHTML(todo.id)}"
-              class="block w-full truncate rounded border px-1 py-0.5 text-left text-[8px] font-bold sm:text-[10px] ${getTodoCalendarItemClass(todo)}"
-              title="${escapeHTML(todo.title)}">${escapeHTML(todo.title)}</button>
-          `).join('')}
-          ${dayItems.length > visibleItems.length ? `<div class="px-1 text-[8px] font-bold text-slate-400">+${dayItems.length - visibleItems.length}</div>` : ''}
-        </div>
+      <div ${dateString ? `data-todo-calendar-date="${dateString}"` : ''}
+        class="${dateString ? 'bg-white hover:bg-slate-50' : 'bg-slate-50'} border-b border-r border-slate-100 transition-colors"
+        style="height:${weekLayouts[Math.floor(index / 7)].height}px">
+        ${dateString ? `<div class="p-1.5"><span class="inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
+          dateString === getTodayStr() ? 'bg-indigo-600 text-white shadow-sm'
+            : dayOfWeek === 0 ? 'text-rose-500'
+              : dayOfWeek === 6 ? 'text-blue-500'
+                : 'text-slate-600'
+        }">${day}</span></div>` : ''}
       </div>
     `);
   }
+
+  const bars = [];
+  monthItems.forEach(todo => {
+    const displayStart = todo.startDate < monthStart ? monthStart : todo.startDate;
+    const displayEnd = todo.dueDate > monthEnd ? monthEnd : todo.dueDate;
+    const startDay = Number(displayStart.slice(8, 10));
+    const endDay = Number(displayEnd.slice(8, 10));
+    for (let week = 0; week < weekCount; week += 1) {
+      const weekStartDay = Math.max(1, week * 7 - firstDay + 1);
+      const weekEndDay = Math.min(daysInMonth, week * 7 + 7 - firstDay);
+      const segmentStart = Math.max(startDay, weekStartDay);
+      const segmentEnd = Math.min(endDay, weekEndDay);
+      if (segmentStart > segmentEnd) continue;
+      const lane = weekLayouts[week].laneMap.get(String(todo.id));
+      if (lane == null) continue;
+      const startColumn = (firstDay + segmentStart - 1) % 7;
+      const endColumn = (firstDay + segmentEnd - 1) % 7;
+      const leftPad = segmentStart === startDay || segmentStart === weekStartDay ? 4 : 0;
+      const rightPad = segmentEnd === endDay || segmentEnd === weekEndDay ? 4 : 0;
+      const status = getTodoCalendarStatus(todo);
+      bars.push(`
+        <button type="button" data-todo-calendar-id="${escapeHTML(todo.id)}"
+          class="pointer-events-auto absolute flex h-5 items-center truncate rounded-lg px-2 text-left text-[10px] font-semibold leading-none shadow-sm transition hover:scale-[1.01] ${getTodoCalendarItemClass(todo)}"
+          style="left:calc(${startColumn / 7 * 100}% + ${leftPad}px);width:calc(${(endColumn - startColumn + 1) / 7 * 100}% - ${leftPad + rightPad}px);top:${weekOffsets[week] + rowDateHeight + lane * laneHeight}px"
+          title="${escapeHTML(todo.title)} · ${todo.startDate} ~ ${todo.dueDate}">
+          <span class="truncate">${status.icon} ${escapeHTML(todo.title)}</span>
+        </button>
+      `);
+    }
+  });
+
   content.innerHTML = `
-    <div class="overflow-hidden rounded-xl border border-slate-100">
-      <div class="grid grid-cols-7 bg-slate-50">${header}</div>
-      <div class="grid grid-cols-7 border-l border-t border-slate-100">${cells.join('')}</div>
+    <div data-todo-calendar-view="desktop-month" class="overflow-x-auto rounded-xl pb-2">
+      <div class="relative min-w-[900px] lg:min-w-0">
+        <div class="grid grid-cols-7 gap-px overflow-hidden rounded-t-lg border border-slate-200 bg-slate-200">
+          ${TODO_CALENDAR_WEEKDAYS.map((weekday, index) => `<div class="bg-slate-50 py-2 text-center text-xs font-semibold ${
+            index === 0 ? 'text-rose-500' : index === 6 ? 'text-blue-500' : 'text-slate-500'
+          }">${weekday}</div>`).join('')}
+        </div>
+        <div class="relative mt-px overflow-hidden rounded-b-lg border border-slate-200 bg-white" data-week-lane-counts="${weekLayouts.map(layout => layout.laneCount).join(',')}">
+          <div class="relative z-0 grid grid-cols-7 gap-px bg-slate-200">${cells.join('')}</div>
+          <div class="pointer-events-none absolute inset-0 z-10">${bars.join('')}</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderTodoMobileMonthCalendar(content, monthItems, year, month) {
+  const monthValue = `${year}-${String(month + 1).padStart(2, '0')}`;
+  const monthStart = `${monthValue}-01`;
+  const monthEnd = formatTodoCalendarDate(new Date(year, month + 1, 0));
+  const grouped = new Map();
+  monthItems.forEach(todo => {
+    const displayDate = todo.startDate < monthStart ? monthStart : todo.startDate;
+    if (displayDate > monthEnd) return;
+    if (!grouped.has(displayDate)) grouped.set(displayDate, []);
+    grouped.get(displayDate).push(todo);
+  });
+  if (!grouped.size) {
+    content.innerHTML = '<div data-todo-calendar-view="mobile-month" class="flex flex-col items-center justify-center py-16 text-center"><span class="mb-3 text-4xl">📅</span><p class="text-sm font-semibold text-slate-500">이번 달 To-do가 없습니다.</p></div>';
+    return;
+  }
+  const sections = [...grouped.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([dateString, dayItems]) => {
+    const parsed = parseTodoCalendarDate(dateString);
+    const day = parsed.getDate();
+    const weekday = parsed.getDay();
+    const today = dateString === getTodayStr();
+    const dayClass = weekday === 0 ? 'text-rose-500' : weekday === 6 ? 'text-blue-500' : 'text-slate-500';
+    return `
+      <section data-todo-calendar-date="${dateString}">
+        <div class="mb-2 mt-4 flex items-center gap-2 first:mt-0">
+          <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+            today ? 'bg-indigo-600 text-white shadow-sm' : `bg-slate-100 ${dayClass}`
+          }">${day}</span>
+          <span class="text-xs font-semibold ${dayClass}">${TODO_CALENDAR_WEEKDAYS[weekday]}</span>
+          ${today ? '<span class="rounded-full bg-indigo-100 px-1.5 py-0.5 text-[10px] font-bold text-indigo-600">오늘</span>' : ''}
+          <div class="h-px flex-1 bg-slate-100"></div>
+        </div>
+        <div class="space-y-2">
+          ${dayItems.map(todo => {
+            const status = getTodoCalendarStatus(todo);
+            return `
+              <button type="button" data-todo-calendar-id="${escapeHTML(todo.id)}"
+                class="block w-full rounded-xl border bg-white p-3 text-left shadow-sm transition active:scale-[0.98] ${getTodoCalendarItemClass(todo)}">
+                <div class="flex items-start gap-2.5">
+                  <span class="shrink-0 text-lg">${status.icon}</span>
+                  <div class="min-w-0 flex-1">
+                    <p class="truncate text-sm font-semibold">${escapeHTML(todo.title)}</p>
+                    <div class="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px]">
+                      <span class="rounded-full border border-current px-2 py-0.5 font-semibold">${status.label}</span>
+                      <span>${todo.startDate.slice(5)} ~ ${todo.dueDate.slice(5)}</span>
+                    </div>
+                    ${todo.memo ? `<p class="mt-2 truncate text-[11px] opacity-75">${escapeHTML(todo.memo)}</p>` : ''}
+                  </div>
+                </div>
+              </button>
+            `;
+          }).join('')}
+        </div>
+      </section>
+    `;
+  }).join('');
+  content.innerHTML = `<div data-todo-calendar-view="mobile-month" class="min-w-0">${sections}</div>`;
+}
+
+function renderTodoMonthCalendar(items, date) {
+  const content = document.getElementById('todo-calendar-content');
+  if (!content) return;
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const monthStart = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+  const monthEnd = formatTodoCalendarDate(new Date(year, month + 1, 0));
+  const monthItems = items.filter(item => todoOverlapsRange(item, monthStart, monthEnd));
+  setTodoCalendarMeta(`${year}년 ${month + 1}월`, monthItems.length);
+  if (isTodoCalendarMobile()) renderTodoMobileMonthCalendar(content, monthItems, year, month);
+  else renderTodoDesktopMonthCalendar(content, monthItems, year, month);
+}
+
+function renderTodoDesktopYearCalendar(content, yearItems, year) {
+  const rowHeight = 28;
+  const bodyHeight = Math.max(yearItems.length, 5) * rowHeight + 20;
+  const monthButtons = Array.from({ length: 12 }, (_, month) => `
+    <button type="button" data-todo-calendar-month="${year}-${String(month + 1).padStart(2, '0')}"
+      class="py-3 text-center text-xs font-bold text-slate-700 transition-colors hover:bg-slate-100 hover:text-indigo-600">${month + 1}월</button>
+  `).join('');
+  const tiles = Array.from({ length: 12 }, (_, month) => `
+    <button type="button" data-todo-calendar-month-target="${year}-${String(month + 1).padStart(2, '0')}"
+      class="border-b border-slate-100 bg-white transition-colors hover:bg-slate-50" style="height:${bodyHeight}px" aria-label="${month + 1}월 월간 보기"></button>
+  `).join('');
+  const bars = yearItems.map((todo, index) => {
+    const start = parseTodoCalendarDate(todo.startDate);
+    const end = parseTodoCalendarDate(todo.dueDate);
+    const startMonth = start.getFullYear() < year ? 0 : start.getMonth();
+    const endMonth = end.getFullYear() > year ? 11 : end.getMonth();
+    const status = getTodoCalendarStatus(todo);
+    return `
+      <button type="button" data-todo-calendar-id="${escapeHTML(todo.id)}"
+        class="pointer-events-auto absolute z-10 flex h-5 items-center truncate rounded-lg px-2 text-left text-[10.5px] font-bold shadow-sm transition hover:scale-[1.01] ${getTodoCalendarItemClass(todo)}"
+        style="left:calc(${startMonth / 12 * 100}% + 4px);width:calc(${(endMonth - startMonth + 1) / 12 * 100}% - 8px);top:${index * rowHeight + 10}px"
+        title="${escapeHTML(todo.title)} · ${todo.startDate} ~ ${todo.dueDate}">
+        <span class="truncate">${status.icon} ${escapeHTML(todo.title)}</span>
+      </button>
+    `;
+  }).join('');
+  content.innerHTML = `
+    <div data-todo-calendar-view="desktop-year" class="overflow-x-auto rounded-xl pb-2">
+      <div class="min-w-[900px] lg:min-w-0">
+        <div class="grid grid-cols-12 gap-px border-b border-slate-200 bg-slate-50 shadow-sm">${monthButtons}</div>
+        <div class="relative overflow-hidden rounded-b-xl border border-t-0 border-slate-200">
+          <div class="grid grid-cols-12 gap-px bg-slate-100/50">${tiles}</div>
+          <div class="pointer-events-none absolute inset-0">${bars}</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderTodoMobileYearCalendar(content, yearItems, year) {
+  const displayedItems = yearItems.slice(0, 12);
+  const rowHeight = 54;
+  const axisWidth = 48;
+  const contentWidth = content.clientWidth || 320;
+  const chartWidth = Math.max(220, contentWidth - axisWidth - 24);
+  const barThickness = Math.max(10, Math.min(22, Math.floor((chartWidth - 24) / Math.max(displayedItems.length, 1)) - 3));
+  const laneWidth = barThickness + 3;
+  const monthRows = Array.from({ length: 12 }, (_, month) => `
+    <button type="button" data-todo-calendar-month="${year}-${String(month + 1).padStart(2, '0')}"
+      class="flex h-[54px] w-full items-center justify-center border-b border-slate-100 text-[11px] font-bold text-slate-500 hover:bg-slate-50 hover:text-indigo-600">${month + 1}월</button>
+  `).join('');
+  const gridRows = Array.from({ length: 12 }, () => '<div class="h-[54px] border-b border-slate-100"></div>').join('');
+  const bars = displayedItems.map((todo, index) => {
+    const start = parseTodoCalendarDate(todo.startDate);
+    const end = parseTodoCalendarDate(todo.dueDate);
+    const startMonth = start.getFullYear() < year ? 0 : start.getMonth();
+    const endMonth = end.getFullYear() > year ? 11 : end.getMonth();
+    const height = (endMonth - startMonth + 1) * rowHeight;
+    const status = getTodoCalendarStatus(todo);
+    return `
+      <button type="button" data-todo-calendar-id="${escapeHTML(todo.id)}"
+        class="pointer-events-auto absolute flex items-center overflow-hidden rounded-lg pl-3 pr-2 text-left text-[10px] font-bold shadow-sm transition active:scale-[0.99] ${getTodoCalendarItemClass(todo)}"
+        style="width:${height - 6}px;height:${barThickness}px;top:${startMonth * rowHeight + 3}px;left:${12 + index * laneWidth + barThickness}px;transform-origin:top left;transform:rotate(90deg)"
+        title="${escapeHTML(todo.title)} · ${todo.startDate} ~ ${todo.dueDate}">
+        <span class="min-w-0 flex-1 truncate">${status.icon} ${escapeHTML(todo.title)}</span>
+      </button>
+    `;
+  }).join('');
+  content.innerHTML = `
+    <div data-todo-calendar-view="mobile-year" class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <div class="grid grid-cols-[48px_1fr]" style="height:${rowHeight * 12}px">
+        <div class="z-10 border-r border-slate-200 bg-slate-50">${monthRows}</div>
+        <div class="relative min-w-0 overflow-hidden">
+          <div class="absolute inset-0">${gridRows}</div>
+          <div class="pointer-events-none absolute inset-0">${bars}</div>
+        </div>
+      </div>
+      ${yearItems.length > displayedItems.length ? `<p class="border-t border-slate-100 px-3 py-2 text-[10px] font-semibold text-slate-500">화면 맞춤을 위해 시작일이 빠른 ${displayedItems.length}개를 표시합니다. 전체 ${yearItems.length}개</p>` : ''}
     </div>
   `;
 }
 
 function renderTodoYearCalendar(items, date) {
   const content = document.getElementById('todo-calendar-content');
-  const title = document.getElementById('todo-calendar-title');
-  const count = document.getElementById('todo-calendar-count');
   if (!content) return;
   const year = date.getFullYear();
-  const yearStart = `${year}-01-01`;
-  const yearEnd = `${year}-12-31`;
-  const yearItems = items.filter(item => todoOverlapsRange(item, yearStart, yearEnd));
-  if (title) title.textContent = `${year}년`;
-  if (count) count.textContent = `${yearItems.length}개 일정`;
-
-  const months = [];
-  for (let month = 0; month < 12; month += 1) {
-    const monthValue = `${year}-${String(month + 1).padStart(2, '0')}`;
-    const monthStart = `${monthValue}-01`;
-    const firstDay = new Date(year, month, 1).getDay();
-    const monthEnd = formatTodoCalendarDate(new Date(year, month + 1, 0));
-    const monthItems = yearItems.filter(item => todoOverlapsRange(item, monthStart, monthEnd));
-    const days = [];
-    for (let index = 0; index < 42; index += 1) {
-      const cellDate = new Date(year, month, 1 - firstDay + index);
-      if (cellDate.getMonth() !== month) {
-        days.push('<span class="h-8"></span>');
-        continue;
-      }
-      const dateString = formatTodoCalendarDate(cellDate);
-      const dayItems = yearItems.filter(item => todoOverlapsRange(item, dateString, dateString));
-      const today = dateString === getTodayStr();
-      days.push(`
-        <button type="button" data-todo-calendar-date="${dateString}"
-          class="relative flex h-8 min-w-0 items-center justify-center rounded-md border text-[9px] font-bold ${
-            dayItems.length ? getTodoCalendarDayClass(dayItems) : today ? 'border-violet-300 bg-white text-violet-700' : 'border-transparent text-slate-500 hover:bg-slate-50'
-          } ${today ? 'ring-1 ring-violet-500' : ''}"
-          aria-label="${month + 1}월 ${cellDate.getDate()}일, ${dayItems.length}개 일정">
-          ${cellDate.getDate()}
-          ${dayItems.length > 1 ? `<span class="absolute right-0.5 top-0 text-[7px] font-black">${dayItems.length}</span>` : ''}
-        </button>
-      `);
-    }
-    months.push(`
-      <article class="min-w-0 rounded-xl border border-slate-100 bg-white p-2.5 shadow-sm">
-        <button type="button" data-todo-calendar-month="${monthValue}"
-          class="mb-2 flex w-full items-center justify-between rounded-lg px-1 py-1 text-left hover:bg-violet-50">
-          <span class="text-xs font-black text-slate-700">${month + 1}월</span>
-          <span class="text-[9px] font-bold text-violet-600">${monthItems.length}개</span>
-        </button>
-        <div class="mb-1 grid grid-cols-7">
-          ${TODO_CALENDAR_WEEKDAYS.map((weekday, index) => `<span class="text-center text-[8px] font-bold ${index === 0 ? 'text-rose-400' : index === 6 ? 'text-blue-400' : 'text-slate-300'}">${weekday}</span>`).join('')}
-        </div>
-        <div class="grid grid-cols-7 gap-0.5">${days.join('')}</div>
-      </article>
-    `);
-  }
-  content.innerHTML = `<div class="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">${months.join('')}</div>`;
+  const yearItems = items.filter(item => todoOverlapsRange(item, `${year}-01-01`, `${year}-12-31`));
+  setTodoCalendarMeta(`${year}년 연간 현황`, yearItems.length);
+  if (isTodoCalendarMobile()) renderTodoMobileYearCalendar(content, yearItems, year);
+  else renderTodoDesktopYearCalendar(content, yearItems, year);
 }
 
 function renderTodoCalendar() {
@@ -499,9 +668,10 @@ function initTodoController() {
   document.getElementById('todo-calendar-content')?.addEventListener('click', event => {
     const todoButton = event.target.closest('[data-todo-calendar-id]');
     if (todoButton) return openTodoModal(todoButton.dataset.todoCalendarId);
-    const monthButton = event.target.closest('[data-todo-calendar-month]');
+    const monthButton = event.target.closest('[data-todo-calendar-month], [data-todo-calendar-month-target]');
     if (monthButton) {
-      todoCalendarDate = parseTodoCalendarDate(`${monthButton.dataset.todoCalendarMonth}-01`);
+      const monthValue = monthButton.dataset.todoCalendarMonth || monthButton.dataset.todoCalendarMonthTarget;
+      todoCalendarDate = parseTodoCalendarDate(`${monthValue}-01`);
       return setTodoCalendarMode('MONTH');
     }
     const dayButton = event.target.closest('[data-todo-calendar-date]');
