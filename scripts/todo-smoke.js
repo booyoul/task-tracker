@@ -144,6 +144,23 @@ function testDateGroupingAndRendering() {
   const cards = [...context.document.querySelectorAll('#todo-list [data-todo-id]')];
   assert.deepEqual(cards.map(card => card.dataset.todoId), ['overdue', 'today'], '오늘 보기에서 기한 경과 항목을 먼저 표시해야 합니다.');
   assert.equal(context.document.getElementById('todo-count-week').textContent, '3');
+  assert.equal(context.document.getElementById('todo-calendar-title').textContent, '2026년 7월');
+  assert.equal(context.document.querySelectorAll('#todo-calendar-content [data-todo-calendar-date]').length, 42);
+  const calendarIds = new Set(
+    [...context.document.querySelectorAll('#todo-calendar-content [data-todo-calendar-id]')]
+      .map(item => item.dataset.todoCalendarId)
+  );
+  assert.equal(calendarIds.has('month'), true, '목록 날짜 필터와 무관하게 표시 월의 To-do를 캘린더에 렌더링해야 합니다.');
+  assert.equal(calendarIds.has('done'), false, '미완료 상태 필터를 캘린더에서도 공유해야 합니다.');
+  assert.deepEqual(
+    Array.from(context.getTodoCalendarItems(context.todoItems, 'COMPLETED', '완료')).map(item => item.id),
+    ['done'],
+    '캘린더는 완료 상태와 검색 조건을 함께 적용해야 합니다.'
+  );
+  context.setTodoCalendarMode('YEAR');
+  assert.equal(context.document.getElementById('todo-calendar-title').textContent, '2026년');
+  assert.equal(context.document.querySelectorAll('#todo-calendar-content [data-todo-calendar-month]').length, 12);
+  context.setTodoCalendarMode('MONTH');
   context.setViewVisibility('TODO');
   assert.equal(context.document.getElementById('view-todo').hidden, false);
   assert.equal(context.document.getElementById('task-dashboard-summary').hidden, true);
@@ -156,7 +173,7 @@ function testDateGroupingAndRendering() {
 async function main() {
   await testService();
   testDateGroupingAndRendering();
-  console.log('todo smoke passed: ownership CRUD, task-link readiness, date grouping, today rendering, and view isolation');
+  console.log('todo smoke passed: ownership CRUD, task-link readiness, date grouping, monthly/yearly calendars, and view isolation');
 }
 
 main().catch(error => {

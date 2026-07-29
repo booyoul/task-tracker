@@ -8,7 +8,7 @@
     <link rel="icon" href="./favicon.ico?v=20260625-monthly-kpi">
     <!-- Immediately apply theme script to prevent FOUC -->
     <script src="./js/theme-service.js?v=20260710-v1"></script>
-    <link rel="stylesheet" href="./dist/output.css?v=20260728-v1">
+    <link rel="stylesheet" href="./dist/output.css?v=20260729-v1">
     <style>
         body {
             font-family: 'Noto Sans KR', sans-serif;
@@ -696,6 +696,37 @@
                         <span id="todo-result-count" class="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600">0개</span>
                     </div>
                     <div id="todo-list" class="mt-3 space-y-2"></div>
+                </section>
+
+                <section id="todo-calendar-section" class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+                    <div class="border-b border-slate-100 p-3 sm:p-4">
+                        <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                            <div>
+                                <p class="text-[10px] font-black uppercase tracking-wider text-violet-500">To-do calendar</p>
+                                <div class="mt-1 flex flex-wrap items-center gap-2">
+                                    <h3 id="todo-calendar-title" class="text-base font-black text-slate-800"></h3>
+                                    <span id="todo-calendar-count" class="rounded-full bg-violet-50 px-2 py-1 text-[10px] font-bold text-violet-700">0개 일정</span>
+                                </div>
+                            </div>
+                            <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                <div class="inline-flex rounded-xl bg-slate-100 p-1">
+                                    <button id="btn-todo-calendar-month" type="button"
+                                        class="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-slate-800 shadow-sm">월간 보기</button>
+                                    <button id="btn-todo-calendar-year" type="button"
+                                        class="rounded-lg px-3 py-1.5 text-xs font-bold text-slate-500">연간 보기</button>
+                                </div>
+                                <div class="grid grid-cols-[auto_1fr_auto] items-center gap-1">
+                                    <button id="btn-todo-calendar-prev" type="button" aria-label="이전 기간"
+                                        class="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm font-bold text-slate-500 hover:bg-slate-50">‹</button>
+                                    <button id="btn-todo-calendar-today" type="button"
+                                        class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50">오늘</button>
+                                    <button id="btn-todo-calendar-next" type="button" aria-label="다음 기간"
+                                        class="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm font-bold text-slate-500 hover:bg-slate-50">›</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="todo-calendar-content" class="min-w-0 p-2 sm:p-4"></div>
                 </section>
             </main>
 
@@ -1785,7 +1816,7 @@
     <script defer src="./js/kanban-renderer.js?v=20260716-v12"></script>
     <script defer src="./js/modal-controller.js?v=20260728-v1"></script>
     <script defer src="./js/todo-service.js?v=20260727-v1"></script>
-    <script defer src="./js/todo-controller.js?v=20260727-v1"></script>
+    <script defer src="./js/todo-controller.js?v=20260729-v1"></script>
     <script defer src="./js/admin-approvals.js?v=20260716-v1"></script>
     <script defer src="./js/month-picker-controller.js?v=20260724-v1"></script>
     <script defer src="./js/event-bindings.js?v=20260727-v1"></script>

@@ -1,9 +1,12 @@
-console.info('Smart Task Flow todo-controller.js v20260727-v1 loaded');
+console.info('Smart Task Flow todo-controller.js v20260729-v1 loaded');
 
 let todoDateFilter = 'TODAY';
 let todoCompletionFilter = 'ACTIVE';
 let todoSearchText = '';
 let todoReminderSnapshotKey = '';
+let todoCalendarMode = 'MONTH';
+let todoCalendarDate = null;
+const TODO_CALENDAR_WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
 function addDaysToDateString(dateString, days) {
   const [year, month, day] = String(dateString || '').split('-').map(Number);
@@ -73,6 +76,198 @@ function getVisibleTodos(items = todoItems) {
   });
 }
 
+function parseTodoCalendarDate(dateString) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateString || ''));
+  if (!match) return null;
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getTodoCalendarDate() {
+  if (!(todoCalendarDate instanceof Date) || Number.isNaN(todoCalendarDate.getTime())) {
+    todoCalendarDate = parseTodoCalendarDate(getTodayStr()) || new Date();
+  }
+  return todoCalendarDate;
+}
+
+function formatTodoCalendarDate(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function getTodoCalendarItems(
+  items = todoItems,
+  completionFilter = todoCompletionFilter,
+  searchText = todoSearchText
+) {
+  const search = String(searchText || '').trim().toLowerCase();
+  return items.filter(item => {
+    if (completionFilter === 'ACTIVE' && item.completed === true) return false;
+    if (completionFilter === 'COMPLETED' && item.completed !== true) return false;
+    return !search || `${item.title || ''} ${item.memo || ''}`.toLowerCase().includes(search);
+  }).sort((a, b) =>
+    String(a.startDate || '').localeCompare(String(b.startDate || ''))
+    || String(a.dueDate || '').localeCompare(String(b.dueDate || ''))
+    || String(a.title || '').localeCompare(String(b.title || ''), 'ko')
+  );
+}
+
+function getTodoCalendarItemClass(todo) {
+  if (todo.completed === true) return 'border-slate-200 bg-slate-100 text-slate-500 line-through';
+  if (isTodoOverdue(todo)) return 'border-rose-200 bg-rose-100 text-rose-700';
+  return 'border-violet-200 bg-violet-100 text-violet-700';
+}
+
+function getTodoCalendarDayClass(items) {
+  if (items.some(item => isTodoOverdue(item))) return 'border-rose-200 bg-rose-100 text-rose-700';
+  if (items.some(item => item.completed !== true)) return 'border-violet-200 bg-violet-100 text-violet-700';
+  return 'border-slate-200 bg-slate-100 text-slate-500';
+}
+
+function syncTodoCalendarControls() {
+  const monthButton = document.getElementById('btn-todo-calendar-month');
+  const yearButton = document.getElementById('btn-todo-calendar-year');
+  const activeClass = 'rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-slate-800 shadow-sm';
+  const inactiveClass = 'rounded-lg px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-800';
+  if (monthButton) monthButton.className = todoCalendarMode === 'MONTH' ? activeClass : inactiveClass;
+  if (yearButton) yearButton.className = todoCalendarMode === 'YEAR' ? activeClass : inactiveClass;
+}
+
+function renderTodoMonthCalendar(items, date) {
+  const content = document.getElementById('todo-calendar-content');
+  const title = document.getElementById('todo-calendar-title');
+  const count = document.getElementById('todo-calendar-count');
+  if (!content) return;
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const firstDay = new Date(year, month, 1).getDay();
+  const monthStart = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+  const monthEnd = formatTodoCalendarDate(new Date(year, month + 1, 0));
+  const monthItems = items.filter(item => todoOverlapsRange(item, monthStart, monthEnd));
+  if (title) title.textContent = `${year}년 ${month + 1}월`;
+  if (count) count.textContent = `${monthItems.length}개 일정`;
+
+  const header = TODO_CALENDAR_WEEKDAYS.map((weekday, index) =>
+    `<div class="py-1 text-center text-[10px] font-black ${index === 0 ? 'text-rose-500' : index === 6 ? 'text-blue-500' : 'text-slate-400'}">${weekday}</div>`
+  ).join('');
+  const cells = [];
+  for (let index = 0; index < 42; index += 1) {
+    const cellDate = new Date(year, month, 1 - firstDay + index);
+    const dateString = formatTodoCalendarDate(cellDate);
+    const inMonth = cellDate.getMonth() === month;
+    const dayItems = items.filter(item => todoOverlapsRange(item, dateString, dateString));
+    const visibleItems = dayItems.slice(0, 3);
+    const today = dateString === getTodayStr();
+    cells.push(`
+      <div data-todo-calendar-date="${dateString}"
+        class="min-w-0 border-b border-r border-slate-100 p-1 min-h-20 sm:min-h-28 sm:p-1.5 ${inMonth ? 'bg-white' : 'bg-slate-50/70'} ${today ? 'ring-2 ring-inset ring-violet-400' : ''}">
+        <div class="mb-1 flex items-center justify-between gap-1">
+          <span class="inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-black ${today ? 'bg-violet-600 text-white' : inMonth ? 'text-slate-600' : 'text-slate-300'}">${cellDate.getDate()}</span>
+          ${dayItems.length ? `<span class="text-[8px] font-bold text-slate-400">${dayItems.length}</span>` : ''}
+        </div>
+        <div class="space-y-0.5">
+          ${visibleItems.map(todo => `
+            <button type="button" data-todo-calendar-id="${escapeHTML(todo.id)}"
+              class="block w-full truncate rounded border px-1 py-0.5 text-left text-[8px] font-bold sm:text-[10px] ${getTodoCalendarItemClass(todo)}"
+              title="${escapeHTML(todo.title)}">${escapeHTML(todo.title)}</button>
+          `).join('')}
+          ${dayItems.length > visibleItems.length ? `<div class="px-1 text-[8px] font-bold text-slate-400">+${dayItems.length - visibleItems.length}</div>` : ''}
+        </div>
+      </div>
+    `);
+  }
+  content.innerHTML = `
+    <div class="overflow-hidden rounded-xl border border-slate-100">
+      <div class="grid grid-cols-7 bg-slate-50">${header}</div>
+      <div class="grid grid-cols-7 border-l border-t border-slate-100">${cells.join('')}</div>
+    </div>
+  `;
+}
+
+function renderTodoYearCalendar(items, date) {
+  const content = document.getElementById('todo-calendar-content');
+  const title = document.getElementById('todo-calendar-title');
+  const count = document.getElementById('todo-calendar-count');
+  if (!content) return;
+  const year = date.getFullYear();
+  const yearStart = `${year}-01-01`;
+  const yearEnd = `${year}-12-31`;
+  const yearItems = items.filter(item => todoOverlapsRange(item, yearStart, yearEnd));
+  if (title) title.textContent = `${year}년`;
+  if (count) count.textContent = `${yearItems.length}개 일정`;
+
+  const months = [];
+  for (let month = 0; month < 12; month += 1) {
+    const monthValue = `${year}-${String(month + 1).padStart(2, '0')}`;
+    const monthStart = `${monthValue}-01`;
+    const firstDay = new Date(year, month, 1).getDay();
+    const monthEnd = formatTodoCalendarDate(new Date(year, month + 1, 0));
+    const monthItems = yearItems.filter(item => todoOverlapsRange(item, monthStart, monthEnd));
+    const days = [];
+    for (let index = 0; index < 42; index += 1) {
+      const cellDate = new Date(year, month, 1 - firstDay + index);
+      if (cellDate.getMonth() !== month) {
+        days.push('<span class="h-8"></span>');
+        continue;
+      }
+      const dateString = formatTodoCalendarDate(cellDate);
+      const dayItems = yearItems.filter(item => todoOverlapsRange(item, dateString, dateString));
+      const today = dateString === getTodayStr();
+      days.push(`
+        <button type="button" data-todo-calendar-date="${dateString}"
+          class="relative flex h-8 min-w-0 items-center justify-center rounded-md border text-[9px] font-bold ${
+            dayItems.length ? getTodoCalendarDayClass(dayItems) : today ? 'border-violet-300 bg-white text-violet-700' : 'border-transparent text-slate-500 hover:bg-slate-50'
+          } ${today ? 'ring-1 ring-violet-500' : ''}"
+          aria-label="${month + 1}월 ${cellDate.getDate()}일, ${dayItems.length}개 일정">
+          ${cellDate.getDate()}
+          ${dayItems.length > 1 ? `<span class="absolute right-0.5 top-0 text-[7px] font-black">${dayItems.length}</span>` : ''}
+        </button>
+      `);
+    }
+    months.push(`
+      <article class="min-w-0 rounded-xl border border-slate-100 bg-white p-2.5 shadow-sm">
+        <button type="button" data-todo-calendar-month="${monthValue}"
+          class="mb-2 flex w-full items-center justify-between rounded-lg px-1 py-1 text-left hover:bg-violet-50">
+          <span class="text-xs font-black text-slate-700">${month + 1}월</span>
+          <span class="text-[9px] font-bold text-violet-600">${monthItems.length}개</span>
+        </button>
+        <div class="mb-1 grid grid-cols-7">
+          ${TODO_CALENDAR_WEEKDAYS.map((weekday, index) => `<span class="text-center text-[8px] font-bold ${index === 0 ? 'text-rose-400' : index === 6 ? 'text-blue-400' : 'text-slate-300'}">${weekday}</span>`).join('')}
+        </div>
+        <div class="grid grid-cols-7 gap-0.5">${days.join('')}</div>
+      </article>
+    `);
+  }
+  content.innerHTML = `<div class="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">${months.join('')}</div>`;
+}
+
+function renderTodoCalendar() {
+  const content = document.getElementById('todo-calendar-content');
+  if (!content) return;
+  const date = getTodoCalendarDate();
+  const items = getTodoCalendarItems();
+  syncTodoCalendarControls();
+  if (todoCalendarMode === 'YEAR') renderTodoYearCalendar(items, date);
+  else renderTodoMonthCalendar(items, date);
+}
+
+function setTodoCalendarMode(mode) {
+  todoCalendarMode = mode === 'YEAR' ? 'YEAR' : 'MONTH';
+  renderTodoCalendar();
+}
+
+function moveTodoCalendar(step) {
+  const current = getTodoCalendarDate();
+  todoCalendarDate = new Date(current.getFullYear(), current.getMonth(), 1);
+  if (todoCalendarMode === 'YEAR') todoCalendarDate.setFullYear(todoCalendarDate.getFullYear() + step);
+  else todoCalendarDate.setMonth(todoCalendarDate.getMonth() + step);
+  renderTodoCalendar();
+}
+
+function resetTodoCalendarToday() {
+  todoCalendarDate = parseTodoCalendarDate(getTodayStr()) || new Date();
+  renderTodoCalendar();
+}
+
 function getTodoDateLabel(todo, today = getTodayStr()) {
   if (isTodoOverdue(todo, today)) return { label: `기한 경과 · ${todo.dueDate}`, className: 'border-rose-200 bg-rose-50 text-rose-700' };
   if (todoOverlapsRange(todo, today, today)) return { label: '오늘 할 일', className: 'border-indigo-200 bg-indigo-50 text-indigo-700' };
@@ -102,6 +297,7 @@ function renderTodoView() {
   const visible = getVisibleTodos();
   const resultCount = document.getElementById('todo-result-count');
   if (resultCount) resultCount.textContent = `${visible.length}개`;
+  renderTodoCalendar();
   container.innerHTML = '';
   if (!visible.length) {
     container.innerHTML = `<div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 py-12 text-center">
@@ -295,6 +491,25 @@ function initTodoController() {
     const remove = event.target.closest('.btn-delete-todo');
     if (remove) confirmTodoDelete(remove.dataset.id);
   });
+  document.getElementById('btn-todo-calendar-month')?.addEventListener('click', () => setTodoCalendarMode('MONTH'));
+  document.getElementById('btn-todo-calendar-year')?.addEventListener('click', () => setTodoCalendarMode('YEAR'));
+  document.getElementById('btn-todo-calendar-prev')?.addEventListener('click', () => moveTodoCalendar(-1));
+  document.getElementById('btn-todo-calendar-today')?.addEventListener('click', resetTodoCalendarToday);
+  document.getElementById('btn-todo-calendar-next')?.addEventListener('click', () => moveTodoCalendar(1));
+  document.getElementById('todo-calendar-content')?.addEventListener('click', event => {
+    const todoButton = event.target.closest('[data-todo-calendar-id]');
+    if (todoButton) return openTodoModal(todoButton.dataset.todoCalendarId);
+    const monthButton = event.target.closest('[data-todo-calendar-month]');
+    if (monthButton) {
+      todoCalendarDate = parseTodoCalendarDate(`${monthButton.dataset.todoCalendarMonth}-01`);
+      return setTodoCalendarMode('MONTH');
+    }
+    const dayButton = event.target.closest('[data-todo-calendar-date]');
+    if (dayButton && todoCalendarMode === 'YEAR') {
+      todoCalendarDate = parseTodoCalendarDate(dayButton.dataset.todoCalendarDate);
+      setTodoCalendarMode('MONTH');
+    }
+  });
   document.getElementById('btn-close-todo-reminder')?.addEventListener('click', () => closeTodoReminder(false));
   document.getElementById('btn-dismiss-todo-reminder-today')?.addEventListener('click', () => closeTodoReminder(true));
   document.getElementById('btn-view-todos-from-reminder')?.addEventListener('click', () => {
@@ -313,6 +528,11 @@ window.isTodoOverdue = isTodoOverdue;
 window.matchesTodoDateFilter = matchesTodoDateFilter;
 window.getTodoFilterCounts = getTodoFilterCounts;
 window.getVisibleTodos = getVisibleTodos;
+window.getTodoCalendarItems = getTodoCalendarItems;
+window.renderTodoCalendar = renderTodoCalendar;
+window.setTodoCalendarMode = setTodoCalendarMode;
+window.moveTodoCalendar = moveTodoCalendar;
+window.resetTodoCalendarToday = resetTodoCalendarToday;
 window.renderTodoView = renderTodoView;
 window.handleTodoInitialSnapshot = handleTodoInitialSnapshot;
 window.resetTodoReminderState = resetTodoReminderState;
