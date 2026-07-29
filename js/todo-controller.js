@@ -1,9 +1,10 @@
-console.info('Smart Task Flow todo-controller.js v20260729-v2 loaded');
+console.info('Smart Task Flow todo-controller.js v20260729-v3 loaded');
 
 let todoDateFilter = 'TODAY';
 let todoCompletionFilter = 'ACTIVE';
 let todoSearchText = '';
 let todoReminderSnapshotKey = '';
+let todoViewMode = 'LIST';
 let todoCalendarMode = 'MONTH';
 let todoCalendarDate = null;
 const TODO_CALENDAR_WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -437,6 +438,38 @@ function resetTodoCalendarToday() {
   renderTodoCalendar();
 }
 
+function syncTodoViewMode() {
+  const listView = document.getElementById('todo-list-view');
+  const calendarView = document.getElementById('todo-calendar-section');
+  const listButton = document.getElementById('btn-todo-view-list');
+  const calendarButton = document.getElementById('btn-todo-view-calendar');
+  const showList = todoViewMode === 'LIST';
+  [
+    [listView, showList],
+    [calendarView, !showList]
+  ].forEach(([element, visible]) => {
+    if (!element) return;
+    element.hidden = !visible;
+    element.classList.toggle('hidden', !visible);
+    element.style.display = visible ? '' : 'none';
+  });
+  const activeClass = 'rounded-lg bg-white px-4 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition';
+  const inactiveClass = 'rounded-lg px-4 py-1.5 text-xs font-semibold text-slate-500 transition hover:text-slate-800';
+  if (listButton) {
+    listButton.className = showList ? activeClass : inactiveClass;
+    listButton.setAttribute('aria-pressed', String(showList));
+  }
+  if (calendarButton) {
+    calendarButton.className = showList ? inactiveClass : activeClass;
+    calendarButton.setAttribute('aria-pressed', String(!showList));
+  }
+}
+
+function setTodoViewMode(mode) {
+  todoViewMode = mode === 'CALENDAR' ? 'CALENDAR' : 'LIST';
+  renderTodoView();
+}
+
 function getTodoDateLabel(todo, today = getTodayStr()) {
   if (isTodoOverdue(todo, today)) return { label: `기한 경과 · ${todo.dueDate}`, className: 'border-rose-200 bg-rose-50 text-rose-700' };
   if (todoOverlapsRange(todo, today, today)) return { label: '오늘 할 일', className: 'border-indigo-200 bg-indigo-50 text-indigo-700' };
@@ -466,7 +499,8 @@ function renderTodoView() {
   const visible = getVisibleTodos();
   const resultCount = document.getElementById('todo-result-count');
   if (resultCount) resultCount.textContent = `${visible.length}개`;
-  renderTodoCalendar();
+  syncTodoViewMode();
+  if (todoViewMode === 'CALENDAR') renderTodoCalendar();
   container.innerHTML = '';
   if (!visible.length) {
     container.innerHTML = `<div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 py-12 text-center">
@@ -660,6 +694,8 @@ function initTodoController() {
     const remove = event.target.closest('.btn-delete-todo');
     if (remove) confirmTodoDelete(remove.dataset.id);
   });
+  document.getElementById('btn-todo-view-list')?.addEventListener('click', () => setTodoViewMode('LIST'));
+  document.getElementById('btn-todo-view-calendar')?.addEventListener('click', () => setTodoViewMode('CALENDAR'));
   document.getElementById('btn-todo-calendar-month')?.addEventListener('click', () => setTodoCalendarMode('MONTH'));
   document.getElementById('btn-todo-calendar-year')?.addEventListener('click', () => setTodoCalendarMode('YEAR'));
   document.getElementById('btn-todo-calendar-prev')?.addEventListener('click', () => moveTodoCalendar(-1));
@@ -699,6 +735,8 @@ window.matchesTodoDateFilter = matchesTodoDateFilter;
 window.getTodoFilterCounts = getTodoFilterCounts;
 window.getVisibleTodos = getVisibleTodos;
 window.getTodoCalendarItems = getTodoCalendarItems;
+window.syncTodoViewMode = syncTodoViewMode;
+window.setTodoViewMode = setTodoViewMode;
 window.renderTodoCalendar = renderTodoCalendar;
 window.setTodoCalendarMode = setTodoCalendarMode;
 window.moveTodoCalendar = moveTodoCalendar;

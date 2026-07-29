@@ -244,6 +244,9 @@ async function main() {
         visible: !view.hidden && getComputedStyle(view).display !== 'none',
         taskDashboardHidden: document.getElementById('task-dashboard-summary').hidden,
         trackerHeaderHidden: document.getElementById('tracker-header-context').hidden,
+        listViewVisible: !document.getElementById('todo-list-view').hidden && getComputedStyle(document.getElementById('todo-list-view')).display !== 'none',
+        calendarViewHidden: document.getElementById('todo-calendar-section').hidden && getComputedStyle(document.getElementById('todo-calendar-section')).display === 'none',
+        listToggleActive: document.getElementById('btn-todo-view-list').getAttribute('aria-pressed') === 'true',
         resultIds: [...document.querySelectorAll('#todo-list [data-todo-id]')].map(card => card.dataset.todoId),
         noOverflow: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1
       };
@@ -251,9 +254,13 @@ async function main() {
     assert.equal(desktop.visible, true);
     assert.equal(desktop.taskDashboardHidden, true);
     assert.equal(desktop.trackerHeaderHidden, true);
+    assert.equal(desktop.listViewVisible, true);
+    assert.equal(desktop.calendarViewHidden, true);
+    assert.equal(desktop.listToggleActive, true);
     assert.equal(desktop.noOverflow, true);
     assert.deepEqual(desktop.resultIds.slice(0, 2), ['overdue', 'today']);
 
+    await evaluate(client, `document.getElementById('btn-todo-view-calendar').click()`);
     const desktopTodoCalendar = await evaluate(client, `(() => {
       const title = document.getElementById('todo-calendar-title');
       const expectedTitle = (() => {
@@ -263,6 +270,9 @@ async function main() {
       return {
         title: title.textContent,
         expectedTitle,
+        listViewHidden: document.getElementById('todo-list-view').hidden && getComputedStyle(document.getElementById('todo-list-view')).display === 'none',
+        calendarViewVisible: !document.getElementById('todo-calendar-section').hidden && getComputedStyle(document.getElementById('todo-calendar-section')).display !== 'none',
+        calendarToggleActive: document.getElementById('btn-todo-view-calendar').getAttribute('aria-pressed') === 'true',
         monthActive: document.getElementById('btn-todo-calendar-month').classList.contains('bg-white'),
         view: document.querySelector('[data-todo-calendar-view]')?.dataset.todoCalendarView,
         dayCells: document.querySelectorAll('#todo-calendar-content [data-todo-calendar-date]').length,
@@ -271,6 +281,9 @@ async function main() {
       };
     })()`);
     assert.equal(desktopTodoCalendar.title, desktopTodoCalendar.expectedTitle);
+    assert.equal(desktopTodoCalendar.listViewHidden, true);
+    assert.equal(desktopTodoCalendar.calendarViewVisible, true);
+    assert.equal(desktopTodoCalendar.calendarToggleActive, true);
     assert.equal(desktopTodoCalendar.monthActive, true);
     assert.equal(desktopTodoCalendar.view, 'desktop-month');
     assert.ok(desktopTodoCalendar.dayCells >= 28 && desktopTodoCalendar.dayCells <= 31);
@@ -332,7 +345,7 @@ async function main() {
     assert.equal(desktopTaskView.dashboardDisplay, 'none');
     assert.equal(desktopTaskView.compactDashboardDisplay, 'flex');
     assert.equal(desktopTaskView.compactDashboardChipCount, 7);
-    await evaluate(client, `document.getElementById('btn-open-todo').click()`);
+    await evaluate(client, `document.getElementById('btn-open-todo').click(); setTodoViewMode('LIST');`);
 
     await evaluate(client, `
       document.getElementById('btn-add-todo').click();
@@ -389,7 +402,7 @@ async function main() {
       mobile: true
     });
     await delay(200);
-    await evaluate(client, `setViewVisibility('TODO'); renderTodoView(); setTodoCalendarMode('YEAR');`);
+    await evaluate(client, `setViewVisibility('TODO'); setTodoViewMode('CALENDAR'); setTodoCalendarMode('YEAR');`);
     const mobile = await evaluate(client, `(() => {
       const view = document.getElementById('view-todo');
       document.getElementById('btn-add-todo').click();
@@ -398,6 +411,8 @@ async function main() {
         viewport: document.documentElement.clientWidth,
         viewOverflow: view.scrollWidth > view.clientWidth + 1,
         pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+        listViewHidden: document.getElementById('todo-list-view').hidden && getComputedStyle(document.getElementById('todo-list-view')).display === 'none',
+        calendarViewVisible: !document.getElementById('todo-calendar-section').hidden && getComputedStyle(document.getElementById('todo-calendar-section')).display !== 'none',
         calendarOverflow: document.getElementById('todo-calendar-section').scrollWidth > document.getElementById('todo-calendar-section').clientWidth + 1,
         calendarView: document.querySelector('[data-todo-calendar-view]')?.dataset.todoCalendarView,
         yearMonthCards: document.querySelectorAll('#todo-calendar-content [data-todo-calendar-month]').length,
@@ -410,6 +425,8 @@ async function main() {
     assert.equal(mobile.viewport, 390);
     assert.equal(mobile.viewOverflow, false);
     assert.equal(mobile.pageOverflow, false);
+    assert.equal(mobile.listViewHidden, true);
+    assert.equal(mobile.calendarViewVisible, true);
     assert.equal(mobile.calendarOverflow, false);
     assert.equal(mobile.calendarView, 'mobile-year');
     assert.equal(mobile.yearMonthCards, 12);
@@ -427,6 +444,18 @@ async function main() {
     assert.equal(mobileMonth.hasDateSection, true);
     assert.equal(mobileMonth.hasTodayItem, true);
     assert.equal(mobileMonth.pageOverflow, false);
+
+    await evaluate(client, `document.getElementById('btn-todo-view-list').click()`);
+    const mobileList = await evaluate(client, `(() => ({
+      listViewVisible: !document.getElementById('todo-list-view').hidden && getComputedStyle(document.getElementById('todo-list-view')).display !== 'none',
+      calendarViewHidden: document.getElementById('todo-calendar-section').hidden && getComputedStyle(document.getElementById('todo-calendar-section')).display === 'none',
+      listToggleActive: document.getElementById('btn-todo-view-list').getAttribute('aria-pressed') === 'true',
+      pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
+    }))()`);
+    assert.equal(mobileList.listViewVisible, true);
+    assert.equal(mobileList.calendarViewHidden, true);
+    assert.equal(mobileList.listToggleActive, true);
+    assert.equal(mobileList.pageOverflow, false);
 
     await evaluate(client, `document.getElementById('btn-open-todo').click()`);
     const returnedTaskView = await evaluate(client, `(() => {
@@ -449,7 +478,7 @@ async function main() {
     assert.equal(returnedTaskView.dashboardDisplay, 'none');
     assert.equal(returnedTaskView.compactDashboardDisplay, 'flex');
 
-    console.log('todo browser smoke passed: task-style desktop/mobile monthly/yearly calendars, CRUD interactions, filters, reminder, and task-view return');
+    console.log('todo browser smoke passed: split list/calendar views, task-style desktop/mobile calendars, CRUD, filters, reminder, and task-view return');
   } catch (error) {
     if (client) {
       try {

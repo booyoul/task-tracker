@@ -22,8 +22,8 @@ Last updated: 2026-07-29
 - Static HTML/JavaScript task tracker backed by Firebase/Firestore.
 - JavaScript files are loaded as browser globals from `index.html`; script order and cache query strings matter.
 - Each approved user has a tracker-independent personal To-do view backed by individual `todos` documents; other users and admins cannot read those private items.
-- Personal To-do supports separate create/edit input, start/end dates, today/7-day/current-month/overdue filters, completion/search filters, a monthly calendar, a 12-month yearly calendar, and a once-per-session entry reminder with an optional daily dismissal.
-- The To-do calendars render below the list using the same responsive presentation as the task calendar: desktop monthly weekly Gantt and yearly 12-month timeline, plus mobile monthly date cards and vertical yearly timeline. They share completion/search conditions but not the list-only date chips, support previous/today/next navigation, and open entries for editing.
+- Personal To-do supports separate create/edit input, start/end dates, today/7-day/current-month/overdue filters, completion/search filters, separate list/calendar views, monthly and yearly calendar modes, and a once-per-session entry reminder with an optional daily dismissal.
+- The To-do list and calendar are mutually exclusive subviews like the task views. Calendars use the same responsive presentation as the task calendar: desktop monthly weekly Gantt and yearly 12-month timeline, plus mobile monthly date cards and vertical yearly timeline. They share completion/search conditions but not the list-only date chips, support previous/today/next navigation, and open entries for editing.
 - To-do documents accept an optional `taskLink` reference (`trackerId`, `taskId`, optional `subTaskId`/`occurrenceKey`) for future task integration, but dates and completion remain independent and no linking UI is active yet.
 - Mobile calendar, list, monthly summary, KPI badge/settings, activity timeline, and mobile smoke QA are implemented.
 - Trackers open in the yearly calendar view by default; users can still switch to monthly calendar, monthly summary, list, or Kanban views.
@@ -58,7 +58,7 @@ Last updated: 2026-07-29
 - `js/app.js`: main render/update flow and filters. Search before reading.
 - `js/task-service.js`: Firestore CRUD and listeners.
 - `js/todo-service.js`: personal To-do normalization, CRUD, and owner-scoped realtime listener.
-- `js/todo-controller.js`: To-do date grouping, list/monthly/yearly rendering, calendar navigation, modal handling, and entry reminder.
+- `js/todo-controller.js`: To-do date grouping, list/calendar subview routing, monthly/yearly rendering, calendar navigation, modal handling, and entry reminder.
 - `js/modal-controller.js`: task and KPI modals.
 - `js/month-picker-controller.js`: Firefox fallback for desktop and mobile due-month filters.
 - `js/calendar-*.js`: calendar, Gantt, and monthly summary renderers.
@@ -109,7 +109,7 @@ Last updated: 2026-07-29
 - Headless Chrome verifies desktop/mobile note selection, colors, bullet lists, work-type settings, review comments, and responsive layout; production A/B checks verify formatted note CRUD and admin review-comment persistence, with all temporary data removed.
 - The read-only production user audit found 10 approved documents: eight users and two expected admins, with no duplicate emails, schema issues, or unexpected admins. The seven additional corporate users all have active tracker/task, note, activity-log, or ACL participation records, so their approved status was retained without modification.
 - `npm run smoke:todo:browser` verifies rendered desktop and 390×844 mobile layout, add/edit/complete/delete interactions, date filtering, entry reminder/daily dismissal, and returning to the task view in headless Chrome. It uses mocked CRUD and does not prove authenticated production writes.
-- To-do monthly/yearly calendars use the task calendar's responsive layout patterns, render date-overlapping items, share completion/search filters, navigate by month/year, return to today, open entries for editing, and avoid horizontal overflow at 390px; focused JSDOM and headless Chrome smoke tests cover these contracts.
+- To-do list/calendar subviews are mutually exclusive through native `hidden` and computed display state. Monthly/yearly calendars use the task calendar's responsive layout patterns, share completion/search filters, navigate by month/year, open entries for editing, and avoid horizontal overflow at 390px; focused JSDOM and headless Chrome smoke tests cover these contracts.
 - Task/To-do view routing restores both CSS display and native `hidden` state for list, calendar, Kanban, admin, and To-do views; the Chrome smoke checks desktop and mobile task-view restoration so the task list cannot remain hidden after To-do routing.
 - The legacy full-size KPI card section stays hidden after task/To-do routing; the compact status-filter chips remain visible in task views and are covered by Chrome smoke.
 

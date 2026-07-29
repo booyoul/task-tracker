@@ -8,7 +8,7 @@
     <link rel="icon" href="./favicon.ico?v=20260625-monthly-kpi">
     <!-- Immediately apply theme script to prevent FOUC -->
     <script src="./js/theme-service.js?v=20260710-v1"></script>
-    <link rel="stylesheet" href="./dist/output.css?v=20260729-v2">
+    <link rel="stylesheet" href="./dist/output.css?v=20260729-v3">
     <style>
         body {
             font-family: 'Noto Sans KR', sans-serif;
@@ -638,40 +638,30 @@
             <!-- 개인 전용 To-do 뷰 -->
             <main id="view-todo" class="hidden space-y-3">
                 <section class="rounded-2xl border border-violet-100 bg-gradient-to-br from-violet-50 to-white p-4 shadow-sm sm:p-5">
-                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <p class="text-xs font-bold uppercase tracking-wider text-violet-500">Personal planner</p>
-                            <h2 class="mt-1 text-xl font-black text-slate-900">내 To-do</h2>
-                            <p class="mt-1 text-xs text-slate-500">트래커와 독립적으로 개인 일정을 관리합니다.</p>
-                        </div>
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-wider text-violet-500">Personal planner</p>
+                        <h2 class="mt-1 text-xl font-black text-slate-900">내 To-do</h2>
+                        <p class="mt-1 text-xs text-slate-500">트래커와 독립적으로 개인 일정을 관리합니다.</p>
+                    </div>
+                </section>
+
+                <div id="todo-view-toggle-bar" class="flex flex-wrap items-center justify-between gap-2">
+                    <div class="inline-flex shrink-0 rounded-xl bg-slate-100 p-1">
+                        <button id="btn-todo-view-list" type="button"
+                            class="rounded-lg bg-white px-4 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition">목록</button>
+                        <button id="btn-todo-view-calendar" type="button"
+                            class="rounded-lg px-4 py-1.5 text-xs font-semibold text-slate-500 transition hover:text-slate-800">캘린더</button>
+                    </div>
+                    <div class="flex items-center gap-2">
                         <button id="btn-add-todo" type="button"
-                            class="inline-flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-violet-700">
+                            class="inline-flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-violet-700">
                             <span class="text-lg leading-none">+</span>
                             새 To-do
                         </button>
                     </div>
-                </section>
+                </div>
 
-                <section class="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    <button type="button" data-todo-date-filter="TODAY"
-                        class="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-bold text-white shadow-sm transition">
-                        오늘 <span id="todo-count-today" class="ml-1">0</span>
-                    </button>
-                    <button type="button" data-todo-date-filter="WEEK"
-                        class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:border-indigo-300 hover:text-indigo-700">
-                        7일 내 <span id="todo-count-week" class="ml-1">0</span>
-                    </button>
-                    <button type="button" data-todo-date-filter="MONTH"
-                        class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:border-indigo-300 hover:text-indigo-700">
-                        이번 달 <span id="todo-count-month" class="ml-1">0</span>
-                    </button>
-                    <button type="button" data-todo-date-filter="ALL"
-                        class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:border-indigo-300 hover:text-indigo-700">
-                        전체 <span id="todo-count-all" class="ml-1">0</span>
-                    </button>
-                </section>
-
-                <section class="rounded-2xl border border-slate-100 bg-white p-3 shadow-sm sm:p-4">
+                <section id="todo-shared-filter-section" class="rounded-2xl border border-slate-100 bg-white p-3 shadow-sm sm:p-4">
                     <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
                         <div class="relative min-w-0 flex-1">
                             <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">⌕</span>
@@ -685,20 +675,44 @@
                                 <option value="COMPLETED">완료</option>
                                 <option value="ALL">전체 상태</option>
                             </select>
-                            <button type="button" data-todo-date-filter="OVERDUE"
-                                class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs font-bold text-rose-700 transition hover:bg-rose-100 whitespace-nowrap">
-                                기한 경과 <span id="todo-count-overdue" class="ml-1">0</span>
-                            </button>
                         </div>
                     </div>
-                    <div class="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
-                        <p class="text-xs font-bold text-slate-500">조회 결과</p>
-                        <span id="todo-result-count" class="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600">0개</span>
-                    </div>
-                    <div id="todo-list" class="mt-3 space-y-2"></div>
                 </section>
 
-                <section id="todo-calendar-section" class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+                <div id="todo-list-view" class="space-y-3">
+                    <section class="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                        <button type="button" data-todo-date-filter="TODAY"
+                            class="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-bold text-white shadow-sm transition">
+                            오늘 <span id="todo-count-today" class="ml-1">0</span>
+                        </button>
+                        <button type="button" data-todo-date-filter="WEEK"
+                            class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:border-indigo-300 hover:text-indigo-700">
+                            7일 내 <span id="todo-count-week" class="ml-1">0</span>
+                        </button>
+                        <button type="button" data-todo-date-filter="MONTH"
+                            class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:border-indigo-300 hover:text-indigo-700">
+                            이번 달 <span id="todo-count-month" class="ml-1">0</span>
+                        </button>
+                        <button type="button" data-todo-date-filter="ALL"
+                            class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:border-indigo-300 hover:text-indigo-700">
+                            전체 <span id="todo-count-all" class="ml-1">0</span>
+                        </button>
+                        <button type="button" data-todo-date-filter="OVERDUE"
+                            class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 transition hover:bg-rose-100">
+                            기한 경과 <span id="todo-count-overdue" class="ml-1">0</span>
+                        </button>
+                    </section>
+
+                    <section class="rounded-2xl border border-slate-100 bg-white p-3 shadow-sm sm:p-4">
+                        <div class="flex items-center justify-between">
+                            <p class="text-xs font-bold text-slate-500">조회 결과</p>
+                            <span id="todo-result-count" class="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600">0개</span>
+                        </div>
+                        <div id="todo-list" class="mt-3 space-y-2"></div>
+                    </section>
+                </div>
+
+                <section id="todo-calendar-section" hidden class="hidden overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
                     <div class="border-b border-slate-100 p-3 sm:p-4">
                         <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                             <div>
@@ -1816,7 +1830,7 @@
     <script defer src="./js/kanban-renderer.js?v=20260716-v12"></script>
     <script defer src="./js/modal-controller.js?v=20260728-v1"></script>
     <script defer src="./js/todo-service.js?v=20260727-v1"></script>
-    <script defer src="./js/todo-controller.js?v=20260729-v2"></script>
+    <script defer src="./js/todo-controller.js?v=20260729-v3"></script>
     <script defer src="./js/admin-approvals.js?v=20260716-v1"></script>
     <script defer src="./js/month-picker-controller.js?v=20260724-v1"></script>
     <script defer src="./js/event-bindings.js?v=20260727-v1"></script>

@@ -144,6 +144,13 @@ function testDateGroupingAndRendering() {
   const cards = [...context.document.querySelectorAll('#todo-list [data-todo-id]')];
   assert.deepEqual(cards.map(card => card.dataset.todoId), ['overdue', 'today'], '오늘 보기에서 기한 경과 항목을 먼저 표시해야 합니다.');
   assert.equal(context.document.getElementById('todo-count-week').textContent, '3');
+  assert.equal(context.document.getElementById('todo-list-view').hidden, false);
+  assert.equal(context.document.getElementById('todo-calendar-section').hidden, true);
+  assert.equal(context.document.getElementById('btn-todo-view-list').getAttribute('aria-pressed'), 'true');
+  context.setTodoViewMode('CALENDAR');
+  assert.equal(context.document.getElementById('todo-list-view').hidden, true);
+  assert.equal(context.document.getElementById('todo-calendar-section').hidden, false);
+  assert.equal(context.document.getElementById('btn-todo-view-calendar').getAttribute('aria-pressed'), 'true');
   assert.equal(context.document.getElementById('todo-calendar-title').textContent, '2026년 7월');
   assert.ok(context.document.querySelector('[data-todo-calendar-view="mobile-month"]'));
   assert.equal(context.document.querySelectorAll('#todo-calendar-content [data-todo-calendar-date]').length, 3);
@@ -170,6 +177,9 @@ function testDateGroupingAndRendering() {
   assert.ok(context.document.querySelector('[data-todo-calendar-view="desktop-year"]'));
   assert.equal(context.document.querySelectorAll('#todo-calendar-content [data-todo-calendar-month]').length, 12);
   context.setTodoCalendarMode('MONTH');
+  context.setTodoViewMode('LIST');
+  assert.equal(context.document.getElementById('todo-list-view').hidden, false);
+  assert.equal(context.document.getElementById('todo-calendar-section').hidden, true);
   context.setViewVisibility('TODO');
   assert.equal(context.document.getElementById('view-todo').hidden, false);
   assert.equal(context.document.getElementById('task-dashboard-summary').hidden, true);
@@ -182,7 +192,7 @@ function testDateGroupingAndRendering() {
 async function main() {
   await testService();
   testDateGroupingAndRendering();
-  console.log('todo smoke passed: ownership CRUD, task-link readiness, date grouping, task-style monthly/yearly calendars, and view isolation');
+  console.log('todo smoke passed: ownership CRUD, task-link readiness, date grouping, split list/calendar views, and task-style calendars');
 }
 
 main().catch(error => {
