@@ -421,6 +421,10 @@ async function main() {
 
   global.renderMobileCards(tasks.slice(0, 2));
   assert(document.querySelectorAll('.mobile-task-card').length === 2, '모바일 목록 카드가 렌더링되지 않았습니다.');
+  const progressTaskCard = document.querySelector('.mobile-task-card[data-id="task-1"]');
+  assert(progressTaskCard?.textContent.includes('기한 초과'), '모바일 목록의 계산된 기한 초과 운영 상태가 표시되지 않았습니다.');
+  assert(progressTaskCard?.querySelector('.mobile-status-btn[data-status="PROGRESS"]')?.getAttribute('aria-pressed') === 'true', '기한 초과된 진행 중 업무가 모바일 상태 선택기에서 대기로 표시됩니다.');
+  assert(progressTaskCard?.querySelector('.mobile-status-btn[data-status="PENDING"]')?.getAttribute('aria-pressed') === 'false', '기한 초과된 진행 중 업무의 대기 상태가 모바일에서 잘못 활성화됩니다.');
   assert(document.querySelectorAll('#task-card-container [data-task-category-group]').length === 2, '모바일 목록이 업무 분류 최상위 그룹으로 나뉘지 않았습니다.');
   assert([...document.querySelectorAll('#task-card-container [data-task-category-group]')].every(header => header.className.includes('dark:bg-') && header.className.includes('dark:text-')), '모바일 목록 업무 분류 헤더에 다크 테마 클래스가 적용되지 않았습니다.');
   assert(global.getIndustryBarClass(tasks[0], false).includes('dark:bg-'), '업무 분류별 본 업무 막대에 다크 테마 클래스가 적용되지 않았습니다.');

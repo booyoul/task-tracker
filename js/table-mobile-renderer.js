@@ -1,4 +1,4 @@
-console.info('Smart Task Flow table-mobile-renderer.js v20260731-v14 loaded');
+console.info('Smart Task Flow table-mobile-renderer.js v20260731-v15 loaded');
 // Table and mobile card renderers. Extracted from app.js in Phase 5.
 const listProgressNoteSummaryCache = {
   trackerId: '',
@@ -253,7 +253,7 @@ function mobileStatusSegment(id, status) {
   const s = normalizeStatus(status);
   const btn = (value, label, activeClass) => {
     const active = s === value;
-    return `<button type="button" class="mobile-status-btn flex-1 rounded-xl px-2 py-2 text-[11px] font-black transition ${active ? activeClass : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}" data-id="${escapeHTML(id)}" data-status="${value}">${label}</button>`;
+    return `<button type="button" class="mobile-status-btn flex-1 rounded-xl px-2 py-2 text-[11px] font-black transition ${active ? activeClass : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}" data-id="${escapeHTML(id)}" data-status="${value}" aria-pressed="${active}">${label}</button>`;
   };
   return `<div class="mt-3 grid grid-cols-4 gap-1 rounded-2xl bg-slate-100/70 p-1 dark:bg-slate-900/70">
     ${btn('PENDING', '대기', 'bg-white text-amber-700 shadow-sm')}
@@ -387,7 +387,7 @@ function renderMobileCards(filtered) {
         ${riskInfo.level !== 'NONE' ? `<div class="mt-2 rounded-2xl border border-rose-100 bg-white/80 px-3 py-2 text-xs font-bold text-rose-700">🚨 Risk: ${riskInfo.label} D+${riskInfo.delay}</div>` : ''}
         ${notes ? `<div class="mt-2 line-clamp-2 rounded-2xl bg-slate-50 px-3 py-2 text-xs text-slate-500">${escapeHTML(notes)}</div>` : ''}
         ${subTasks.length ? `<div class="mt-2 text-[11px] font-bold text-slate-400">하위 업무 ${getSubTaskProgressLabel(subTasks)}</div>` : ''}
-        ${mobileStatusSegment(t.id, effectiveStatus)}
+        ${mobileStatusSegment(t.id, t.status)}
         ${buildMobileSubTaskHTML(t, subTasks)}
       </div>
     </div>`;
