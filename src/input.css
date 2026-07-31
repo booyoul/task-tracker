@@ -130,7 +130,7 @@
             border-color: #334155 !important;
         }
         .dark table tbody tr:hover {
-            background-color: #1e293b/60 !important;
+            background-color: rgb(30 41 59 / 0.6) !important;
         }
 
         /* Buttons and interactive elements */
@@ -161,12 +161,10 @@
             background-color: #0f172a !important;
             border-color: #334155 !important;
         }
-        .dark .bg-rose-50,
-        .dark .bg-blue-50,
-        .dark .bg-emerald-50,
-        .dark .bg-amber-50 {
-            background-color: #1e293b/40 !important;
-        }
+        .dark .bg-rose-50 { background-color: rgb(76 5 25 / 0.4) !important; }
+        .dark .bg-blue-50 { background-color: rgb(23 37 84 / 0.4) !important; }
+        .dark .bg-emerald-50 { background-color: rgb(2 44 34 / 0.4) !important; }
+        .dark .bg-amber-50 { background-color: rgb(69 26 3 / 0.4) !important; }
         
         /* Calendar day view cells */
         .dark .bg-slate-50.transition-colors {
@@ -176,12 +174,12 @@
             border-color: #334155 !important;
         }
         .dark .calendar-day-cell:hover {
-            background-color: #334155/50 !important;
+            background-color: rgb(51 65 85 / 0.5) !important;
         }
 
         /* Kanban board tone adjustment */
         .dark .bg-white\/60 {
-            background-color: #0f172a/60 !important;
+            background-color: rgb(15 23 42 / 0.6) !important;
         }
         .dark .border-dashed {
             border-color: #475569 !important;

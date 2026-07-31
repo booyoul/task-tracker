@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-mobile-renderer.js v20260724-v2 loaded');
+console.info('Smart Task Flow calendar-mobile-renderer.js v20260731-v3 loaded');
 
 // ============================================================
 //  모바일 전용 캘린더 렌더러
@@ -128,8 +128,8 @@ function _renderMobileDayView(container, filtered, year, month, todayStr) {
     groupTasksByCategory(dateEntries.map(function(entry) { return entry.task; })).forEach(function(category) {
       const categoryHeader = document.createElement('div');
       categoryHeader.dataset.mobileCalendarCategory = category.key;
-      categoryHeader.className = 'flex items-center justify-between rounded-xl border border-indigo-100 bg-indigo-50/80 px-3 py-1.5 text-[11px] font-black text-indigo-800';
-      categoryHeader.innerHTML = `<span>${escapeHTML(category.label)}</span><span class="font-semibold text-indigo-500">본 업무 ${category.tasks.length}개</span>`;
+      categoryHeader.className = 'flex items-center justify-between rounded-xl border border-indigo-100 bg-indigo-50/80 px-3 py-1.5 text-[11px] font-black text-indigo-800 dark:border-indigo-800 dark:bg-indigo-950/35 dark:text-indigo-200';
+      categoryHeader.innerHTML = `<span>${escapeHTML(category.label)}</span><span class="font-semibold text-indigo-500 dark:text-indigo-400">본 업무 ${category.tasks.length}개</span>`;
       taskList.appendChild(categoryHeader);
       category.tasks.forEach(function(task) {
         const entry = dayMap.get(dateStr).get(task.id);
@@ -167,22 +167,22 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
 
   const getTaskTone = function(task) {
     const eff = typeof getEffectiveStatus === 'function' ? getEffectiveStatus(task, todayStr) : (task.status || 'PENDING');
-    if (eff === 'OVERDUE') return 'bg-rose-100 text-rose-800 border border-rose-200 font-semibold';
-    if (eff === 'COMPLETED') return 'bg-emerald-100 text-emerald-800 border border-emerald-200';
-    if (eff === 'CANCELLED') return 'bg-slate-100 text-slate-500 border border-slate-200 opacity-70';
+    if (eff === 'OVERDUE') return 'bg-rose-100 text-rose-800 border border-rose-200 font-semibold dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800';
+    if (eff === 'COMPLETED') return 'bg-emerald-100 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800';
+    if (eff === 'CANCELLED') return 'bg-slate-100 text-slate-500 border border-slate-200 opacity-70 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700';
     if (useIndustryColor && typeof getIndustryBarClass === 'function') return getIndustryBarClass(task, false);
-    if (eff === 'PROGRESS') return 'bg-blue-100 text-blue-800 border border-blue-200';
-    return 'bg-slate-200 text-slate-700 border border-slate-300';
+    if (eff === 'PROGRESS') return 'bg-blue-100 text-blue-800 border border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800';
+    return 'bg-slate-200 text-slate-700 border border-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:border-slate-600';
   };
 
   const getSubTaskTone = function(st, parent) {
     const status = typeof normalizeStatus === 'function' ? normalizeStatus(st.status) : (st.status || 'PENDING');
-    if (typeof isSubTaskOverdue === 'function' && isSubTaskOverdue(st, todayStr)) return 'bg-rose-50/90 text-rose-800 border border-dashed border-rose-300 font-semibold';
-    if (status === 'COMPLETED') return 'bg-emerald-50/80 text-emerald-800 border border-dashed border-emerald-300';
-    if (status === 'CANCELLED') return 'bg-slate-100/80 text-slate-500 border border-dashed border-slate-300 opacity-70';
+    if (typeof isSubTaskOverdue === 'function' && isSubTaskOverdue(st, todayStr)) return 'bg-rose-50/90 text-rose-800 border border-dashed border-rose-300 font-semibold dark:bg-rose-950/35 dark:text-rose-300 dark:border-rose-800';
+    if (status === 'COMPLETED') return 'bg-emerald-50/80 text-emerald-800 border border-dashed border-emerald-300 dark:bg-emerald-950/35 dark:text-emerald-300 dark:border-emerald-800';
+    if (status === 'CANCELLED') return 'bg-slate-100/80 text-slate-500 border border-dashed border-slate-300 opacity-70 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700';
     if (useIndustryColor && typeof getIndustryBarClass === 'function') return getIndustryBarClass(parent || st, true);
-    if (status === 'PROGRESS') return 'bg-blue-50/80 text-blue-800 border border-dashed border-blue-300';
-    return 'bg-slate-50 text-slate-700 border border-dashed border-slate-300';
+    if (status === 'PROGRESS') return 'bg-blue-50/80 text-blue-800 border border-dashed border-blue-300 dark:bg-blue-950/35 dark:text-blue-300 dark:border-blue-800';
+    return 'bg-slate-50 text-slate-700 border border-dashed border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
   };
 
   const getTaskIcon = function(task) {

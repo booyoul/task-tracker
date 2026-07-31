@@ -245,6 +245,10 @@ async function main() {
   const eventBindingsSource = fs.readFileSync(path.join(root, 'js/event-bindings.js'), 'utf8');
   const modalControllerSource = fs.readFileSync(path.join(root, 'js/modal-controller.js'), 'utf8');
   const tableRendererSource = fs.readFileSync(path.join(root, 'js/table-mobile-renderer.js'), 'utf8');
+  const calendarMobileSource = fs.readFileSync(path.join(root, 'js/calendar-mobile-renderer.js'), 'utf8');
+  const kanbanRendererSource = fs.readFileSync(path.join(root, 'js/kanban-renderer.js'), 'utf8');
+  const dateRiskSource = fs.readFileSync(path.join(root, 'js/date-risk-utils.js'), 'utf8');
+  const inputCssSource = fs.readFileSync(path.join(root, 'src/input.css'), 'utf8');
   const batchDeleteButton = indexDom.window.document.getElementById('btn-batch-delete');
   const undoButton = indexDom.window.document.getElementById('btn-undo');
   assert(batchDeleteButton?.hidden && undoButton?.hidden, '일괄 삭제 또는 되돌리기 버튼의 초기 숨김 속성이 누락되었습니다.');
@@ -278,6 +282,14 @@ async function main() {
   assert(/buildTaskDetailCellHTML[^]*buildListNoteButtonHTML\(t.id\)/.test(appSource), '데스크톱 본 업무 제목 옆 메모 핀이 없습니다.');
   assert(tableRendererSource.includes('buildListNoteButtonHTML(t.id, st.id)'), '목록 서브 태스크 제목 옆 메모 핀이 없습니다.');
   assert(!tableRendererSource.includes('class="btn-delete'), '목록 렌더러에 개별 삭제 버튼이 남아 있습니다.');
+  assert(!/#[0-9a-fA-F]{3,8}\//.test(inputCssSource), '다크 테마 CSS에 브라우저가 무시하는 hex/alpha 색상 문법이 남아 있습니다.');
+  assert(indexDom.window.document.getElementById('tracker-access-section')?.className.includes('dark:bg-'), '트래커 권한 패널의 다크 테마 배경이 누락되었습니다.');
+  assert(/kpi-compact-chip[^`]*dark:bg-/.test(appSource), '상단 KPI 배지의 다크 테마 배경이 누락되었습니다.');
+  assert(/const mainClass[^]*dark:bg-/.test(appSource) && /const subClass[^]*dark:bg-/.test(appSource), '데스크톱 캘린더 막대의 다크 테마 상태색이 누락되었습니다.');
+  assert(/function getIndustryBarClass[^]*dark:bg-/.test(dateRiskSource), '업무 분류별 캘린더 막대의 다크 테마 색상이 누락되었습니다.');
+  assert(/function kanbanTone[^]*dark:bg-/.test(kanbanRendererSource), '칸반 열의 다크 테마 배경이 누락되었습니다.');
+  assert(tableRendererSource.includes('bg-indigo-50/80') && tableRendererSource.includes('dark:bg-indigo-950/35'), '목록 업무 분류 헤더의 다크 테마 배경이 누락되었습니다.');
+  assert(calendarMobileSource.includes('bg-indigo-50/80') && calendarMobileSource.includes('dark:bg-indigo-950/35'), '모바일 캘린더 업무 분류 헤더의 다크 테마 배경이 누락되었습니다.');
 
   loadScript('js/date-risk-utils.js');
   loadScript('js/calendar-utils.js');
@@ -402,6 +414,9 @@ async function main() {
   global.renderMobileCards(tasks.slice(0, 2));
   assert(document.querySelectorAll('.mobile-task-card').length === 2, '모바일 목록 카드가 렌더링되지 않았습니다.');
   assert(document.querySelectorAll('#task-card-container [data-task-category-group]').length === 2, '모바일 목록이 업무 분류 최상위 그룹으로 나뉘지 않았습니다.');
+  assert([...document.querySelectorAll('#task-card-container [data-task-category-group]')].every(header => header.className.includes('dark:bg-') && header.className.includes('dark:text-')), '모바일 목록 업무 분류 헤더에 다크 테마 클래스가 적용되지 않았습니다.');
+  assert(global.getIndustryBarClass(tasks[0], false).includes('dark:bg-'), '업무 분류별 본 업무 막대에 다크 테마 클래스가 적용되지 않았습니다.');
+  assert(global.getIndustryBarClass(tasks[0], true).includes('dark:bg-'), '업무 분류별 하위 업무 막대에 다크 테마 클래스가 적용되지 않았습니다.');
   assert(!document.querySelector('.mobile-command-deck'), '모바일 목록에 중복 Focus 및 Risk 제어 영역이 남아 있습니다.');
   assert(document.querySelector('#task-card-container .btn-list-note[data-task-id="task-1"]:not([data-subtask-id])'), '모바일 본 업무 제목 옆 메모 핀이 없습니다.');
   assert(document.querySelector('#task-card-container .btn-list-note[data-task-id="task-1"][data-subtask-id="sub-1"]'), '모바일 서브 태스크 제목 옆 메모 핀이 없습니다.');
@@ -440,6 +455,7 @@ async function main() {
   assert(document.getElementById('cal-mobile-month-year').textContent.includes('2026년 7월'), '모바일 월간 헤더가 올바르지 않습니다.');
   assert(document.querySelectorAll('#cal-mobile-content .mobile-cal-card').length >= 1, '모바일 월간 업무 카드가 없습니다.');
   assert(document.querySelector('#cal-mobile-content [data-mobile-calendar-category]'), '모바일 일별 캘린더에 업무 분류 헤더가 없습니다.');
+  assert(document.querySelector('#cal-mobile-content [data-mobile-calendar-category]').className.includes('dark:bg-'), '모바일 일별 캘린더 업무 분류 헤더의 다크 테마 클래스가 누락되었습니다.');
   assert(document.getElementById('cal-mobile-content').textContent.includes('월간 정기 완료 체크'), '반복 하위 업무가 모바일 월간에 반영되지 않았습니다.');
 
   global.currentCalMode = 'MONTH';

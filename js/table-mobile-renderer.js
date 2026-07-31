@@ -1,4 +1,4 @@
-console.info('Smart Task Flow table-mobile-renderer.js v20260727-v12 loaded');
+console.info('Smart Task Flow table-mobile-renderer.js v20260731-v13 loaded');
 // Table and mobile card renderers. Extracted from app.js in Phase 5.
 const listProgressNoteSummaryCache = {
   trackerId: '',
@@ -142,10 +142,10 @@ function renderTable(filtered) {
   groupTasksByCategory(filtered).forEach(category => {
     const categoryRow = document.createElement('tr');
     categoryRow.dataset.taskCategoryGroup = category.key;
-    categoryRow.className = 'bg-indigo-50/70';
-    categoryRow.innerHTML = `<td colspan="7" class="border-y border-indigo-100 px-4 py-2 text-xs font-black text-indigo-800">
+    categoryRow.className = 'bg-indigo-50/70 dark:bg-indigo-950/35';
+    categoryRow.innerHTML = `<td colspan="7" class="border-y border-indigo-100 px-4 py-2 text-xs font-black text-indigo-800 dark:border-indigo-800 dark:text-indigo-200">
       <span class="inline-flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-indigo-500"></span>${escapeHTML(category.label)}</span>
-      <span class="ml-2 font-semibold text-indigo-500">본 업무 ${category.tasks.length}개</span>
+      <span class="ml-2 font-semibold text-indigo-500 dark:text-indigo-400">본 업무 ${category.tasks.length}개</span>
     </td>`;
     tbody.appendChild(categoryRow);
     category.tasks.forEach(t => {
@@ -352,8 +352,8 @@ function renderMobileCards(filtered) {
   groupTasksByCategory(filtered).forEach(category => {
     const categoryHeader = document.createElement('div');
     categoryHeader.dataset.taskCategoryGroup = category.key;
-    categoryHeader.className = 'flex items-center justify-between rounded-2xl border border-indigo-100 bg-indigo-50/80 px-3 py-2 text-xs font-black text-indigo-800';
-    categoryHeader.innerHTML = `<span class="inline-flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-indigo-500"></span>${escapeHTML(category.label)}</span><span class="text-[11px] font-semibold text-indigo-500">본 업무 ${category.tasks.length}개</span>`;
+    categoryHeader.className = 'flex items-center justify-between rounded-2xl border border-indigo-100 bg-indigo-50/80 px-3 py-2 text-xs font-black text-indigo-800 dark:border-indigo-800 dark:bg-indigo-950/35 dark:text-indigo-200';
+    categoryHeader.innerHTML = `<span class="inline-flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-indigo-500"></span>${escapeHTML(category.label)}</span><span class="text-[11px] font-semibold text-indigo-500 dark:text-indigo-400">본 업무 ${category.tasks.length}개</span>`;
     container.appendChild(categoryHeader);
     category.tasks.forEach(t => {
     const subTasks = Array.isArray(t.subTasks) ? t.subTasks : [];

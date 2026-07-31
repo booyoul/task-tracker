@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow app.js v20260727-v10 loaded');
+console.info('Smart Task Flow app.js v20260731-v2 loaded');
 // --- UX optimization globals: must be declared before helper functions ---
 var focusState = window.focusState || { riskOnly: false, mineOnly: false, highOnly: false };
 window.focusState = focusState;
@@ -689,21 +689,21 @@ function renderCalendar(filteredTasks) {
   const dimIfNotCritical = item => highlightRiskOnly && !isCalendarCriticalItem(item) ? ' opacity-25 grayscale' : '';
   const mainClass = item => {
     const effective = getEffectiveStatus(item, todayStr);
-    if (effective === 'OVERDUE') return 'bg-rose-100 text-rose-800 border border-rose-200 font-semibold';
-    if (effective === 'COMPLETED') return 'bg-emerald-100 text-emerald-800 border border-emerald-200';
-    if (effective === 'CANCELLED') return 'bg-slate-100 text-slate-500 border border-slate-200 opacity-70';
+    if (effective === 'OVERDUE') return 'bg-rose-100 text-rose-800 border border-rose-200 font-semibold dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800';
+    if (effective === 'COMPLETED') return 'bg-emerald-100 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800';
+    if (effective === 'CANCELLED') return 'bg-slate-100 text-slate-500 border border-slate-200 opacity-70 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700';
     if (useIndustryColor) return getIndustryBarClass(item, false);
-    if (effective === 'PROGRESS') return 'bg-blue-100 text-blue-800 border border-blue-200';
-    return 'bg-slate-200 text-slate-700';
+    if (effective === 'PROGRESS') return 'bg-blue-100 text-blue-800 border border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800';
+    return 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200';
   };
   const subClass = item => {
     const status = normalizeStatus(item.status);
-    if (status === 'COMPLETED') return 'bg-emerald-50/80 text-emerald-800 border border-dashed border-emerald-300';
-    if (status === 'CANCELLED') return 'bg-slate-100/80 text-slate-500 border border-dashed border-slate-300 opacity-70';
-    if (isSubTaskOverdue(item, todayStr)) return 'bg-rose-50/90 text-rose-800 border border-dashed border-rose-300 font-semibold';
+    if (status === 'COMPLETED') return 'bg-emerald-50/80 text-emerald-800 border border-dashed border-emerald-300 dark:bg-emerald-950/35 dark:text-emerald-300 dark:border-emerald-800';
+    if (status === 'CANCELLED') return 'bg-slate-100/80 text-slate-500 border border-dashed border-slate-300 opacity-70 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700';
+    if (isSubTaskOverdue(item, todayStr)) return 'bg-rose-50/90 text-rose-800 border border-dashed border-rose-300 font-semibold dark:bg-rose-950/35 dark:text-rose-300 dark:border-rose-800';
     if (useIndustryColor) return getIndustryBarClass(item, true);
-    if (status === 'PROGRESS') return 'bg-blue-50/80 text-blue-800 border border-dashed border-blue-300';
-    return 'bg-slate-50 text-slate-700 border border-dashed border-slate-300';
+    if (status === 'PROGRESS') return 'bg-blue-50/80 text-blue-800 border border-dashed border-blue-300 dark:bg-blue-950/35 dark:text-blue-300 dark:border-blue-800';
+    return 'bg-slate-50 text-slate-700 border border-dashed border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
   };
 
   if (currentCalMode === 'DAY') {
@@ -1044,17 +1044,17 @@ function applyCompactDashboardStyles() {
   summary.className = 'flex w-full flex-wrap items-center gap-2 lg:w-max lg:flex-nowrap';
   
   const currentStatus = document.getElementById('filter-status')?.value || 'ALL';
-  const activeClass = (status) => currentStatus === status ? 'ring-2 ring-indigo-600 ring-offset-1 scale-[1.02]' : '';
+  const activeClass = (status) => currentStatus === status ? 'ring-2 ring-indigo-600 ring-offset-1 ring-offset-white scale-[1.02] dark:ring-indigo-400 dark:ring-offset-slate-900' : '';
 
   summary.innerHTML = `
     <span class="text-[11px] font-black uppercase tracking-wide text-slate-400 mr-1">현황</span>
-    <span data-status="ALL" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-700 border border-slate-200 cursor-pointer hover:bg-slate-100 transition duration-150 ${activeClass('ALL')}">전체 <b class="text-slate-900">${k.total}</b></span>
-    <span data-status="PENDING" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700 border border-amber-200 cursor-pointer hover:bg-amber-100 transition duration-150 ${activeClass('PENDING')}">대기 <b>${k.pending}</b></span>
-    <span data-status="PROGRESS" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700 border border-blue-200 cursor-pointer hover:bg-blue-100 transition duration-150 ${activeClass('PROGRESS')}">진행 <b>${k.progress}</b></span>
-    <span data-status="COMPLETED" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700 border border-emerald-200 cursor-pointer hover:bg-emerald-100 transition duration-150 ${activeClass('COMPLETED')}">완료 <b>${k.completed}</b></span>
-    <span data-status="CANCELLED" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-500 border border-slate-200 cursor-pointer hover:bg-slate-200 transition duration-150 ${activeClass('CANCELLED')}">취소 <b>${k.cancelled}</b></span>
-    <span data-status="OVERDUE" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-rose-700 border border-rose-200 cursor-pointer hover:bg-rose-100 transition duration-150 ${activeClass('OVERDUE')}">Risk <b>${k.overdue}</b></span>
-    <span data-priority="HIGH" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700 border border-amber-200 cursor-pointer hover:bg-amber-100 transition duration-150 ${document.getElementById('filter-priority')?.value === 'HIGH' ? 'ring-2 ring-indigo-600 ring-offset-1 scale-[1.02]' : ''}">High <b>${k.high}</b></span>`;
+    <span data-status="ALL" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-700 border border-slate-200 cursor-pointer hover:bg-slate-100 transition duration-150 dark:bg-slate-900 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-800 ${activeClass('ALL')}">전체 <b class="text-slate-900 dark:text-white">${k.total}</b></span>
+    <span data-status="PENDING" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700 border border-amber-200 cursor-pointer hover:bg-amber-100 transition duration-150 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 dark:hover:bg-amber-900/50 ${activeClass('PENDING')}">대기 <b>${k.pending}</b></span>
+    <span data-status="PROGRESS" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700 border border-blue-200 cursor-pointer hover:bg-blue-100 transition duration-150 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/50 ${activeClass('PROGRESS')}">진행 <b>${k.progress}</b></span>
+    <span data-status="COMPLETED" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700 border border-emerald-200 cursor-pointer hover:bg-emerald-100 transition duration-150 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 dark:hover:bg-emerald-900/50 ${activeClass('COMPLETED')}">완료 <b>${k.completed}</b></span>
+    <span data-status="CANCELLED" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-500 border border-slate-200 cursor-pointer hover:bg-slate-200 transition duration-150 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700 dark:hover:bg-slate-800 ${activeClass('CANCELLED')}">취소 <b>${k.cancelled}</b></span>
+    <span data-status="OVERDUE" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-rose-700 border border-rose-200 cursor-pointer hover:bg-rose-100 transition duration-150 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800 dark:hover:bg-rose-900/50 ${activeClass('OVERDUE')}">Risk <b>${k.overdue}</b></span>
+    <span data-priority="HIGH" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700 border border-amber-200 cursor-pointer hover:bg-amber-100 transition duration-150 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 dark:hover:bg-amber-900/50 ${document.getElementById('filter-priority')?.value === 'HIGH' ? 'ring-2 ring-indigo-600 ring-offset-1 ring-offset-white scale-[1.02] dark:ring-indigo-400 dark:ring-offset-slate-900' : ''}">High <b>${k.high}</b></span>`;
 }
 function ensureUXToolbar() {
   const filterBox = document.getElementById('unified-control-center');

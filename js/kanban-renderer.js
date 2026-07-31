@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow kanban-renderer.js v20260716-v12 loaded');
+console.info('Smart Task Flow kanban-renderer.js v20260731-v13 loaded');
 
 function getKanbanColumns(){
   return [
@@ -19,8 +19,8 @@ function getKanbanBucket(t,today){
   if(s==='PROGRESS') return 'PROGRESS';
   return 'PENDING';
 }
-function kanbanTone(c){return{amber:'border-amber-100 bg-amber-50/50',blue:'border-blue-100 bg-blue-50/50',rose:'border-rose-100 bg-rose-50/60',emerald:'border-emerald-100 bg-emerald-50/50',slate:'border-slate-200 bg-slate-100/70'}[c]||'border-slate-100 bg-slate-50';}
-function kanbanBadge(c){return{amber:'bg-amber-100 text-amber-700',blue:'bg-blue-100 text-blue-700',rose:'bg-rose-100 text-rose-700',emerald:'bg-emerald-100 text-emerald-700',slate:'bg-slate-200 text-slate-600'}[c]||'bg-slate-100 text-slate-700';}
+function kanbanTone(c){return{amber:'border-amber-100 bg-amber-50/50 dark:border-amber-900/60 dark:bg-amber-950/20',blue:'border-blue-100 bg-blue-50/50 dark:border-blue-900/60 dark:bg-blue-950/20',rose:'border-rose-100 bg-rose-50/60 dark:border-rose-900/60 dark:bg-rose-950/20',emerald:'border-emerald-100 bg-emerald-50/50 dark:border-emerald-900/60 dark:bg-emerald-950/20',slate:'border-slate-200 bg-slate-100/70 dark:border-slate-700 dark:bg-slate-900/60'}[c]||'border-slate-100 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60';}
+function kanbanBadge(c){return{amber:'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300',blue:'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300',rose:'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300',emerald:'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300',slate:'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}[c]||'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';}
 function buildKanbanCard(t,today){
   const risk=getTaskRiskInfo(t,today);
   const eff=getEffectiveStatus(t,today);
