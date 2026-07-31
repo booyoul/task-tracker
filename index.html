@@ -8,7 +8,7 @@
     <link rel="icon" href="./favicon.ico?v=20260625-monthly-kpi">
     <!-- Immediately apply theme script to prevent FOUC -->
     <script src="./js/theme-service.js?v=20260710-v1"></script>
-    <link rel="stylesheet" href="./dist/output.css?v=20260731-v3">
+    <link rel="stylesheet" href="./dist/output.css?v=20260731-v4">
     <style>
         body {
             font-family: 'Noto Sans KR', sans-serif;
@@ -1003,7 +1003,8 @@
         </div>
 
         <!-- 모바일 전용 상세 필터 Bottom Sheet 다이얼로그 -->
-        <dialog id="mobile-filter-dialog" class="fixed inset-x-0 bottom-0 z-50 m-0 w-full max-h-[85vh] rounded-t-3xl border border-slate-100 bg-white p-6 shadow-2xl transition-all duration-300 transform translate-y-full backdrop:bg-slate-900/40 backdrop:backdrop-blur-sm outline-none">
+        <dialog id="mobile-filter-dialog" data-theme-modal-panel
+            class="fixed inset-x-0 bottom-0 z-50 m-0 w-full max-h-[85vh] rounded-t-3xl border border-slate-100 bg-white p-6 shadow-2xl transition-all duration-300 transform translate-y-full backdrop:bg-slate-900/40 backdrop:backdrop-blur-sm outline-none">
             <div class="flex flex-col gap-5">
                 <!-- 드래그 핸들 느낌 바 -->
                 <div class="mx-auto h-1.5 w-12 rounded-full bg-slate-200"></div>
@@ -1101,7 +1102,7 @@
                 <span class="hidden sm:inline-block sm:h-screen sm:align-middle" aria-hidden="true">&#8203;</span>
                 <div
                     class="relative z-10 inline-block w-full transform overflow-visible rounded-t-2xl bg-white text-left align-bottom shadow-xl transition-all sm:my-8 sm:max-w-2xl sm:rounded-2xl sm:align-middle">
-                    <div class="bg-white px-4 pt-5 pb-0 sm:px-6 sm:pt-6">
+                    <div data-theme-modal-panel class="bg-white px-4 pt-5 pb-0 sm:px-6 sm:pt-6">
                         <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                             <h3 class="text-lg font-bold text-slate-900" id="modal-title">새로운 업무 배정</h3>
                             <button id="btn-close-task-modal"
@@ -1394,7 +1395,7 @@
                 <span class="hidden sm:inline-block sm:h-screen sm:align-middle" aria-hidden="true">&#8203;</span>
                 <div
                     class="relative z-10 inline-block transform overflow-hidden rounded-2xl bg-white text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-3xl sm:align-middle">
-                    <div class="max-h-[90vh] overflow-y-auto bg-white p-6">
+                    <div data-theme-modal-panel class="max-h-[90vh] overflow-y-auto bg-white p-6">
                         <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                             <h3 class="text-lg font-bold text-slate-900" id="modal-tracker-title">새 트래커 스페이스 추가</h3>
                             <button id="btn-close-tracker-modal"
@@ -1457,64 +1458,66 @@
         <div id="modal-todo" class="fixed inset-0 z-[70] hidden overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="todo-modal-title">
             <div class="flex min-h-screen items-end justify-center px-4 pb-10 pt-4 sm:items-center sm:p-6">
                 <div class="fixed inset-0 bg-slate-900/40"></div>
-                <div class="relative z-10 w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">
-                    <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+                <div data-theme-modal-panel data-todo-dark-surface="modal-panel"
+                    class="relative z-10 w-full max-w-lg overflow-hidden rounded-2xl border border-transparent bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                    <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
                         <div>
                             <p class="text-[10px] font-bold uppercase tracking-wider text-violet-500">Personal planner</p>
-                            <h3 id="todo-modal-title" class="mt-0.5 text-lg font-black text-slate-900">새 To-do</h3>
+                            <h3 id="todo-modal-title" class="mt-0.5 text-lg font-black text-slate-900 dark:text-slate-100">새 To-do</h3>
                         </div>
                         <button id="btn-close-todo-modal" type="button"
-                            class="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700" aria-label="닫기">✕</button>
+                            class="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200" aria-label="닫기">✕</button>
                     </div>
                     <form id="form-todo" class="space-y-4 p-5">
                         <input id="input-todo-id" type="hidden">
                         <div>
-                            <label for="input-todo-title" class="mb-1 block text-xs font-bold text-slate-600">할 일 제목 *</label>
+                            <label for="input-todo-title" class="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-300">할 일 제목 *</label>
                             <input id="input-todo-title" type="text" required maxlength="100"
                                 placeholder="해야 할 일을 입력하세요."
-                                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none transition focus:border-violet-400 focus:bg-white focus:ring-2 focus:ring-violet-100">
+                                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none transition focus:border-violet-400 focus:bg-white focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-violet-500 dark:focus:bg-slate-800 dark:focus:ring-violet-950">
                         </div>
                         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                             <div>
-                                <label for="input-todo-start" class="mb-1 block text-xs font-bold text-slate-600">시작일 *</label>
+                                <label for="input-todo-start" class="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-300">시작일 *</label>
                                 <input id="input-todo-start" type="date" required
-                                    class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none transition focus:border-violet-400 focus:bg-white focus:ring-2 focus:ring-violet-100">
+                                    class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none transition focus:border-violet-400 focus:bg-white focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:[color-scheme:dark] dark:focus:border-violet-500 dark:focus:bg-slate-800 dark:focus:ring-violet-950">
                             </div>
                             <div>
-                                <label for="input-todo-due" class="mb-1 block text-xs font-bold text-slate-600">종료일 *</label>
+                                <label for="input-todo-due" class="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-300">종료일 *</label>
                                 <input id="input-todo-due" type="date" required
-                                    class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none transition focus:border-violet-400 focus:bg-white focus:ring-2 focus:ring-violet-100">
+                                    class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none transition focus:border-violet-400 focus:bg-white focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:[color-scheme:dark] dark:focus:border-violet-500 dark:focus:bg-slate-800 dark:focus:ring-violet-950">
                             </div>
                         </div>
-                        <section class="rounded-xl border border-violet-100 bg-violet-50/60 p-3.5">
+                        <section data-todo-dark-surface="task-link"
+                            class="rounded-xl border border-violet-100 bg-violet-50/60 p-3.5 dark:border-violet-900/80 dark:bg-violet-950/25">
                             <div class="flex items-start justify-between gap-3">
                                 <div>
-                                    <label for="input-todo-link-tracker" class="block text-xs font-black text-slate-700">업무 연결 <span class="font-semibold text-slate-400">(선택)</span></label>
-                                    <p class="mt-0.5 text-[11px] leading-relaxed text-slate-500">팀 업무의 맥락만 연결합니다. 일정과 완료 상태는 서로 동기화되지 않습니다.</p>
+                                    <label for="input-todo-link-tracker" class="block text-xs font-black text-slate-700 dark:text-slate-200">업무 연결 <span class="font-semibold text-slate-400 dark:text-slate-500">(선택)</span></label>
+                                    <p class="mt-0.5 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">팀 업무의 맥락만 연결합니다. 일정과 완료 상태는 서로 동기화되지 않습니다.</p>
                                 </div>
                                 <button id="btn-clear-todo-task-link" type="button"
-                                    class="hidden shrink-0 rounded-lg border border-violet-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-violet-700 transition hover:bg-violet-100">연결 해제</button>
+                                    class="hidden shrink-0 rounded-lg border border-violet-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-violet-700 transition hover:bg-violet-100 dark:border-violet-800 dark:bg-slate-900 dark:text-violet-300 dark:hover:bg-violet-950/60">연결 해제</button>
                             </div>
                             <div class="mt-3 space-y-3">
                                 <div>
-                                    <span class="mb-1 block text-[11px] font-bold text-slate-500">트래커</span>
+                                    <span class="mb-1 block text-[11px] font-bold text-slate-500 dark:text-slate-400">트래커</span>
                                     <select id="input-todo-link-tracker"
-                                        class="w-full rounded-xl border border-violet-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100">
+                                        class="w-full rounded-xl border border-violet-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-violet-500 dark:focus:ring-violet-950">
                                         <option value="">연결하지 않음</option>
                                     </select>
                                 </div>
                                 <div id="todo-link-dependent-fields" class="hidden grid-cols-1 gap-3 sm:grid-cols-2">
                                     <div>
-                                        <label for="input-todo-link-task" class="mb-1 block text-[11px] font-bold text-slate-500">본 업무 *</label>
+                                        <label for="input-todo-link-task" class="mb-1 block text-[11px] font-bold text-slate-500 dark:text-slate-400">본 업무 *</label>
                                         <select id="input-todo-link-task"
-                                            class="w-full rounded-xl border border-violet-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100">
+                                            class="w-full rounded-xl border border-violet-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-violet-500 dark:focus:ring-violet-950">
                                             <option value="">업무 선택</option>
                                         </select>
                                     </div>
                                     <div>
-                                        <label for="input-todo-link-subtask" class="mb-1 block text-[11px] font-bold text-slate-500">하위 과제</label>
+                                        <label for="input-todo-link-subtask" class="mb-1 block text-[11px] font-bold text-slate-500 dark:text-slate-400">하위 과제</label>
                                         <select id="input-todo-link-subtask" disabled
-                                            class="w-full rounded-xl border border-violet-200 bg-white px-3 py-2.5 text-sm outline-none transition disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 focus:border-violet-400 focus:ring-2 focus:ring-violet-100">
+                                            class="w-full rounded-xl border border-violet-200 bg-white px-3 py-2.5 text-sm outline-none transition disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500 dark:focus:border-violet-500 dark:focus:ring-violet-950">
                                             <option value="">본 업무만 연결</option>
                                         </select>
                                     </div>
@@ -1523,14 +1526,14 @@
                             </div>
                         </section>
                         <div>
-                            <label for="input-todo-memo" class="mb-1 block text-xs font-bold text-slate-600">메모</label>
+                            <label for="input-todo-memo" class="mb-1 block text-xs font-bold text-slate-600 dark:text-slate-300">메모</label>
                             <textarea id="input-todo-memo" rows="3" maxlength="500"
                                 placeholder="필요한 참고 내용을 입력하세요."
-                                class="w-full resize-y rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none transition focus:border-violet-400 focus:bg-white focus:ring-2 focus:ring-violet-100"></textarea>
+                                class="w-full resize-y rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none transition focus:border-violet-400 focus:bg-white focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-violet-500 dark:focus:bg-slate-800 dark:focus:ring-violet-950"></textarea>
                         </div>
-                        <div class="flex items-center justify-end gap-2 border-t border-slate-100 pt-4">
+                        <div class="flex items-center justify-end gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
                             <button id="btn-cancel-todo" type="button"
-                                class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600 transition hover:bg-slate-50">취소</button>
+                                class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700">취소</button>
                             <button type="submit"
                                 class="rounded-xl bg-violet-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-violet-700">저장하기</button>
                         </div>
@@ -1543,7 +1546,7 @@
         <div id="modal-todo-reminder" class="fixed inset-0 z-[80] hidden overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="todo-reminder-title">
             <div class="flex min-h-screen items-end justify-center px-4 pb-10 pt-4 sm:items-center sm:p-6">
                 <div class="fixed inset-0 bg-slate-900/45"></div>
-                <div class="relative z-10 w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
+                <div data-theme-modal-panel class="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-transparent bg-white shadow-2xl">
                     <div class="bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-5 text-white">
                         <div class="flex items-start justify-between gap-3">
                             <div>
@@ -1574,7 +1577,7 @@
                 <div id="modal-confirm-backdrop" class="fixed inset-0 z-0 bg-slate-500 bg-opacity-40 transition-opacity">
                 </div>
                 <span class="hidden sm:inline-block sm:h-screen sm:align-middle">&#8203;</span>
-                <div
+                <div data-theme-modal-panel
                     class="relative z-10 inline-block transform overflow-hidden rounded-2xl bg-white text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md sm:align-middle">
                     <div class="p-6">
                         <div class="flex items-center gap-3">
@@ -1602,7 +1605,7 @@
             <div class="flex min-h-screen items-end justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
                 <div id="modal-kpi-backdrop" class="fixed inset-0 z-0 bg-slate-500 bg-opacity-40 transition-opacity"></div>
                 <span class="hidden sm:inline-block sm:h-screen sm:align-middle">&#8203;</span>
-                <div class="relative z-10 inline-block transform overflow-hidden rounded-2xl bg-white text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md sm:align-middle dark:bg-slate-900 dark:border dark:border-slate-850">
+                <div data-theme-modal-panel class="relative z-10 inline-block transform overflow-hidden rounded-2xl border border-transparent bg-white text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md sm:align-middle dark:border-slate-700 dark:bg-slate-900">
                     <div class="p-6">
                         <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4 dark:border-slate-800">
                             <h3 class="text-base font-bold text-slate-900 dark:text-white" id="kpi-modal-title">목표 KPI 설정</h3>
@@ -1665,7 +1668,7 @@
     <div id="modal-task-category-settings" class="fixed inset-0 z-[70] hidden overflow-y-auto" role="dialog" aria-modal="true">
         <div id="task-category-settings-backdrop" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm"></div>
         <div class="relative flex min-h-full items-center justify-center p-4">
-            <div class="relative w-full max-w-md rounded-2xl bg-white shadow-2xl dark:bg-slate-900">
+            <div data-theme-modal-panel class="relative w-full max-w-md rounded-2xl border border-transparent bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
                 <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
                     <div>
                         <h3 class="text-sm font-bold text-slate-900 dark:text-white">업무 분류 설정</h3>
@@ -1690,7 +1693,7 @@
     <div id="modal-note-type-settings" class="fixed inset-0 z-[70] hidden overflow-y-auto" role="dialog" aria-modal="true">
         <div id="note-type-settings-backdrop" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm"></div>
         <div class="relative flex min-h-full items-center justify-center p-4">
-            <div class="relative w-full max-w-md rounded-2xl bg-white shadow-2xl dark:bg-slate-900">
+            <div data-theme-modal-panel class="relative w-full max-w-md rounded-2xl border border-transparent bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
                 <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
                     <div>
                         <h3 class="text-sm font-bold text-slate-900 dark:text-white">메모 업무 유형 설정</h3>
@@ -1712,7 +1715,7 @@
     </div>
 
     <!-- 5. 진행 메모 Slide-over 상세 패널 -->
-    <div id="note-detail-panel"
+    <div id="note-detail-panel" data-theme-modal-panel
         class="fixed inset-y-0 right-0 z-[60] w-full max-w-md transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col bg-white shadow-2xl dark:bg-slate-900 dark:border-l dark:border-slate-800"
         role="dialog" aria-modal="true">
         <!-- 패널 헤더 -->
@@ -1858,12 +1861,12 @@
     <script defer src="./js/kanban-renderer.js?v=20260731-v13"></script>
     <script defer src="./js/modal-controller.js?v=20260731-v2"></script>
     <script defer src="./js/todo-service.js?v=20260731-v2"></script>
-    <script defer src="./js/todo-controller.js?v=20260731-v4"></script>
+    <script defer src="./js/todo-controller.js?v=20260731-v5"></script>
     <script defer src="./js/admin-approvals.js?v=20260731-v2"></script>
-    <script defer src="./js/month-picker-controller.js?v=20260724-v1"></script>
+    <script defer src="./js/month-picker-controller.js?v=20260731-v2"></script>
     <script defer src="./js/event-bindings.js?v=20260727-v1"></script>
     <script defer src="./js/bootstrap-service.js?v=20260727-v12"></script>
-    <script defer src="./js/app.js?v=20260731-v2"></script>
+    <script defer src="./js/app.js?v=20260731-v3"></script>
     <script defer src="./js/task-service.js?v=20260724-v3"></script>
     <script defer src="./js/export-service.js?v=20260714-v2"></script>
 </body>

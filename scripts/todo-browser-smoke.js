@@ -395,7 +395,34 @@ async function main() {
     await evaluate(client, `document.getElementById('btn-open-todo').click(); setTodoViewMode('LIST');`);
 
     await evaluate(client, `
+      document.documentElement.classList.add('dark');
       document.getElementById('btn-add-todo').click();
+      window.openAssigneeModal();
+      window.closeAssigneeModal();
+      window.__allDarkModalStyles = {
+        panels: [...document.querySelectorAll('[data-theme-modal-panel]')].map((panel, index) => ({
+          id: panel.id || panel.dataset.todoDarkSurface || 'panel-' + index,
+          background: getComputedStyle(panel).backgroundColor,
+          border: getComputedStyle(panel).borderColor
+        })),
+        alignmentWrappers: ['modal-task', 'modal-tracker', 'modal-confirm'].map(id => ({
+          id,
+          background: getComputedStyle(document.getElementById(id).firstElementChild).backgroundColor
+        }))
+      };
+      window.__todoDarkModalStyles = (() => {
+        const panel = document.querySelector('[data-todo-dark-surface="modal-panel"]');
+        const linkSection = document.querySelector('[data-todo-dark-surface="task-link"]');
+        const trackerSelect = document.getElementById('input-todo-link-tracker');
+        const titleInput = document.getElementById('input-todo-title');
+        return {
+          panelBackground: getComputedStyle(panel).backgroundColor,
+          linkBackground: getComputedStyle(linkSection).backgroundColor,
+          trackerBackground: getComputedStyle(trackerSelect).backgroundColor,
+          titleBackground: getComputedStyle(titleInput).backgroundColor,
+          titleColor: getComputedStyle(titleInput).color
+        };
+      })();
       document.getElementById('input-todo-title').value = '브라우저에서 추가';
       document.getElementById('input-todo-start').value = getTodayStr();
       document.getElementById('input-todo-due').value = getFutureDateStr(3);
@@ -407,8 +434,30 @@ async function main() {
       taskSelect.dispatchEvent(new Event('change', { bubbles: true }));
       document.getElementById('input-todo-link-subtask').value = 'sub-customer';
       document.getElementById('form-todo').requestSubmit();
+      document.documentElement.classList.remove('dark');
     `);
     await waitFor(client, `document.querySelector('[data-todo-id="browser-added"]')`, 'To-do add flow did not render.');
+    const darkModalStyles = await evaluate(client, 'window.__todoDarkModalStyles');
+    [
+      darkModalStyles.panelBackground,
+      darkModalStyles.linkBackground,
+      darkModalStyles.trackerBackground,
+      darkModalStyles.titleBackground
+    ].forEach(color => assert.notEqual(color, 'rgb(255, 255, 255)', '다크 To-do 모달에 순백색 배경이 남으면 안 됩니다.'));
+    assert.notEqual(darkModalStyles.titleColor, 'rgb(15, 23, 42)', '다크 입력 필드는 밝은 전경색을 사용해야 합니다.');
+    const allDarkModalStyles = await evaluate(client, 'window.__allDarkModalStyles');
+    assert.ok(allDarkModalStyles.panels.length >= 11, '정적·동적 모달 패널이 공통 다크 계약에 등록되어야 합니다.');
+    assert.equal(
+      new Set(allDarkModalStyles.panels.map(panel => panel.background)).size,
+      1,
+      `모든 모달 패널은 동일한 다크 배경 역할을 사용해야 합니다: ${JSON.stringify(allDarkModalStyles.panels)}`
+    );
+    allDarkModalStyles.panels.forEach(panel => {
+      assert.notEqual(panel.background, 'rgb(255, 255, 255)', `${panel.id} 모달 패널에 순백색 배경이 남으면 안 됩니다.`);
+    });
+    allDarkModalStyles.alignmentWrappers.forEach(wrapper => {
+      assert.equal(wrapper.background, 'rgba(0, 0, 0, 0)', `${wrapper.id} 정렬 래퍼가 화면 전체를 불투명하게 덮으면 안 됩니다.`);
+    });
     const linkedTodo = await evaluate(client, `(() => ({
       label: document.querySelector('[data-todo-id="browser-added"] .btn-open-todo-task-link')?.textContent || '',
       link: todoItems.find(item => item.id === 'browser-added')?.taskLink || null

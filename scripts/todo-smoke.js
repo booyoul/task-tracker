@@ -6,6 +6,7 @@ const { JSDOM } = require('jsdom');
 const serviceSource = fs.readFileSync('js/todo-service.js', 'utf8');
 const controllerSource = fs.readFileSync('js/todo-controller.js', 'utf8');
 const viewSource = fs.readFileSync('js/table-mobile-renderer.js', 'utf8');
+const monthPickerSource = fs.readFileSync('js/month-picker-controller.js', 'utf8');
 
 function createServiceContext() {
   const writes = [];
@@ -104,6 +105,18 @@ async function testService() {
 
 function testDateGroupingAndRendering() {
   const dom = new JSDOM(fs.readFileSync('index.html', 'utf8'), { url: 'https://example.test/' });
+  const dialogRoots = [...dom.window.document.querySelectorAll('dialog, [role="dialog"]')];
+  assert.equal(dialogRoots.length >= 10, true, '주요 정적 모달 목록을 찾을 수 있어야 합니다.');
+  assert.equal(
+    dialogRoots.every(root => root.matches('[data-theme-modal-panel]') || root.querySelector('[data-theme-modal-panel]')),
+    true,
+    '모든 정적 모달은 공통 테마 패널 계약을 사용해야 합니다.'
+  );
+  assert.match(
+    monthPickerSource,
+    /data-theme-modal-panel/,
+    '지연 생성되는 월 선택 모달도 공통 테마 패널 계약을 사용해야 합니다.'
+  );
   const context = {
     console: { info() {}, warn() {}, error() {} },
     document: dom.window.document,

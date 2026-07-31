@@ -15,7 +15,7 @@ Last updated: 2026-07-31
 - The Firebase/Firestore task tracker, tracker ACL, personal To-do, progress-note review workflow, recurrence support, responsive calendars, and class-based dark theme are implemented.
 - Production Firestore rules, authenticated To-do isolation, tracker-role permissions, formatted-note writes, and the user-document audit have been verified. Disposable verification data and accounts were removed.
 - Desktop and mobile task/list/calendar/summary/To-do routing is covered by focused smoke tests. The full suite includes 58 Firestore Rules allow/deny cases.
-- The latest UI pass aligned dark surfaces across calendars, lists, conditional modal sections, mobile task cards, and mobile 가입 승인 관리.
+- The latest UI pass aligned dark surfaces across calendars, lists, all modal/dialog panels, mobile task cards, and mobile 가입 승인 관리.
 - Personal To-do can optionally link to an accessible tracker task or normal subtask for context and direct navigation.
 
 ## Product Contracts
@@ -59,7 +59,8 @@ Last updated: 2026-07-31
 - Tailwind dark mode is controlled by the app's `.dark` class, not OS preference.
 - The compact KPI/status controls are canonical; the legacy full-size dashboard stays hidden through task/To-do routing.
 - Selection, undo, batch-delete, and bulk-action controls are visible only in task-selectable list and Kanban views.
-- Dark theme coverage includes task calendars and monthly summary, list risk/overdue rows and mobile cards, task/tracker modal surfaces, and mobile approval-management panels/cards/tabs/pagination.
+- Every modal, dialog, and note slide-over uses the shared `data-theme-modal-panel` contract: `slate-900` panel, `slate-800` nested/input surfaces, `slate-700` borders, and a transparent alignment wrapper.
+- Dark theme coverage includes task calendars and monthly summary, list risk/overdue rows and mobile cards, all modal surfaces, and mobile approval-management panels/cards/tabs/pagination.
 - Status colors may retain muted semantic hues in dark mode, but large surfaces must not fall back to light `bg-white` or pale-only backgrounds.
 - Mobile layouts should avoid horizontal scroll; use `390×844` as the fast narrow-screen browser check.
 

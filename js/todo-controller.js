@@ -1,4 +1,4 @@
-console.info('Smart Task Flow todo-controller.js v20260731-v4 loaded');
+console.info('Smart Task Flow todo-controller.js v20260731-v5 loaded');
 
 let todoDateFilter = 'TODAY';
 let todoCompletionFilter = 'ACTIVE';
@@ -524,8 +524,8 @@ function setTodoTaskLinkStatus(message = '', unavailable = false) {
   status.className = message
     ? `rounded-lg border px-2.5 py-2 text-[11px] font-semibold ${
       unavailable
-        ? 'border-amber-200 bg-amber-50 text-amber-700'
-        : 'border-violet-200 bg-white text-violet-700'
+        ? 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/35 dark:text-amber-300'
+        : 'border-violet-200 bg-white text-violet-700 dark:border-violet-900 dark:bg-slate-900/70 dark:text-violet-300'
     }`
     : 'hidden rounded-lg border px-2.5 py-2 text-[11px] font-semibold';
 }

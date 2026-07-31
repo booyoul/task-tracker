@@ -345,6 +345,9 @@
   .relative {
     position: relative;
   }
+  .static {
+    position: static;
+  }
   .sticky {
     position: sticky;
   }
@@ -1274,6 +1277,9 @@
     @supports (color: color-mix(in lab, red, red)) {
       border-color: color-mix(in oklab, var(--color-slate-800) 80%, transparent);
     }
+  }
+  .border-transparent {
+    border-color: transparent;
   }
   .border-violet-100 {
     border-color: var(--color-violet-100);
@@ -3272,12 +3278,6 @@
       }
     }
   }
-  .dark\:border {
-    &:where(.dark, .dark *) {
-      border-style: var(--tw-border-style);
-      border-width: 1px;
-    }
-  }
   .dark\:border-l {
     &:where(.dark, .dark *) {
       border-left-style: var(--tw-border-style);
@@ -3292,6 +3292,11 @@
   .dark\:border-amber-800 {
     &:where(.dark, .dark *) {
       border-color: var(--color-amber-800);
+    }
+  }
+  .dark\:border-amber-900 {
+    &:where(.dark, .dark *) {
+      border-color: var(--color-amber-900);
     }
   }
   .dark\:border-amber-900\/50 {
@@ -3482,11 +3487,24 @@
       border-color: var(--color-violet-800);
     }
   }
+  .dark\:border-violet-900 {
+    &:where(.dark, .dark *) {
+      border-color: var(--color-violet-900);
+    }
+  }
   .dark\:border-violet-900\/50 {
     &:where(.dark, .dark *) {
       border-color: color-mix(in srgb, oklch(38% 0.189 293.745) 50%, transparent);
       @supports (color: color-mix(in lab, red, red)) {
         border-color: color-mix(in oklab, var(--color-violet-900) 50%, transparent);
+      }
+    }
+  }
+  .dark\:border-violet-900\/80 {
+    &:where(.dark, .dark *) {
+      border-color: color-mix(in srgb, oklch(38% 0.189 293.745) 80%, transparent);
+      @supports (color: color-mix(in lab, red, red)) {
+        border-color: color-mix(in oklab, var(--color-violet-900) 80%, transparent);
       }
     }
   }
@@ -3529,6 +3547,14 @@
       background-color: color-mix(in srgb, oklch(27.9% 0.077 45.635) 30%, transparent);
       @supports (color: color-mix(in lab, red, red)) {
         background-color: color-mix(in oklab, var(--color-amber-950) 30%, transparent);
+      }
+    }
+  }
+  .dark\:bg-amber-950\/35 {
+    &:where(.dark, .dark *) {
+      background-color: color-mix(in srgb, oklch(27.9% 0.077 45.635) 35%, transparent);
+      @supports (color: color-mix(in lab, red, red)) {
+        background-color: color-mix(in oklab, var(--color-amber-950) 35%, transparent);
       }
     }
   }
@@ -3917,6 +3943,14 @@
       }
     }
   }
+  .dark\:bg-violet-950\/25 {
+    &:where(.dark, .dark *) {
+      background-color: color-mix(in srgb, oklch(28.3% 0.141 291.089) 25%, transparent);
+      @supports (color: color-mix(in lab, red, red)) {
+        background-color: color-mix(in oklab, var(--color-violet-950) 25%, transparent);
+      }
+    }
+  }
   .dark\:bg-violet-950\/40 {
     &:where(.dark, .dark *) {
       background-color: color-mix(in srgb, oklch(28.3% 0.141 291.089) 40%, transparent);
@@ -4101,6 +4135,11 @@
       color: var(--color-white);
     }
   }
+  .dark\:\[color-scheme\:dark\] {
+    &:where(.dark, .dark *) {
+      color-scheme: dark;
+    }
+  }
   .dark\:ring-amber-900\/60 {
     &:where(.dark, .dark *) {
       --tw-ring-color: color-mix(in srgb, oklch(41.4% 0.112 45.904) 60%, transparent);
@@ -4125,6 +4164,13 @@
   .dark\:ring-offset-slate-900 {
     &:where(.dark, .dark *) {
       --tw-ring-offset-color: var(--color-slate-900);
+    }
+  }
+  .dark\:placeholder\:text-slate-500 {
+    &:where(.dark, .dark *) {
+      &::placeholder {
+        color: var(--color-slate-500);
+      }
     }
   }
   .dark\:hover\:border-indigo-700 {
@@ -4343,6 +4389,44 @@
       }
     }
   }
+  .dark\:focus\:border-violet-500 {
+    &:where(.dark, .dark *) {
+      &:focus {
+        border-color: var(--color-violet-500);
+      }
+    }
+  }
+  .dark\:focus\:bg-slate-800 {
+    &:where(.dark, .dark *) {
+      &:focus {
+        background-color: var(--color-slate-800);
+      }
+    }
+  }
+  .dark\:focus\:ring-violet-950 {
+    &:where(.dark, .dark *) {
+      &:focus {
+        --tw-ring-color: var(--color-violet-950);
+      }
+    }
+  }
+  .dark\:disabled\:bg-slate-800\/60 {
+    &:where(.dark, .dark *) {
+      &:disabled {
+        background-color: color-mix(in srgb, oklch(27.9% 0.041 260.031) 60%, transparent);
+        @supports (color: color-mix(in lab, red, red)) {
+          background-color: color-mix(in oklab, var(--color-slate-800) 60%, transparent);
+        }
+      }
+    }
+  }
+  .dark\:disabled\:text-slate-500 {
+    &:where(.dark, .dark *) {
+      &:disabled {
+        color: var(--color-slate-500);
+      }
+    }
+  }
 }
 body {
   font-family: 'Noto Sans KR', sans-serif;
@@ -4469,7 +4553,7 @@ body {
 .dark ::-webkit-scrollbar-thumb:hover {
   background: #475569;
 }
-.dark header, .dark #calendar-grid, .dark #calendar-weekday-header, .dark .mobile-task-card, .dark #tracker-dropdown-menu, .dark .bg-white, .dark #modal-task > div, .dark #modal-tracker > div, .dark #modal-confirm > div {
+.dark header, .dark #calendar-grid, .dark #calendar-weekday-header, .dark .mobile-task-card, .dark #tracker-dropdown-menu, .dark .bg-white {
   background-color: #1e293b !important;
   border-color: #334155 !important;
   color: #f1f5f9 !important;
@@ -4545,6 +4629,27 @@ body {
 }
 .dark .border-dashed {
   border-color: #475569 !important;
+}
+.dark [data-theme-modal-panel] {
+  color-scheme: dark;
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
+  color: #f1f5f9 !important;
+}
+.dark [data-theme-modal-panel] .bg-white, .dark [data-theme-modal-panel] .bg-slate-50, .dark [data-theme-modal-panel] .bg-slate-100 {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+}
+.dark [data-theme-modal-panel] .border-slate-100, .dark [data-theme-modal-panel] .border-slate-200, .dark [data-theme-modal-panel] .border-slate-300 {
+  border-color: #334155 !important;
+}
+.dark [data-theme-modal-panel] input[type="text"], .dark [data-theme-modal-panel] input[type="date"], .dark [data-theme-modal-panel] input[type="search"], .dark [data-theme-modal-panel] input[type="number"], .dark [data-theme-modal-panel] input[type="email"], .dark [data-theme-modal-panel] input[type="password"], .dark [data-theme-modal-panel] input[type="month"], .dark [data-theme-modal-panel] select, .dark [data-theme-modal-panel] textarea, .dark [data-theme-modal-panel] [contenteditable="true"] {
+  background-color: #1e293b !important;
+  border-color: #475569 !important;
+  color: #f1f5f9 !important;
+}
+.dark [data-theme-modal-panel] input::placeholder, .dark [data-theme-modal-panel] textarea::placeholder {
+  color: #64748b !important;
 }
 .note-rich-content ul {
   list-style: disc;

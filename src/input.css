@@ -79,10 +79,7 @@
         .dark #calendar-weekday-header,
         .dark .mobile-task-card,
         .dark #tracker-dropdown-menu,
-        .dark .bg-white,
-        .dark #modal-task > div,
-        .dark #modal-tracker > div,
-        .dark #modal-confirm > div {
+        .dark .bg-white {
             background-color: #1e293b !important; /* slate-800 */
             border-color: #334155 !important; /* slate-700 */
             color: #f1f5f9 !important;
@@ -183,6 +180,43 @@
         }
         .dark .border-dashed {
             border-color: #475569 !important;
+        }
+
+        /* Semantic modal contract: one dark hierarchy for every dialog surface. */
+        .dark [data-theme-modal-panel] {
+            color-scheme: dark;
+            background-color: #0f172a !important; /* slate-900 panel */
+            border-color: #334155 !important; /* slate-700 outline */
+            color: #f1f5f9 !important;
+        }
+        .dark [data-theme-modal-panel] .bg-white,
+        .dark [data-theme-modal-panel] .bg-slate-50,
+        .dark [data-theme-modal-panel] .bg-slate-100 {
+            background-color: #1e293b !important; /* slate-800 nested surface */
+            border-color: #334155 !important;
+        }
+        .dark [data-theme-modal-panel] .border-slate-100,
+        .dark [data-theme-modal-panel] .border-slate-200,
+        .dark [data-theme-modal-panel] .border-slate-300 {
+            border-color: #334155 !important;
+        }
+        .dark [data-theme-modal-panel] input[type="text"],
+        .dark [data-theme-modal-panel] input[type="date"],
+        .dark [data-theme-modal-panel] input[type="search"],
+        .dark [data-theme-modal-panel] input[type="number"],
+        .dark [data-theme-modal-panel] input[type="email"],
+        .dark [data-theme-modal-panel] input[type="password"],
+        .dark [data-theme-modal-panel] input[type="month"],
+        .dark [data-theme-modal-panel] select,
+        .dark [data-theme-modal-panel] textarea,
+        .dark [data-theme-modal-panel] [contenteditable="true"] {
+            background-color: #1e293b !important;
+            border-color: #475569 !important;
+            color: #f1f5f9 !important;
+        }
+        .dark [data-theme-modal-panel] input::placeholder,
+        .dark [data-theme-modal-panel] textarea::placeholder {
+            color: #64748b !important;
         }
 
         .note-rich-content ul {

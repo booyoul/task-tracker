@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow app.js v20260731-v2 loaded');
+console.info('Smart Task Flow app.js v20260731-v3 loaded');
 // --- UX optimization globals: must be declared before helper functions ---
 var focusState = window.focusState || { riskOnly: false, mineOnly: false, highOnly: false };
 window.focusState = focusState;
@@ -219,11 +219,14 @@ function ensureAssigneeModal() {
   const modal = document.createElement('div');
   modal.id = 'assignee-filter-modal';
   modal.className = 'hidden fixed inset-0 z-[80] items-center justify-center bg-slate-900/40 px-4';
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+  modal.setAttribute('aria-labelledby', 'assignee-filter-modal-title');
   modal.innerHTML = `
-    <div class="w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-100 overflow-hidden">
+    <div data-theme-modal-panel class="w-full max-w-md overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-2xl">
       <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
         <div>
-          <div class="text-sm font-black text-slate-800">담당자 선택</div>
+          <div id="assignee-filter-modal-title" class="text-sm font-black text-slate-800">담당자 선택</div>
           <div class="text-[11px] text-slate-400">현재 트래커의 본 업무/하위 업무 담당자 기준</div>
         </div>
         <button type="button" id="btn-close-assignee-modal" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">✕</button>

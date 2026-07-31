@@ -1,4 +1,4 @@
-console.info('Smart Task Flow month-picker-controller.js v20260724-v1 loaded');
+console.info('Smart Task Flow month-picker-controller.js v20260731-v2 loaded');
 
 (function initializeMonthPickerController(global) {
   const MONTH_INPUT_IDS = [
@@ -67,7 +67,7 @@ console.info('Smart Task Flow month-picker-controller.js v20260724-v1 loaded');
     pickerOverlay.setAttribute('aria-hidden', 'true');
     pickerOverlay.setAttribute('aria-labelledby', 'month-picker-title');
     pickerOverlay.innerHTML = `
-      <div class="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+      <div data-theme-modal-panel class="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
         <div class="mb-4 flex items-center justify-between gap-3">
           <button type="button" data-month-picker-prev
             class="rounded-xl border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
