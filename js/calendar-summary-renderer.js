@@ -570,27 +570,28 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
     });
 
     const categories = [
-        { key: 'OVERDUE', label: '🚨 일정 초과 및 지연 상태', style: 'bg-rose-50/60 border-rose-100 text-rose-800', list: groups.OVERDUE, open: true },
-        { key: 'PROGRESS', label: '⚙️ 현재 적극 진행 중', style: 'bg-blue-50/60 border-blue-100 text-blue-800', list: groups.PROGRESS, open: true },
-        { key: 'PENDING', label: '⌛ 대기 및 진행 준비 중', style: 'bg-amber-50/60 border-amber-100 text-amber-800', list: groups.PENDING, open: false },
-        { key: 'COMPLETED', label: '⭐️ 정상 완료 항목', style: 'bg-emerald-50/60 border-emerald-100 text-emerald-800', list: groups.COMPLETED, open: false },
-        { key: 'CANCELLED', label: '🚫 취소된 업무', style: 'bg-slate-100/70 border-slate-200 text-slate-600', list: groups.CANCELLED, open: false }
+        { key: 'OVERDUE', label: '🚨 일정 초과 및 지연 상태', style: 'bg-rose-50/60 border-rose-100 text-rose-800 dark:bg-rose-950/20 dark:border-rose-900/50 dark:text-rose-300', list: groups.OVERDUE, open: true },
+        { key: 'PROGRESS', label: '⚙️ 현재 적극 진행 중', style: 'bg-blue-50/60 border-blue-100 text-blue-800 dark:bg-blue-950/20 dark:border-blue-900/50 dark:text-blue-300', list: groups.PROGRESS, open: true },
+        { key: 'PENDING', label: '⌛ 대기 및 진행 준비 중', style: 'bg-amber-50/60 border-amber-100 text-amber-800 dark:bg-amber-950/20 dark:border-amber-900/50 dark:text-amber-300', list: groups.PENDING, open: false },
+        { key: 'COMPLETED', label: '⭐️ 정상 완료 항목', style: 'bg-emerald-50/60 border-emerald-100 text-emerald-800 dark:bg-emerald-950/20 dark:border-emerald-900/50 dark:text-emerald-300', list: groups.COMPLETED, open: false },
+        { key: 'CANCELLED', label: '🚫 취소된 업무', style: 'bg-slate-100/70 border-slate-200 text-slate-600 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-300', list: groups.CANCELLED, open: false }
     ];
 
     categories.forEach(cat => {
         if (cat.list.length === 0) return;
         const sec = document.createElement('details');
+        sec.dataset.summaryStatusGroup = cat.key;
         sec.className = `rounded-xl border p-4 ${cat.style} mb-4`;
         sec.open = cat.open;
-        sec.innerHTML = `<summary class="cursor-pointer select-none text-xs font-bold uppercase tracking-wider flex items-center justify-between gap-2"><span>${cat.label}</span><span class="rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-bold shadow-sm">${cat.list.length}건</span></summary>`;
+        sec.innerHTML = `<summary class="cursor-pointer select-none text-xs font-bold uppercase tracking-wider flex items-center justify-between gap-2"><span>${cat.label}</span><span data-summary-dark-badge class="rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-bold shadow-sm dark:bg-slate-900 dark:text-slate-300">${cat.list.length}건</span></summary>`;
         const subGrid = document.createElement('div');
         subGrid.className = 'mt-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5';
 
         cat.list.forEach(t => {
             const subSummary = getMonthlySubTaskSummary(t, monthStart, monthEnd);
             const subBadgeMarkup = subSummary.totalInMonth > 0
-                ? `<span class="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-100 px-1.5 py-0.5 rounded font-bold">하위 ${subSummary.totalInMonth}건</span>`
-                : (subSummary.totalAll > 0 ? `<span class="text-[10px] bg-slate-50 text-slate-500 border border-slate-100 px-1.5 py-0.5 rounded font-bold">하위 0건</span>` : '');
+                ? `<span data-summary-dark-badge class="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-100 px-1.5 py-0.5 rounded font-bold dark:bg-indigo-950/30 dark:text-indigo-300 dark:border-indigo-900/60">하위 ${subSummary.totalInMonth}건</span>`
+                : (subSummary.totalAll > 0 ? `<span data-summary-dark-badge class="text-[10px] bg-slate-50 text-slate-500 border border-slate-100 px-1.5 py-0.5 rounded font-bold dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700">하위 0건</span>` : '');
             const subProgressMarkup = subSummary.totalInMonth > 0
                 ? `<span class="text-[10px] text-slate-400">월내 하위 완료 ${subSummary.completedInMonth}/${subSummary.activeInMonth}${subSummary.cancelledInMonth ? ` · 취소 ${subSummary.cancelledInMonth}` : ''}</span>`
                 : (subSummary.totalAll > 0 ? `<span class="text-[10px] text-slate-400">해당 월 하위 업무 없음</span>` : '');
@@ -598,16 +599,16 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
             // 태스크의 메모 수 배지
             const noteCount = notesByTaskId[t.id]?.length || 0;
             const noteBadgeMarkup = noteCount > 0
-                ? `<span class="text-[10px] bg-amber-50 text-amber-700 border border-amber-100 px-1.5 py-0.5 rounded font-bold">메모 ${noteCount}건</span>`
+                ? `<span data-summary-dark-badge class="text-[10px] bg-amber-50 text-amber-700 border border-amber-100 px-1.5 py-0.5 rounded font-bold dark:bg-amber-950/20 dark:text-amber-300 dark:border-amber-900/50">메모 ${noteCount}건</span>`
                 : '';
 
             const progressPct = typeof getTaskProgress === 'function' ? getTaskProgress(t) : 0;
 
             const priorityColors = {
-                CRITICAL: 'bg-rose-100 text-rose-700 border-rose-200',
-                HIGH: 'bg-red-50 text-red-700 border-red-100',
-                NORMAL: 'bg-slate-50 text-slate-600 border-slate-100',
-                LOW: 'bg-slate-100/70 text-slate-500 border-slate-100/50'
+                CRITICAL: 'bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-300 dark:border-rose-900/60',
+                HIGH: 'bg-red-50 text-red-700 border-red-100 dark:bg-red-950/30 dark:text-red-300 dark:border-red-900/60',
+                NORMAL: 'bg-slate-50 text-slate-600 border-slate-100 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
+                LOW: 'bg-slate-100/70 text-slate-500 border-slate-100/50 dark:bg-slate-800/50 dark:text-slate-400 dark:border-slate-700'
             };
 
             const box = document.createElement('div');
@@ -618,12 +619,12 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
                     <div class="flex items-start justify-between gap-2 mb-1.5">
                         <h4 class="text-xs font-bold text-slate-800 dark:text-white line-clamp-2 flex-1">${escapeHTML(t.title)}</h4>
                         <div class="flex items-center gap-1 shrink-0">
-                            <span class="px-1.5 py-0.5 rounded text-[8px] font-black border uppercase tracking-wider ${priorityColors[t.priority] || priorityColors.NORMAL}">${t.priority || 'NORMAL'}</span>
+                            <span data-summary-dark-badge class="px-1.5 py-0.5 rounded text-[8px] font-black border uppercase tracking-wider ${priorityColors[t.priority] || priorityColors.NORMAL}">${t.priority || 'NORMAL'}</span>
                         </div>
                     </div>
                     <div class="mt-2 flex items-center justify-between text-[11px] text-slate-400 font-medium">
                         <span class="flex items-center gap-1">🗓️ ${t.startDate ? t.startDate.substring(5) : '미정'} ~ ${(t.dueDate || '').substring(5)}</span>
-                        <span class="font-bold bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-350 px-1.5 py-0.5 border dark:border-slate-700 rounded">${escapeHTML(Array.isArray(t.assignee) ? t.assignee.join(', ') : (t.assignee || '미정'))}</span>
+                        <span class="font-bold bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 border dark:border-slate-700 rounded">${escapeHTML(Array.isArray(t.assignee) ? t.assignee.join(', ') : (t.assignee || '미정'))}</span>
                     </div>
                     <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
                         <div class="flex items-center gap-1.5">

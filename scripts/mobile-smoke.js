@@ -230,13 +230,17 @@ async function main() {
 
   const stateSource = fs.readFileSync(path.join(root, 'js/state.js'), 'utf8');
   assert(/let currentViewMode = ['"]CALENDAR['"]/.test(stateSource), '트래커 기본 진입 뷰가 캘린더가 아닙니다.');
-  assert(/let currentCalMode = ['"]MONTH['"]/.test(stateSource), '캘린더 기본 진입 모드가 년간 보기가 아닙니다.');
+  assert(/let currentCalMode = ['"]MONTH['"]/.test(stateSource), '캘린더 기본 진입 모드가 연간 보기가 아닙니다.');
   const desktopMonthModeButton = indexDom.window.document.getElementById('btn-cal-mode-day');
   const desktopYearModeButton = indexDom.window.document.getElementById('btn-cal-mode-month');
   const mobileMonthModeButton = indexDom.window.document.getElementById('btn-cal-mode-day-m');
   const mobileYearModeButton = indexDom.window.document.getElementById('btn-cal-mode-month-m');
-  assert(desktopYearModeButton?.classList.contains('bg-white') && !desktopMonthModeButton?.classList.contains('bg-white'), '데스크톱 캘린더의 초기 활성 버튼이 년간 보기가 아닙니다.');
-  assert(mobileYearModeButton?.classList.contains('bg-white') && !mobileMonthModeButton?.classList.contains('bg-white'), '모바일 캘린더의 초기 활성 버튼이 년간 보기가 아닙니다.');
+  assert(desktopYearModeButton?.classList.contains('bg-white') && !desktopMonthModeButton?.classList.contains('bg-white'), '데스크톱 캘린더의 초기 활성 버튼이 연간 보기가 아닙니다.');
+  assert(mobileYearModeButton?.classList.contains('bg-white') && !mobileMonthModeButton?.classList.contains('bg-white'), '모바일 캘린더의 초기 활성 버튼이 연간 보기가 아닙니다.');
+  assert(desktopYearModeButton?.textContent.replace(/\s+/g, ' ').trim() === '연간 보기', '데스크톱 캘린더의 연간 보기 문구가 일관되지 않습니다.');
+  assert(mobileYearModeButton?.textContent.trim() === '연간', '모바일 캘린더의 연간 문구가 일관되지 않습니다.');
+  assert(indexDom.window.document.querySelector('#todo-calendar-section p')?.textContent.trim() === 'To-do 캘린더', 'To-do 캘린더 헤더가 한국어 UI 문구를 따르지 않습니다.');
+  assert(indexDom.window.document.querySelector('#empty-state-kanban h3')?.textContent.trim() === '칸반에 표시할 업무가 없습니다.', '칸반 빈 상태 문구가 일관되지 않습니다.');
   const appSource = fs.readFileSync(path.join(root, 'js/app.js'), 'utf8');
   const eventBindingsSource = fs.readFileSync(path.join(root, 'js/event-bindings.js'), 'utf8');
   const modalControllerSource = fs.readFileSync(path.join(root, 'js/modal-controller.js'), 'utf8');
@@ -465,6 +469,11 @@ async function main() {
   assert(summary.textContent.includes('Opp OPP-101'), '메모 Opp No가 월별 요약에 표시되지 않았습니다.');
   assert(summary.textContent.includes('Customer Visit'), '메모 업무 유형이 월별 요약에 표시되지 않았습니다.');
   assert(summary.textContent.includes('💬 1'), '메모 리뷰 코멘트 수가 월별 요약에 표시되지 않았습니다.');
+  const summaryStatusGroups = [...summary.querySelectorAll('[data-summary-status-group]')];
+  assert(summaryStatusGroups.length > 0, '월별 요약 상태별 업무 그룹이 없습니다.');
+  assert(summaryStatusGroups.every(group => group.className.includes('dark:bg-') && group.className.includes('dark:border-') && group.className.includes('dark:text-')), '월별 요약 상태별 업무 그룹의 다크 테마 스타일이 누락되었습니다.');
+  const summaryDarkBadges = [...summary.querySelectorAll('[data-summary-dark-badge]')];
+  assert(summaryDarkBadges.length > 0 && summaryDarkBadges.every(badge => badge.className.includes('dark:bg-') && badge.className.includes('dark:text-')), '월별 요약 업무 배지의 다크 테마 스타일이 누락되었습니다.');
   const summaryAuthorFilter = summary.querySelector('[data-summary-note-author-filter]');
   const summaryWorkTypeFilter = summary.querySelector('[data-summary-note-work-type-filter]');
   assert(summaryWorkTypeFilter && summaryAuthorFilter?.parentElement === summaryWorkTypeFilter.parentElement, '업무 유형 필터가 작성자 필터 옆에 배치되지 않았습니다.');

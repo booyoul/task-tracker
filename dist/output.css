@@ -14,6 +14,8 @@
     --color-red-600: oklch(57.7% 0.245 27.325);
     --color-red-700: oklch(50.5% 0.213 27.518);
     --color-red-800: oklch(44.4% 0.177 26.899);
+    --color-red-900: oklch(39.6% 0.141 25.723);
+    --color-red-950: oklch(25.8% 0.092 26.042);
     --color-orange-50: oklch(98% 0.016 73.684);
     --color-orange-100: oklch(95.4% 0.038 75.164);
     --color-orange-200: oklch(90.1% 0.076 70.697);
@@ -3292,6 +3294,14 @@
       }
     }
   }
+  .dark\:border-red-900\/60 {
+    &:where(.dark, .dark *) {
+      border-color: color-mix(in srgb, oklch(39.6% 0.141 25.723) 60%, transparent);
+      @supports (color: color-mix(in lab, red, red)) {
+        border-color: color-mix(in oklab, var(--color-red-900) 60%, transparent);
+      }
+    }
+  }
   .dark\:border-rose-900\/50 {
     &:where(.dark, .dark *) {
       border-color: color-mix(in srgb, oklch(41% 0.159 10.272) 50%, transparent);
@@ -3398,11 +3408,27 @@
       }
     }
   }
+  .dark\:bg-red-950\/30 {
+    &:where(.dark, .dark *) {
+      background-color: color-mix(in srgb, oklch(25.8% 0.092 26.042) 30%, transparent);
+      @supports (color: color-mix(in lab, red, red)) {
+        background-color: color-mix(in oklab, var(--color-red-950) 30%, transparent);
+      }
+    }
+  }
   .dark\:bg-rose-950\/20 {
     &:where(.dark, .dark *) {
       background-color: color-mix(in srgb, oklch(27.1% 0.105 12.094) 20%, transparent);
       @supports (color: color-mix(in lab, red, red)) {
         background-color: color-mix(in oklab, var(--color-rose-950) 20%, transparent);
+      }
+    }
+  }
+  .dark\:bg-rose-950\/30 {
+    &:where(.dark, .dark *) {
+      background-color: color-mix(in srgb, oklch(27.1% 0.105 12.094) 30%, transparent);
+      @supports (color: color-mix(in lab, red, red)) {
+        background-color: color-mix(in oklab, var(--color-rose-950) 30%, transparent);
       }
     }
   }
@@ -3500,6 +3526,11 @@
       color: var(--color-amber-400);
     }
   }
+  .dark\:text-blue-300 {
+    &:where(.dark, .dark *) {
+      color: var(--color-blue-300);
+    }
+  }
   .dark\:text-blue-400 {
     &:where(.dark, .dark *) {
       color: var(--color-blue-400);
@@ -3523,6 +3554,11 @@
   .dark\:text-indigo-400 {
     &:where(.dark, .dark *) {
       color: var(--color-indigo-400);
+    }
+  }
+  .dark\:text-red-300 {
+    &:where(.dark, .dark *) {
+      color: var(--color-red-300);
     }
   }
   .dark\:text-rose-300 {
