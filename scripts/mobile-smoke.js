@@ -247,6 +247,7 @@ async function main() {
   const tableRendererSource = fs.readFileSync(path.join(root, 'js/table-mobile-renderer.js'), 'utf8');
   const calendarMobileSource = fs.readFileSync(path.join(root, 'js/calendar-mobile-renderer.js'), 'utf8');
   const kanbanRendererSource = fs.readFileSync(path.join(root, 'js/kanban-renderer.js'), 'utf8');
+  const adminApprovalsSource = fs.readFileSync(path.join(root, 'js/admin-approvals.js'), 'utf8');
   const dateRiskSource = fs.readFileSync(path.join(root, 'js/date-risk-utils.js'), 'utf8');
   const inputCssSource = fs.readFileSync(path.join(root, 'src/input.css'), 'utf8');
   const batchDeleteButton = indexDom.window.document.getElementById('btn-batch-delete');
@@ -288,6 +289,11 @@ async function main() {
   assert(/const mainClass[^]*dark:bg-/.test(appSource) && /const subClass[^]*dark:bg-/.test(appSource), '데스크톱 캘린더 막대의 다크 테마 상태색이 누락되었습니다.');
   assert(/function getIndustryBarClass[^]*dark:bg-/.test(dateRiskSource), '업무 분류별 캘린더 막대의 다크 테마 색상이 누락되었습니다.');
   assert(/function kanbanTone[^]*dark:bg-/.test(kanbanRendererSource), '칸반 열의 다크 테마 배경이 누락되었습니다.');
+  const adminApprovalsView = indexDom.window.document.getElementById('view-admin-approvals');
+  assert(adminApprovalsView?.className.includes('dark:bg-') && adminApprovalsView.className.includes('dark:border-'), '가입 승인 화면의 다크 테마 표면이 누락되었습니다.');
+  assert(/data-admin-mobile-card="pending"[^>]*dark:bg-/.test(adminApprovalsSource), '모바일 승인 대기자 카드의 다크 테마 배경이 누락되었습니다.');
+  assert(/data-admin-mobile-card="all"[^>]*dark:bg-/.test(adminApprovalsSource), '모바일 전체 가입자 카드의 다크 테마 배경이 누락되었습니다.');
+  assert(/btnPending\.className = [^;]*dark:bg-slate-700/.test(adminApprovalsSource) && /btnAll\.className = [^;]*dark:bg-slate-700/.test(adminApprovalsSource), '가입 승인 탭 전환 시 활성 탭의 다크 테마가 유지되지 않습니다.');
   assert(tableRendererSource.includes('bg-indigo-50/80') && tableRendererSource.includes('dark:bg-indigo-950/35'), '목록 업무 분류 헤더의 다크 테마 배경이 누락되었습니다.');
   assert(calendarMobileSource.includes('bg-indigo-50/80') && calendarMobileSource.includes('dark:bg-indigo-950/35'), '모바일 캘린더 업무 분류 헤더의 다크 테마 배경이 누락되었습니다.');
   const modalDarkSurfaces = [...indexDom.window.document.querySelectorAll('[data-modal-dark-surface]')];
@@ -298,6 +304,32 @@ async function main() {
   assert(/bg-rose-50\/70[^']*dark:bg-rose-950\/25/.test(tableRendererSource), '기한 초과 서브 태스크 행의 다크 테마 강조가 누락되었습니다.');
   assert(/function getMobileRiskAccent[^]*dark:bg-rose-950\/30[^]*dark:bg-amber-950\/30/.test(tableRendererSource), '모바일 Risk·기한 초과 카드의 다크 테마 강조가 누락되었습니다.');
   assert(/mobile-bulk-action-bar[^]*bg-white\/95[^]*dark:bg-slate-900\/95/.test(tableRendererSource), '모바일 일괄 작업 바의 다크 테마 배경이 누락되었습니다.');
+
+  indexDom.window.escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  })[ch]);
+  indexDom.window.isMasterAdmin = () => false;
+  indexDom.window.currentUser = { uid: 'admin-current' };
+  indexDom.window.eval(`${adminApprovalsSource}
+    window.__renderAdminDashboardForSmoke = renderAdminDashboard;
+    window.__initAdminTabEventsForSmoke = initAdminTabEvents;`);
+  indexDom.window.__renderAdminDashboardForSmoke([
+    { uid: 'pending-user', displayName: '승인 대기자', email: 'pending@example.com', status: 'pending', role: 'user', createdAt: { toDate: () => new Date('2026-07-31') } },
+    { uid: 'approved-user', displayName: '승인 사용자', email: 'approved@example.com', status: 'approved', role: 'user', createdAt: { toDate: () => new Date('2026-07-30') } },
+    { uid: 'rejected-user', displayName: '거부 사용자', email: 'rejected@example.com', status: 'rejected', role: 'user', createdAt: { toDate: () => new Date('2026-07-29') } }
+  ]);
+  const renderedAdminCards = [...indexDom.window.document.querySelectorAll('[data-admin-mobile-card]')];
+  assert(renderedAdminCards.length === 4, '모바일 가입 승인 카드가 대기자·전체 가입자 패널에 렌더링되지 않았습니다.');
+  assert(renderedAdminCards.every(card => card.className.includes('dark:bg-') && card.className.includes('dark:border-')), '렌더링된 모바일 가입 승인 카드에 다크 배경 또는 테두리가 누락되었습니다.');
+  indexDom.window.__initAdminTabEventsForSmoke();
+  indexDom.window.document.getElementById('btn-admin-tab-all').click();
+  assert(indexDom.window.document.getElementById('btn-admin-tab-all').className.includes('dark:bg-slate-700'), '전체 가입자 활성 탭의 다크 배경이 누락되었습니다.');
+  indexDom.window.document.getElementById('btn-admin-tab-pending').click();
+  assert(indexDom.window.document.getElementById('btn-admin-tab-pending').className.includes('dark:bg-slate-700'), '승인 대기자 활성 탭의 다크 배경이 누락되었습니다.');
 
   loadScript('js/date-risk-utils.js');
   loadScript('js/calendar-utils.js');
