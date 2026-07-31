@@ -462,6 +462,14 @@ async function main() {
   assert(global.getIndustryBarClass(tasks[0], false).includes('dark:bg-'), '업무 분류별 본 업무 막대에 다크 테마 클래스가 적용되지 않았습니다.');
   assert(global.getIndustryBarClass(tasks[0], true).includes('dark:bg-'), '업무 분류별 하위 업무 막대에 다크 테마 클래스가 적용되지 않았습니다.');
   assert([...document.querySelectorAll('.mobile-task-card')].every(card => card.className.includes('dark:bg-')), '모바일 목록 카드에 명시적 다크 테마 배경이 적용되지 않았습니다.');
+  const mobileRiskBanner = progressTaskCard?.querySelector('[data-mobile-risk-banner]');
+  assert(mobileRiskBanner, '모바일 고위험 업무의 Risk 배너가 렌더링되지 않았습니다.');
+  assert(
+    mobileRiskBanner.className.includes('dark:border-rose-800')
+      && mobileRiskBanner.className.includes('dark:bg-rose-950/40')
+      && mobileRiskBanner.className.includes('dark:text-rose-300'),
+    '모바일 Risk 배너의 다크 테마 표면 스타일이 누락되었습니다.'
+  );
   const mobileSubTaskGroup = [...document.querySelectorAll('#task-card-container div')].find(element => element.className.includes('bg-slate-50/80'));
   assert(mobileSubTaskGroup?.className.includes('dark:bg-'), '모바일 하위 업무 컨테이너의 다크 테마 배경이 누락되었습니다.');
   assert(document.getElementById('mobile-bulk-action-bar')?.className.includes('dark:bg-'), '렌더링된 모바일 일괄 작업 바의 다크 테마 배경이 누락되었습니다.');

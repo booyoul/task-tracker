@@ -1,4 +1,4 @@
-console.info('Smart Task Flow table-mobile-renderer.js v20260731-v15 loaded');
+console.info('Smart Task Flow table-mobile-renderer.js v20260731-v16 loaded');
 // Table and mobile card renderers. Extracted from app.js in Phase 5.
 const listProgressNoteSummaryCache = {
   trackerId: '',
@@ -384,7 +384,7 @@ function renderMobileCards(filtered) {
           <span class="shrink-0 font-bold text-slate-500">진척 ${progressPct}%</span>
         </div>
         ${getMobileProgressBar(progressPct, effectiveStatus)}
-        ${riskInfo.level !== 'NONE' ? `<div class="mt-2 rounded-2xl border border-rose-100 bg-white/80 px-3 py-2 text-xs font-bold text-rose-700">🚨 Risk: ${riskInfo.label} D+${riskInfo.delay}</div>` : ''}
+        ${riskInfo.level !== 'NONE' ? `<div data-mobile-risk-banner class="mt-2 rounded-2xl border border-rose-100 bg-white/80 px-3 py-2 text-xs font-bold text-rose-700 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300">🚨 Risk: ${riskInfo.label} D+${riskInfo.delay}</div>` : ''}
         ${notes ? `<div class="mt-2 line-clamp-2 rounded-2xl bg-slate-50 px-3 py-2 text-xs text-slate-500">${escapeHTML(notes)}</div>` : ''}
         ${subTasks.length ? `<div class="mt-2 text-[11px] font-bold text-slate-400">하위 업무 ${getSubTaskProgressLabel(subTasks)}</div>` : ''}
         ${mobileStatusSegment(t.id, t.status)}
