@@ -14,9 +14,9 @@ Last updated: 2026-07-31
 
 - The Firebase/Firestore task tracker, tracker ACL, personal To-do, progress-note review workflow, recurrence support, responsive calendars, and class-based dark theme are implemented.
 - Production Firestore rules, authenticated To-do isolation, tracker-role permissions, formatted-note writes, and the user-document audit have been verified. Disposable verification data and accounts were removed.
-- Desktop and mobile task/list/calendar/summary/To-do routing is covered by focused smoke tests. The full suite includes 55 Firestore Rules allow/deny cases.
+- Desktop and mobile task/list/calendar/summary/To-do routing is covered by focused smoke tests. The full suite includes 58 Firestore Rules allow/deny cases.
 - The latest UI pass aligned dark surfaces across calendars, lists, conditional modal sections, mobile task cards, and mobile 가입 승인 관리.
-- No required operational verification remains. Wait for the user's next product priority before starting a new feature.
+- Personal To-do can optionally link to an accessible tracker task or normal subtask for context and direct navigation.
 
 ## Product Contracts
 
@@ -49,7 +49,9 @@ Last updated: 2026-07-31
 
 - To-do records are private, owner-scoped documents; admins do not receive implicit read access.
 - List and calendar are mutually exclusive subviews. Monthly/yearly calendars follow the task calendar's responsive patterns.
-- Optional `taskLink` normalization supports `trackerId`, `taskId`, optional `subTaskId`, and `occurrenceKey`, but linking UI and synchronization are intentionally deferred.
+- Optional `taskLink` stores only `trackerId`, `taskId`, optional `subTaskId`, and `occurrenceKey`; task titles are resolved from currently accessible data and are never cached in the private To-do document.
+- The To-do modal selects `트래커 → 본 업무 → 하위 과제`. Cards display the live `트래커 › 본 업무 › 하위 과제` path and open the linked task with the selected subtask highlighted.
+- Missing or inaccessible targets display `연결된 업무를 볼 수 없음` without leaking titles. Ordinary To-do edits preserve that reference until the owner explicitly unlinks or replaces it.
 - Task and To-do dates/completion remain independent. Deleting or copying a task must not delete or copy personal To-do data.
 
 ### Responsive UI and dark theme
@@ -95,15 +97,15 @@ For responsive geometry, native picker behavior, rich-text selection, or color c
 
 ## Verified Release Baseline
 
-- `npm test` passes, including 55 Firestore Rules cases.
+- `npm test` passes, including 58 Firestore Rules cases.
 - `npm run build:css`, relevant JavaScript syntax checks, and `git diff --check` pass.
 - Headless Chrome has verified the main responsive workflows and the latest mobile dark-theme surfaces at a 390px viewport.
 - Firestore production-write verification is historical evidence only; do not infer future production state without a fresh live check.
 
 ## Next Work
 
-- No active feature is required.
-- To-do/task linking through the existing optional `taskLink` remains the first explicitly deferred product option. Define data exposure, permissions, unlink behavior, and synchronization policy before implementing it.
+- Deploy the reviewed Firestore Rules and static assets when the user requests a production release.
+- Recurring subtask occurrence selection remains deferred; the current UI links a recurring source subtask without choosing an individual occurrence.
 
 ## Cautions
 

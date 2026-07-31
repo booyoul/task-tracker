@@ -195,8 +195,37 @@ async function main() {
         window.currentUser = { uid: 'browser-user', displayName: '브라우저 테스트 사용자', email: 'browser@example.com' };
         window.currentUserRole = 'user';
         isAuthReady = true;
+        trackers = [{
+          id: 'tracker-sales',
+          name: '영업 트래커',
+          desc: '브라우저 연결 테스트',
+          ownerId: 'browser-user',
+          createdBy: 'browser-user',
+          order: 1
+        }];
+        currentTrackerId = 'tracker-sales';
+        tasks = [{
+          id: 'task-quote',
+          trackerId: 'tracker-sales',
+          title: '견적 검토',
+          status: 'PENDING',
+          priority: 'NORMAL',
+          startDate: getTodayStr(),
+          dueDate: getFutureDateStr(5),
+          ownerId: 'browser-user',
+          createdBy: 'browser-user',
+          assignee: ['브라우저 테스트 사용자'],
+          subTasks: [{
+            id: 'sub-customer',
+            title: '고객 조건 확인',
+            status: 'PENDING',
+            startDate: getTodayStr(),
+            dueDate: getFutureDateStr(2),
+            assignee: ['브라우저 테스트 사용자']
+          }]
+        }];
         todoItems = [
-          { id: 'overdue', ownerId: 'browser-user', title: '기한 경과 확인', memo: '', startDate: '2026-07-20', dueDate: '2026-07-26', completed: false },
+          { id: 'overdue', ownerId: 'browser-user', title: '기한 경과 확인', memo: '', startDate: '2026-07-20', dueDate: '2026-07-26', completed: false, taskLink: { trackerId: 'tracker-sales', taskId: 'missing-task' } },
           { id: 'today', ownerId: 'browser-user', title: '오늘 현장 확인', memo: '고객 일정 확인', startDate: getTodayStr(), dueDate: getTodayStr(), completed: false },
           { id: 'week', ownerId: 'browser-user', title: '이번 주 견적 검토', memo: '', startDate: getFutureDateStr(2), dueDate: getFutureDateStr(4), completed: false }
         ];
@@ -259,6 +288,24 @@ async function main() {
     assert.equal(desktop.listToggleActive, true);
     assert.equal(desktop.noOverflow, true);
     assert.deepEqual(desktop.resultIds.slice(0, 2), ['overdue', 'today']);
+
+    await evaluate(client, `
+      document.querySelector('.btn-edit-todo[data-id="overdue"]').click();
+      document.getElementById('input-todo-title').value = '기한 경과 확인 수정';
+      document.getElementById('form-todo').requestSubmit();
+    `);
+    await waitFor(client, `todoItems.find(item => item.id === 'overdue')?.title === '기한 경과 확인 수정'`, 'Inaccessible linked To-do edit did not finish.');
+    assert.deepEqual(
+      await evaluate(client, `todoItems.find(item => item.id === 'overdue')?.taskLink`),
+      { trackerId: 'tracker-sales', taskId: 'missing-task' },
+      '볼 수 없는 연결은 일반 To-do 수정만으로 삭제되면 안 됩니다.'
+    );
+    await evaluate(client, `
+      document.querySelector('.btn-edit-todo[data-id="overdue"]').click();
+      document.getElementById('btn-clear-todo-task-link').click();
+      document.getElementById('form-todo').requestSubmit();
+    `);
+    await waitFor(client, `todoItems.find(item => item.id === 'overdue')?.taskLink == null`, 'Inaccessible task link could not be cleared.');
 
     await evaluate(client, `document.getElementById('btn-todo-view-calendar').click()`);
     const desktopTodoCalendar = await evaluate(client, `(() => {
@@ -352,16 +399,49 @@ async function main() {
       document.getElementById('input-todo-title').value = '브라우저에서 추가';
       document.getElementById('input-todo-start').value = getTodayStr();
       document.getElementById('input-todo-due').value = getFutureDateStr(3);
+      const trackerSelect = document.getElementById('input-todo-link-tracker');
+      trackerSelect.value = 'tracker-sales';
+      trackerSelect.dispatchEvent(new Event('change', { bubbles: true }));
+      const taskSelect = document.getElementById('input-todo-link-task');
+      taskSelect.value = 'task-quote';
+      taskSelect.dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('input-todo-link-subtask').value = 'sub-customer';
       document.getElementById('form-todo').requestSubmit();
     `);
     await waitFor(client, `document.querySelector('[data-todo-id="browser-added"]')`, 'To-do add flow did not render.');
+    const linkedTodo = await evaluate(client, `(() => ({
+      label: document.querySelector('[data-todo-id="browser-added"] .btn-open-todo-task-link')?.textContent || '',
+      link: todoItems.find(item => item.id === 'browser-added')?.taskLink || null
+    }))()`);
+    assert.equal(linkedTodo.label.includes('영업 트래커 › 견적 검토 › 고객 조건 확인'), true);
+    assert.deepEqual(linkedTodo.link, {
+      trackerId: 'tracker-sales',
+      taskId: 'task-quote',
+      subTaskId: 'sub-customer'
+    });
+
+    await evaluate(client, `document.querySelector('[data-todo-id="browser-added"] .btn-open-todo-task-link').click()`);
+    const linkedTaskTarget = await evaluate(client, `(() => ({
+      mode: currentViewMode,
+      trackerId: currentTrackerId,
+      taskModalVisible: !document.getElementById('modal-task').classList.contains('hidden'),
+      linkedSubTask: document.querySelector('[data-subtask-id="sub-customer"]')?.textContent.includes('To-do 연결') || false
+    }))()`);
+    assert.equal(linkedTaskTarget.mode, 'TABLE');
+    assert.equal(linkedTaskTarget.trackerId, 'tracker-sales');
+    assert.equal(linkedTaskTarget.taskModalVisible, true);
+    assert.equal(linkedTaskTarget.linkedSubTask, true);
+    await evaluate(client, `closeModal(); switchView('TODO'); setTodoViewMode('LIST');`);
 
     await evaluate(client, `
       document.querySelector('.btn-edit-todo[data-id="browser-added"]').click();
       document.getElementById('input-todo-title').value = '브라우저에서 수정';
+      document.getElementById('btn-clear-todo-task-link').click();
       document.getElementById('form-todo').requestSubmit();
     `);
     await waitFor(client, `document.querySelector('[data-todo-id="browser-added"]')?.textContent.includes('브라우저에서 수정')`, 'To-do edit flow did not render.');
+    assert.equal(await evaluate(client, `todoItems.find(item => item.id === 'browser-added')?.taskLink == null`), true);
+    assert.equal(await evaluate(client, `!document.querySelector('[data-todo-id="browser-added"] .btn-open-todo-task-link')`), true);
 
     await evaluate(client, `
       const checkbox = document.querySelector('.todo-complete-toggle[data-id="browser-added"]');
@@ -459,7 +539,7 @@ async function main() {
 
     await evaluate(client, `document.getElementById('btn-open-todo').click()`);
     const returnedTaskView = await evaluate(client, `(() => {
-      const taskView = document.getElementById('view-calendar-mobile');
+      const taskView = document.getElementById('view-mobile');
       const dashboard = document.getElementById('task-dashboard-summary');
       const compactDashboard = document.getElementById('kpi-collapsed-summary');
       return {
@@ -471,14 +551,14 @@ async function main() {
         compactDashboardDisplay: getComputedStyle(compactDashboard).display
       };
     })()`);
-    assert.equal(returnedTaskView.mode, 'CALENDAR');
+    assert.equal(returnedTaskView.mode, 'TABLE');
     assert.equal(returnedTaskView.todoHidden, true);
     assert.equal(returnedTaskView.taskHidden, false);
     assert.notEqual(returnedTaskView.taskDisplay, 'none');
     assert.equal(returnedTaskView.dashboardDisplay, 'none');
     assert.equal(returnedTaskView.compactDashboardDisplay, 'flex');
 
-    console.log('todo browser smoke passed: split list/calendar views, task-style desktop/mobile calendars, CRUD, filters, reminder, and task-view return');
+    console.log('todo browser smoke passed: task linking, split list/calendar views, task-style desktop/mobile calendars, CRUD, filters, reminder, and task-view return');
   } catch (error) {
     if (client) {
       try {

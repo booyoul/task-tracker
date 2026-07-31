@@ -248,7 +248,7 @@ async function main() {
       assertSucceeds(getDocs(query(collection(aliceDb, 'todos'), where('ownerId', '==', 'alice')))));
     await check('자신의 To-do 생성 허용', () =>
       assertSucceeds(setDoc(doc(aliceDb, 'todos', 'alice-new-todo'), todoData('alice', '새 개인 할 일'))));
-    await check('향후 Task 연결 정보가 포함된 자신의 To-do 생성 허용', () =>
+    await check('유효한 Task 연결 정보가 포함된 자신의 To-do 생성 허용', () =>
       assertSucceeds(setDoc(doc(aliceDb, 'todos', 'alice-linked-todo'), {
         ...todoData('alice', '업무 연결 개인 할 일'),
         taskLink: {
@@ -256,6 +256,29 @@ async function main() {
           taskId: 'acl-task',
           subTaskId: 'sub-1',
           occurrenceKey: '2026-07-27'
+        }
+      })));
+    await check('필수 업무 ID가 없는 To-do 연결 정보 차단', () =>
+      assertFails(setDoc(doc(aliceDb, 'todos', 'alice-invalid-link-missing-task'), {
+        ...todoData('alice', '잘못된 업무 연결'),
+        taskLink: { trackerId: 'tracker-acl' }
+      })));
+    await check('허용되지 않은 필드가 포함된 To-do 연결 정보 차단', () =>
+      assertFails(setDoc(doc(aliceDb, 'todos', 'alice-invalid-link-extra-field'), {
+        ...todoData('alice', '제목 캐시 시도'),
+        taskLink: {
+          trackerId: 'tracker-acl',
+          taskId: 'acl-task',
+          taskTitle: '저장하면 안 되는 제목'
+        }
+      })));
+    await check('빈 선택 식별자가 포함된 To-do 연결 정보 차단', () =>
+      assertFails(setDoc(doc(aliceDb, 'todos', 'alice-invalid-link-empty-subtask'), {
+        ...todoData('alice', '빈 하위 과제 연결'),
+        taskLink: {
+          trackerId: 'tracker-acl',
+          taskId: 'acl-task',
+          subTaskId: ''
         }
       })));
     await check('다른 사용자의 UID로 To-do 생성 차단', () =>

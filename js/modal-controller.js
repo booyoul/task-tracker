@@ -1,4 +1,4 @@
-console.info('Smart Task Flow modal-controller.js v20260728-v1 loaded');
+console.info('Smart Task Flow modal-controller.js v20260731-v2 loaded');
 // Task modal, subtask modal list, tracker modal, and form submit handlers.
 function resetSubTaskButton() {
   const btn = document.getElementById('btn-add-subtask');
@@ -195,8 +195,15 @@ function renderModalSubTasks() {
   currentSubTasks.forEach((st, idx) => {
     const status = normalizeStatus(st.status);
     const overdue = isSubTaskOverdue(st);
+    const linkedFromTodo = window.__todoLinkedTaskTarget?.taskId === _currentNoteTaskId &&
+      window.__todoLinkedTaskTarget?.subTaskId === st.id;
     const li = document.createElement('li');
-    li.className = 'flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3 text-xs shadow-sm hover:border-slate-300 transition-colors';
+    li.dataset.subtaskId = st.id;
+    li.className = `flex flex-col gap-2 rounded-xl border bg-white p-3 text-xs shadow-sm transition-colors ${
+      linkedFromTodo
+        ? 'border-violet-300 ring-2 ring-violet-100'
+        : 'border-slate-200 hover:border-slate-300'
+    }`;
     const subAssigneeLabel = Array.isArray(st.assignee) ? st.assignee.join(', ') : (st.assignee || '미정');
     const subNoteCount = _currentSubNoteCounts[st.id] || 0;
     const recurrenceLabel = formatSubTaskRecurrenceLabel(st);
@@ -208,7 +215,7 @@ function renderModalSubTasks() {
       ? `<button type="button" class="btn-modal-note-subtask px-1.5 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold transition flex items-center gap-1" data-index="${idx}" title="진행 메모 관리">${noteBtnText}</button><span class="text-slate-300">|</span>` 
       : '';
     const occurrenceStatusHtml = buildModalSubTaskOccurrenceStatusHTML(st, idx);
-    li.innerHTML = `<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div class="flex items-start gap-2 min-w-0"><span class="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-bold ${status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : status === 'CANCELLED' ? 'bg-slate-100 text-slate-500 border border-slate-200' : overdue ? 'bg-rose-50 text-rose-700 border border-rose-200' : status === 'PROGRESS' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}">${overdue ? '🚨 기한 초과' : getStatusIcon(status) + ' ' + getStatusKorean(status).replace('됨', '')}</span><span class="text-[13px] font-bold text-slate-900 break-all leading-normal ${['COMPLETED', 'CANCELLED'].includes(status) ? 'line-through opacity-50' : ''}" title="${escapeHTML(st.title)}">${escapeHTML(st.title)}</span></div><div class="flex shrink-0 items-center justify-end gap-1.5">${noteBtnHtml}<select class="sel-modal-subtask-status rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-semibold text-slate-600 outline-none focus:border-indigo-500" data-index="${idx}"><option value="PENDING" ${status === 'PENDING' ? 'selected' : ''}>진행 대기</option><option value="PROGRESS" ${status === 'PROGRESS' ? 'selected' : ''}>진행 중</option><option value="COMPLETED" ${status === 'COMPLETED' ? 'selected' : ''}>완료</option><option value="CANCELLED" ${status === 'CANCELLED' ? 'selected' : ''}>취소</option></select><button type="button" class="btn-modal-edit-subtask text-[12px] font-bold text-indigo-600 hover:text-indigo-800 px-1" data-index="${idx}">수정</button><span class="text-slate-300">|</span><button type="button" class="btn-modal-delete-subtask text-[12px] font-semibold text-rose-500 hover:text-rose-700 px-1" data-index="${idx}">삭제</button></div></div><div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500 border-t border-slate-100 pt-2 mt-0.5"><span class="flex items-center gap-1 font-medium"><span class="text-slate-400">📅</span> ${st.startDate ? st.startDate.substring(5) : '미정'} ~ ${st.dueDate ? st.dueDate.substring(5) : '미정'}</span><span class="text-slate-300">|</span><span class="flex items-center gap-1 font-medium max-w-[150px] truncate" title="${escapeHTML(subAssigneeLabel)}"><span class="text-slate-400">👤</span> ${escapeHTML(subAssigneeLabel)}</span>${recurrenceHtml}</div>${occurrenceStatusHtml}`;
+    li.innerHTML = `<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div class="flex items-start gap-2 min-w-0"><span class="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-bold ${status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : status === 'CANCELLED' ? 'bg-slate-100 text-slate-500 border border-slate-200' : overdue ? 'bg-rose-50 text-rose-700 border border-rose-200' : status === 'PROGRESS' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}">${overdue ? '🚨 기한 초과' : getStatusIcon(status) + ' ' + getStatusKorean(status).replace('됨', '')}</span><span class="text-[13px] font-bold text-slate-900 break-all leading-normal ${['COMPLETED', 'CANCELLED'].includes(status) ? 'line-through opacity-50' : ''}" title="${escapeHTML(st.title)}">${escapeHTML(st.title)}</span>${linkedFromTodo ? '<span class="shrink-0 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-black text-violet-700">To-do 연결</span>' : ''}</div><div class="flex shrink-0 items-center justify-end gap-1.5">${noteBtnHtml}<select class="sel-modal-subtask-status rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-semibold text-slate-600 outline-none focus:border-indigo-500" data-index="${idx}"><option value="PENDING" ${status === 'PENDING' ? 'selected' : ''}>진행 대기</option><option value="PROGRESS" ${status === 'PROGRESS' ? 'selected' : ''}>진행 중</option><option value="COMPLETED" ${status === 'COMPLETED' ? 'selected' : ''}>완료</option><option value="CANCELLED" ${status === 'CANCELLED' ? 'selected' : ''}>취소</option></select><button type="button" class="btn-modal-edit-subtask text-[12px] font-bold text-indigo-600 hover:text-indigo-800 px-1" data-index="${idx}">수정</button><span class="text-slate-300">|</span><button type="button" class="btn-modal-delete-subtask text-[12px] font-semibold text-rose-500 hover:text-rose-700 px-1" data-index="${idx}">삭제</button></div></div><div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500 border-t border-slate-100 pt-2 mt-0.5"><span class="flex items-center gap-1 font-medium"><span class="text-slate-400">📅</span> ${st.startDate ? st.startDate.substring(5) : '미정'} ~ ${st.dueDate ? st.dueDate.substring(5) : '미정'}</span><span class="text-slate-300">|</span><span class="flex items-center gap-1 font-medium max-w-[150px] truncate" title="${escapeHTML(subAssigneeLabel)}"><span class="text-slate-400">👤</span> ${escapeHTML(subAssigneeLabel)}</span>${recurrenceHtml}</div>${occurrenceStatusHtml}`;
     container.appendChild(li);
   });
   
@@ -373,7 +380,10 @@ function openTaskModal(id = null) {
 
   document.getElementById('modal-task')?.classList.remove('hidden');
 }
-function closeModal() { document.getElementById('modal-task')?.classList.add('hidden'); }
+function closeModal() {
+  document.getElementById('modal-task')?.classList.add('hidden');
+  window.__todoLinkedTaskTarget = null;
+}
 function closeConfirmModal() { document.getElementById('modal-confirm')?.classList.add('hidden'); confirmActionCb = null; }
 
 const TRACKER_ACCESS_LABELS = { view: '조회', create: '등록', update: '수정', delete: '삭제' };

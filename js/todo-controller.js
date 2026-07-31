@@ -1,4 +1,4 @@
-console.info('Smart Task Flow todo-controller.js v20260729-v3 loaded');
+console.info('Smart Task Flow todo-controller.js v20260731-v4 loaded');
 
 let todoDateFilter = 'TODAY';
 let todoCompletionFilter = 'ACTIVE';
@@ -7,6 +7,8 @@ let todoReminderSnapshotKey = '';
 let todoViewMode = 'LIST';
 let todoCalendarMode = 'MONTH';
 let todoCalendarDate = null;
+let todoModalOriginalTaskLink = null;
+let todoModalTaskLinkChanged = false;
 const TODO_CALENDAR_WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
 function addDaysToDateString(dateString, days) {
@@ -476,6 +478,168 @@ function getTodoDateLabel(todo, today = getTodayStr()) {
   return { label: `${todo.startDate} ~ ${todo.dueDate}`, className: 'border-slate-200 bg-slate-50 text-slate-600' };
 }
 
+function getTodoLinkTrackers() {
+  const source = typeof trackers !== 'undefined' && Array.isArray(trackers) ? trackers : [];
+  return source.filter(tracker => window.hasTaskPermission?.(tracker, 'view') === true);
+}
+
+function getTodoLinkTasks(trackerId) {
+  const source = typeof tasks !== 'undefined' && Array.isArray(tasks) ? tasks : [];
+  return source.filter(task =>
+    task.trackerId === trackerId &&
+    task.deleted !== true &&
+    window.hasTaskPermission?.(task, 'view') === true
+  );
+}
+
+function resolveTodoTaskLink(taskLink) {
+  const normalized = window.normalizeTodoTaskLink?.(taskLink);
+  if (!normalized) return { available: false, taskLink: null };
+  const tracker = getTodoLinkTrackers().find(item => item.id === normalized.trackerId);
+  const task = tracker
+    ? getTodoLinkTasks(normalized.trackerId).find(item => item.id === normalized.taskId)
+    : null;
+  const subTask = normalized.subTaskId && task
+    ? (Array.isArray(task.subTasks) ? task.subTasks : []).find(item => item.id === normalized.subTaskId)
+    : null;
+  if (!tracker || !task || (normalized.subTaskId && !subTask)) {
+    return { available: false, taskLink: normalized };
+  }
+  const parts = [tracker.name || '이름 없는 트래커', task.title || '제목 없는 업무'];
+  if (subTask) parts.push(subTask.title || '제목 없는 하위 과제');
+  return {
+    available: true,
+    taskLink: normalized,
+    tracker,
+    task,
+    subTask,
+    label: parts.join(' › ')
+  };
+}
+
+function setTodoTaskLinkStatus(message = '', unavailable = false) {
+  const status = document.getElementById('todo-task-link-status');
+  if (!status) return;
+  status.textContent = message;
+  status.className = message
+    ? `rounded-lg border px-2.5 py-2 text-[11px] font-semibold ${
+      unavailable
+        ? 'border-amber-200 bg-amber-50 text-amber-700'
+        : 'border-violet-200 bg-white text-violet-700'
+    }`
+    : 'hidden rounded-lg border px-2.5 py-2 text-[11px] font-semibold';
+}
+
+function replaceTodoSelectOptions(select, placeholder, items, getLabel) {
+  if (!select) return;
+  select.innerHTML = '';
+  const empty = document.createElement('option');
+  empty.value = '';
+  empty.textContent = placeholder;
+  select.appendChild(empty);
+  items.forEach(item => {
+    const option = document.createElement('option');
+    option.value = item.id;
+    option.textContent = getLabel(item);
+    select.appendChild(option);
+  });
+}
+
+function populateTodoLinkSubTasks(taskId, selectedSubTaskId = '') {
+  const taskSelect = document.getElementById('input-todo-link-task');
+  const subTaskSelect = document.getElementById('input-todo-link-subtask');
+  const trackerId = document.getElementById('input-todo-link-tracker')?.value || '';
+  const task = getTodoLinkTasks(trackerId).find(item => item.id === (taskId || taskSelect?.value));
+  const subTasks = Array.isArray(task?.subTasks) ? task.subTasks : [];
+  replaceTodoSelectOptions(subTaskSelect, '본 업무만 연결', subTasks, item => item.title || '제목 없는 하위 과제');
+  if (subTaskSelect) {
+    subTaskSelect.disabled = !task || !subTasks.length;
+    subTaskSelect.value = subTasks.some(item => item.id === selectedSubTaskId) ? selectedSubTaskId : '';
+  }
+}
+
+function populateTodoLinkTasks(trackerId, selectedTaskId = '', selectedSubTaskId = '') {
+  const taskSelect = document.getElementById('input-todo-link-task');
+  const tasksForTracker = trackerId ? getTodoLinkTasks(trackerId) : [];
+  replaceTodoSelectOptions(taskSelect, tasksForTracker.length ? '업무 선택' : '연결 가능한 업무 없음', tasksForTracker, item => item.title || '제목 없는 업무');
+  if (taskSelect) taskSelect.value = tasksForTracker.some(item => item.id === selectedTaskId) ? selectedTaskId : '';
+  populateTodoLinkSubTasks(taskSelect?.value || '', selectedSubTaskId);
+}
+
+function syncTodoTaskLinkInputs(taskLink = null) {
+  const trackerSelect = document.getElementById('input-todo-link-tracker');
+  const dependentFields = document.getElementById('todo-link-dependent-fields');
+  const clearButton = document.getElementById('btn-clear-todo-task-link');
+  const resolved = resolveTodoTaskLink(taskLink);
+  const availableTrackers = getTodoLinkTrackers();
+  replaceTodoSelectOptions(trackerSelect, '연결하지 않음', availableTrackers, item => item.name || '이름 없는 트래커');
+
+  if (resolved.available) {
+    trackerSelect.value = resolved.tracker.id;
+    dependentFields?.classList.remove('hidden');
+    dependentFields?.classList.add('grid');
+    populateTodoLinkTasks(resolved.tracker.id, resolved.task.id, resolved.subTask?.id || '');
+    setTodoTaskLinkStatus(resolved.label);
+  } else {
+    if (trackerSelect) trackerSelect.value = '';
+    dependentFields?.classList.add('hidden');
+    dependentFields?.classList.remove('grid');
+    populateTodoLinkTasks('');
+    setTodoTaskLinkStatus(taskLink ? '연결된 업무를 볼 수 없음 · 연결 해제 후 다른 업무를 선택할 수 있습니다.' : '', !!taskLink);
+  }
+  clearButton?.classList.toggle('hidden', !taskLink);
+}
+
+function clearTodoTaskLink() {
+  todoModalTaskLinkChanged = true;
+  todoModalOriginalTaskLink = null;
+  syncTodoTaskLinkInputs();
+}
+
+function getTodoTaskLinkFromInputs() {
+  const trackerId = document.getElementById('input-todo-link-tracker')?.value || '';
+  const taskId = document.getElementById('input-todo-link-task')?.value || '';
+  const subTaskId = document.getElementById('input-todo-link-subtask')?.value || '';
+  if (!trackerId) {
+    return {
+      taskLink: todoModalOriginalTaskLink && !todoModalTaskLinkChanged
+        ? todoModalOriginalTaskLink
+        : null
+    };
+  }
+  if (!taskId) return { error: '연결할 본 업무를 선택해 주세요.' };
+  const taskLink = window.normalizeTodoTaskLink?.({ trackerId, taskId, subTaskId });
+  if (!taskLink) return { error: '업무 연결 정보를 확인해 주세요.' };
+  if (
+    todoModalOriginalTaskLink?.occurrenceKey &&
+    todoModalOriginalTaskLink.trackerId === taskLink.trackerId &&
+    todoModalOriginalTaskLink.taskId === taskLink.taskId &&
+    (todoModalOriginalTaskLink.subTaskId || '') === (taskLink.subTaskId || '')
+  ) {
+    taskLink.occurrenceKey = todoModalOriginalTaskLink.occurrenceKey;
+  }
+  return { taskLink };
+}
+
+function openTodoLinkedTask(todoId) {
+  const todo = todoItems.find(item => item.id === todoId);
+  const resolved = resolveTodoTaskLink(todo?.taskLink);
+  if (!resolved.available) {
+    renderTodoView();
+    return showToast('연결된 업무를 볼 수 없습니다.', false);
+  }
+  window.currentTrackerId = resolved.tracker.id;
+  try {
+    localStorage.setItem('flow_current_tracker', resolved.tracker.id);
+  } catch (error) {
+    console.warn('선택한 트래커를 저장하지 못했습니다.', error);
+  }
+  window.updateTrackerUI?.();
+  window.switchView?.('TABLE');
+  window.__todoLinkedTaskTarget = resolved.taskLink;
+  window.openTaskModal?.(resolved.task.id);
+}
+
 function renderTodoView() {
   const container = document.getElementById('todo-list');
   if (!container) return;
@@ -513,6 +677,12 @@ function renderTodoView() {
 
   visible.forEach(todo => {
     const dateLabel = getTodoDateLabel(todo);
+    const linkedTask = todo.taskLink ? resolveTodoTaskLink(todo.taskLink) : null;
+    const linkedTaskHtml = linkedTask?.available
+      ? `<button type="button" class="btn-open-todo-task-link inline-flex max-w-full items-center gap-1 rounded-lg border border-violet-200 bg-violet-50 px-2 py-1 text-left text-[11px] font-bold text-violet-700 transition hover:border-violet-300 hover:bg-violet-100" data-id="${escapeHTML(todo.id)}" title="${escapeHTML(linkedTask.label)}" aria-label="연결된 업무 열기: ${escapeHTML(linkedTask.label)}"><span aria-hidden="true">↗</span><span class="truncate">${escapeHTML(linkedTask.label)}</span></button>`
+      : todo.taskLink
+        ? '<span class="inline-flex rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-700">연결된 업무를 볼 수 없음</span>'
+        : '';
     const card = document.createElement('article');
     card.className = `rounded-2xl border p-4 shadow-sm transition ${todo.completed ? 'border-slate-100 bg-slate-50/70 opacity-75' : isTodoOverdue(todo) ? 'border-rose-200 bg-rose-50/40' : 'border-slate-100 bg-white hover:border-indigo-200'}`;
     card.dataset.todoId = todo.id;
@@ -535,7 +705,7 @@ function renderTodoView() {
           <div class="mt-3 flex flex-wrap items-center gap-2">
             <span class="inline-flex rounded-lg border px-2 py-1 text-[11px] font-bold ${dateLabel.className}">${escapeHTML(dateLabel.label)}</span>
             <span class="text-[11px] font-semibold text-slate-400">📅 ${escapeHTML(todo.startDate)} ~ ${escapeHTML(todo.dueDate)}</span>
-            ${todo.taskLink ? '<span class="inline-flex rounded-lg border border-violet-200 bg-violet-50 px-2 py-1 text-[11px] font-bold text-violet-700">업무 연결됨</span>' : ''}
+            ${linkedTaskHtml}
           </div>
         </div>
       </div>`;
@@ -546,12 +716,15 @@ function renderTodoView() {
 function openTodoModal(id = '') {
   const todo = id ? todoItems.find(item => item.id === id) : null;
   const today = getTodayStr();
+  todoModalOriginalTaskLink = window.normalizeTodoTaskLink?.(todo?.taskLink) || null;
+  todoModalTaskLinkChanged = false;
   document.getElementById('todo-modal-title').textContent = todo ? 'To-do 수정' : '새 To-do';
   document.getElementById('input-todo-id').value = todo?.id || '';
   document.getElementById('input-todo-title').value = todo?.title || '';
   document.getElementById('input-todo-memo').value = todo?.memo || '';
   document.getElementById('input-todo-start').value = todo?.startDate || today;
   document.getElementById('input-todo-due').value = todo?.dueDate || today;
+  syncTodoTaskLinkInputs(todoModalOriginalTaskLink);
   document.getElementById('modal-todo')?.classList.remove('hidden');
   document.getElementById('input-todo-title')?.focus();
 }
@@ -559,18 +732,22 @@ function openTodoModal(id = '') {
 function closeTodoModal() {
   document.getElementById('modal-todo')?.classList.add('hidden');
   document.getElementById('form-todo')?.reset();
+  todoModalOriginalTaskLink = null;
+  todoModalTaskLinkChanged = false;
 }
 
 async function handleTodoSubmit(event) {
   event.preventDefault();
   const id = document.getElementById('input-todo-id').value;
+  const taskLinkResult = getTodoTaskLinkFromInputs();
+  if (taskLinkResult.error) return showToast(taskLinkResult.error, false);
   const data = {
     title: document.getElementById('input-todo-title').value,
     memo: document.getElementById('input-todo-memo').value,
     startDate: document.getElementById('input-todo-start').value,
     dueDate: document.getElementById('input-todo-due').value,
     completed: id ? todoItems.find(item => item.id === id)?.completed === true : false,
-    taskLink: id ? todoItems.find(item => item.id === id)?.taskLink : null
+    taskLink: taskLinkResult.taskLink
   };
   const validationMessage = validateTodoPayload(data);
   if (validationMessage) return showToast(validationMessage, false);
@@ -663,6 +840,26 @@ function initTodoController() {
   document.getElementById('btn-close-todo-modal')?.addEventListener('click', closeTodoModal);
   document.getElementById('btn-cancel-todo')?.addEventListener('click', closeTodoModal);
   document.getElementById('form-todo')?.addEventListener('submit', handleTodoSubmit);
+  document.getElementById('btn-clear-todo-task-link')?.addEventListener('click', clearTodoTaskLink);
+  document.getElementById('input-todo-link-tracker')?.addEventListener('change', event => {
+    todoModalTaskLinkChanged = true;
+    const trackerId = event.target.value || '';
+    const dependentFields = document.getElementById('todo-link-dependent-fields');
+    dependentFields?.classList.toggle('hidden', !trackerId);
+    dependentFields?.classList.toggle('grid', !!trackerId);
+    populateTodoLinkTasks(trackerId);
+    setTodoTaskLinkStatus('');
+    document.getElementById('btn-clear-todo-task-link')?.classList.toggle('hidden', !trackerId);
+  });
+  document.getElementById('input-todo-link-task')?.addEventListener('change', event => {
+    todoModalTaskLinkChanged = true;
+    populateTodoLinkSubTasks(event.target.value || '');
+    setTodoTaskLinkStatus('');
+  });
+  document.getElementById('input-todo-link-subtask')?.addEventListener('change', () => {
+    todoModalTaskLinkChanged = true;
+    setTodoTaskLinkStatus('');
+  });
   document.querySelectorAll('[data-todo-date-filter]').forEach(button => {
     button.addEventListener('click', () => {
       todoDateFilter = button.dataset.todoDateFilter || 'TODAY';
@@ -689,6 +886,8 @@ function initTodoController() {
     }
   });
   document.getElementById('todo-list')?.addEventListener('click', event => {
+    const linkedTask = event.target.closest('.btn-open-todo-task-link');
+    if (linkedTask) return openTodoLinkedTask(linkedTask.dataset.id);
     const edit = event.target.closest('.btn-edit-todo');
     if (edit) return openTodoModal(edit.dataset.id);
     const remove = event.target.closest('.btn-delete-todo');
@@ -734,6 +933,8 @@ window.isTodoOverdue = isTodoOverdue;
 window.matchesTodoDateFilter = matchesTodoDateFilter;
 window.getTodoFilterCounts = getTodoFilterCounts;
 window.getVisibleTodos = getVisibleTodos;
+window.resolveTodoTaskLink = resolveTodoTaskLink;
+window.openTodoLinkedTask = openTodoLinkedTask;
 window.getTodoCalendarItems = getTodoCalendarItems;
 window.syncTodoViewMode = syncTodoViewMode;
 window.setTodoViewMode = setTodoViewMode;

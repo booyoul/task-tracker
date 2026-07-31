@@ -1486,6 +1486,42 @@
                                     class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none transition focus:border-violet-400 focus:bg-white focus:ring-2 focus:ring-violet-100">
                             </div>
                         </div>
+                        <section class="rounded-xl border border-violet-100 bg-violet-50/60 p-3.5">
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <label for="input-todo-link-tracker" class="block text-xs font-black text-slate-700">업무 연결 <span class="font-semibold text-slate-400">(선택)</span></label>
+                                    <p class="mt-0.5 text-[11px] leading-relaxed text-slate-500">팀 업무의 맥락만 연결합니다. 일정과 완료 상태는 서로 동기화되지 않습니다.</p>
+                                </div>
+                                <button id="btn-clear-todo-task-link" type="button"
+                                    class="hidden shrink-0 rounded-lg border border-violet-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-violet-700 transition hover:bg-violet-100">연결 해제</button>
+                            </div>
+                            <div class="mt-3 space-y-3">
+                                <div>
+                                    <span class="mb-1 block text-[11px] font-bold text-slate-500">트래커</span>
+                                    <select id="input-todo-link-tracker"
+                                        class="w-full rounded-xl border border-violet-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100">
+                                        <option value="">연결하지 않음</option>
+                                    </select>
+                                </div>
+                                <div id="todo-link-dependent-fields" class="hidden grid-cols-1 gap-3 sm:grid-cols-2">
+                                    <div>
+                                        <label for="input-todo-link-task" class="mb-1 block text-[11px] font-bold text-slate-500">본 업무 *</label>
+                                        <select id="input-todo-link-task"
+                                            class="w-full rounded-xl border border-violet-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100">
+                                            <option value="">업무 선택</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label for="input-todo-link-subtask" class="mb-1 block text-[11px] font-bold text-slate-500">하위 과제</label>
+                                        <select id="input-todo-link-subtask" disabled
+                                            class="w-full rounded-xl border border-violet-200 bg-white px-3 py-2.5 text-sm outline-none transition disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 focus:border-violet-400 focus:ring-2 focus:ring-violet-100">
+                                            <option value="">본 업무만 연결</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <p id="todo-task-link-status" class="hidden rounded-lg border px-2.5 py-2 text-[11px] font-semibold"></p>
+                            </div>
+                        </section>
                         <div>
                             <label for="input-todo-memo" class="mb-1 block text-xs font-bold text-slate-600">메모</label>
                             <textarea id="input-todo-memo" rows="3" maxlength="500"
@@ -1820,9 +1856,9 @@
     <script defer src="./js/calendar-mobile-renderer.js?v=20260731-v3"></script>
     <script defer src="./js/table-mobile-renderer.js?v=20260731-v16"></script>
     <script defer src="./js/kanban-renderer.js?v=20260731-v13"></script>
-    <script defer src="./js/modal-controller.js?v=20260728-v1"></script>
-    <script defer src="./js/todo-service.js?v=20260727-v1"></script>
-    <script defer src="./js/todo-controller.js?v=20260729-v3"></script>
+    <script defer src="./js/modal-controller.js?v=20260731-v2"></script>
+    <script defer src="./js/todo-service.js?v=20260731-v2"></script>
+    <script defer src="./js/todo-controller.js?v=20260731-v4"></script>
     <script defer src="./js/admin-approvals.js?v=20260731-v2"></script>
     <script defer src="./js/month-picker-controller.js?v=20260724-v1"></script>
     <script defer src="./js/event-bindings.js?v=20260727-v1"></script>

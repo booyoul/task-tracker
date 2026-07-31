@@ -1,13 +1,14 @@
-console.info('Smart Task Flow todo-service.js v20260727-v1 loaded');
+console.info('Smart Task Flow todo-service.js v20260731-v2 loaded');
 
 function normalizeTodoTaskLink(taskLink) {
   if (!taskLink || typeof taskLink !== 'object' || Array.isArray(taskLink)) return null;
   const trackerId = String(taskLink.trackerId || '').trim();
   const taskId = String(taskLink.taskId || '').trim();
-  if (!trackerId || !taskId) return null;
+  if (!trackerId || !taskId || trackerId.length > 200 || taskId.length > 200) return null;
   const normalized = { trackerId, taskId };
   const subTaskId = String(taskLink.subTaskId || '').trim();
   const occurrenceKey = String(taskLink.occurrenceKey || '').trim();
+  if (subTaskId.length > 200 || occurrenceKey.length > 200) return null;
   if (subTaskId) normalized.subTaskId = subTaskId;
   if (occurrenceKey) normalized.occurrenceKey = occurrenceKey;
   return normalized;

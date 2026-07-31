@@ -68,6 +68,11 @@ async function testService() {
     { trackerId: 'tracker-1', taskId: 'task-1', subTaskId: 'sub-1', occurrenceKey: '2026-07-27' },
     '향후 Task 연결 정보가 정규화 과정에서 보존되어야 합니다.'
   );
+  assert.equal(
+    context.normalizeTodoTaskLink({ trackerId: 'tracker-1', taskId: 'task-1', subTaskId: 'x'.repeat(201) }),
+    null,
+    '비정상적으로 긴 연결 식별자는 저장하지 않아야 합니다.'
+  );
   assert.equal(context.validateTodoPayload({ ...linked, startDate: '2026-08-01', dueDate: '2026-07-31' }), '종료일은 시작일보다 빠를 수 없습니다.');
 
   const addResult = await context.db_addTodo({
@@ -109,12 +114,19 @@ function testDateGroupingAndRendering() {
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
     })[character]),
     todoItems: [
-      { id: 'overdue', ownerId: 'user-1', title: '지난 할 일', memo: '', startDate: '2026-07-20', dueDate: '2026-07-26', completed: false },
-      { id: 'today', ownerId: 'user-1', title: '오늘 할 일', memo: '검토', startDate: '2026-07-27', dueDate: '2026-07-27', completed: false },
+      { id: 'overdue', ownerId: 'user-1', title: '지난 할 일', memo: '', startDate: '2026-07-20', dueDate: '2026-07-26', completed: false, taskLink: { trackerId: 'tracker-1', taskId: 'missing-task' } },
+      { id: 'today', ownerId: 'user-1', title: '오늘 할 일', memo: '검토', startDate: '2026-07-27', dueDate: '2026-07-27', completed: false, taskLink: { trackerId: 'tracker-1', taskId: 'task-1', subTaskId: 'sub-1' } },
       { id: 'week', ownerId: 'user-1', title: '이번 주 할 일', memo: '', startDate: '2026-08-01', dueDate: '2026-08-02', completed: false },
       { id: 'month', ownerId: 'user-1', title: '이번 달 할 일', memo: '', startDate: '2026-07-29', dueDate: '2026-07-31', completed: false },
       { id: 'done', ownerId: 'user-1', title: '완료한 일', memo: '', startDate: '2026-07-27', dueDate: '2026-07-27', completed: true }
     ],
+    trackers: [{ id: 'tracker-1', name: '영업 트래커', ownerId: 'user-1' }],
+    tasks: [{
+      id: 'task-1',
+      trackerId: 'tracker-1',
+      title: '견적 검토',
+      subTasks: [{ id: 'sub-1', title: '고객 조건 확인' }]
+    }],
     currentViewMode: 'TODO',
     lastTaskViewMode: 'CALENDAR',
     confirmActionCb: null,
@@ -124,6 +136,16 @@ function testDateGroupingAndRendering() {
     db_updateTodo: async () => ({ success: true }),
     db_deleteTodo: async () => ({ success: true }),
     closeConfirmModal() {},
+    normalizeTodoTaskLink: taskLink => {
+      if (!taskLink?.trackerId || !taskLink?.taskId) return null;
+      const normalized = { trackerId: taskLink.trackerId, taskId: taskLink.taskId };
+      if (taskLink.subTaskId) normalized.subTaskId = taskLink.subTaskId;
+      if (taskLink.occurrenceKey) normalized.occurrenceKey = taskLink.occurrenceKey;
+      return normalized;
+    },
+    hasTaskPermission: () => true,
+    updateTrackerUI() {},
+    openTaskModal(id) { context.openedTaskId = id; },
     setTimeout,
     clearTimeout
   };
@@ -143,6 +165,22 @@ function testDateGroupingAndRendering() {
   context.renderTodoView();
   const cards = [...context.document.querySelectorAll('#todo-list [data-todo-id]')];
   assert.deepEqual(cards.map(card => card.dataset.todoId), ['overdue', 'today'], '오늘 보기에서 기한 경과 항목을 먼저 표시해야 합니다.');
+  assert.equal(
+    cards[0].textContent.includes('연결된 업무를 볼 수 없음'),
+    true,
+    '삭제되었거나 볼 수 없는 업무 제목은 노출하지 않아야 합니다.'
+  );
+  assert.equal(
+    cards[1].querySelector('.btn-open-todo-task-link')?.textContent.includes('영업 트래커 › 견적 검토 › 고객 조건 확인'),
+    true,
+    '접근 가능한 연결은 트래커부터 하위 과제까지 동적으로 표시해야 합니다.'
+  );
+  context.switchView = mode => { context.switchedViewMode = mode; };
+  context.openTodoLinkedTask('today');
+  assert.equal(context.currentTrackerId, 'tracker-1');
+  assert.equal(context.switchedViewMode, 'TABLE');
+  assert.equal(context.openedTaskId, 'task-1');
+  assert.equal(context.__todoLinkedTaskTarget.subTaskId, 'sub-1');
   assert.equal(context.document.getElementById('todo-count-week').textContent, '3');
   assert.equal(context.document.getElementById('todo-list-view').hidden, false);
   assert.equal(context.document.getElementById('todo-calendar-section').hidden, true);
@@ -192,7 +230,7 @@ function testDateGroupingAndRendering() {
 async function main() {
   await testService();
   testDateGroupingAndRendering();
-  console.log('todo smoke passed: ownership CRUD, task-link readiness, date grouping, split list/calendar views, and task-style calendars');
+  console.log('todo smoke passed: ownership CRUD, task linking, date grouping, split list/calendar views, and task-style calendars');
 }
 
 main().catch(error => {

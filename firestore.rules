@@ -85,6 +85,32 @@ service cloud.firestore {
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['createdBy', 'ownerId', 'trackerId']);
     }
 
+    function isValidTodoTaskLink(taskLink) {
+      return taskLink == null ||
+        (
+          taskLink is map &&
+          taskLink.keys().hasOnly(['trackerId', 'taskId', 'subTaskId', 'occurrenceKey']) &&
+          'trackerId' in taskLink &&
+          'taskId' in taskLink &&
+          taskLink.trackerId is string &&
+          taskLink.trackerId.size() > 0 &&
+          taskLink.trackerId.size() <= 200 &&
+          taskLink.taskId is string &&
+          taskLink.taskId.size() > 0 &&
+          taskLink.taskId.size() <= 200 &&
+          (!('subTaskId' in taskLink) || (
+            taskLink.subTaskId is string &&
+            taskLink.subTaskId.size() > 0 &&
+            taskLink.subTaskId.size() <= 200
+          )) &&
+          (!('occurrenceKey' in taskLink) || (
+            taskLink.occurrenceKey is string &&
+            taskLink.occurrenceKey.size() > 0 &&
+            taskLink.occurrenceKey.size() <= 200
+          ))
+        );
+    }
+
     function isValidTodoData(data) {
       return data.keys().hasOnly([
           'ownerId', 'title', 'memo', 'startDate', 'dueDate', 'completed',
@@ -100,7 +126,7 @@ service cloud.firestore {
         data.dueDate is string &&
         data.startDate <= data.dueDate &&
         data.completed is bool &&
-        (!('taskLink' in data) || data.taskLink == null || data.taskLink is map);
+        (!('taskLink' in data) || isValidTodoTaskLink(data.taskLink));
     }
 
     function isCreatingOwnTodo() {
