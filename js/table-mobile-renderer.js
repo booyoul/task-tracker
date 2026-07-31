@@ -1,4 +1,4 @@
-console.info('Smart Task Flow table-mobile-renderer.js v20260731-v13 loaded');
+console.info('Smart Task Flow table-mobile-renderer.js v20260731-v14 loaded');
 // Table and mobile card renderers. Extracted from app.js in Phase 5.
 const listProgressNoteSummaryCache = {
   trackerId: '',
@@ -166,7 +166,7 @@ function renderTable(filtered) {
     const riskBadge = riskInfo.level !== 'NONE' ? ` <span class="rounded-lg border px-2 py-1 text-[10px] font-bold ${riskInfo.class}">Risk: ${riskInfo.label} D+${riskInfo.delay}</span>` : '';
     const bottleneckHTML = bottleneck ? `<div class="pl-6 text-[11px] text-rose-500 mt-1 font-semibold">🔥 Bottleneck: ${escapeHTML(bottleneck.title)} · ${bottleneck.dueDate || '마감 미정'}</div>` : '';
     const tr = document.createElement('tr');
-    tr.className = ['transition-colors group', ['HIGH', 'CRITICAL'].includes(riskInfo.level) ? 'bg-rose-50/70 border-l-4 border-l-rose-500 hover:bg-rose-50' : effectiveStatus === 'OVERDUE' ? 'bg-amber-50/50 border-l-4 border-l-amber-400 hover:bg-amber-50' : 'hover:bg-slate-50'].join(' ');
+    tr.className = ['transition-colors group', ['HIGH', 'CRITICAL'].includes(riskInfo.level) ? 'bg-rose-50/70 border-l-4 border-l-rose-500 hover:bg-rose-50 dark:bg-rose-950/30 dark:border-l-rose-700 dark:hover:bg-rose-950/45' : effectiveStatus === 'OVERDUE' ? 'bg-amber-50/50 border-l-4 border-l-amber-400 hover:bg-amber-50 dark:bg-amber-950/30 dark:border-l-amber-700 dark:hover:bg-amber-950/45' : 'hover:bg-slate-50 dark:hover:bg-slate-800/70'].join(' ');
     tr.title = `Risk: ${riskInfo.label}${riskInfo.delay ? ' D+' + riskInfo.delay : ''} | 운영상태: ${getStatusKorean(effectiveStatus)} | 진척: ${progressPct}%${bottleneck ? ' | Bottleneck: ' + bottleneck.title : ''}`;
     tr.innerHTML = `
       <td class="px-2 py-4 text-center text-slate-400">
@@ -191,7 +191,7 @@ function renderTable(filtered) {
         const subAssigneeLabel = Array.isArray(subAssignee) ? subAssignee.join(', ') : (subAssignee || '미지정');
         const stTimeline = getSubTaskTimelineStatus(st);
         const sr = document.createElement('tr');
-        sr.className = isSubTaskOverdue(st) ? 'bg-rose-50/70 border-l-2 border-l-rose-500/60 hover:bg-rose-50 transition-colors text-xs' : 'bg-slate-50/70 border-l-2 border-l-indigo-500/40 hover:bg-indigo-50/30 transition-colors text-xs';
+        sr.className = isSubTaskOverdue(st) ? 'bg-rose-50/70 border-l-2 border-l-rose-500/60 hover:bg-rose-50 transition-colors text-xs dark:bg-rose-950/25 dark:border-l-rose-700 dark:hover:bg-rose-950/40' : 'bg-slate-50/70 border-l-2 border-l-indigo-500/40 hover:bg-indigo-50/30 transition-colors text-xs dark:bg-slate-900/60 dark:border-l-indigo-700/60 dark:hover:bg-indigo-950/25';
         sr.innerHTML = `
           <td colspan="2"></td>
           <td class="px-4 py-2 text-slate-600"><div class="flex items-center gap-2 pl-8"><span class="text-slate-300">└─</span><button type="button" class="btn-edit font-semibold text-left ${['COMPLETED', 'CANCELLED'].includes(status) ? 'line-through text-slate-400' : isSubTaskOverdue(st) ? 'text-rose-700' : 'text-slate-700'} hover:text-indigo-600 outline-none" data-id="${t.id}" title="클릭해서 업무 수정">${isSubTaskOverdue(st) ? '🚨 ' : ''}${escapeHTML(st.title)}</button>${buildListNoteButtonHTML(t.id, st.id)}<span class="shrink-0 max-w-[120px] truncate rounded border border-indigo-100 bg-indigo-50 px-1 py-0.5 text-[10px] font-bold text-indigo-700" title="${escapeHTML(subAssigneeLabel)}">👤 ${escapeHTML(subAssigneeLabel)}</span></div></td>
@@ -227,9 +227,9 @@ function getMobilePriorityClass(priority) {
 function getMobileRiskAccent(t, todayStr) {
   const risk = getTaskRiskInfo(t, todayStr);
   const effective = getEffectiveStatus(t, todayStr);
-  if (['HIGH', 'CRITICAL'].includes(risk.level)) return 'border-rose-200 bg-rose-50/60 ring-1 ring-rose-100';
-  if (effective === 'OVERDUE') return 'border-amber-200 bg-amber-50/50 ring-1 ring-amber-100';
-  return 'border-slate-100 bg-white';
+  if (['HIGH', 'CRITICAL'].includes(risk.level)) return 'border-rose-200 bg-rose-50/60 ring-1 ring-rose-100 dark:border-rose-800 dark:bg-rose-950/30 dark:ring-rose-900/60';
+  if (effective === 'OVERDUE') return 'border-amber-200 bg-amber-50/50 ring-1 ring-amber-100 dark:border-amber-800 dark:bg-amber-950/30 dark:ring-amber-900/60';
+  return 'border-slate-100 bg-white dark:border-slate-700 dark:bg-slate-800';
 }
 
 function getMobileDuePill(t, todayStr) {
@@ -255,7 +255,7 @@ function mobileStatusSegment(id, status) {
     const active = s === value;
     return `<button type="button" class="mobile-status-btn flex-1 rounded-xl px-2 py-2 text-[11px] font-black transition ${active ? activeClass : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}" data-id="${escapeHTML(id)}" data-status="${value}">${label}</button>`;
   };
-  return `<div class="mt-3 grid grid-cols-4 gap-1 rounded-2xl bg-slate-100/70 p-1">
+  return `<div class="mt-3 grid grid-cols-4 gap-1 rounded-2xl bg-slate-100/70 p-1 dark:bg-slate-900/70">
     ${btn('PENDING', '대기', 'bg-white text-amber-700 shadow-sm')}
     ${btn('PROGRESS', '진행', 'bg-white text-blue-700 shadow-sm')}
     ${btn('COMPLETED', '완료', 'bg-white text-emerald-700 shadow-sm')}
@@ -269,7 +269,7 @@ function buildMobileSubTaskHTML(t, subTasks) {
   if (!isExpanded) {
     return `<button type="button" class="btn-toggle-subtasks mt-3 w-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-left text-xs font-bold text-slate-500" data-id="${escapeHTML(t.id)}" data-expanded="false">하위 업무 ${getSubTaskProgressLabel(subTasks)} 보기</button>`;
   }
-  return `<div class="mt-3 space-y-2 rounded-2xl border border-slate-100 bg-slate-50/80 p-2">
+  return `<div class="mt-3 space-y-2 rounded-2xl border border-slate-100 bg-slate-50/80 p-2 dark:border-slate-700 dark:bg-slate-900/60">
     <div class="flex items-center justify-between px-1 text-[11px] font-black text-slate-400"><span>하위 업무</span><button type="button" class="btn-toggle-subtasks text-indigo-600" data-id="${escapeHTML(t.id)}" data-expanded="true">접기</button></div>
     ${subTasks.map(st => {
       const status = normalizeStatus(st.status);
@@ -302,7 +302,7 @@ function ensureMobileBulkActionBar() {
   if (document.getElementById('mobile-bulk-action-bar')) return;
   const bar = document.createElement('div');
   bar.id = 'mobile-bulk-action-bar';
-  bar.className = 'hidden lg:hidden fixed inset-x-3 bottom-3 z-40 rounded-3xl border border-indigo-100 bg-white/95 p-2 shadow-2xl backdrop-blur';
+  bar.className = 'hidden lg:hidden fixed inset-x-3 bottom-3 z-40 rounded-3xl border border-indigo-100 bg-white/95 p-2 shadow-2xl backdrop-blur dark:border-indigo-800 dark:bg-slate-900/95';
   bar.innerHTML = `<div class="flex items-center gap-2">
     <div class="min-w-0 flex-1 pl-2"><div id="mobile-bulk-count" class="text-xs font-black text-indigo-700">0개 선택됨</div><div class="text-[10px] text-slate-400">선택 업무 빠른 처리</div></div>
     <button type="button" id="mobile-bulk-status" class="rounded-2xl bg-indigo-600 px-3 py-2 text-xs font-black text-white">상태</button>

@@ -290,6 +290,14 @@ async function main() {
   assert(/function kanbanTone[^]*dark:bg-/.test(kanbanRendererSource), '칸반 열의 다크 테마 배경이 누락되었습니다.');
   assert(tableRendererSource.includes('bg-indigo-50/80') && tableRendererSource.includes('dark:bg-indigo-950/35'), '목록 업무 분류 헤더의 다크 테마 배경이 누락되었습니다.');
   assert(calendarMobileSource.includes('bg-indigo-50/80') && calendarMobileSource.includes('dark:bg-indigo-950/35'), '모바일 캘린더 업무 분류 헤더의 다크 테마 배경이 누락되었습니다.');
+  const modalDarkSurfaces = [...indexDom.window.document.querySelectorAll('[data-modal-dark-surface]')];
+  assert(modalDarkSurfaces.length === 4, '조건부 업무·트래커 모달 다크 표면 식별자가 누락되었습니다.');
+  assert(modalDarkSurfaces.every(surface => surface.className.includes('dark:bg-') && surface.className.includes('dark:border-')), '조건부 업무·트래커 모달에 다크 배경 또는 테두리가 누락되었습니다.');
+  assert(/bg-rose-50\/70[^']*dark:bg-rose-950\/30/.test(tableRendererSource), 'High/Risk 목록 행의 다크 테마 강조가 누락되었습니다.');
+  assert(/bg-amber-50\/50[^']*dark:bg-amber-950\/30/.test(tableRendererSource), '기한 초과 목록 행의 다크 테마 강조가 누락되었습니다.');
+  assert(/bg-rose-50\/70[^']*dark:bg-rose-950\/25/.test(tableRendererSource), '기한 초과 서브 태스크 행의 다크 테마 강조가 누락되었습니다.');
+  assert(/function getMobileRiskAccent[^]*dark:bg-rose-950\/30[^]*dark:bg-amber-950\/30/.test(tableRendererSource), '모바일 Risk·기한 초과 카드의 다크 테마 강조가 누락되었습니다.');
+  assert(/mobile-bulk-action-bar[^]*bg-white\/95[^]*dark:bg-slate-900\/95/.test(tableRendererSource), '모바일 일괄 작업 바의 다크 테마 배경이 누락되었습니다.');
 
   loadScript('js/date-risk-utils.js');
   loadScript('js/calendar-utils.js');
@@ -417,6 +425,10 @@ async function main() {
   assert([...document.querySelectorAll('#task-card-container [data-task-category-group]')].every(header => header.className.includes('dark:bg-') && header.className.includes('dark:text-')), '모바일 목록 업무 분류 헤더에 다크 테마 클래스가 적용되지 않았습니다.');
   assert(global.getIndustryBarClass(tasks[0], false).includes('dark:bg-'), '업무 분류별 본 업무 막대에 다크 테마 클래스가 적용되지 않았습니다.');
   assert(global.getIndustryBarClass(tasks[0], true).includes('dark:bg-'), '업무 분류별 하위 업무 막대에 다크 테마 클래스가 적용되지 않았습니다.');
+  assert([...document.querySelectorAll('.mobile-task-card')].every(card => card.className.includes('dark:bg-')), '모바일 목록 카드에 명시적 다크 테마 배경이 적용되지 않았습니다.');
+  const mobileSubTaskGroup = [...document.querySelectorAll('#task-card-container div')].find(element => element.className.includes('bg-slate-50/80'));
+  assert(mobileSubTaskGroup?.className.includes('dark:bg-'), '모바일 하위 업무 컨테이너의 다크 테마 배경이 누락되었습니다.');
+  assert(document.getElementById('mobile-bulk-action-bar')?.className.includes('dark:bg-'), '렌더링된 모바일 일괄 작업 바의 다크 테마 배경이 누락되었습니다.');
   assert(!document.querySelector('.mobile-command-deck'), '모바일 목록에 중복 Focus 및 Risk 제어 영역이 남아 있습니다.');
   assert(document.querySelector('#task-card-container .btn-list-note[data-task-id="task-1"]:not([data-subtask-id])'), '모바일 본 업무 제목 옆 메모 핀이 없습니다.');
   assert(document.querySelector('#task-card-container .btn-list-note[data-task-id="task-1"][data-subtask-id="sub-1"]'), '모바일 서브 태스크 제목 옆 메모 핀이 없습니다.');
