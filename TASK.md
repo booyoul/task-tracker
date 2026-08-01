@@ -1,6 +1,6 @@
 # Smart Task Flow Task
 
-Last updated: 2026-07-31
+Last updated: 2026-08-01
 
 ## Startup
 
@@ -17,6 +17,7 @@ Last updated: 2026-07-31
 - Desktop and mobile task/list/calendar/summary/To-do routing is covered by focused smoke tests. The full suite includes 58 Firestore Rules allow/deny cases.
 - The latest UI pass aligned dark surfaces across calendars, lists, all modal/dialog panels, mobile task cards, and mobile 가입 승인 관리.
 - Personal To-do can optionally link to an accessible tracker task or normal subtask for context and direct navigation.
+- Commit `2371220` is live on GitHub Pages, and the matching Firestore Rules release was verified in production on 2026-08-01.
 
 ## Product Contracts
 
@@ -105,8 +106,8 @@ For responsive geometry, native picker behavior, rich-text selection, or color c
 
 ## Next Work
 
-- Deploy the reviewed Firestore Rules and static assets when the user requests a production release.
-- Recurring subtask occurrence selection remains deferred; the current UI links a recurring source subtask without choosing an individual occurrence.
+- No required deployment work remains.
+- Recurring subtask occurrence selection is the next deferred product option; present its data, UI, permission, and verification plan before implementation.
 
 ## Cautions
 
