@@ -19,7 +19,7 @@ Last updated: 2026-08-02
 - The To-do list, filters, view toggles, cards, linked-task badges, and desktop/mobile month/year calendars use explicit dark surface and semantic status colors.
 - Personal To-do can optionally link to an accessible tracker task or normal subtask for context and direct navigation.
 - Personal To-do can select a specific occurrence of a recurring subtask and reopen that exact occurrence in the task modal.
-- Commit `2371220` is live on GitHub Pages, and the matching Firestore Rules release was verified in production on 2026-08-01.
+- Commit `4856bb0` is pushed to `origin/main`. Firestore Rules release `f9af690a-362b-4b12-8d1f-288933f980b8` was deployed to `task-tracker-99af4` on 2026-08-02, and unauthenticated reads of `todos`, `tasks`, `trackers`, `users`, `activity_logs`, and `progress_notes` were denied in production.
 
 ## Product Contracts
 
@@ -109,7 +109,7 @@ For responsive geometry, native picker behavior, rich-text selection, or color c
 
 ## Next Work
 
-- Deploy the updated Firestore Rules to `task-tracker-99af4`, then verify the recurring To-do occurrence-link against production permissions.
+- Run one authenticated production browser check that selects, saves, and reopens a recurring To-do occurrence link, then remove the disposable To-do record.
 
 ## Cautions
 
