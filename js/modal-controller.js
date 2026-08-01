@@ -1,4 +1,4 @@
-console.info('Smart Task Flow modal-controller.js v20260731-v2 loaded');
+console.info('Smart Task Flow modal-controller.js v20260801-v1 loaded');
 // Task modal, subtask modal list, tracker modal, and form submit handlers.
 function resetSubTaskButton() {
   const btn = document.getElementById('btn-add-subtask');
@@ -122,21 +122,38 @@ function getModalSubTaskOccurrences(st = {}) {
   const year = Number.parseInt(String(today).slice(0, 4), 10) || new Date().getFullYear();
   const rangeStart = `${year}-01-01`;
   const rangeEnd = `${year + 1}-12-31`;
-  return getRecurringSubTaskOccurrences(st, rangeStart, rangeEnd, today)
-    .sort((a, b) => String(a.startDate || '').localeCompare(String(b.startDate || '')))
-    .slice(0, 12);
+  const occurrences = getRecurringSubTaskOccurrences(st, rangeStart, rangeEnd, today);
+  const linkedOccurrenceKey = window.__todoLinkedTaskTarget?.subTaskId === st.id
+    ? window.__todoLinkedTaskTarget?.occurrenceKey || ''
+    : '';
+  if (linkedOccurrenceKey && !occurrences.some(item => item.occurrenceKey === linkedOccurrenceKey)) {
+    const linkedYear = Number.parseInt(linkedOccurrenceKey.slice(0, 4), 10);
+    const linked = getRecurringSubTaskOccurrences(st, `${linkedYear}-01-01`, `${linkedYear}-12-31`, linkedOccurrenceKey)
+      .find(item => item.occurrenceKey === linkedOccurrenceKey);
+    if (linked) occurrences.push(linked);
+  }
+  const sorted = occurrences.sort((a, b) => String(a.startDate || '').localeCompare(String(b.startDate || '')));
+  if (!linkedOccurrenceKey) return sorted.slice(0, 12);
+  const linkedIndex = sorted.findIndex(item => item.occurrenceKey === linkedOccurrenceKey);
+  if (linkedIndex < 0) return sorted.slice(0, 12);
+  const startIndex = Math.max(0, Math.min(linkedIndex - 5, sorted.length - 12));
+  return sorted.slice(startIndex, startIndex + 12);
 }
 function buildModalSubTaskOccurrenceStatusHTML(st = {}, idx) {
   const occurrences = getModalSubTaskOccurrences(st);
   if (!occurrences.length) return '';
+  const linkedOccurrenceKey = window.__todoLinkedTaskTarget?.subTaskId === st.id
+    ? window.__todoLinkedTaskTarget?.occurrenceKey || ''
+    : '';
   const rows = occurrences.map(occ => {
     const status = normalizeStatus(occ.status);
     const key = occ.occurrenceKey || occ.startDate || '';
+    const linkedFromTodo = linkedOccurrenceKey === key;
     const dateLabel = occ.startDate === occ.dueDate
       ? (occ.startDate ? occ.startDate.substring(5) : '미정')
       : `${occ.startDate ? occ.startDate.substring(5) : '미정'}~${occ.dueDate ? occ.dueDate.substring(5) : '미정'}`;
-    return `<div class="flex items-center justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50 px-2 py-1.5">
-      <span class="min-w-0 truncate text-[11px] font-semibold text-slate-500">📅 ${escapeHTML(dateLabel)}</span>
+    return `<div class="flex items-center justify-between gap-2 rounded-lg border px-2 py-1.5 ${linkedFromTodo ? 'border-violet-300 bg-violet-50 ring-2 ring-violet-100' : 'border-slate-100 bg-slate-50'}" data-occurrence-key="${escapeHTML(key)}">
+      <span class="min-w-0 truncate text-[11px] font-semibold ${linkedFromTodo ? 'text-violet-700' : 'text-slate-500'}">📅 ${escapeHTML(dateLabel)}${linkedFromTodo ? ' · To-do 연결' : ''}</span>
       <select class="sel-modal-subtask-occurrence-status shrink-0 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-semibold text-slate-600 outline-none focus:border-indigo-500" data-index="${idx}" data-occurrence-key="${escapeHTML(key)}">
         <option value="PENDING" ${status === 'PENDING' ? 'selected' : ''}>대기</option>
         <option value="PROGRESS" ${status === 'PROGRESS' ? 'selected' : ''}>진행</option>
@@ -145,7 +162,7 @@ function buildModalSubTaskOccurrenceStatusHTML(st = {}, idx) {
       </select>
     </div>`;
   }).join('');
-  return `<details class="rounded-lg border border-indigo-100 bg-indigo-50/40 px-2 py-1.5">
+  return `<details class="rounded-lg border border-indigo-100 bg-indigo-50/40 px-2 py-1.5" ${linkedOccurrenceKey ? 'open' : ''}>
     <summary class="cursor-pointer text-[11px] font-bold text-indigo-700">회차별 상태</summary>
     <div class="mt-1.5 grid gap-1 sm:grid-cols-2">${rows}</div>
   </details>`;

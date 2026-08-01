@@ -221,7 +221,8 @@ async function main() {
             status: 'PENDING',
             startDate: getTodayStr(),
             dueDate: getFutureDateStr(2),
-            assignee: ['브라우저 테스트 사용자']
+            assignee: ['브라우저 테스트 사용자'],
+            recurrence: { enabled: true, frequency: 'DAILY', interval: 1, endType: 'COUNT', count: 20 }
           }]
         }];
         todoItems = [
@@ -269,6 +270,15 @@ async function main() {
 
     const desktop = await evaluate(client, `(() => {
       const view = document.getElementById('view-todo');
+      const brightness = element => {
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 1;
+        const context = canvas.getContext('2d');
+        context.fillStyle = getComputedStyle(element).backgroundColor;
+        context.fillRect(0, 0, 1, 1);
+        const [red, green, blue] = context.getImageData(0, 0, 1, 1).data;
+        return Math.round((red + green + blue) / 3);
+      };
       return {
         visible: !view.hidden && getComputedStyle(view).display !== 'none',
         taskDashboardHidden: document.getElementById('task-dashboard-summary').hidden,
@@ -277,7 +287,10 @@ async function main() {
         calendarViewHidden: document.getElementById('todo-calendar-section').hidden && getComputedStyle(document.getElementById('todo-calendar-section')).display === 'none',
         listToggleActive: document.getElementById('btn-todo-view-list').getAttribute('aria-pressed') === 'true',
         resultIds: [...document.querySelectorAll('#todo-list [data-todo-id]')].map(card => card.dataset.todoId),
-        noOverflow: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1
+        noOverflow: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1,
+        filterBrightness: brightness(document.getElementById('todo-shared-filter-section')),
+        resultsBrightness: brightness(document.querySelector('[data-todo-dark-surface="results"]')),
+        cardBrightness: brightness(document.querySelector('[data-todo-id="today"]'))
       };
     })()`);
     assert.equal(desktop.visible, true);
@@ -288,6 +301,7 @@ async function main() {
     assert.equal(desktop.listToggleActive, true);
     assert.equal(desktop.noOverflow, true);
     assert.deepEqual(desktop.resultIds.slice(0, 2), ['overdue', 'today']);
+    assert.ok(desktop.filterBrightness > 220 && desktop.resultsBrightness > 220 && desktop.cardBrightness > 220, '라이트 모드 To-do 표면은 밝은 계층을 유지해야 합니다.');
 
     await evaluate(client, `
       document.querySelector('.btn-edit-todo[data-id="overdue"]').click();
@@ -394,8 +408,56 @@ async function main() {
     assert.equal(desktopTaskView.compactDashboardChipCount, 7);
     await evaluate(client, `document.getElementById('btn-open-todo').click(); setTodoViewMode('LIST');`);
 
+    await evaluate(client, `ThemeService.setTheme('dark')`);
+    await delay(250);
     await evaluate(client, `
-      document.documentElement.classList.add('dark');
+      window.__todoDarkViewStyles = (() => {
+        const sample = (name, element) => {
+          const canvas = document.createElement('canvas');
+          canvas.width = canvas.height = 1;
+          const context = canvas.getContext('2d');
+          context.fillStyle = '#0f172a';
+          context.fillRect(0, 0, 1, 1);
+          context.fillStyle = getComputedStyle(element).backgroundColor;
+          context.fillRect(0, 0, 1, 1);
+          const [red, green, blue] = context.getImageData(0, 0, 1, 1).data;
+          return { name, color: getComputedStyle(element).backgroundColor, brightness: Math.round((red + green + blue) / 3) };
+        };
+        setTodoViewMode('LIST');
+        const list = [
+          sample('list-toggle', document.getElementById('btn-todo-view-list')),
+          sample('filter', document.getElementById('todo-shared-filter-section')),
+          sample('search', document.getElementById('todo-search')),
+          sample('completion-filter', document.getElementById('todo-completion-filter')),
+          sample('results', document.querySelector('[data-todo-dark-surface="results"]')),
+          sample('normal-card', document.querySelector('[data-todo-id="today"]')),
+          sample('overdue-card', document.querySelector('[data-todo-id="overdue"]')),
+          sample('today-badge', document.querySelector('[data-todo-id="today"] .inline-flex.rounded-lg.border'))
+        ];
+        setTodoViewMode('CALENDAR');
+        setTodoCalendarMode('MONTH');
+        const month = [
+          sample('calendar-panel', document.getElementById('todo-calendar-section')),
+          sample('month-toggle', document.getElementById('btn-todo-calendar-month')),
+          sample('calendar-today', document.getElementById('btn-todo-calendar-today')),
+          sample('month-day-cell', document.querySelector('[data-todo-calendar-date]')),
+          sample('month-item', document.querySelector('[data-todo-calendar-id="today"]'))
+        ];
+        setTodoCalendarMode('YEAR');
+        const year = [
+          sample('year-tile', document.querySelector('[data-todo-calendar-month-target]')),
+          sample('year-item', document.querySelector('[data-todo-calendar-id="today"]'))
+        ];
+        setTodoViewMode('LIST');
+        return {
+          list,
+          month,
+          year,
+          darkActive: document.documentElement.classList.contains('dark'),
+          toggleClass: document.getElementById('btn-todo-view-list').className,
+          toggleMatchesDarkWhite: document.getElementById('btn-todo-view-list').matches('.dark .bg-white')
+        };
+      })();
       document.getElementById('btn-add-todo').click();
       window.openAssigneeModal();
       window.closeAssigneeModal();
@@ -432,11 +494,53 @@ async function main() {
       const taskSelect = document.getElementById('input-todo-link-task');
       taskSelect.value = 'task-quote';
       taskSelect.dispatchEvent(new Event('change', { bubbles: true }));
-      document.getElementById('input-todo-link-subtask').value = 'sub-customer';
+      const subTaskSelect = document.getElementById('input-todo-link-subtask');
+      subTaskSelect.value = 'sub-customer';
+      subTaskSelect.dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('input-todo-link-occurrence').value = getTodayStr();
+      window.__todoOccurrenceUi = (() => {
+        const field = document.getElementById('todo-link-occurrence-field');
+        const select = document.getElementById('input-todo-link-occurrence');
+        return {
+          fieldVisible: !field.hidden && getComputedStyle(field).display !== 'none',
+          optionCount: select.options.length,
+          selectBackground: getComputedStyle(select).backgroundColor,
+          modalFits: document.querySelector('[data-todo-dark-surface="modal-panel"]').scrollWidth <= document.querySelector('[data-todo-dark-surface="modal-panel"]').clientWidth
+        };
+      })();
       document.getElementById('form-todo').requestSubmit();
-      document.documentElement.classList.remove('dark');
+      ThemeService.setTheme('light');
     `);
+    const darkViewStyles = await evaluate(client, 'window.__todoDarkViewStyles');
+    assert.equal(darkViewStyles.darkActive, true, `다크 클래스가 색상 측정 중 유지되어야 합니다: ${JSON.stringify(darkViewStyles)}`);
+    assert.equal(darkViewStyles.toggleMatchesDarkWhite, true, `활성 To-do 토글이 다크 선택자와 일치해야 합니다: ${darkViewStyles.toggleClass}`);
+    [...darkViewStyles.list, ...darkViewStyles.month, ...darkViewStyles.year].forEach(surface => {
+      assert.ok(surface.brightness < 120, `${surface.name} 다크 표면이 너무 밝습니다: ${surface.color}`);
+    });
     await waitFor(client, `document.querySelector('[data-todo-id="browser-added"]')`, 'To-do add flow did not render.');
+    await evaluate(client, `ThemeService.setTheme('dark'); renderTodoView();`);
+    await delay(250);
+    const linkedTodoDarkStyles = await evaluate(client, `(() => {
+      const sample = element => {
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 1;
+        const context = canvas.getContext('2d');
+        context.fillStyle = '#0f172a';
+        context.fillRect(0, 0, 1, 1);
+        context.fillStyle = getComputedStyle(element).backgroundColor;
+        context.fillRect(0, 0, 1, 1);
+        const [red, green, blue] = context.getImageData(0, 0, 1, 1).data;
+        return { color: getComputedStyle(element).backgroundColor, brightness: Math.round((red + green + blue) / 3) };
+      };
+      const styles = {
+        card: sample(document.querySelector('[data-todo-id="browser-added"]')),
+        link: sample(document.querySelector('[data-todo-id="browser-added"] .btn-open-todo-task-link'))
+      };
+      return styles;
+    })()`);
+    assert.ok(linkedTodoDarkStyles.card.brightness < 120, `연결된 To-do 카드가 너무 밝습니다: ${linkedTodoDarkStyles.card.color}`);
+    assert.ok(linkedTodoDarkStyles.link.brightness < 120, `업무 연결 배지가 너무 밝습니다: ${linkedTodoDarkStyles.link.color}`);
+    await evaluate(client, `ThemeService.setTheme('light')`);
     const darkModalStyles = await evaluate(client, 'window.__todoDarkModalStyles');
     [
       darkModalStyles.panelBackground,
@@ -445,6 +549,11 @@ async function main() {
       darkModalStyles.titleBackground
     ].forEach(color => assert.notEqual(color, 'rgb(255, 255, 255)', '다크 To-do 모달에 순백색 배경이 남으면 안 됩니다.'));
     assert.notEqual(darkModalStyles.titleColor, 'rgb(15, 23, 42)', '다크 입력 필드는 밝은 전경색을 사용해야 합니다.');
+    const occurrenceUi = await evaluate(client, 'window.__todoOccurrenceUi');
+    assert.equal(occurrenceUi.fieldVisible, true, '반복 하위 과제를 선택하면 회차 선택란이 보여야 합니다.');
+    assert.equal(occurrenceUi.optionCount, 13, '회차 미지정과 가까운 12개 회차가 보여야 합니다.');
+    assert.notEqual(occurrenceUi.selectBackground, 'rgb(255, 255, 255)', '다크 모드의 회차 선택란에 순백색 배경이 남으면 안 됩니다.');
+    assert.equal(occurrenceUi.modalFits, true, '회차 선택란이 To-do 모달의 가로 폭을 넘으면 안 됩니다.');
     const allDarkModalStyles = await evaluate(client, 'window.__allDarkModalStyles');
     assert.ok(allDarkModalStyles.panels.length >= 11, '정적·동적 모달 패널이 공통 다크 계약에 등록되어야 합니다.');
     assert.equal(
@@ -463,10 +572,12 @@ async function main() {
       link: todoItems.find(item => item.id === 'browser-added')?.taskLink || null
     }))()`);
     assert.equal(linkedTodo.label.includes('영업 트래커 › 견적 검토 › 고객 조건 확인'), true);
+    assert.equal(linkedTodo.label.includes('회차'), true);
     assert.deepEqual(linkedTodo.link, {
       trackerId: 'tracker-sales',
       taskId: 'task-quote',
-      subTaskId: 'sub-customer'
+      subTaskId: 'sub-customer',
+      occurrenceKey: await evaluate(client, 'getTodayStr()')
     });
 
     await evaluate(client, `document.querySelector('[data-todo-id="browser-added"] .btn-open-todo-task-link').click()`);
@@ -474,12 +585,14 @@ async function main() {
       mode: currentViewMode,
       trackerId: currentTrackerId,
       taskModalVisible: !document.getElementById('modal-task').classList.contains('hidden'),
-      linkedSubTask: document.querySelector('[data-subtask-id="sub-customer"]')?.textContent.includes('To-do 연결') || false
+      linkedSubTask: document.querySelector('[data-subtask-id="sub-customer"]')?.textContent.includes('To-do 연결') || false,
+      linkedOccurrence: document.querySelector('[data-subtask-id="sub-customer"] [data-occurrence-key="' + getTodayStr() + '"]')?.textContent.includes('To-do 연결') || false
     }))()`);
     assert.equal(linkedTaskTarget.mode, 'TABLE');
     assert.equal(linkedTaskTarget.trackerId, 'tracker-sales');
     assert.equal(linkedTaskTarget.taskModalVisible, true);
     assert.equal(linkedTaskTarget.linkedSubTask, true);
+    assert.equal(linkedTaskTarget.linkedOccurrence, true);
     await evaluate(client, `closeModal(); switchView('TODO'); setTodoViewMode('LIST');`);
 
     await evaluate(client, `

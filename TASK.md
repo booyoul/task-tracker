@@ -1,6 +1,6 @@
 # Smart Task Flow Task
 
-Last updated: 2026-08-01
+Last updated: 2026-08-02
 
 ## Startup
 
@@ -14,9 +14,11 @@ Last updated: 2026-08-01
 
 - The Firebase/Firestore task tracker, tracker ACL, personal To-do, progress-note review workflow, recurrence support, responsive calendars, and class-based dark theme are implemented.
 - Production Firestore rules, authenticated To-do isolation, tracker-role permissions, formatted-note writes, and the user-document audit have been verified. Disposable verification data and accounts were removed.
-- Desktop and mobile task/list/calendar/summary/To-do routing is covered by focused smoke tests. The full suite includes 58 Firestore Rules allow/deny cases.
+- Desktop and mobile task/list/calendar/summary/To-do routing is covered by focused smoke tests. The full suite includes 60 Firestore Rules allow/deny cases.
 - The latest UI pass aligned dark surfaces across calendars, lists, all modal/dialog panels, mobile task cards, and mobile 가입 승인 관리.
+- The To-do list, filters, view toggles, cards, linked-task badges, and desktop/mobile month/year calendars use explicit dark surface and semantic status colors.
 - Personal To-do can optionally link to an accessible tracker task or normal subtask for context and direct navigation.
+- Personal To-do can select a specific occurrence of a recurring subtask and reopen that exact occurrence in the task modal.
 - Commit `2371220` is live on GitHub Pages, and the matching Firestore Rules release was verified in production on 2026-08-01.
 
 ## Product Contracts
@@ -52,6 +54,7 @@ Last updated: 2026-08-01
 - List and calendar are mutually exclusive subviews. Monthly/yearly calendars follow the task calendar's responsive patterns.
 - Optional `taskLink` stores only `trackerId`, `taskId`, optional `subTaskId`, and `occurrenceKey`; task titles are resolved from currently accessible data and are never cached in the private To-do document.
 - The To-do modal selects `트래커 → 본 업무 → 하위 과제`. Cards display the live `트래커 › 본 업무 › 하위 과제` path and open the linked task with the selected subtask highlighted.
+- Selecting a recurring subtask reveals an optional occurrence selector with up to 12 occurrences nearest the To-do start date. A selected occurrence is stored as a `YYYY-MM-DD` `occurrenceKey`, appended to the live path, and highlighted in the expanded per-occurrence status list.
 - Missing or inaccessible targets display `연결된 업무를 볼 수 없음` without leaking titles. Ordinary To-do edits preserve that reference until the owner explicitly unlinks or replaces it.
 - Task and To-do dates/completion remain independent. Deleting or copying a task must not delete or copy personal To-do data.
 
@@ -99,15 +102,14 @@ For responsive geometry, native picker behavior, rich-text selection, or color c
 
 ## Verified Release Baseline
 
-- `npm test` passes, including 58 Firestore Rules cases.
+- `npm test` passes, including 60 Firestore Rules cases.
 - `npm run build:css`, relevant JavaScript syntax checks, and `git diff --check` pass.
 - Headless Chrome has verified the main responsive workflows and the latest mobile dark-theme surfaces at a 390px viewport.
 - Firestore production-write verification is historical evidence only; do not infer future production state without a fresh live check.
 
 ## Next Work
 
-- No required deployment work remains.
-- Recurring subtask occurrence selection is the next deferred product option; present its data, UI, permission, and verification plan before implementation.
+- Deploy the updated Firestore Rules to `task-tracker-99af4`, then verify the recurring To-do occurrence-link against production permissions.
 
 ## Cautions
 

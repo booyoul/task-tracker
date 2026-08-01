@@ -1,4 +1,4 @@
-console.info('Smart Task Flow todo-service.js v20260731-v2 loaded');
+console.info('Smart Task Flow todo-service.js v20260801-v1 loaded');
 
 function normalizeTodoTaskLink(taskLink) {
   if (!taskLink || typeof taskLink !== 'object' || Array.isArray(taskLink)) return null;
@@ -9,6 +9,7 @@ function normalizeTodoTaskLink(taskLink) {
   const subTaskId = String(taskLink.subTaskId || '').trim();
   const occurrenceKey = String(taskLink.occurrenceKey || '').trim();
   if (subTaskId.length > 200 || occurrenceKey.length > 200) return null;
+  if (occurrenceKey && (!subTaskId || !/^\d{4}-\d{2}-\d{2}$/.test(occurrenceKey))) return null;
   if (subTaskId) normalized.subTaskId = subTaskId;
   if (occurrenceKey) normalized.occurrenceKey = occurrenceKey;
   return normalized;

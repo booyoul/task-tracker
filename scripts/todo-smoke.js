@@ -5,6 +5,7 @@ const { JSDOM } = require('jsdom');
 
 const serviceSource = fs.readFileSync('js/todo-service.js', 'utf8');
 const controllerSource = fs.readFileSync('js/todo-controller.js', 'utf8');
+const calendarSource = fs.readFileSync('js/calendar-utils.js', 'utf8');
 const viewSource = fs.readFileSync('js/table-mobile-renderer.js', 'utf8');
 const monthPickerSource = fs.readFileSync('js/month-picker-controller.js', 'utf8');
 
@@ -74,6 +75,16 @@ async function testService() {
     null,
     '비정상적으로 긴 연결 식별자는 저장하지 않아야 합니다.'
   );
+  assert.equal(
+    context.normalizeTodoTaskLink({ trackerId: 'tracker-1', taskId: 'task-1', occurrenceKey: '2026-07-27' }),
+    null,
+    '반복 회차는 하위 과제 없이 저장할 수 없어야 합니다.'
+  );
+  assert.equal(
+    context.normalizeTodoTaskLink({ trackerId: 'tracker-1', taskId: 'task-1', subTaskId: 'sub-1', occurrenceKey: '2026/07/27' }),
+    null,
+    '반복 회차 키는 날짜 전용 형식이어야 합니다.'
+  );
   assert.equal(context.validateTodoPayload({ ...linked, startDate: '2026-08-01', dueDate: '2026-07-31' }), '종료일은 시작일보다 빠를 수 없습니다.');
 
   const addResult = await context.db_addTodo({
@@ -128,7 +139,7 @@ function testDateGroupingAndRendering() {
     })[character]),
     todoItems: [
       { id: 'overdue', ownerId: 'user-1', title: '지난 할 일', memo: '', startDate: '2026-07-20', dueDate: '2026-07-26', completed: false, taskLink: { trackerId: 'tracker-1', taskId: 'missing-task' } },
-      { id: 'today', ownerId: 'user-1', title: '오늘 할 일', memo: '검토', startDate: '2026-07-27', dueDate: '2026-07-27', completed: false, taskLink: { trackerId: 'tracker-1', taskId: 'task-1', subTaskId: 'sub-1' } },
+      { id: 'today', ownerId: 'user-1', title: '오늘 할 일', memo: '검토', startDate: '2026-07-27', dueDate: '2026-07-27', completed: false, taskLink: { trackerId: 'tracker-1', taskId: 'task-1', subTaskId: 'sub-1', occurrenceKey: '2026-07-27' } },
       { id: 'week', ownerId: 'user-1', title: '이번 주 할 일', memo: '', startDate: '2026-08-01', dueDate: '2026-08-02', completed: false },
       { id: 'month', ownerId: 'user-1', title: '이번 달 할 일', memo: '', startDate: '2026-07-29', dueDate: '2026-07-31', completed: false },
       { id: 'done', ownerId: 'user-1', title: '완료한 일', memo: '', startDate: '2026-07-27', dueDate: '2026-07-27', completed: true }
@@ -138,7 +149,14 @@ function testDateGroupingAndRendering() {
       id: 'task-1',
       trackerId: 'tracker-1',
       title: '견적 검토',
-      subTasks: [{ id: 'sub-1', title: '고객 조건 확인' }]
+      subTasks: [{
+        id: 'sub-1',
+        title: '고객 조건 확인',
+        status: 'PENDING',
+        startDate: '2026-07-27',
+        dueDate: '2026-07-27',
+        recurrence: { enabled: true, frequency: 'DAILY', interval: 1, endType: 'COUNT', count: 20 }
+      }]
     }],
     currentViewMode: 'TODO',
     lastTaskViewMode: 'CALENDAR',
@@ -157,6 +175,8 @@ function testDateGroupingAndRendering() {
       return normalized;
     },
     hasTaskPermission: () => true,
+    normalizeStatus: status => ['PENDING', 'PROGRESS', 'COMPLETED', 'CANCELLED'].includes(status) ? status : 'PENDING',
+    getStatusKorean: status => ({ PENDING: '진행 대기', PROGRESS: '진행 중', COMPLETED: '완료됨', CANCELLED: '취소됨' }[status] || status),
     updateTrackerUI() {},
     openTaskModal(id) { context.openedTaskId = id; },
     setTimeout,
@@ -166,6 +186,7 @@ function testDateGroupingAndRendering() {
   context.currentUser = { uid: 'user-1' };
   context.matchMedia = () => ({ matches: true });
   vm.createContext(context);
+  vm.runInContext(calendarSource, context, { filename: 'js/calendar-utils.js' });
   vm.runInContext(controllerSource, context, { filename: 'js/todo-controller.js' });
   vm.runInContext(viewSource, context, { filename: 'js/table-mobile-renderer.js' });
 
@@ -184,7 +205,7 @@ function testDateGroupingAndRendering() {
     '삭제되었거나 볼 수 없는 업무 제목은 노출하지 않아야 합니다.'
   );
   assert.equal(
-    cards[1].querySelector('.btn-open-todo-task-link')?.textContent.includes('영업 트래커 › 견적 검토 › 고객 조건 확인'),
+    cards[1].querySelector('.btn-open-todo-task-link')?.textContent.includes('영업 트래커 › 견적 검토 › 고객 조건 확인 › 07-27 회차'),
     true,
     '접근 가능한 연결은 트래커부터 하위 과제까지 동적으로 표시해야 합니다.'
   );
@@ -194,6 +215,12 @@ function testDateGroupingAndRendering() {
   assert.equal(context.switchedViewMode, 'TABLE');
   assert.equal(context.openedTaskId, 'task-1');
   assert.equal(context.__todoLinkedTaskTarget.subTaskId, 'sub-1');
+  assert.equal(context.__todoLinkedTaskTarget.occurrenceKey, '2026-07-27');
+  context.openTodoModal('today');
+  assert.equal(context.document.getElementById('todo-link-occurrence-field').hidden, false);
+  assert.equal(context.document.getElementById('input-todo-link-occurrence').value, '2026-07-27');
+  assert.equal(context.document.querySelectorAll('#input-todo-link-occurrence option').length, 13, '회차 미지정과 가까운 12개 회차를 제공해야 합니다.');
+  context.closeTodoModal();
   assert.equal(context.document.getElementById('todo-count-week').textContent, '3');
   assert.equal(context.document.getElementById('todo-list-view').hidden, false);
   assert.equal(context.document.getElementById('todo-calendar-section').hidden, true);

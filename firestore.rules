@@ -104,9 +104,9 @@ service cloud.firestore {
             taskLink.subTaskId.size() <= 200
           )) &&
           (!('occurrenceKey' in taskLink) || (
+            'subTaskId' in taskLink &&
             taskLink.occurrenceKey is string &&
-            taskLink.occurrenceKey.size() > 0 &&
-            taskLink.occurrenceKey.size() <= 200
+            taskLink.occurrenceKey.matches('^\\d{4}-\\d{2}-\\d{2}$')
           ))
         );
     }

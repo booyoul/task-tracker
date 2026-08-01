@@ -281,6 +281,25 @@ async function main() {
           subTaskId: ''
         }
       })));
+    await check('하위 과제 없는 반복 회차 연결 차단', () =>
+      assertFails(setDoc(doc(aliceDb, 'todos', 'alice-invalid-link-occurrence-without-subtask'), {
+        ...todoData('alice', '잘못된 반복 회차 연결'),
+        taskLink: {
+          trackerId: 'tracker-acl',
+          taskId: 'acl-task',
+          occurrenceKey: '2026-07-27'
+        }
+      })));
+    await check('날짜 형식이 아닌 반복 회차 연결 차단', () =>
+      assertFails(setDoc(doc(aliceDb, 'todos', 'alice-invalid-link-occurrence-format'), {
+        ...todoData('alice', '잘못된 반복 회차 형식'),
+        taskLink: {
+          trackerId: 'tracker-acl',
+          taskId: 'acl-task',
+          subTaskId: 'sub-1',
+          occurrenceKey: '2026/07/27'
+        }
+      })));
     await check('다른 사용자의 UID로 To-do 생성 차단', () =>
       assertFails(setDoc(doc(aliceDb, 'todos', 'spoofed-todo'), todoData('bob', '위조 개인 할 일'))));
     await check('자신의 To-do 완료 처리 허용', () =>
