@@ -20,6 +20,7 @@ Last updated: 2026-08-02
 - Personal To-do can optionally link to an accessible tracker task or normal subtask for context and direct navigation.
 - Personal To-do can select a specific occurrence of a recurring subtask and reopen that exact occurrence in the task modal.
 - Commit `4856bb0` is pushed to `origin/main`. Firestore Rules release `f9af690a-362b-4b12-8d1f-288933f980b8` was deployed to `task-tracker-99af4` on 2026-08-02, and unauthenticated reads of `todos`, `tasks`, `trackers`, `users`, `activity_logs`, and `progress_notes` were denied in production.
+- An authenticated production browser check selected one of four recurring occurrences, saved and reopened the To-do link, highlighted the exact occurrence in the task modal, and removed the disposable To-do record with zero matching records remaining.
 
 ## Product Contracts
 
@@ -109,7 +110,7 @@ For responsive geometry, native picker behavior, rich-text selection, or color c
 
 ## Next Work
 
-- Run one authenticated production browser check that selects, saves, and reopens a recurring To-do occurrence link, then remove the disposable To-do record.
+- No required release or production-verification work remains. Select the next product improvement before changing behavior or data contracts.
 
 ## Cautions
 
