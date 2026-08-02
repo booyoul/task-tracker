@@ -593,6 +593,40 @@ async function main() {
     assert.equal(linkedTaskTarget.taskModalVisible, true);
     assert.equal(linkedTaskTarget.linkedSubTask, true);
     assert.equal(linkedTaskTarget.linkedOccurrence, true);
+    await evaluate(client, `
+      ThemeService.setTheme('dark');
+      document.getElementById('task-subtasks-section').open = true;
+      const recurrenceEnabled = document.getElementById('input-subtask-recurrence-enabled');
+      recurrenceEnabled.checked = true;
+      recurrenceEnabled.dispatchEvent(new Event('change', { bubbles: true }));
+    `);
+    await delay(250);
+    const taskRecurrenceDarkStyles = await evaluate(client, `(() => {
+      const sample = (name, element) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 1;
+        const context = canvas.getContext('2d');
+        context.fillStyle = '#0f172a';
+        context.fillRect(0, 0, 1, 1);
+        context.fillStyle = getComputedStyle(element).backgroundColor;
+        context.fillRect(0, 0, 1, 1);
+        const [red, green, blue] = context.getImageData(0, 0, 1, 1).data;
+        return { name, color: getComputedStyle(element).backgroundColor, brightness: Math.round((red + green + blue) / 3) };
+      };
+      return [
+        sample('recurrence-form', document.querySelector('[data-task-recurrence-surface="form"]')),
+        sample('recurrence-frequency', document.getElementById('input-subtask-recurrence-frequency')),
+        sample('recurrence-interval', document.getElementById('input-subtask-recurrence-interval')),
+        sample('recurrence-weekday', document.querySelector('#subtask-recurrence-weekdays label')),
+        sample('occurrence-list', document.querySelector('[data-task-recurrence-surface="occurrence-list"]')),
+        sample('linked-occurrence-row', document.querySelector('[data-task-recurrence-surface="occurrence-row"][data-occurrence-key="' + getTodayStr() + '"]')),
+        sample('occurrence-status', document.querySelector('[data-task-recurrence-surface="occurrence-row"][data-occurrence-key="' + getTodayStr() + '"] select'))
+      ];
+    })()`);
+    taskRecurrenceDarkStyles.forEach(surface => {
+      assert.ok(surface.brightness < 120, `${surface.name} 다크 표면이 너무 밝습니다: ${surface.color}`);
+    });
+    await evaluate(client, `ThemeService.setTheme('light')`);
     await evaluate(client, `closeModal(); switchView('TODO'); setTodoViewMode('LIST');`);
 
     await evaluate(client, `

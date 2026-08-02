@@ -4179,6 +4179,14 @@
       }
     }
   }
+  .dark\:ring-violet-900\/60 {
+    &:where(.dark, .dark *) {
+      --tw-ring-color: color-mix(in srgb, oklch(38% 0.189 293.745) 60%, transparent);
+      @supports (color: color-mix(in lab, red, red)) {
+        --tw-ring-color: color-mix(in oklab, var(--color-violet-900) 60%, transparent);
+      }
+    }
+  }
   .dark\:ring-offset-slate-900 {
     &:where(.dark, .dark *) {
       --tw-ring-offset-color: var(--color-slate-900);

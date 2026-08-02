@@ -8,7 +8,7 @@
     <link rel="icon" href="./favicon.ico?v=20260625-monthly-kpi">
     <!-- Immediately apply theme script to prevent FOUC -->
     <script src="./js/theme-service.js?v=20260710-v1"></script>
-    <link rel="stylesheet" href="./dist/output.css?v=20260802-v1">
+    <link rel="stylesheet" href="./dist/output.css?v=20260802-v2">
     <style>
         body {
             font-family: 'Noto Sans KR', sans-serif;
@@ -1241,8 +1241,8 @@
                                         <button type="button" id="btn-add-subtask"
                                             class="rounded-lg bg-slate-800 px-4 py-1.5 text-xs font-bold text-white hover:bg-slate-700 transition sm:shrink-0 sm:ml-auto">추가</button>
                                     </div>
-                                    <div class="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
-                                        <label class="flex items-center gap-2 text-[11px] font-bold text-slate-600">
+                                    <div data-task-recurrence-surface="form" class="rounded-lg border border-slate-200 bg-white px-2.5 py-2 dark:border-slate-700 dark:bg-slate-800">
+                                        <label class="flex items-center gap-2 text-[11px] font-bold text-slate-600 dark:text-slate-200">
                                             <input type="checkbox" id="input-subtask-recurrence-enabled"
                                                 class="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
                                             실행 주기 반영
@@ -1250,7 +1250,7 @@
                                         <div id="subtask-recurrence-options" class="mt-2 hidden space-y-2">
                                             <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
                                                 <select id="input-subtask-recurrence-frequency"
-                                                    class="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs outline-none focus:border-indigo-500">
+                                                    class="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
                                                     <option value="DAILY">매일</option>
                                                     <option value="WEEKLY">매주</option>
                                                     <option value="MONTHLY">매월</option>
@@ -1258,31 +1258,31 @@
                                                     <option value="YEARLY">매년</option>
                                                 </select>
                                                 <div class="flex items-center gap-1.5">
-                                                    <span class="shrink-0 text-[11px] font-semibold text-slate-400">간격</span>
+                                                    <span class="shrink-0 text-[11px] font-semibold text-slate-400 dark:text-slate-400">간격</span>
                                                     <input type="number" id="input-subtask-recurrence-interval" min="1" max="99" value="1"
-                                                        class="w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs outline-none focus:border-indigo-500">
+                                                        class="w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
                                                 </div>
                                                 <select id="input-subtask-recurrence-end-type"
-                                                    class="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs outline-none focus:border-indigo-500">
+                                                    class="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
                                                     <option value="NONE">종료 없음</option>
                                                     <option value="UNTIL">종료일</option>
                                                     <option value="COUNT">횟수</option>
                                                 </select>
                                             </div>
                                             <div id="subtask-recurrence-weekdays" class="hidden flex flex-wrap gap-1.5">
-                                                <label class="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-500"><input type="checkbox" class="subtask-recurrence-day" value="MON">월</label>
-                                                <label class="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-500"><input type="checkbox" class="subtask-recurrence-day" value="TUE">화</label>
-                                                <label class="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-500"><input type="checkbox" class="subtask-recurrence-day" value="WED">수</label>
-                                                <label class="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-500"><input type="checkbox" class="subtask-recurrence-day" value="THU">목</label>
-                                                <label class="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-500"><input type="checkbox" class="subtask-recurrence-day" value="FRI">금</label>
-                                                <label class="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-500"><input type="checkbox" class="subtask-recurrence-day" value="SAT">토</label>
-                                                <label class="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-500"><input type="checkbox" class="subtask-recurrence-day" value="SUN">일</label>
+                                                <label class="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"><input type="checkbox" class="subtask-recurrence-day" value="MON">월</label>
+                                                <label class="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"><input type="checkbox" class="subtask-recurrence-day" value="TUE">화</label>
+                                                <label class="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"><input type="checkbox" class="subtask-recurrence-day" value="WED">수</label>
+                                                <label class="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"><input type="checkbox" class="subtask-recurrence-day" value="THU">목</label>
+                                                <label class="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"><input type="checkbox" class="subtask-recurrence-day" value="FRI">금</label>
+                                                <label class="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"><input type="checkbox" class="subtask-recurrence-day" value="SAT">토</label>
+                                                <label class="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"><input type="checkbox" class="subtask-recurrence-day" value="SUN">일</label>
                                             </div>
                                             <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
                                                 <input type="date" id="input-subtask-recurrence-until"
-                                                    class="hidden rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs outline-none focus:border-indigo-500">
+                                                    class="hidden rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:[color-scheme:dark]">
                                                 <input type="number" id="input-subtask-recurrence-count" min="1" max="999" placeholder="반복 횟수"
-                                                    class="hidden rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs outline-none focus:border-indigo-500">
+                                                    class="hidden rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500">
                                             </div>
                                         </div>
                                     </div>
@@ -1867,7 +1867,7 @@
     <script defer src="./js/calendar-mobile-renderer.js?v=20260731-v3"></script>
     <script defer src="./js/table-mobile-renderer.js?v=20260731-v16"></script>
     <script defer src="./js/kanban-renderer.js?v=20260731-v13"></script>
-    <script defer src="./js/modal-controller.js?v=20260801-v1"></script>
+    <script defer src="./js/modal-controller.js?v=20260802-v2"></script>
     <script defer src="./js/todo-service.js?v=20260801-v1"></script>
     <script defer src="./js/todo-controller.js?v=20260802-v1"></script>
     <script defer src="./js/admin-approvals.js?v=20260731-v2"></script>

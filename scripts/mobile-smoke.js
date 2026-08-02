@@ -299,6 +299,18 @@ async function main() {
   const modalDarkSurfaces = [...indexDom.window.document.querySelectorAll('[data-modal-dark-surface]')];
   assert(modalDarkSurfaces.length === 4, '조건부 업무·트래커 모달 다크 표면 식별자가 누락되었습니다.');
   assert(modalDarkSurfaces.every(surface => surface.className.includes('dark:bg-') && surface.className.includes('dark:border-')), '조건부 업무·트래커 모달에 다크 배경 또는 테두리가 누락되었습니다.');
+  const recurrenceFormSurface = indexDom.window.document.querySelector('[data-task-recurrence-surface="form"]');
+  assert(recurrenceFormSurface?.className.includes('dark:bg-slate-800') && recurrenceFormSurface.className.includes('dark:border-slate-700'), '하위 과제 실행 주기 등록 표면의 다크 계층이 누락되었습니다.');
+  const recurrenceControls = [
+    'input-subtask-recurrence-frequency',
+    'input-subtask-recurrence-interval',
+    'input-subtask-recurrence-end-type',
+    'input-subtask-recurrence-until',
+    'input-subtask-recurrence-count'
+  ].map(id => indexDom.window.document.getElementById(id));
+  assert(recurrenceControls.every(control => control?.className.includes('dark:bg-slate-900') && control.className.includes('dark:border-slate-700')), '하위 과제 실행 주기 입력 컨트롤의 다크 표면이 누락되었습니다.');
+  assert(/data-task-recurrence-surface="occurrence-list"[^>]*dark:bg-indigo-950\/30/.test(modalControllerSource), '회차별 상태 패널의 다크 배경이 누락되었습니다.');
+  assert(/data-task-recurrence-surface="occurrence-row"[^>]*dark:bg-violet-950\/40/.test(modalControllerSource), 'To-do 연결 회차 강조 행의 다크 배경이 누락되었습니다.');
   assert(/bg-rose-50\/70[^']*dark:bg-rose-950\/30/.test(tableRendererSource), 'High/Risk 목록 행의 다크 테마 강조가 누락되었습니다.');
   assert(/bg-amber-50\/50[^']*dark:bg-amber-950\/30/.test(tableRendererSource), '기한 초과 목록 행의 다크 테마 강조가 누락되었습니다.');
   assert(/bg-rose-50\/70[^']*dark:bg-rose-950\/25/.test(tableRendererSource), '기한 초과 서브 태스크 행의 다크 테마 강조가 누락되었습니다.');

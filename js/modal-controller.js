@@ -1,4 +1,4 @@
-console.info('Smart Task Flow modal-controller.js v20260801-v1 loaded');
+console.info('Smart Task Flow modal-controller.js v20260802-v2 loaded');
 // Task modal, subtask modal list, tracker modal, and form submit handlers.
 function resetSubTaskButton() {
   const btn = document.getElementById('btn-add-subtask');
@@ -152,9 +152,9 @@ function buildModalSubTaskOccurrenceStatusHTML(st = {}, idx) {
     const dateLabel = occ.startDate === occ.dueDate
       ? (occ.startDate ? occ.startDate.substring(5) : '미정')
       : `${occ.startDate ? occ.startDate.substring(5) : '미정'}~${occ.dueDate ? occ.dueDate.substring(5) : '미정'}`;
-    return `<div class="flex items-center justify-between gap-2 rounded-lg border px-2 py-1.5 ${linkedFromTodo ? 'border-violet-300 bg-violet-50 ring-2 ring-violet-100' : 'border-slate-100 bg-slate-50'}" data-occurrence-key="${escapeHTML(key)}">
-      <span class="min-w-0 truncate text-[11px] font-semibold ${linkedFromTodo ? 'text-violet-700' : 'text-slate-500'}">📅 ${escapeHTML(dateLabel)}${linkedFromTodo ? ' · To-do 연결' : ''}</span>
-      <select class="sel-modal-subtask-occurrence-status shrink-0 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-semibold text-slate-600 outline-none focus:border-indigo-500" data-index="${idx}" data-occurrence-key="${escapeHTML(key)}">
+    return `<div data-task-recurrence-surface="occurrence-row" class="flex items-center justify-between gap-2 rounded-lg border px-2 py-1.5 ${linkedFromTodo ? 'border-violet-300 bg-violet-50 ring-2 ring-violet-100 dark:border-violet-800 dark:bg-violet-950/40 dark:ring-violet-900/60' : 'border-slate-100 bg-slate-50 dark:border-slate-700 dark:bg-slate-800'}" data-occurrence-key="${escapeHTML(key)}">
+      <span class="min-w-0 truncate text-[11px] font-semibold ${linkedFromTodo ? 'text-violet-700 dark:text-violet-300' : 'text-slate-500 dark:text-slate-300'}">📅 ${escapeHTML(dateLabel)}${linkedFromTodo ? ' · To-do 연결' : ''}</span>
+      <select class="sel-modal-subtask-occurrence-status shrink-0 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-semibold text-slate-600 outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" data-index="${idx}" data-occurrence-key="${escapeHTML(key)}">
         <option value="PENDING" ${status === 'PENDING' ? 'selected' : ''}>대기</option>
         <option value="PROGRESS" ${status === 'PROGRESS' ? 'selected' : ''}>진행</option>
         <option value="COMPLETED" ${status === 'COMPLETED' ? 'selected' : ''}>완료</option>
@@ -162,8 +162,8 @@ function buildModalSubTaskOccurrenceStatusHTML(st = {}, idx) {
       </select>
     </div>`;
   }).join('');
-  return `<details class="rounded-lg border border-indigo-100 bg-indigo-50/40 px-2 py-1.5" ${linkedOccurrenceKey ? 'open' : ''}>
-    <summary class="cursor-pointer text-[11px] font-bold text-indigo-700">회차별 상태</summary>
+  return `<details data-task-recurrence-surface="occurrence-list" class="rounded-lg border border-indigo-100 bg-indigo-50/40 px-2 py-1.5 dark:border-indigo-900 dark:bg-indigo-950/30" ${linkedOccurrenceKey ? 'open' : ''}>
+    <summary class="cursor-pointer text-[11px] font-bold text-indigo-700 dark:text-indigo-300">회차별 상태</summary>
     <div class="mt-1.5 grid gap-1 sm:grid-cols-2">${rows}</div>
   </details>`;
 }

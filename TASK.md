@@ -16,6 +16,7 @@ Last updated: 2026-08-02
 - Production Firestore rules, authenticated To-do isolation, tracker-role permissions, formatted-note writes, and the user-document audit have been verified. Disposable verification data and accounts were removed.
 - Desktop and mobile task/list/calendar/summary/To-do routing is covered by focused smoke tests. The full suite includes 60 Firestore Rules allow/deny cases.
 - The latest UI pass aligned dark surfaces across calendars, lists, all modal/dialog panels, mobile task cards, and mobile 가입 승인 관리.
+- The desktop task modal's subtask recurrence form and dynamically rendered occurrence-status rows use explicit dark surfaces, including the highlighted To-do-linked occurrence.
 - The To-do list, filters, view toggles, cards, linked-task badges, and desktop/mobile month/year calendars use explicit dark surface and semantic status colors.
 - Personal To-do can optionally link to an accessible tracker task or normal subtask for context and direct navigation.
 - Personal To-do can select a specific occurrence of a recurring subtask and reopen that exact occurrence in the task modal.
@@ -110,7 +111,7 @@ For responsive geometry, native picker behavior, rich-text selection, or color c
 
 ## Next Work
 
-- No required release or production-verification work remains. Select the next product improvement before changing behavior or data contracts.
+- No required release work remains. Select the next product improvement before changing behavior or data contracts.
 
 ## Cautions
 
