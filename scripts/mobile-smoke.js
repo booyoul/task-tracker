@@ -14,6 +14,7 @@ const dom = new JSDOM(`<!doctype html>
     <button id="btn-cal-mode-day-m"></button>
     <button id="btn-cal-mode-month-m"></button>
     <button id="btn-cal-mode-summary-m"></button>
+    <button id="btn-cal-mode-notes-m"></button>
     <div id="calendar-notes-only-control-m" hidden class="hidden">
       <button id="btn-cal-ux-notes-only-m" aria-pressed="false"></button>
     </div>
@@ -248,10 +249,13 @@ async function main() {
   const desktopYearModeButton = indexDom.window.document.getElementById('btn-cal-mode-month');
   const mobileMonthModeButton = indexDom.window.document.getElementById('btn-cal-mode-day-m');
   const mobileYearModeButton = indexDom.window.document.getElementById('btn-cal-mode-month-m');
+  const desktopNotesModeButton = indexDom.window.document.getElementById('btn-cal-mode-notes');
+  const mobileNotesModeButton = indexDom.window.document.getElementById('btn-cal-mode-notes-m');
   assert(desktopYearModeButton?.classList.contains('bg-white') && !desktopMonthModeButton?.classList.contains('bg-white'), '데스크톱 캘린더의 초기 활성 버튼이 연간 보기가 아닙니다.');
   assert(mobileYearModeButton?.classList.contains('bg-white') && !mobileMonthModeButton?.classList.contains('bg-white'), '모바일 캘린더의 초기 활성 버튼이 연간 보기가 아닙니다.');
   assert(desktopYearModeButton?.textContent.replace(/\s+/g, ' ').trim() === '연간 보기', '데스크톱 캘린더의 연간 보기 문구가 일관되지 않습니다.');
   assert(mobileYearModeButton?.textContent.trim() === '연간', '모바일 캘린더의 연간 문구가 일관되지 않습니다.');
+  assert(desktopNotesModeButton?.textContent.trim() === '메모' && mobileNotesModeButton?.textContent.trim() === '메모', '데스크톱 또는 모바일 캘린더에 메모 뷰 버튼이 없습니다.');
   assert(indexDom.window.document.getElementById('btn-cal-ux-notes-only-m')?.getAttribute('aria-pressed') === 'false', '모바일 메모만 보기 토글의 초기 접근성 상태가 없습니다.');
   assert(indexDom.window.document.querySelector('#todo-calendar-section p')?.textContent.trim() === 'To-do 캘린더', 'To-do 캘린더 헤더가 한국어 UI 문구를 따르지 않습니다.');
   assert(indexDom.window.document.querySelector('#empty-state-kanban h3')?.textContent.trim() === '칸반에 표시할 업무가 없습니다.', '칸반 빈 상태 문구가 일관되지 않습니다.');
@@ -363,6 +367,7 @@ async function main() {
   loadScript('js/calendar-utils.js');
   loadScript('js/calendar-day-renderer.js');
   loadScript('js/calendar-summary-renderer.js');
+  loadScript('js/calendar-notes-renderer.js');
   loadScript('js/calendar-mobile-renderer.js');
   loadScript('js/table-mobile-renderer.js');
 
@@ -681,7 +686,34 @@ async function main() {
   assert(summary.querySelector('[data-task-id="task-1__sub_sub-1"]')?.querySelectorAll('[data-summary-note-entry]').length === 1, '하위 업무 메모가 해당 하위 업무 카드에 분리되지 않았습니다.');
   assert(summary.textContent.includes('취소 1'), '월별 요약에 취소 업무 집계가 없습니다.');
 
-  console.log('mobile smoke passed: calendar default, task and subtask cancelled status, list, calendar day, calendar year, summary');
+  global.currentCalMode = 'NOTES';
+  window.currentCalMode = 'NOTES';
+  await global.renderCalendarNotesView({
+    grid: document.getElementById('cal-mobile-content'),
+    year: 2026,
+    month: 6,
+    noteTaskScope: [...tasks, cancelledTask, outsideMonthTask]
+  });
+  const notesView = document.getElementById('cal-mobile-content');
+  assert(notesView.querySelector('[data-calendar-notes-view]'), '월별 메모 리스트 뷰가 렌더링되지 않았습니다.');
+  assert(notesView.querySelectorAll('[data-calendar-note-list-item]').length === 4, '메모 뷰가 일정 밖 실행 메모를 포함한 월간 메모 전체를 표시하지 않습니다.');
+  assert(notesView.textContent.includes('일정 밖 실행 메모'), '메모 뷰에 태스크 일정 밖 실행일의 메모가 없습니다.');
+  const notesWorkTypeFilter = notesView.querySelector('[data-calendar-notes-work-type]');
+  assert(notesWorkTypeFilter?.querySelector('option[value="CUSTOMER_VISIT"]')?.textContent === 'Customer Visit', '메모 뷰 유형 필터 옵션이 올바르지 않습니다.');
+  notesWorkTypeFilter.value = 'CUSTOMER_VISIT';
+  notesWorkTypeFilter.dispatchEvent(new window.Event('change', { bubbles: true }));
+  assert(notesView.querySelectorAll('[data-calendar-note-list-item]').length === 1, '메모 뷰 유형 필터가 선택한 유형만 표시하지 않습니다.');
+  notesWorkTypeFilter.value = 'all';
+  notesWorkTypeFilter.dispatchEvent(new window.Event('change', { bubbles: true }));
+  const notesCommentsToggle = notesView.querySelector('[data-calendar-notes-comments-only]');
+  notesCommentsToggle.click();
+  assert(notesCommentsToggle.getAttribute('aria-pressed') === 'true', '메모 뷰 댓글 토글의 접근성 상태가 반영되지 않습니다.');
+  assert(notesView.querySelectorAll('[data-calendar-note-list-item]').length === 1 && notesView.textContent.includes('리스크 회의 결과'), '메모 뷰 댓글 필터가 댓글 있는 메모만 표시하지 않습니다.');
+  notesCommentsToggle.click();
+  notesView.querySelector('[data-note-id="note-outside-task-range"]').click();
+  assert(openedListNote?.id === 'note-outside-task-range', '메모 리스트 항목 클릭 시 기존 메모 상세 패널이 열리지 않습니다.');
+
+  console.log('mobile smoke passed: calendar default, task and subtask cancelled status, list, calendar day, calendar year, summary, notes');
 }
 
 main().catch((error) => {

@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow app.js v20260804-v6 loaded');
+console.info('Smart Task Flow app.js v20260804-v7 loaded');
 // --- UX optimization globals: must be declared before helper functions ---
 var focusState = window.focusState || { riskOnly: false, mineOnly: false, highOnly: false };
 window.focusState = focusState;
@@ -746,6 +746,11 @@ function renderCalendar(filteredTasks, noteTaskScope = filteredTasks) {
     return;
   }
 
+  if (currentCalMode === 'NOTES') {
+    renderCalendarNotesView({ weekdayHeader, grid, year, month, noteTaskScope });
+    return;
+  }
+
   renderCalendarSummaryView({ weekdayHeader, grid, year, month, filteredTasks, noteTaskScope, todayStr });
 }
 
@@ -980,7 +985,7 @@ async function importFromJSON(e) {
 }
 function setCalMode(mode) {
   currentCalMode = mode;
-  ['day', 'month', 'summary'].forEach(m => {
+  ['day', 'month', 'summary', 'notes'].forEach(m => {
     const btn = document.getElementById(`btn-cal-mode-${m}`);
     if (!btn) return;
     btn.className = m.toUpperCase() === mode
@@ -1159,7 +1164,7 @@ function renderActiveViews(){
     return;
   }
   const filtered=getFilteredTasks();
-  const noteTaskScope=currentViewMode==='CALENDAR' && ['DAY','SUMMARY'].includes(currentCalMode)
+  const noteTaskScope=currentViewMode==='CALENDAR' && ['DAY','SUMMARY','NOTES'].includes(currentCalMode)
     ? getFilteredTasks({ ignoreDateRange: true })
     : filtered;
   const fStatus=document.getElementById('filter-status')?.value||'ALL';

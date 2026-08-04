@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow event-bindings.js v20260727-v1 loaded');
+console.info('Smart Task Flow event-bindings.js v20260804-v2 loaded');
 
 function initEventBindings(){
   if(window.__eventBindingsInitialized)return;
@@ -81,6 +81,7 @@ function initEventBindings(){
   document.getElementById('btn-cal-mode-day')?.addEventListener('click',()=>setCalMode('DAY'));
   document.getElementById('btn-cal-mode-month')?.addEventListener('click',()=>setCalMode('MONTH'));
   document.getElementById('btn-cal-mode-summary')?.addEventListener('click',()=>setCalMode('SUMMARY'));
+  document.getElementById('btn-cal-mode-notes')?.addEventListener('click',()=>setCalMode('NOTES'));
   document.getElementById('btn-prev-month')?.addEventListener('click',()=>{currentCalDate.setMonth(currentCalDate.getMonth()-1);renderActiveViews();});
   document.getElementById('btn-today-month')?.addEventListener('click',()=>{currentCalDate=new Date();renderActiveViews();});
   document.getElementById('btn-next-month')?.addEventListener('click',()=>{currentCalDate.setMonth(currentCalDate.getMonth()+1);renderActiveViews();});

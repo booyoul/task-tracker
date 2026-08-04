@@ -19,6 +19,7 @@ Last updated: 2026-08-04
 - The desktop task modal's subtask recurrence form and dynamically rendered occurrence-status rows use explicit dark surfaces, including the highlighted To-do-linked occurrence.
 - The To-do list, filters, view toggles, cards, linked-task badges, and desktop/mobile month/year calendars use explicit dark surface and semantic status colors.
 - Desktop and mobile monthly task calendars display progress notes on their effective record date and open the existing note detail slide-over when selected.
+- Desktop and mobile calendars provide a dedicated monthly memo list beside the monthly summary, with memo work-type and comment-present filters.
 - Personal To-do can optionally link to an accessible tracker task or normal subtask for context and direct navigation.
 - Personal To-do can select a specific occurrence of a recurring subtask and reopen that exact occurrence in the task modal.
 - Commit `4856bb0` is pushed to `origin/main`. Firestore Rules release `f9af690a-362b-4b12-8d1f-288933f980b8` was deployed to `task-tracker-99af4` on 2026-08-02, and unauthenticated reads of `todos`, `tasks`, `trackers`, `users`, `activity_logs`, and `progress_notes` were denied in production.
@@ -50,6 +51,7 @@ Last updated: 2026-08-04
 - Notes preserve searchable plain text and sanitized rich HTML, preset/custom colors, list styles, `Tab`/`Shift+Tab` nesting, customer name, Opp No, memo work type, and review comments.
 - Keep `data-note-list-style` allowed in both sanitizers.
 - Monthly summary remains note-first and supports author, work-type, search, important-only, and comment-present filters.
+- The monthly memo view is a flat latest-record-date-first review list. It filters by the memo's saved work type and a combinable `댓글 있음` toggle, and opens the shared note detail slide-over.
 - Monthly calendars reuse the loaded tracker-note cache, show only notes linked to currently filtered existing tasks/subtasks, and open the shared note detail slide-over.
 - Monthly calendars provide a persisted `메모만 보기` toggle on desktop and mobile; it hides task bars/cards while preserving dated notes and their detail-panel interaction.
 - A note's effective record date is independent of its linked task schedule: monthly calendars and summaries keep non-date filters but must not hide a note because the task does not overlap the selected month.

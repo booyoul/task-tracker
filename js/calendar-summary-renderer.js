@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-summary-renderer.js v20260804-v2 loaded');
+console.info('Smart Task Flow calendar-summary-renderer.js v20260804-v3 loaded');
 
 function getSummaryNoteDate(note = {}) {
     if (note.noteDate && /^\d{4}-\d{2}-\d{2}$/.test(note.noteDate)) {
@@ -111,6 +111,30 @@ function buildSummaryNoteItem(note, taskList) {
     };
 }
 
+async function loadCalendarNotesForMonth({ year, month, noteTaskScope = [] }) {
+    let trackerNotes = [];
+    if (typeof window.db_fetchTrackerProgressNotes === 'function' && window.currentTrackerId) {
+        trackerNotes = await window.db_fetchTrackerProgressNotes(window.currentTrackerId);
+    }
+
+    const monthStart = new Date(year, month, 1);
+    const monthEnd = new Date(year, month + 1, 0, 23, 59, 59);
+    const activeTaskIds = new Set(noteTaskScope.map(task => task.id));
+    const monthNotes = trackerNotes.filter(note => {
+        const noteDate = getSummaryNoteDate(note);
+        if (!noteDate || noteDate < monthStart || noteDate > monthEnd || !note.taskId) return false;
+
+        const [baseTaskId, subTaskId] = note.taskId.split('__sub_');
+        if (!activeTaskIds.has(baseTaskId)) return false;
+        if (!subTaskId) return true;
+
+        const parentTask = noteTaskScope.find(task => task.id === baseTaskId);
+        return Boolean(parentTask?.subTasks?.some(subTask => subTask.id === subTaskId));
+    }).map(note => buildSummaryNoteItem(note, noteTaskScope));
+
+    return { trackerNotes, monthNotes };
+}
+
 // Helper functions for monthly calculations
 function parseDateOnly(dateStr) {
     if (!dateStr) return null;
@@ -189,10 +213,7 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
     });
 
     // ★ 메모를 먼저 가져옴 — 업무 유무와 무관하게 항상 메모를 표시해야 하므로
-    let trackerNotes = [];
-    if (typeof window.db_fetchTrackerProgressNotes === 'function' && window.currentTrackerId) {
-        trackerNotes = await window.db_fetchTrackerProgressNotes(window.currentTrackerId);
-    }
+    const { trackerNotes, monthNotes } = await loadCalendarNotesForMonth({ year, month, noteTaskScope });
 
     // 태스크 ID 기준(서브태스크 포함)으로 메모 분류
     const notesByTaskId = {};
@@ -205,36 +226,6 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
         notesByTaskId[baseTaskId].push(note);
     });
 
-    // 메모의 기록일은 업무 일정과 독립적이다. 날짜 범위만 제외한 현재 필터 범위에서 연결 업무를 확인한다.
-    const activeTaskIds = new Set((noteTaskScope || []).map(t => t.id));
-
-    const monthNotes = trackerNotes.filter(note => {
-        // 1) 날짜 범위 검사
-        const d = getSummaryNoteDate(note);
-        if (!d) return false;
-        const inMonth = d >= monthStart && d <= monthEnd;
-        if (!inMonth) return false;
-        
-        // 2) 소속 업무 검사 (현재 필터링된 활성 업무 목록에 포함되는지)
-        if (!note.taskId) return false;
-        const parts = note.taskId.split('__sub_');
-        const baseTaskId = parts[0];
-        const isMatchedTask = activeTaskIds.has(baseTaskId);
-        if (!isMatchedTask) return false;
-
-        // 하위 태스크 메모인 경우, 해당 하위 태스크가 실제로 존재하는지 추가 검증 (삭제된 하위 태스크 메모 노출 방지)
-        if (parts.length > 1) {
-            const subId = parts[1];
-            const parentTask = (noteTaskScope || []).find(t => t.id === baseTaskId);
-            if (!parentTask) return false;
-            const subExists = (parentTask.subTasks || []).some(st => st.id === subId);
-            if (!subExists) return false;
-        }
-        
-        // 3) 전역 업무 필터는 업무 포함 여부까지만 반영하고, 메모 본문 검색은 섹션 내부 검색으로 분리
-
-        return isMatchedTask;
-    }).map(note => buildSummaryNoteItem(note, noteTaskScope || []));
     const monthNotesCount = monthNotes.length;
 
     // 업무도 없고 메모도 없을 때만 빈 화면 표시
