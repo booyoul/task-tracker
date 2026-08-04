@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow app.js v20260731-v3 loaded');
+console.info('Smart Task Flow app.js v20260804-v4 loaded');
 // --- UX optimization globals: must be declared before helper functions ---
 var focusState = window.focusState || { riskOnly: false, mineOnly: false, highOnly: false };
 window.focusState = focusState;
@@ -648,6 +648,13 @@ function renderCalendar(filteredTasks) {
   const showSubTaskBars = calendarUxState.subtasksExpanded;
   const highlightRiskOnly = calendarUxState.criticalOnly;
   const useIndustryColor = calendarUxState.colorByIndustry;
+  const activeTrackerId = String(window.currentTrackerId || (typeof currentTrackerId !== 'undefined' ? currentTrackerId : ''));
+  if (currentCalMode === 'DAY' && typeof ensureListProgressNoteSummaryLoaded === 'function') {
+    ensureListProgressNoteSummaryLoaded(activeTrackerId);
+  }
+  const monthNotes = currentCalMode === 'DAY' && typeof getCachedTrackerProgressNotes === 'function' && typeof getCalendarProgressNotesForMonth === 'function'
+    ? getCalendarProgressNotesForMonth(getCachedTrackerProgressNotes(activeTrackerId), filteredTasks, year, month)
+    : [];
   if (titleEl) titleEl.textContent = currentCalMode === 'MONTH' ? `${year}년 연간 타임라인` : `${year}년 ${month + 1}월`;
 
   const groups = filteredTasks.map(t => {
@@ -710,7 +717,7 @@ function renderCalendar(filteredTasks) {
   };
 
   if (currentCalMode === 'DAY') {
-    renderCalendarDayView({ weekdayHeader, grid, year, month, todayStr, totalCalLanes, groups: layoutGroups, showSubTaskBars, mainClass, dimIfNotCritical, useIndustryColor });
+    renderCalendarDayView({ weekdayHeader, grid, year, month, todayStr, totalCalLanes, groups: layoutGroups, monthNotes, showSubTaskBars, mainClass, dimIfNotCritical, useIndustryColor });
     return;
   }
   if (currentCalMode === 'MONTH') {

@@ -1,6 +1,6 @@
 # Smart Task Flow Task
 
-Last updated: 2026-08-02
+Last updated: 2026-08-04
 
 ## Startup
 
@@ -18,6 +18,7 @@ Last updated: 2026-08-02
 - The latest UI pass aligned dark surfaces across calendars, lists, all modal/dialog panels, mobile task cards, and mobile 가입 승인 관리.
 - The desktop task modal's subtask recurrence form and dynamically rendered occurrence-status rows use explicit dark surfaces, including the highlighted To-do-linked occurrence.
 - The To-do list, filters, view toggles, cards, linked-task badges, and desktop/mobile month/year calendars use explicit dark surface and semantic status colors.
+- Desktop and mobile monthly task calendars display progress notes on their effective record date and open the existing note detail slide-over when selected.
 - Personal To-do can optionally link to an accessible tracker task or normal subtask for context and direct navigation.
 - Personal To-do can select a specific occurrence of a recurring subtask and reopen that exact occurrence in the task modal.
 - Commit `4856bb0` is pushed to `origin/main`. Firestore Rules release `f9af690a-362b-4b12-8d1f-288933f980b8` was deployed to `task-tracker-99af4` on 2026-08-02, and unauthenticated reads of `todos`, `tasks`, `trackers`, `users`, `activity_logs`, and `progress_notes` were denied in production.
@@ -49,6 +50,7 @@ Last updated: 2026-08-02
 - Notes preserve searchable plain text and sanitized rich HTML, preset/custom colors, list styles, `Tab`/`Shift+Tab` nesting, customer name, Opp No, memo work type, and review comments.
 - Keep `data-note-list-style` allowed in both sanitizers.
 - Monthly summary remains note-first and supports author, work-type, search, important-only, and comment-present filters.
+- Monthly calendars reuse the loaded tracker-note cache, show only notes linked to currently filtered existing tasks/subtasks, and open the shared note detail slide-over.
 
 ### Personal To-do
 

@@ -354,6 +354,14 @@ async function main() {
   await global.ensureListProgressNoteSummaryLoaded(global.currentTrackerId);
   assert(global.getListProgressNoteSummary('task-1').count === 2, '본 업무의 메모 수가 정확히 집계되지 않습니다.');
   assert(global.getListProgressNoteSummary('task-1__sub_sub-1').count === 1, '서브 태스크의 메모 수가 정확히 집계되지 않습니다.');
+  const calendarMonthNotes = global.getCalendarProgressNotesForMonth(
+    global.getCachedTrackerProgressNotes(global.currentTrackerId),
+    tasks.slice(0, 2),
+    2026,
+    6
+  );
+  assert(calendarMonthNotes.length === 3, '월간 캘린더 메모가 기록일과 연결 업무 기준으로 필터링되지 않았습니다.');
+  assert(calendarMonthNotes.find(note => note.id === 'note-sub-latest')?.subTaskTitle, '월간 캘린더 하위 업무 메모에 정확한 하위 업무 연결 정보가 없습니다.');
   global.openLatestListTaskNote('task-1');
   assert(openedListNote?.id === 'note-main-latest', '메모 수 버튼이 본 업무의 가장 최근 메모를 열지 않습니다.');
   const tableBody = document.getElementById('task-table-body');
@@ -416,6 +424,16 @@ async function main() {
         monthSubTasks: []
       }
     ],
+    monthNotes: [
+      ...calendarMonthNotes,
+      {
+        id: 'note-day-one',
+        taskId: 'late-lane-first-week',
+        title: '월간 캘린더 첫날 메모',
+        calendarDateKey: '2026-07-01',
+        calendarTaskLabel: '첫 주 높은 논리 lane 업무'
+      }
+    ],
     showSubTaskBars: true,
     mainClass: () => 'bg-slate-200 text-slate-700',
     dimIfNotCritical: () => '',
@@ -426,7 +444,12 @@ async function main() {
   assert(weekLaneCounts[0] === 2, `첫 주에 활성 업무 분류 헤더와 업무 외 빈 줄이 남아 있습니다: ${weekLaneCounts[0]}`);
   assert(document.querySelector('#calendar-grid [data-calendar-category-header="FNB"]'), '캘린더의 최상위 업무 분류 헤더가 없습니다.');
   assert(compactedFirstWeekBar?.dataset.compactLane === '1', '첫 주의 높은 논리 lane 업무가 활성 업무 분류 헤더 바로 아래로 압축되지 않았습니다.');
-  assert(compactedFirstWeekBar?.style.top === '56px', `첫 주 업무 위에 비활성 업무 분류 빈 줄이 남아 있습니다: ${compactedFirstWeekBar?.style.top}`);
+  assert(compactedFirstWeekBar?.style.top === '76px', `첫 주 메모 행과 업무 막대가 겹치거나 비활성 업무 분류 빈 줄이 남아 있습니다: ${compactedFirstWeekBar?.style.top}`);
+  assert(document.querySelectorAll('#calendar-grid [data-calendar-note-id]').length === 4, '데스크톱 월간 캘린더에 메모가 날짜별로 표시되지 않았습니다.');
+  const desktopCalendarNote = document.querySelector('#calendar-grid [data-calendar-note-id="note-sub-latest"]');
+  assert(desktopCalendarNote?.className.includes('dark:bg-'), '데스크톱 월간 캘린더 메모에 다크 테마 클래스가 없습니다.');
+  desktopCalendarNote.click();
+  assert(openedListNote?.id === 'note-sub-latest', '데스크톱 월간 캘린더 메모 클릭 시 메모 상세가 열리지 않습니다.');
 
   const cancelledTask = {
     id: 'task-cancelled',
@@ -525,6 +548,11 @@ async function main() {
   assert(document.querySelector('#cal-mobile-content [data-mobile-calendar-category]'), '모바일 일별 캘린더에 업무 분류 헤더가 없습니다.');
   assert(document.querySelector('#cal-mobile-content [data-mobile-calendar-category]').className.includes('dark:bg-'), '모바일 일별 캘린더 업무 분류 헤더의 다크 테마 클래스가 누락되었습니다.');
   assert(document.getElementById('cal-mobile-content').textContent.includes('월간 정기 완료 체크'), '반복 하위 업무가 모바일 월간에 반영되지 않았습니다.');
+  const mobileCalendarNotes = document.querySelectorAll('#cal-mobile-content [data-calendar-note-id]');
+  assert(mobileCalendarNotes.length === 3, '모바일 월간 캘린더에 메모가 날짜별로 표시되지 않았습니다.');
+  assert([...mobileCalendarNotes].every(button => button.className.includes('min-h-11') && button.className.includes('dark:bg-')), '모바일 월간 메모의 터치 영역 또는 다크 테마 클래스가 누락되었습니다.');
+  document.querySelector('#cal-mobile-content [data-calendar-note-id="note-main-older"]').click();
+  assert(openedListNote?.id === 'note-main-older', '모바일 월간 캘린더 메모 클릭 시 메모 상세가 열리지 않습니다.');
 
   global.currentCalMode = 'MONTH';
   window.renderMobileCalendar(tasks);

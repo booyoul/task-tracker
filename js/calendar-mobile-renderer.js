@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-mobile-renderer.js v20260731-v3 loaded');
+console.info('Smart Task Flow calendar-mobile-renderer.js v20260804-v4 loaded');
 
 // ============================================================
 //  모바일 전용 캘린더 렌더러
@@ -40,7 +40,12 @@ function renderMobileCalendar(filtered) {
       content.innerHTML = '<p class="text-slate-400 text-sm text-center py-8">요약 뷰를 불러올 수 없습니다.</p>';
     }
   } else {
-    _renderMobileDayView(content, filtered, year, month, todayStr);
+    const activeTrackerId = String(window.currentTrackerId || (typeof currentTrackerId !== 'undefined' ? currentTrackerId : ''));
+    if (typeof ensureListProgressNoteSummaryLoaded === 'function') ensureListProgressNoteSummaryLoaded(activeTrackerId);
+    const monthNotes = typeof getCachedTrackerProgressNotes === 'function' && typeof getCalendarProgressNotesForMonth === 'function'
+      ? getCalendarProgressNotesForMonth(getCachedTrackerProgressNotes(activeTrackerId), filtered, year, month)
+      : [];
+    _renderMobileDayView(content, filtered, year, month, todayStr, monthNotes);
   }
 }
 
@@ -55,7 +60,7 @@ function _updateMobileCalModeButtons(mode) {
   if (summaryBtn) summaryBtn.className = mode === 'SUMMARY' ? active : inactive;
 }
 
-function _renderMobileDayView(container, filtered, year, month, todayStr) {
+function _renderMobileDayView(container, filtered, year, month, todayStr, monthNotes = []) {
   const monthStr = year + '-' + String(month + 1).padStart(2, '0');
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const monthStart = monthStr + '-01';
@@ -103,8 +108,16 @@ function _renderMobileDayView(container, filtered, year, month, todayStr) {
     });
   });
 
+  const notesByDate = new Map();
+  monthNotes.forEach(function(note) {
+    const dateKey = note.calendarDateKey || getCalendarProgressNoteDateKey(note);
+    if (!notesByDate.has(dateKey)) notesByDate.set(dateKey, []);
+    notesByDate.get(dateKey).push(note);
+    if (!dayMap.has(dateKey)) dayMap.set(dateKey, new Map());
+  });
+
   if (dayMap.size === 0) {
-    container.innerHTML = '<div class="flex flex-col items-center justify-center py-16 text-center"><span class="text-4xl mb-3">📅</span><p class="text-sm font-semibold text-slate-500">이번 달 업무가 없습니다.</p><p class="text-xs text-slate-400 mt-1">다른 달을 선택하거나 새 업무를 추가해 주세요.</p></div>';
+    container.innerHTML = '<div class="flex flex-col items-center justify-center py-16 text-center"><span class="text-4xl mb-3">📅</span><p class="text-sm font-semibold text-slate-500">이번 달 업무 또는 메모가 없습니다.</p><p class="text-xs text-slate-400 mt-1">다른 달을 선택하거나 새 업무를 추가해 주세요.</p></div>';
     return;
   }
 
@@ -115,14 +128,27 @@ function _renderMobileDayView(container, filtered, year, month, todayStr) {
     const dayNum = parseInt(dateStr.split('-')[2], 10);
     const dayOfWeek = new Date(dateStr.replace(/-/g, '/')).getDay();
     const isToday = dateStr === todayStr;
+    const dayNotes = notesByDate.get(dateStr) || [];
     const dayColor = dayOfWeek === 0 ? 'text-rose-500' : dayOfWeek === 6 ? 'text-blue-500' : 'text-slate-500';
 
     const dateHeader = document.createElement('div');
     dateHeader.className = 'flex items-center gap-2 mb-2 mt-4 first:mt-0';
-    dateHeader.innerHTML = '<span class="inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold shrink-0 ' + (isToday ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 ' + dayColor) + '">' + dayNum + '</span><span class="text-xs font-semibold ' + dayColor + '">' + dayNames[dayOfWeek] + '</span>' + (isToday ? '<span class="text-[10px] font-bold bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded-full">오늘</span>' : '') + '<div class="flex-1 h-px bg-slate-100"></div>';
+    dateHeader.innerHTML = '<span class="inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold shrink-0 ' + (isToday ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-800 ' + dayColor) + '">' + dayNum + '</span><span class="text-xs font-semibold ' + dayColor + '">' + dayNames[dayOfWeek] + '</span>' + (isToday ? '<span class="text-[10px] font-bold bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded-full dark:bg-indigo-950/60 dark:text-indigo-300">오늘</span>' : '') + (dayNotes.length ? '<span class="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">메모 ' + dayNotes.length + '</span>' : '') + '<div class="flex-1 h-px bg-slate-100 dark:bg-slate-800"></div>';
     container.appendChild(dateHeader);
     const taskList = document.createElement('div');
     taskList.className = 'space-y-2';
+
+    dayNotes.forEach(function(note) {
+      const noteButton = document.createElement('button');
+      noteButton.type = 'button';
+      noteButton.dataset.calendarNoteId = String(note.id || '');
+      noteButton.dataset.calendarNoteDate = dateStr;
+      noteButton.className = 'flex min-h-11 w-full items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-left transition active:scale-[0.99] hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-400 dark:border-amber-800 dark:bg-amber-950/40 dark:hover:bg-amber-900/50';
+      noteButton.innerHTML = `<span class="text-base" aria-hidden="true">📌</span><span class="min-w-0 flex-1"><span class="block truncate text-xs font-bold text-amber-900 dark:text-amber-100">${escapeHTML(getCalendarProgressNoteTitle(note))}</span><span class="block truncate text-[10px] text-amber-700 dark:text-amber-300">${escapeHTML(note.calendarTaskLabel || '')}</span></span><span class="text-xs text-amber-500" aria-hidden="true">›</span>`;
+      noteButton.setAttribute('aria-label', `${dateStr} 메모 보기: ${getCalendarProgressNoteTitle(note)}`);
+      noteButton.addEventListener('click', function(event) { openCalendarProgressNote(note, event); });
+      taskList.appendChild(noteButton);
+    });
     
     const dateEntries = Array.from(dayMap.get(dateStr).values());
     groupTasksByCategory(dateEntries.map(function(entry) { return entry.task; })).forEach(function(category) {

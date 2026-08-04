@@ -1,7 +1,56 @@
-console.info('Smart Task Flow calendar-day-renderer.js v20260724-v15 loaded');
+console.info('Smart Task Flow calendar-day-renderer.js v20260804-v16 loaded');
+
+function getCalendarProgressNoteDateKey(note = {}) {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(String(note.noteDate || ''))) return note.noteDate;
+    const createdAt = note.createdAt?.toDate ? note.createdAt.toDate() : new Date(note.createdAt || 0);
+    if (Number.isNaN(createdAt.getTime())) return '';
+    return `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}-${String(createdAt.getDate()).padStart(2, '0')}`;
+}
+
+function getCalendarProgressNoteTitle(note = {}) {
+    const title = String(note.title || '').trim();
+    if (title) return title;
+    const body = String(note.body || '').replace(/\s+/g, ' ').trim();
+    return body ? body.slice(0, 40) : '제목 없는 메모';
+}
+
+function getCalendarProgressNotesForMonth(notes, taskList, year, month) {
+    const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}-`;
+    const taskMap = new Map((taskList || []).map(task => [String(task.id || ''), task]));
+    return (notes || []).flatMap(note => {
+        const dateKey = getCalendarProgressNoteDateKey(note);
+        if (!dateKey.startsWith(monthPrefix)) return [];
+        const [baseTaskId, subTaskId = ''] = String(note.taskId || '').split('__sub_');
+        const parentTask = taskMap.get(baseTaskId);
+        if (!parentTask) return [];
+        const subTasks = parentTask.subTasks || parentTask.monthSubTasks || [];
+        const subTask = subTaskId ? subTasks.find(item => String(item.id || '') === subTaskId) : null;
+        if (subTaskId && !subTask) return [];
+        return [{
+            ...note,
+            taskTitle: parentTask.title || '알 수 없는 업무',
+            subTaskTitle: subTask?.title || '',
+            calendarDateKey: dateKey,
+            calendarTaskLabel: subTask ? `${parentTask.title} › ${subTask.title}` : (parentTask.title || '알 수 없는 업무')
+        }];
+    }).sort((a, b) => {
+        const dateDiff = a.calendarDateKey.localeCompare(b.calendarDateKey);
+        if (dateDiff) return dateDiff;
+        const aTime = typeof getListProgressNoteSortTime === 'function' ? getListProgressNoteSortTime(a) : 0;
+        const bTime = typeof getListProgressNoteSortTime === 'function' ? getListProgressNoteSortTime(b) : 0;
+        return aTime - bTime;
+    });
+}
+
+function openCalendarProgressNote(note, event) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    if (typeof window.openNoteDetailPanel === 'function') window.openNoteDetailPanel(note);
+}
+
 // DAY calendar mini-Gantt renderer. Extracted from app.js in Phase 4B.
 function renderCalendarDayView(ctx) {
-    const { weekdayHeader, grid, year, month, todayStr, groups, showSubTaskBars, mainClass, dimIfNotCritical, useIndustryColor } = ctx;
+    const { weekdayHeader, grid, year, month, todayStr, groups, monthNotes = [], showSubTaskBars, mainClass, dimIfNotCritical, useIndustryColor } = ctx;
     weekdayHeader?.classList.remove('hidden');
     grid.className = 'relative bg-white border border-slate-200 rounded-b-lg overflow-hidden';
     grid.innerHTML = '';
@@ -20,6 +69,14 @@ function renderCalendarDayView(ctx) {
     // This makes sub tasks such as "6월 Review" run continuously from 7/1 to 7/3.
     const laneHeight = 22;
     const rowDateHeight = 34;
+    const noteRowHeight = 20;
+    const maxVisibleNoteRows = 3;
+    const notesByDate = new Map();
+    monthNotes.forEach(note => {
+      const dateKey = note.calendarDateKey || getCalendarProgressNoteDateKey(note);
+      if (!notesByDate.has(dateKey)) notesByDate.set(dateKey, []);
+      notesByDate.get(dateKey).push(note);
+    });
     const weekBounds = Array.from({ length: weekCount }, (_, week) => {
       const weekCellStart = week * 7;
       const weekCellEnd = weekCellStart + 6;
@@ -51,10 +108,18 @@ function renderCalendarDayView(ctx) {
         }
       });
       const orderedLanes = Array.from(activeLanes).sort((a, b) => a - b);
+      let maxNotesInDay = 0;
+      for (let day = Number(start.slice(8, 10)); day <= Number(end.slice(8, 10)); day++) {
+        const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        maxNotesInDay = Math.max(maxNotesInDay, notesByDate.get(dateKey)?.length || 0);
+      }
+      const noteRows = Math.min(maxVisibleNoteRows, maxNotesInDay);
+      const noteAreaHeight = noteRows * noteRowHeight;
       return {
         laneMap: new Map(orderedLanes.map((lane, index) => [lane, index])),
         laneCount: orderedLanes.length,
-        height: rowDateHeight + orderedLanes.length * laneHeight + 14
+        noteAreaHeight,
+        height: rowDateHeight + noteAreaHeight + orderedLanes.length * laneHeight + 14
       };
     });
     const weekOffsets = [];
@@ -71,11 +136,31 @@ function renderCalendarDayView(ctx) {
       const dayOfWeek = cellIndex % 7;
       const dateStr = day >= 1 && day <= daysInMonth ? `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}` : '';
       const cell = document.createElement('div');
-      cell.className = `${dateStr ? 'bg-white hover:bg-slate-50' : 'bg-slate-50'} transition-colors border-r border-b border-slate-100`;
+      cell.className = `${dateStr ? 'bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800/80' : 'bg-slate-50 dark:bg-slate-950'} relative transition-colors border-r border-b border-slate-100 dark:border-slate-800`;
       cell.style.height = `${weekLayouts[Math.floor(cellIndex / 7)].height}px`;
       cell.innerHTML = dateStr
-        ? `<div class="p-1.5"><span class="inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${dateStr === todayStr ? 'bg-indigo-600 text-white shadow-sm' : dayOfWeek === 0 ? 'text-rose-500' : dayOfWeek === 6 ? 'text-blue-500' : 'text-slate-600'}">${day}</span></div>`
+        ? `<div class="p-1.5"><span class="inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${dateStr === todayStr ? 'bg-indigo-600 text-white shadow-sm' : dayOfWeek === 0 ? 'text-rose-500' : dayOfWeek === 6 ? 'text-blue-500' : 'text-slate-600 dark:text-slate-300'}">${day}</span></div>`
         : '';
+      const dayNotes = notesByDate.get(dateStr) || [];
+      const noteAreaHeight = weekLayouts[Math.floor(cellIndex / 7)].noteAreaHeight;
+      if (dateStr && noteAreaHeight > 0) {
+        const noteList = document.createElement('div');
+        noteList.className = 'absolute inset-x-1 top-[32px] z-20 space-y-0.5 overflow-y-auto pointer-events-auto';
+        noteList.style.maxHeight = `${noteAreaHeight}px`;
+        dayNotes.forEach(note => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.dataset.calendarNoteId = String(note.id || '');
+          button.dataset.calendarNoteDate = dateStr;
+          button.className = 'flex h-[18px] w-full items-center gap-1 rounded bg-amber-50 px-1 text-left text-[10px] font-semibold text-amber-800 transition hover:bg-amber-100 focus:outline-none focus:ring-1 focus:ring-amber-400 dark:bg-amber-950/45 dark:text-amber-200 dark:hover:bg-amber-900/60';
+          button.innerHTML = `<span aria-hidden="true">📌</span><span class="truncate">${escapeHTML(getCalendarProgressNoteTitle(note))}</span>`;
+          button.title = `${note.calendarTaskLabel || ''} · ${getCalendarProgressNoteTitle(note)}`;
+          button.setAttribute('aria-label', `${dateStr} 메모 보기: ${getCalendarProgressNoteTitle(note)}`);
+          button.addEventListener('click', event => openCalendarProgressNote(note, event));
+          noteList.appendChild(button);
+        });
+        cell.appendChild(noteList);
+      }
       plate.appendChild(cell);
     }
     grid.appendChild(plate);
@@ -145,7 +230,7 @@ function renderCalendarDayView(ctx) {
         const rightPad = (isRealEnd || endsAtWeekEnd) ? 4 : 0;
         bar.style.left = `calc(${startCol / 7 * 100}% + ${leftPad}px)`;
         bar.style.width = `calc(${(endCol - startCol + 1) / 7 * 100}% - ${leftPad + rightPad}px)`;
-        bar.style.top = `${weekOffsets[week] + rowDateHeight + compactLane * laneHeight}px`;
+        bar.style.top = `${weekOffsets[week] + rowDateHeight + weekLayouts[week].noteAreaHeight + compactLane * laneHeight}px`;
         bar.dataset.weekIndex = String(week);
         bar.dataset.logicalLane = String(item.lane);
         bar.dataset.compactLane = String(compactLane);
@@ -174,7 +259,7 @@ function renderCalendarDayView(ctx) {
           label.dataset.calendarCategoryHeader = g.categoryGroupKey;
           label.className = 'absolute z-20 pointer-events-none rounded-md bg-indigo-700/90 px-2 py-0.5 text-[10px] font-black text-white shadow-sm';
           label.style.left = '4px';
-          label.style.top = `${weekOffsets[week] + rowDateHeight + compactHeaderLane * laneHeight + 1}px`;
+          label.style.top = `${weekOffsets[week] + rowDateHeight + weekLayouts[week].noteAreaHeight + compactHeaderLane * laneHeight + 1}px`;
           label.style.maxWidth = 'calc(100% - 8px)';
           label.textContent = `${g.categoryGroupLabel} · 본 업무 ${g.categoryTaskCount}개`;
           overlay.appendChild(label);

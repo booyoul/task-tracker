@@ -1,10 +1,11 @@
-console.info('Smart Task Flow table-mobile-renderer.js v20260731-v16 loaded');
+console.info('Smart Task Flow table-mobile-renderer.js v20260804-v17 loaded');
 // Table and mobile card renderers. Extracted from app.js in Phase 5.
 const listProgressNoteSummaryCache = {
   trackerId: '',
   loaded: false,
   loading: false,
   requestId: 0,
+  notes: [],
   byTaskId: new Map()
 };
 function getListProgressNoteSortTime(note = {}) {
@@ -34,6 +35,7 @@ async function ensureListProgressNoteSummaryLoaded(trackerId) {
   listProgressNoteSummaryCache.trackerId = normalizedTrackerId;
   listProgressNoteSummaryCache.loaded = false;
   listProgressNoteSummaryCache.loading = true;
+  listProgressNoteSummaryCache.notes = [];
   listProgressNoteSummaryCache.byTaskId = new Map();
   let notes = [];
   try {
@@ -43,7 +45,8 @@ async function ensureListProgressNoteSummaryLoaded(trackerId) {
   }
   if (requestId !== listProgressNoteSummaryCache.requestId) return;
 
-  (Array.isArray(notes) ? notes : []).forEach(note => {
+  listProgressNoteSummaryCache.notes = Array.isArray(notes) ? notes : [];
+  listProgressNoteSummaryCache.notes.forEach(note => {
     const taskId = String(note?.taskId || '');
     if (!taskId) return;
     const current = listProgressNoteSummaryCache.byTaskId.get(taskId) || { count: 0, latestNote: null };
@@ -58,10 +61,18 @@ async function ensureListProgressNoteSummaryLoaded(trackerId) {
   const activeTrackerId = String(window.currentTrackerId || (typeof currentTrackerId !== 'undefined' ? currentTrackerId : ''));
   if (activeTrackerId === normalizedTrackerId && typeof renderActiveViews === 'function') renderActiveViews();
 }
+function getCachedTrackerProgressNotes(trackerId) {
+  const normalizedTrackerId = String(trackerId || '');
+  if (!normalizedTrackerId
+      || listProgressNoteSummaryCache.trackerId !== normalizedTrackerId
+      || !listProgressNoteSummaryCache.loaded) return [];
+  return [...listProgressNoteSummaryCache.notes];
+}
 function invalidateListProgressNoteSummary() {
   listProgressNoteSummaryCache.requestId += 1;
   listProgressNoteSummaryCache.loaded = false;
   listProgressNoteSummaryCache.loading = false;
+  listProgressNoteSummaryCache.notes = [];
   listProgressNoteSummaryCache.byTaskId = new Map();
 }
 function openLatestListTaskNote(taskId) {
