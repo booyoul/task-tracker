@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-mobile-renderer.js v20260804-v5 loaded');
+console.info('Smart Task Flow calendar-mobile-renderer.js v20260804-v6 loaded');
 
 // ============================================================
 //  모바일 전용 캘린더 렌더러
@@ -28,6 +28,8 @@ function renderMobileCalendar(filtered, noteTaskScope = filtered) {
   }
 
   _updateMobileCalModeButtons(mode);
+  _updateMobileCalendarNotesOnlyControl(mode);
+  if (mode !== 'DAY') content.dataset.notesOnly = 'false';
 
   content.innerHTML = '';
   if (mode === 'MONTH') {
@@ -45,7 +47,8 @@ function renderMobileCalendar(filtered, noteTaskScope = filtered) {
     const monthNotes = typeof getCachedTrackerProgressNotes === 'function' && typeof getCalendarProgressNotesForMonth === 'function'
       ? getCalendarProgressNotesForMonth(getCachedTrackerProgressNotes(activeTrackerId), noteTaskScope, year, month)
       : [];
-    _renderMobileDayView(content, filtered, year, month, todayStr, monthNotes);
+    const notesOnly = window.calendarUxState?.notesOnly === true;
+    _renderMobileDayView(content, filtered, year, month, todayStr, monthNotes, notesOnly);
   }
 }
 
@@ -60,7 +63,25 @@ function _updateMobileCalModeButtons(mode) {
   if (summaryBtn) summaryBtn.className = mode === 'SUMMARY' ? active : inactive;
 }
 
-function _renderMobileDayView(container, filtered, year, month, todayStr, monthNotes = []) {
+function _updateMobileCalendarNotesOnlyControl(mode) {
+  const control = document.getElementById('calendar-notes-only-control-m');
+  const button = document.getElementById('btn-cal-ux-notes-only-m');
+  const isMonthlyMode = mode === 'DAY';
+  const isActive = window.calendarUxState?.notesOnly === true;
+  if (control) {
+    control.hidden = !isMonthlyMode;
+    control.classList.toggle('hidden', !isMonthlyMode);
+  }
+  if (!button) return;
+  button.className = isActive
+    ? 'inline-flex min-h-11 items-center justify-center rounded-xl border border-indigo-500 bg-indigo-600 px-3 py-2 text-xs font-black text-white shadow-sm transition active:scale-[0.98]'
+    : 'inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 shadow-sm transition active:scale-[0.98] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200';
+  button.textContent = isActive ? '📌 메모만 보기 ON' : '📌 메모만 보기';
+  button.setAttribute('aria-pressed', String(isActive));
+}
+
+function _renderMobileDayView(container, filtered, year, month, todayStr, monthNotes = [], notesOnly = false) {
+  container.dataset.notesOnly = String(notesOnly);
   const monthStr = year + '-' + String(month + 1).padStart(2, '0');
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const monthStart = monthStr + '-01';
@@ -69,7 +90,7 @@ function _renderMobileDayView(container, filtered, year, month, todayStr, monthN
   // dayMap: dateStr -> Map(taskId -> { task: task, startSubTasks: [] })
   const dayMap = new Map();
 
-  filtered.forEach(function(task) {
+  if (!notesOnly) filtered.forEach(function(task) {
     const s = task.startDate || task.dueDate;
     const e = task.dueDate || task.startDate;
     if (!s || !e) return;
@@ -117,10 +138,11 @@ function _renderMobileDayView(container, filtered, year, month, todayStr, monthN
   });
 
   if (dayMap.size === 0) {
-    container.innerHTML = '<div class="flex flex-col items-center justify-center py-16 text-center"><span class="text-4xl mb-3">📅</span><p class="text-sm font-semibold text-slate-500">이번 달 업무 또는 메모가 없습니다.</p><p class="text-xs text-slate-400 mt-1">다른 달을 선택하거나 새 업무를 추가해 주세요.</p></div>';
+    container.innerHTML = notesOnly
+      ? '<div class="flex flex-col items-center justify-center py-16 text-center"><span class="text-4xl mb-3">📌</span><p class="text-sm font-semibold text-slate-500">이번 달 메모가 없습니다.</p><p class="text-xs text-slate-400 mt-1">다른 달을 선택하거나 메모만 보기를 해제해 주세요.</p></div>'
+      : '<div class="flex flex-col items-center justify-center py-16 text-center"><span class="text-4xl mb-3">📅</span><p class="text-sm font-semibold text-slate-500">이번 달 업무 또는 메모가 없습니다.</p><p class="text-xs text-slate-400 mt-1">다른 달을 선택하거나 새 업무를 추가해 주세요.</p></div>';
     return;
   }
-
   const sortedDates = Array.from(dayMap.keys()).sort();
   const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -624,6 +646,14 @@ function initMobileCalendarEvents() {
     currentCalMode = 'SUMMARY';
     if (typeof setCalMode === 'function') setCalMode('SUMMARY');
     else if (typeof renderActiveViews === 'function') renderActiveViews();
+  });
+  document.getElementById('btn-cal-ux-notes-only-m')?.addEventListener('click', function() {
+    const nextValue = window.calendarUxState?.notesOnly !== true;
+    if (typeof setCalendarNotesOnly === 'function') setCalendarNotesOnly(nextValue);
+    else {
+      window.calendarUxState = { ...(window.calendarUxState || {}), notesOnly: nextValue };
+      if (typeof renderActiveViews === 'function') renderActiveViews();
+    }
   });
 }
 

@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-day-renderer.js v20260804-v16 loaded');
+console.info('Smart Task Flow calendar-day-renderer.js v20260804-v17 loaded');
 
 function getCalendarProgressNoteDateKey(note = {}) {
     if (/^\d{4}-\d{2}-\d{2}$/.test(String(note.noteDate || ''))) return note.noteDate;
@@ -50,7 +50,7 @@ function openCalendarProgressNote(note, event) {
 
 // DAY calendar mini-Gantt renderer. Extracted from app.js in Phase 4B.
 function renderCalendarDayView(ctx) {
-    const { weekdayHeader, grid, year, month, todayStr, groups, monthNotes = [], showSubTaskBars, mainClass, dimIfNotCritical, useIndustryColor } = ctx;
+    const { weekdayHeader, grid, year, month, todayStr, groups, monthNotes = [], notesOnly = false, showSubTaskBars, mainClass, dimIfNotCritical, useIndustryColor } = ctx;
     weekdayHeader?.classList.remove('hidden');
     grid.className = 'relative bg-white border border-slate-200 rounded-b-lg overflow-hidden';
     grid.innerHTML = '';
@@ -89,7 +89,7 @@ function renderCalendarDayView(ctx) {
     });
     const weekLayouts = weekBounds.map(({ start, end }) => {
       const activeLanes = new Set();
-      groups.forEach(g => {
+      if (!notesOnly) groups.forEach(g => {
         let groupHasVisibleItem = false;
         if (g.startDate <= end && g.dueDate >= start) {
           activeLanes.add(g.globalLineStart);
@@ -128,6 +128,7 @@ function renderCalendarDayView(ctx) {
       return offset + layout.height;
     }, 0);
     grid.dataset.weekLaneCounts = weekLayouts.map(layout => layout.laneCount).join(',');
+    grid.dataset.notesOnly = String(notesOnly);
 
     const plate = document.createElement('div');
     plate.className = 'grid grid-cols-7 gap-px bg-slate-200 relative z-0';
@@ -246,7 +247,7 @@ function renderCalendarDayView(ctx) {
       }
     };
 
-    {
+    if (!notesOnly) {
       const renderedCategoryLabels = new Set();
       groups.forEach(g => {
         if (g.categoryHeaderLine == null || renderedCategoryLabels.has(g.categoryGroupKey)) return;
@@ -267,7 +268,7 @@ function renderCalendarDayView(ctx) {
       });
     }
 
-    groups.forEach(g => {
+    if (!notesOnly) groups.forEach(g => {
       // Main task bar
       if (g.startDate <= lastDayStr && g.dueDate >= monthFirstStr) {
         drawWeekFragment({ id: g.id, title: g.title, isSub: false, status: g.status, priority: g.priority, industry: g.industry, industryLabel: g.industryLabel, taskType: g.taskType, lane: g.globalLineStart, start: g.startDate, end: g.dueDate, parentId: g.id, assignee: g.assignee, notes: g.notes, dueDate: g.dueDate, subCount: getSubTaskCompletionCounts(g.monthSubTasks || []).active, subDone: getSubTaskCompletionCounts(g.monthSubTasks || []).completed, progressPct: getTaskProgress(g) });
