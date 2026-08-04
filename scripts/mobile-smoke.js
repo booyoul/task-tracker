@@ -88,6 +88,15 @@ window.db_fetchTrackerProgressNotes = async () => [
     createdByName: 'bd@example.com',
     noteDate: '2026-07-12',
     createdAt: new Date('2026-07-12T10:00:00+09:00')
+  },
+  {
+    id: 'note-outside-task-range',
+    taskId: 'task-outside-month',
+    title: '일정 밖 실행 메모',
+    body: '관련 업무는 4월에 끝났지만 실행일은 7월인 메모',
+    createdByName: 'manager@example.com',
+    noteDate: '2026-07-13',
+    createdAt: new Date('2026-07-13T11:00:00+09:00')
   }
 ];
 
@@ -275,6 +284,7 @@ async function main() {
   assert(/if \(status === 'ALL'\)[\s\S]*?statusFilter\.value = 'ALL'[\s\S]*?priorityFilter\.value = 'ALL'/.test(appSource), '전체 KPI 버튼이 Risk와 High 필터를 함께 해제하지 않습니다.');
   assert(/statusFilter\.value = statusFilter\.value === status \? 'ALL' : status/.test(appSource), '활성 상태 KPI 버튼을 다시 눌렀을 때 필터가 해제되지 않습니다.');
   assert(/priorityFilter\.value = priorityFilter\.value === priority \? 'ALL' : priority/.test(appSource), '활성 High KPI 버튼을 다시 눌렀을 때 필터가 해제되지 않습니다.');
+  assert(/function getFilteredTasks\(options = \{\}\)[^]*!options\.ignoreDateRange[^]*getFilteredTasks\(\{ ignoreDateRange: true \}\)[^]*renderMobileCalendar\(filtered, noteTaskScope\)[^]*renderCalendar\(filtered, noteTaskScope\)/.test(appSource), '월간 메모 연결 업무 범위가 날짜 필터와 독립적으로 데스크톱·모바일 캘린더에 전달되지 않습니다.');
   assert(/btn-toggle-all-table-subtasks[^]*addEventListener\('click',toggleAllTableSubTasks\)/.test(eventBindingsSource), '서브 태스크 전체 펼치기 버튼의 클릭 연결이 없습니다.');
   assert(/btn-list-note[^]*openTaskNoteFromList/.test(appSource), '목록 메모 핀의 클릭 연결이 없습니다.');
   assert(/btn-list-note-count[^]*openLatestListTaskNote/.test(appSource), '목록 메모 수 버튼의 최근 메모 연결이 없습니다.');
@@ -351,16 +361,27 @@ async function main() {
   loadScript('js/table-mobile-renderer.js');
 
   const tasks = makeTasks();
+  const outsideMonthTask = {
+    id: 'task-outside-month',
+    title: '4월 종료 업무',
+    status: 'COMPLETED',
+    priority: 'NORMAL',
+    industry: 'PHARMA',
+    startDate: '2026-04-01',
+    dueDate: '2026-04-30',
+    assignee: ['이매니저'],
+    subTasks: []
+  };
   await global.ensureListProgressNoteSummaryLoaded(global.currentTrackerId);
   assert(global.getListProgressNoteSummary('task-1').count === 2, '본 업무의 메모 수가 정확히 집계되지 않습니다.');
   assert(global.getListProgressNoteSummary('task-1__sub_sub-1').count === 1, '서브 태스크의 메모 수가 정확히 집계되지 않습니다.');
   const calendarMonthNotes = global.getCalendarProgressNotesForMonth(
     global.getCachedTrackerProgressNotes(global.currentTrackerId),
-    tasks.slice(0, 2),
+    [...tasks.slice(0, 2), outsideMonthTask],
     2026,
     6
   );
-  assert(calendarMonthNotes.length === 3, '월간 캘린더 메모가 기록일과 연결 업무 기준으로 필터링되지 않았습니다.');
+  assert(calendarMonthNotes.length === 4, '월간 캘린더 메모가 기록일과 연결 업무 기준으로 필터링되지 않았습니다.');
   assert(calendarMonthNotes.find(note => note.id === 'note-sub-latest')?.subTaskTitle, '월간 캘린더 하위 업무 메모에 정확한 하위 업무 연결 정보가 없습니다.');
   global.openLatestListTaskNote('task-1');
   assert(openedListNote?.id === 'note-main-latest', '메모 수 버튼이 본 업무의 가장 최근 메모를 열지 않습니다.');
@@ -445,7 +466,8 @@ async function main() {
   assert(document.querySelector('#calendar-grid [data-calendar-category-header="FNB"]'), '캘린더의 최상위 업무 분류 헤더가 없습니다.');
   assert(compactedFirstWeekBar?.dataset.compactLane === '1', '첫 주의 높은 논리 lane 업무가 활성 업무 분류 헤더 바로 아래로 압축되지 않았습니다.');
   assert(compactedFirstWeekBar?.style.top === '76px', `첫 주 메모 행과 업무 막대가 겹치거나 비활성 업무 분류 빈 줄이 남아 있습니다: ${compactedFirstWeekBar?.style.top}`);
-  assert(document.querySelectorAll('#calendar-grid [data-calendar-note-id]').length === 4, '데스크톱 월간 캘린더에 메모가 날짜별로 표시되지 않았습니다.');
+  assert(document.querySelectorAll('#calendar-grid [data-calendar-note-id]').length === 5, '데스크톱 월간 캘린더에 메모가 날짜별로 표시되지 않았습니다.');
+  assert(document.querySelector('#calendar-grid [data-calendar-note-id="note-outside-task-range"]'), '태스크 일정 밖 실행일의 메모가 데스크톱 월간 캘린더에 표시되지 않았습니다.');
   const desktopCalendarNote = document.querySelector('#calendar-grid [data-calendar-note-id="note-sub-latest"]');
   assert(desktopCalendarNote?.className.includes('dark:bg-'), '데스크톱 월간 캘린더 메모에 다크 테마 클래스가 없습니다.');
   desktopCalendarNote.click();
@@ -542,14 +564,15 @@ async function main() {
   assert(document.querySelector('.sel-subtask-status option[value="CANCELLED"]'), '하위 업무 상태 선택에 취소가 없습니다.');
 
   global.currentCalMode = 'DAY';
-  window.renderMobileCalendar(tasks.slice(0, 2));
+  window.renderMobileCalendar(tasks.slice(0, 2), [...tasks.slice(0, 2), outsideMonthTask]);
   assert(document.getElementById('cal-mobile-month-year').textContent.includes('2026년 7월'), '모바일 월간 헤더가 올바르지 않습니다.');
   assert(document.querySelectorAll('#cal-mobile-content .mobile-cal-card').length >= 1, '모바일 월간 업무 카드가 없습니다.');
   assert(document.querySelector('#cal-mobile-content [data-mobile-calendar-category]'), '모바일 일별 캘린더에 업무 분류 헤더가 없습니다.');
   assert(document.querySelector('#cal-mobile-content [data-mobile-calendar-category]').className.includes('dark:bg-'), '모바일 일별 캘린더 업무 분류 헤더의 다크 테마 클래스가 누락되었습니다.');
   assert(document.getElementById('cal-mobile-content').textContent.includes('월간 정기 완료 체크'), '반복 하위 업무가 모바일 월간에 반영되지 않았습니다.');
   const mobileCalendarNotes = document.querySelectorAll('#cal-mobile-content [data-calendar-note-id]');
-  assert(mobileCalendarNotes.length === 3, '모바일 월간 캘린더에 메모가 날짜별로 표시되지 않았습니다.');
+  assert(mobileCalendarNotes.length === 4, '태스크 일정 밖 실행일의 메모가 모바일 월간 캘린더에 표시되지 않았습니다.');
+  assert(document.querySelector('#cal-mobile-content [data-calendar-note-id="note-outside-task-range"]'), '태스크 일정 밖 실행일의 메모 식별자가 모바일 월간 캘린더에 없습니다.');
   assert([...mobileCalendarNotes].every(button => button.className.includes('min-h-11') && button.className.includes('dark:bg-')), '모바일 월간 메모의 터치 영역 또는 다크 테마 클래스가 누락되었습니다.');
   document.querySelector('#cal-mobile-content [data-calendar-note-id="note-main-older"]').click();
   assert(openedListNote?.id === 'note-main-older', '모바일 월간 캘린더 메모 클릭 시 메모 상세가 열리지 않습니다.');
@@ -570,12 +593,14 @@ async function main() {
     year: 2026,
     month: 6,
     filteredTasks: [...tasks, cancelledTask],
+    noteTaskScope: [...tasks, cancelledTask, outsideMonthTask],
     todayStr: '2026-07-12'
   });
   const summary = document.getElementById('cal-mobile-content');
   assert(summary.className.includes('bg-white'), '모바일 월별 요약 배경 클래스가 없습니다.');
   assert(summary.textContent.includes('이번 달 메모 리뷰'), '월별 요약 메모 섹션이 없습니다.');
-  assert(summary.textContent.includes('총 3건'), '월별 요약 메모 통계가 올바르지 않습니다.');
+  assert(summary.textContent.includes('총 4건'), '태스크 일정 밖 실행일의 메모가 월별 요약 통계에 포함되지 않았습니다.');
+  assert(summary.textContent.includes('일정 밖 실행 메모'), '태스크 일정 밖 실행일의 메모가 월별 요약에 표시되지 않았습니다.');
   assert(summary.textContent.includes('2026년 7월 10일'), '사용자가 지정한 메모 기록일이 월별 요약에 반영되지 않았습니다.');
   assert(summary.textContent.includes('고객사 ACME'), '메모 고객사 정보가 월별 요약에 표시되지 않았습니다.');
   assert(summary.textContent.includes('Opp OPP-101'), '메모 Opp No가 월별 요약에 표시되지 않았습니다.');
@@ -603,7 +628,7 @@ async function main() {
   assert(summary.querySelectorAll('[data-summary-note-entry]').length === 1, '댓글 있음 토글이 코멘트가 있는 메모만 표시하지 않습니다.');
   assert(summary.textContent.includes('리스크 회의 결과'), '댓글 있음 필터 결과에 코멘트가 있는 메모가 없습니다.');
   commentsToggle.click();
-  assert(summary.querySelectorAll('[data-summary-note-card]').length === 2, '본 업무와 하위 업무 메모는 서로 다른 태스크 카드로 분리되어야 합니다.');
+  assert(summary.querySelectorAll('[data-summary-note-card]').length === 3, '본 업무, 하위 업무, 일정 밖 연결 업무의 메모가 서로 다른 태스크 카드로 분리되지 않았습니다.');
   const taskNoteEntries = [...summary.querySelector('[data-task-id="task-1"]')?.querySelectorAll('[data-summary-note-entry]') || []];
   assert(taskNoteEntries.length === 2, '본 업무 카드 안에 동일 태스크의 메모가 모두 표시되지 않았습니다.');
   assert(taskNoteEntries.map(entry => entry.textContent).join('|').match(/후속 검토.*리스크 회의 결과/s), '본 업무 카드 안의 메모가 기록일 최신순으로 정렬되지 않았습니다.');

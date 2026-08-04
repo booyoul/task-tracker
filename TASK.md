@@ -51,6 +51,7 @@ Last updated: 2026-08-04
 - Keep `data-note-list-style` allowed in both sanitizers.
 - Monthly summary remains note-first and supports author, work-type, search, important-only, and comment-present filters.
 - Monthly calendars reuse the loaded tracker-note cache, show only notes linked to currently filtered existing tasks/subtasks, and open the shared note detail slide-over.
+- A note's effective record date is independent of its linked task schedule: monthly calendars and summaries keep non-date filters but must not hide a note because the task does not overlap the selected month.
 
 ### Personal To-do
 

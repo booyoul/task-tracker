@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-mobile-renderer.js v20260804-v4 loaded');
+console.info('Smart Task Flow calendar-mobile-renderer.js v20260804-v5 loaded');
 
 // ============================================================
 //  모바일 전용 캘린더 렌더러
@@ -7,7 +7,7 @@ console.info('Smart Task Flow calendar-mobile-renderer.js v20260804-v4 loaded');
 //  - 요약 뷰: 데스크탑 요약 뷰와 동일한 JS 함수 호출
 // ============================================================
 
-function renderMobileCalendar(filtered) {
+function renderMobileCalendar(filtered, noteTaskScope = filtered) {
   const content = document.getElementById('cal-mobile-content');
   const monthYearEl = document.getElementById('cal-mobile-month-year');
   if (!content) return;
@@ -35,7 +35,7 @@ function renderMobileCalendar(filtered) {
     _renderMobileMonthView(content, filtered, year, todayStr, containerWidth);
   } else if (mode === 'SUMMARY') {
     if (typeof renderCalendarSummaryView === 'function') {
-      renderCalendarSummaryView({ grid: content, year, month, filteredTasks: filtered, todayStr });
+      renderCalendarSummaryView({ grid: content, year, month, filteredTasks: filtered, noteTaskScope, todayStr });
     } else {
       content.innerHTML = '<p class="text-slate-400 text-sm text-center py-8">요약 뷰를 불러올 수 없습니다.</p>';
     }
@@ -43,7 +43,7 @@ function renderMobileCalendar(filtered) {
     const activeTrackerId = String(window.currentTrackerId || (typeof currentTrackerId !== 'undefined' ? currentTrackerId : ''));
     if (typeof ensureListProgressNoteSummaryLoaded === 'function') ensureListProgressNoteSummaryLoaded(activeTrackerId);
     const monthNotes = typeof getCachedTrackerProgressNotes === 'function' && typeof getCalendarProgressNotesForMonth === 'function'
-      ? getCalendarProgressNotesForMonth(getCachedTrackerProgressNotes(activeTrackerId), filtered, year, month)
+      ? getCalendarProgressNotesForMonth(getCachedTrackerProgressNotes(activeTrackerId), noteTaskScope, year, month)
       : [];
     _renderMobileDayView(content, filtered, year, month, todayStr, monthNotes);
   }

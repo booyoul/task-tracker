@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow app.js v20260804-v4 loaded');
+console.info('Smart Task Flow app.js v20260804-v5 loaded');
 // --- UX optimization globals: must be declared before helper functions ---
 var focusState = window.focusState || { riskOnly: false, mineOnly: false, highOnly: false };
 window.focusState = focusState;
@@ -476,7 +476,7 @@ async function moveTaskOrder(id, direction) {
 
 // Task and tracker CRUD helpers moved to js/task-service.js
 
-function getFilteredTasks() {
+function getFilteredTasks(options = {}) {
   const searchVal = (document.getElementById('filter-search')?.value || '').trim();
   const search = searchVal.toLowerCase();
   const status = document.getElementById('filter-status')?.value || 'ALL';
@@ -517,7 +517,7 @@ function getFilteredTasks() {
     if (focusState.mineOnly && !isMineTask(t)) return false;
     if (focusState.highOnly && t.priority !== 'HIGH') return false;
     if (!isAssigneeFilterMatched(t)) return false;
-    if (filterStartDate || filterEndDate) {
+    if (!options.ignoreDateRange && (filterStartDate || filterEndDate)) {
       const rangeStart = filterStartDate || '0000-01-01';
       const rangeEnd = filterEndDate || '9999-12-31';
       const taskOverlaps = (t.startDate || today) <= rangeEnd && (t.dueDate || today) >= rangeStart;
@@ -633,7 +633,7 @@ function subTaskStatusSelect(parentId, subId, status, options = {}) {
     </select>`;
 }
 // Table renderer moved to js/table-mobile-renderer.js
-function renderCalendar(filteredTasks) {
+function renderCalendar(filteredTasks, noteTaskScope = filteredTasks) {
   const year = currentCalDate.getFullYear();
   const month = currentCalDate.getMonth();
   const grid = document.getElementById('calendar-grid');
@@ -653,7 +653,7 @@ function renderCalendar(filteredTasks) {
     ensureListProgressNoteSummaryLoaded(activeTrackerId);
   }
   const monthNotes = currentCalMode === 'DAY' && typeof getCachedTrackerProgressNotes === 'function' && typeof getCalendarProgressNotesForMonth === 'function'
-    ? getCalendarProgressNotesForMonth(getCachedTrackerProgressNotes(activeTrackerId), filteredTasks, year, month)
+    ? getCalendarProgressNotesForMonth(getCachedTrackerProgressNotes(activeTrackerId), noteTaskScope, year, month)
     : [];
   if (titleEl) titleEl.textContent = currentCalMode === 'MONTH' ? `${year}년 연간 타임라인` : `${year}년 ${month + 1}월`;
 
@@ -725,7 +725,7 @@ function renderCalendar(filteredTasks) {
     return;
   }
 
-  renderCalendarSummaryView({ weekdayHeader, grid, year, month, filteredTasks, todayStr });
+  renderCalendarSummaryView({ weekdayHeader, grid, year, month, filteredTasks, noteTaskScope, todayStr });
 }
 
 // Mobile card renderer moved to js/table-mobile-renderer.js
@@ -1137,6 +1137,9 @@ function renderActiveViews(){
     return;
   }
   const filtered=getFilteredTasks();
+  const noteTaskScope=currentViewMode==='CALENDAR' && ['DAY','SUMMARY'].includes(currentCalMode)
+    ? getFilteredTasks({ ignoreDateRange: true })
+    : filtered;
   const fStatus=document.getElementById('filter-status')?.value||'ALL';
   document.querySelectorAll('.filter-card').forEach(c=>c.classList.remove('ring-2','ring-indigo-600','bg-indigo-50/10'));
   document.getElementById(`card-${['ALL','PENDING','PROGRESS','COMPLETED','CANCELLED','OVERDUE'].includes(fStatus)?fStatus:'OVERDUE'}`)?.classList.add('ring-2','ring-indigo-600','bg-indigo-50/10');
@@ -1147,9 +1150,9 @@ function renderActiveViews(){
   if(mode==='CALENDAR'){
     const isMobile = window.matchMedia ? window.matchMedia('(max-width: 1023px)').matches : window.innerWidth < 1024;
     if (isMobile && typeof renderMobileCalendar === 'function') {
-      renderMobileCalendar(filtered);
+      renderMobileCalendar(filtered, noteTaskScope);
     } else {
-      renderCalendar(filtered);
+      renderCalendar(filtered, noteTaskScope);
     }
     return;
   }

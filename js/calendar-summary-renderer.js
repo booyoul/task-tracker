@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-summary-renderer.js v20260728-v1 loaded');
+console.info('Smart Task Flow calendar-summary-renderer.js v20260804-v2 loaded');
 
 function getSummaryNoteDate(note = {}) {
     if (note.noteDate && /^\d{4}-\d{2}-\d{2}$/.test(note.noteDate)) {
@@ -165,7 +165,7 @@ function getMonthlySubTaskSummary(task, monthStart, monthEnd) {
 }
 
 let _summaryRenderInProgress = false;
-async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, filteredTasks, todayStr }) {
+async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, filteredTasks, noteTaskScope = filteredTasks, todayStr }) {
     if (!grid) return;
     // 연속 호출(onSnapshot 중복 트리거) 방지: 이미 렌더링 중이면 스킵
     if (_summaryRenderInProgress) return;
@@ -205,8 +205,8 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
         notesByTaskId[baseTaskId].push(note);
     });
 
-    // 이번 달 기록일 기준 메모 필터링 (+ 현재 필터링된 활성 업무에 달린 메모만 포함)
-    const activeTaskIds = new Set((filteredTasks || []).map(t => t.id));
+    // 메모의 기록일은 업무 일정과 독립적이다. 날짜 범위만 제외한 현재 필터 범위에서 연결 업무를 확인한다.
+    const activeTaskIds = new Set((noteTaskScope || []).map(t => t.id));
 
     const monthNotes = trackerNotes.filter(note => {
         // 1) 날짜 범위 검사
@@ -225,7 +225,7 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
         // 하위 태스크 메모인 경우, 해당 하위 태스크가 실제로 존재하는지 추가 검증 (삭제된 하위 태스크 메모 노출 방지)
         if (parts.length > 1) {
             const subId = parts[1];
-            const parentTask = (filteredTasks || []).find(t => t.id === baseTaskId);
+            const parentTask = (noteTaskScope || []).find(t => t.id === baseTaskId);
             if (!parentTask) return false;
             const subExists = (parentTask.subTasks || []).some(st => st.id === subId);
             if (!subExists) return false;
@@ -234,7 +234,7 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
         // 3) 전역 업무 필터는 업무 포함 여부까지만 반영하고, 메모 본문 검색은 섹션 내부 검색으로 분리
 
         return isMatchedTask;
-    }).map(note => buildSummaryNoteItem(note, filteredTasks || []));
+    }).map(note => buildSummaryNoteItem(note, noteTaskScope || []));
     const monthNotesCount = monthNotes.length;
 
     // 업무도 없고 메모도 없을 때만 빈 화면 표시
