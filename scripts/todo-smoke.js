@@ -158,6 +158,7 @@ function testDateGroupingAndRendering() {
         recurrence: { enabled: true, frequency: 'DAILY', interval: 1, endType: 'COUNT', count: 20 }
       }]
     }],
+    currentTrackerId: 'tracker-1',
     currentViewMode: 'TODO',
     lastTaskViewMode: 'CALENDAR',
     confirmActionCb: null,
@@ -195,6 +196,16 @@ function testDateGroupingAndRendering() {
   assert.equal(context.matchesTodoDateFilter(context.todoItems[0], 'TODAY', '2026-07-27'), true, '오늘 보기에는 미완료 기한 경과 항목도 보여야 합니다.');
   assert.equal(context.matchesTodoDateFilter(context.todoItems[2], 'WEEK', '2026-07-27'), true);
   assert.equal(context.matchesTodoDateFilter(context.todoItems[2], 'MONTH', '2026-07-27'), false);
+  assert.deepEqual(
+    Array.from(context.getTaskLinkedTodos('task-1', 'sub-1', 'tracker-1')).map(todo => todo.id),
+    ['today'],
+    '하위 업무 목록에는 정확히 연결된 본인 To-do만 표시해야 합니다.'
+  );
+  assert.equal(context.getTaskLinkedTodos('task-1', '', 'tracker-1').length, 0, '하위 업무 To-do가 본 업무 목록에 중복 표시되면 안 됩니다.');
+  assert.match(context.buildLinkedTodoListHTML('task-1', 'sub-1'), /To-do 추가[\s\S]*오늘 할 일/, '업무 목록용 To-do 영역에 등록 버튼과 연결 항목이 함께 표시되어야 합니다.');
+  const trackerCalendarTodos = Array.from(context.getLinkedTodosForCalendarMonth(context.tasks, 2026, 6));
+  assert.equal(trackerCalendarTodos.length, 1, '트래커 월간 캘린더에 연결된 To-do가 포함되어야 합니다.');
+  assert.equal(trackerCalendarTodos[0].calendarDateKey, '2026-07-27', '연결 To-do가 시작일 기준 캘린더 날짜를 사용해야 합니다.');
 
   context.renderTodoView();
   const cards = [...context.document.querySelectorAll('#todo-list [data-todo-id]')];
@@ -220,6 +231,11 @@ function testDateGroupingAndRendering() {
   assert.equal(context.document.getElementById('todo-link-occurrence-field').hidden, false);
   assert.equal(context.document.getElementById('input-todo-link-occurrence').value, '2026-07-27');
   assert.equal(context.document.querySelectorAll('#input-todo-link-occurrence option').length, 13, '회차 미지정과 가까운 12개 회차를 제공해야 합니다.');
+  context.closeTodoModal();
+  context.openTodoModalForTask('task-1');
+  assert.equal(context.document.getElementById('input-todo-link-tracker').value, 'tracker-1', '목록에서 추가한 To-do에 현재 트래커가 미리 선택되어야 합니다.');
+  assert.equal(context.document.getElementById('input-todo-link-task').value, 'task-1', '목록에서 추가한 To-do에 대상 업무가 미리 선택되어야 합니다.');
+  assert.equal(context.document.getElementById('input-todo-link-subtask').value, '', '본 업무 등록 진입점은 하위 업무를 임의 선택하면 안 됩니다.');
   context.closeTodoModal();
   assert.equal(context.document.getElementById('todo-count-week').textContent, '3');
   assert.equal(context.document.getElementById('todo-list-view').hidden, false);

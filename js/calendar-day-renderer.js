@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-day-renderer.js v20260804-v17 loaded');
+console.info('Smart Task Flow calendar-day-renderer.js v20260805-v18 loaded');
 
 function getCalendarProgressNoteDateKey(note = {}) {
     if (/^\d{4}-\d{2}-\d{2}$/.test(String(note.noteDate || ''))) return note.noteDate;
@@ -50,7 +50,7 @@ function openCalendarProgressNote(note, event) {
 
 // DAY calendar mini-Gantt renderer. Extracted from app.js in Phase 4B.
 function renderCalendarDayView(ctx) {
-    const { weekdayHeader, grid, year, month, todayStr, groups, monthNotes = [], notesOnly = false, showSubTaskBars, mainClass, dimIfNotCritical, useIndustryColor } = ctx;
+    const { weekdayHeader, grid, year, month, todayStr, groups, monthNotes = [], monthTodos = [], notesOnly = false, showSubTaskBars, mainClass, dimIfNotCritical, useIndustryColor } = ctx;
     weekdayHeader?.classList.remove('hidden');
     grid.className = 'relative bg-white border border-slate-200 rounded-b-lg overflow-hidden';
     grid.innerHTML = '';
@@ -76,6 +76,12 @@ function renderCalendarDayView(ctx) {
       const dateKey = note.calendarDateKey || getCalendarProgressNoteDateKey(note);
       if (!notesByDate.has(dateKey)) notesByDate.set(dateKey, []);
       notesByDate.get(dateKey).push(note);
+    });
+    const todosByDate = new Map();
+    if (!notesOnly) monthTodos.forEach(todo => {
+      const dateKey = todo.calendarDateKey || todo.startDate || '';
+      if (!todosByDate.has(dateKey)) todosByDate.set(dateKey, []);
+      todosByDate.get(dateKey).push(todo);
     });
     const weekBounds = Array.from({ length: weekCount }, (_, week) => {
       const weekCellStart = week * 7;
@@ -108,12 +114,13 @@ function renderCalendarDayView(ctx) {
         }
       });
       const orderedLanes = Array.from(activeLanes).sort((a, b) => a - b);
-      let maxNotesInDay = 0;
+      let maxEventsInDay = 0;
       for (let day = Number(start.slice(8, 10)); day <= Number(end.slice(8, 10)); day++) {
         const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        maxNotesInDay = Math.max(maxNotesInDay, notesByDate.get(dateKey)?.length || 0);
+        const eventCount = (notesByDate.get(dateKey)?.length || 0) + (todosByDate.get(dateKey)?.length || 0);
+        maxEventsInDay = Math.max(maxEventsInDay, eventCount);
       }
-      const noteRows = Math.min(maxVisibleNoteRows, maxNotesInDay);
+      const noteRows = Math.min(maxVisibleNoteRows, maxEventsInDay);
       const noteAreaHeight = noteRows * noteRowHeight;
       return {
         laneMap: new Map(orderedLanes.map((lane, index) => [lane, index])),
@@ -143,6 +150,7 @@ function renderCalendarDayView(ctx) {
         ? `<div class="p-1.5"><span class="inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${dateStr === todayStr ? 'bg-indigo-600 text-white shadow-sm' : dayOfWeek === 0 ? 'text-rose-500' : dayOfWeek === 6 ? 'text-blue-500' : 'text-slate-600 dark:text-slate-300'}">${day}</span></div>`
         : '';
       const dayNotes = notesByDate.get(dateStr) || [];
+      const dayTodos = todosByDate.get(dateStr) || [];
       const noteAreaHeight = weekLayouts[Math.floor(cellIndex / 7)].noteAreaHeight;
       if (dateStr && noteAreaHeight > 0) {
         const noteList = document.createElement('div');
@@ -158,6 +166,22 @@ function renderCalendarDayView(ctx) {
           button.title = `${note.calendarTaskLabel || ''} · ${getCalendarProgressNoteTitle(note)}`;
           button.setAttribute('aria-label', `${dateStr} 메모 보기: ${getCalendarProgressNoteTitle(note)}`);
           button.addEventListener('click', event => openCalendarProgressNote(note, event));
+          noteList.appendChild(button);
+        });
+        dayTodos.forEach(todo => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.dataset.calendarTodoId = String(todo.id || '');
+          button.dataset.calendarTodoDate = dateStr;
+          button.className = `flex h-[18px] w-full items-center gap-1 rounded px-1 text-left text-[10px] font-semibold transition hover:bg-violet-100 focus:outline-none focus:ring-1 focus:ring-violet-400 dark:hover:bg-violet-900/60 ${todo.completed ? 'bg-slate-100 text-slate-500 line-through dark:bg-slate-800 dark:text-slate-400' : 'bg-violet-50 text-violet-800 dark:bg-violet-950/45 dark:text-violet-200'}`;
+          button.innerHTML = `<span aria-hidden="true">${todo.completed ? '☑' : '☐'}</span><span class="truncate">${escapeHTML(todo.title || '제목 없는 To-do')}</span>`;
+          button.title = `${todo.calendarTaskLabel || ''} · ${todo.startDate} ~ ${todo.dueDate}`;
+          button.setAttribute('aria-label', `${dateStr} To-do 열기: ${todo.title || '제목 없는 To-do'}`);
+          button.addEventListener('click', event => {
+            event.preventDefault();
+            event.stopPropagation();
+            window.openTodoModal?.(todo.id);
+          });
           noteList.appendChild(button);
         });
         cell.appendChild(noteList);

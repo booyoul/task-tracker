@@ -1,4 +1,4 @@
-console.info('Smart Task Flow todo-service.js v20260801-v1 loaded');
+console.info('Smart Task Flow todo-service.js v20260805-v2 loaded');
 
 function normalizeTodoTaskLink(taskLink) {
   if (!taskLink || typeof taskLink !== 'object' || Array.isArray(taskLink)) return null;
@@ -155,9 +155,8 @@ function startTodoRealtimeListener() {
   const todoQuery = window.fs.query(coll, window.fs.where('ownerId', '==', userId));
   unsubscribeTodos = window.fs.onSnapshot(todoQuery, snapshot => {
     todoItems = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
-    if (currentViewMode === 'TODO' && typeof window.renderTodoView === 'function') {
-      window.renderTodoView();
-    }
+    if (currentViewMode === 'TODO' && typeof window.renderTodoView === 'function') window.renderTodoView();
+    else if (typeof window.renderActiveViews === 'function') window.renderActiveViews();
     if (typeof window.handleTodoInitialSnapshot === 'function') {
       window.handleTodoInitialSnapshot();
     }

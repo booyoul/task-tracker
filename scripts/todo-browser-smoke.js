@@ -227,7 +227,7 @@ async function main() {
         }];
         todoItems = [
           { id: 'overdue', ownerId: 'browser-user', title: '기한 경과 확인', memo: '', startDate: '2026-07-20', dueDate: '2026-07-26', completed: false, taskLink: { trackerId: 'tracker-sales', taskId: 'missing-task' } },
-          { id: 'today', ownerId: 'browser-user', title: '오늘 현장 확인', memo: '고객 일정 확인', startDate: getTodayStr(), dueDate: getTodayStr(), completed: false },
+          { id: 'today', ownerId: 'browser-user', title: '오늘 현장 확인', memo: '고객 일정 확인', startDate: getTodayStr(), dueDate: getTodayStr(), completed: false, taskLink: { trackerId: 'tracker-sales', taskId: 'task-quote' } },
           { id: 'week', ownerId: 'browser-user', title: '이번 주 견적 검토', memo: '', startDate: getFutureDateStr(2), dueDate: getFutureDateStr(4), completed: false }
         ];
         window.db_addTodo = async data => {
@@ -581,18 +581,65 @@ async function main() {
     });
 
     await evaluate(client, `document.querySelector('[data-todo-id="browser-added"] .btn-open-todo-task-link').click()`);
-    const linkedTaskTarget = await evaluate(client, `(() => ({
-      mode: currentViewMode,
-      trackerId: currentTrackerId,
-      taskModalVisible: !document.getElementById('modal-task').classList.contains('hidden'),
-      linkedSubTask: document.querySelector('[data-subtask-id="sub-customer"]')?.textContent.includes('To-do 연결') || false,
-      linkedOccurrence: document.querySelector('[data-subtask-id="sub-customer"] [data-occurrence-key="' + getTodayStr() + '"]')?.textContent.includes('To-do 연결') || false
-    }))()`);
+    const linkedTaskTarget = await evaluate(client, `(() => {
+      expandedTaskIds.add('task-quote');
+      renderActiveViews();
+      return {
+        mode: currentViewMode,
+        trackerId: currentTrackerId,
+        taskModalVisible: !document.getElementById('modal-task').classList.contains('hidden'),
+        mainLinkedTodo: document.querySelector('[data-linked-todo-list][data-task-id="task-quote"] .btn-edit-linked-todo[data-todo-id="today"]')?.textContent || '',
+        subLinkedTodo: document.querySelector('[data-linked-todo-list][data-subtask-id="sub-customer"] .btn-edit-linked-todo[data-todo-id="browser-added"]')?.textContent || '',
+        hasMainTodoAdd: !!document.querySelector('[data-linked-todo-list][data-task-id="task-quote"] .btn-add-linked-todo'),
+        linkedSubTask: document.querySelector('#subtask-list-container [data-subtask-id="sub-customer"]')?.textContent.includes('To-do 연결') || false,
+        linkedOccurrence: document.querySelector('#subtask-list-container [data-subtask-id="sub-customer"] [data-occurrence-key="' + getTodayStr() + '"]')?.textContent.includes('To-do 연결') || false
+      };
+    })()`);
     assert.equal(linkedTaskTarget.mode, 'TABLE');
     assert.equal(linkedTaskTarget.trackerId, 'tracker-sales');
     assert.equal(linkedTaskTarget.taskModalVisible, true);
+    assert.equal(linkedTaskTarget.mainLinkedTodo.includes('오늘 현장 확인'), true);
+    assert.equal(linkedTaskTarget.subLinkedTodo.includes('브라우저에서 추가'), true);
+    assert.equal(linkedTaskTarget.hasMainTodoAdd, true);
     assert.equal(linkedTaskTarget.linkedSubTask, true);
     assert.equal(linkedTaskTarget.linkedOccurrence, true);
+    await evaluate(client, `
+      closeModal();
+      document.querySelector('[data-linked-todo-list][data-task-id="task-quote"] .btn-add-linked-todo').click();
+      window.__linkedTodoPreset = {
+        trackerId: document.getElementById('input-todo-link-tracker').value,
+        taskId: document.getElementById('input-todo-link-task').value,
+        subTaskId: document.getElementById('input-todo-link-subtask').value
+      };
+      document.getElementById('btn-cancel-todo').click();
+      switchView('CALENDAR');
+      setCalMode('DAY');
+    `);
+    const linkedTodoPreset = await evaluate(client, 'window.__linkedTodoPreset');
+    assert.deepEqual(linkedTodoPreset, { trackerId: 'tracker-sales', taskId: 'task-quote', subTaskId: '' });
+    await waitFor(client, `document.querySelector('#calendar-grid [data-calendar-todo-id="today"]')`, 'Linked To-do did not render in the tracker desktop month calendar.');
+    const desktopTrackerTodo = await evaluate(client, `(() => {
+      const todo = document.querySelector('#calendar-grid [data-calendar-todo-id="today"]');
+      const note = document.querySelector('#calendar-grid [data-calendar-note-id]');
+      return {
+        text: todo?.textContent || '',
+        icon: todo?.querySelector('span')?.textContent || '',
+        iconDistinct: todo?.querySelector('span')?.textContent !== '📌' && (!note || todo?.querySelector('span')?.textContent !== note?.querySelector('span')?.textContent),
+        darkClass: todo?.className.includes('dark:bg-violet-950') || false
+      };
+    })()`);
+    assert.equal(desktopTrackerTodo.text.includes('오늘 현장 확인'), true);
+    assert.equal(desktopTrackerTodo.icon, '☐');
+    assert.equal(desktopTrackerTodo.iconDistinct, true);
+    assert.equal(desktopTrackerTodo.darkClass, true);
+    await evaluate(client, `
+      document.querySelector('#calendar-grid [data-calendar-todo-id="today"]').click();
+      window.__calendarTodoModalId = document.getElementById('input-todo-id').value;
+      document.getElementById('btn-cancel-todo').click();
+      switchView('TABLE');
+      openTaskModal('task-quote');
+    `);
+    assert.equal(await evaluate(client, 'window.__calendarTodoModalId'), 'today');
     await evaluate(client, `
       ThemeService.setTheme('dark');
       document.getElementById('task-subtasks-section').open = true;
@@ -744,7 +791,9 @@ async function main() {
         taskHidden: taskView.hidden,
         taskDisplay: getComputedStyle(taskView).display,
         dashboardDisplay: getComputedStyle(dashboard).display,
-        compactDashboardDisplay: getComputedStyle(compactDashboard).display
+        compactDashboardDisplay: getComputedStyle(compactDashboard).display,
+        linkedTodoVisible: document.querySelector('[data-linked-todo-list][data-task-id="task-quote"] .btn-edit-linked-todo[data-todo-id="today"]')?.textContent.includes('오늘 현장 확인') || false,
+        hasTodoAdd: !!document.querySelector('[data-linked-todo-list][data-task-id="task-quote"] .btn-add-linked-todo')
       };
     })()`);
     assert.equal(returnedTaskView.mode, 'TABLE');
@@ -753,6 +802,30 @@ async function main() {
     assert.notEqual(returnedTaskView.taskDisplay, 'none');
     assert.equal(returnedTaskView.dashboardDisplay, 'none');
     assert.equal(returnedTaskView.compactDashboardDisplay, 'flex');
+    assert.equal(returnedTaskView.linkedTodoVisible, true);
+    assert.equal(returnedTaskView.hasTodoAdd, true);
+
+    await evaluate(client, `switchView('CALENDAR'); setCalMode('DAY');`);
+    await waitFor(client, `document.querySelector('#cal-mobile-content [data-calendar-todo-id="today"]')`, 'Linked To-do did not render in the tracker mobile month calendar.');
+    const mobileTrackerCalendar = await evaluate(client, `(() => {
+      const marker = document.querySelector('#cal-mobile-content [data-calendar-todo-id="today"]');
+      return {
+        text: marker?.textContent || '',
+        icon: marker?.firstElementChild?.textContent || '',
+        pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+        markerOverflow: marker ? marker.scrollWidth > marker.clientWidth + 1 : true
+      };
+    })()`);
+    assert.equal(mobileTrackerCalendar.text.includes('오늘 현장 확인'), true);
+    assert.equal(mobileTrackerCalendar.icon, '☐');
+    assert.equal(mobileTrackerCalendar.pageOverflow, false);
+    assert.equal(mobileTrackerCalendar.markerOverflow, false);
+    if (process.env.TODO_TRACKER_SCREENSHOT) {
+      await evaluate(client, `document.getElementById('toast').style.display = 'none'`);
+      await delay(250);
+      const screenshot = await client.send('Page.captureScreenshot', { format: 'png', fromSurface: true });
+      fs.writeFileSync(process.env.TODO_TRACKER_SCREENSHOT, Buffer.from(screenshot.data, 'base64'));
+    }
 
     console.log('todo browser smoke passed: task linking, split list/calendar views, task-style desktop/mobile calendars, CRUD, filters, reminder, and task-view return');
   } catch (error) {

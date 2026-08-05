@@ -1,4 +1,4 @@
-console.info('Smart Task Flow todo-controller.js v20260802-v1 loaded');
+console.info('Smart Task Flow todo-controller.js v20260805-v2 loaded');
 
 let todoDateFilter = 'TODAY';
 let todoCompletionFilter = 'ACTIVE';
@@ -522,6 +522,65 @@ function resolveTodoTaskLink(taskLink) {
   };
 }
 
+function getTrackerLinkedTodos(trackerId = '') {
+  const targetTrackerId = String(trackerId || window.currentTrackerId || (typeof currentTrackerId !== 'undefined' ? currentTrackerId : ''));
+  const ownerId = window.currentUser?.uid || '';
+  return (Array.isArray(todoItems) ? todoItems : []).filter(todo => {
+    if (!todo?.taskLink || todo.taskLink.trackerId !== targetTrackerId) return false;
+    return !ownerId || todo.ownerId === ownerId;
+  });
+}
+
+function getTaskLinkedTodos(taskId, subTaskId = '', trackerId = '') {
+  const targetSubTaskId = String(subTaskId || '');
+  return getTrackerLinkedTodos(trackerId).filter(todo =>
+    todo.taskLink.taskId === String(taskId || '') &&
+    String(todo.taskLink.subTaskId || '') === targetSubTaskId
+  ).sort((a, b) => {
+    if (a.completed !== b.completed) return a.completed ? 1 : -1;
+    return String(a.dueDate || '').localeCompare(String(b.dueDate || '')) || String(a.title || '').localeCompare(String(b.title || ''), 'ko');
+  });
+}
+
+function getLinkedTodosForCalendarMonth(taskList = [], year, month) {
+  const monthValue = `${year}-${String(month + 1).padStart(2, '0')}`;
+  const monthStart = `${monthValue}-01`;
+  const monthEnd = `${monthValue}-${String(new Date(year, month + 1, 0).getDate()).padStart(2, '0')}`;
+  const taskMap = new Map((taskList || []).map(task => [String(task.id || ''), task]));
+  return getTrackerLinkedTodos().flatMap(todo => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(todo.startDate || '')) || !/^\d{4}-\d{2}-\d{2}$/.test(String(todo.dueDate || ''))) return [];
+    if (todo.startDate > monthEnd || todo.dueDate < monthStart) return [];
+    const task = taskMap.get(String(todo.taskLink.taskId || ''));
+    if (!task) return [];
+    const subTaskId = String(todo.taskLink.subTaskId || '');
+    const subTask = subTaskId
+      ? (Array.isArray(task.subTasks) ? task.subTasks : []).find(item => String(item.id || '') === subTaskId)
+      : null;
+    if (subTaskId && !subTask) return [];
+    return [{
+      ...todo,
+      calendarDateKey: todo.startDate < monthStart ? monthStart : todo.startDate,
+      calendarTaskLabel: subTask ? `${task.title} › ${subTask.title}` : (task.title || '알 수 없는 업무')
+    }];
+  }).sort((a, b) =>
+    a.calendarDateKey.localeCompare(b.calendarDateKey) ||
+    Number(a.completed) - Number(b.completed) ||
+    String(a.dueDate || '').localeCompare(String(b.dueDate || ''))
+  );
+}
+
+function buildLinkedTodoListHTML(taskId, subTaskId = '') {
+  const linkedTodos = getTaskLinkedTodos(taskId, subTaskId);
+  const scopeLabel = subTaskId ? '하위 업무' : '본 업무';
+  const visibleTodos = linkedTodos.slice(0, 3);
+  const remainingCount = Math.max(0, linkedTodos.length - visibleTodos.length);
+  return `<div class="mt-2 flex flex-wrap items-center gap-1.5" data-linked-todo-list data-task-id="${escapeHTML(taskId)}"${subTaskId ? ` data-subtask-id="${escapeHTML(subTaskId)}"` : ''}>
+    <button type="button" class="btn-add-linked-todo inline-flex min-h-7 items-center gap-1 rounded-lg border border-violet-200 bg-violet-50 px-2 text-[10px] font-black text-violet-700 transition hover:border-violet-300 hover:bg-violet-100 focus:outline-none focus:ring-2 focus:ring-violet-300 active:scale-[0.97] dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300 dark:hover:bg-violet-900/50" data-task-id="${escapeHTML(taskId)}"${subTaskId ? ` data-subtask-id="${escapeHTML(subTaskId)}"` : ''} aria-label="${scopeLabel}에 To-do 등록"><span aria-hidden="true">☑</span><span>To-do 추가</span></button>
+    ${visibleTodos.map(todo => `<button type="button" class="btn-edit-linked-todo inline-flex min-h-7 max-w-full items-center gap-1 rounded-lg border border-violet-100 bg-white px-2 text-[10px] font-bold text-violet-700 transition hover:border-violet-300 hover:bg-violet-50 focus:outline-none focus:ring-2 focus:ring-violet-300 active:scale-[0.97] dark:border-violet-900 dark:bg-slate-800 dark:text-violet-300 dark:hover:border-violet-700 dark:hover:bg-violet-950/30 ${todo.completed ? 'opacity-60' : ''}" data-todo-id="${escapeHTML(todo.id)}" title="${escapeHTML(todo.title)} · ${escapeHTML(todo.startDate)} ~ ${escapeHTML(todo.dueDate)}"><span aria-hidden="true">${todo.completed ? '☑' : '☐'}</span><span class="max-w-40 truncate ${todo.completed ? 'line-through' : ''}">${escapeHTML(todo.title)}</span></button>`).join('')}
+    ${remainingCount ? `<span class="rounded-full bg-violet-100 px-2 py-1 text-[10px] font-black text-violet-700 dark:bg-violet-950/50 dark:text-violet-300">+${remainingCount}개</span>` : ''}
+  </div>`;
+}
+
 function setTodoTaskLinkStatus(message = '', unavailable = false) {
   const status = document.getElementById('todo-task-link-status');
   if (!status) return;
@@ -779,10 +838,10 @@ function renderTodoView() {
   });
 }
 
-function openTodoModal(id = '') {
+function openTodoModal(id = '', presetTaskLink = null) {
   const todo = id ? todoItems.find(item => item.id === id) : null;
   const today = getTodayStr();
-  todoModalOriginalTaskLink = window.normalizeTodoTaskLink?.(todo?.taskLink) || null;
+  todoModalOriginalTaskLink = window.normalizeTodoTaskLink?.(todo?.taskLink || presetTaskLink) || null;
   todoModalTaskLinkChanged = false;
   document.getElementById('todo-modal-title').textContent = todo ? 'To-do 수정' : '새 To-do';
   document.getElementById('input-todo-id').value = todo?.id || '';
@@ -793,6 +852,13 @@ function openTodoModal(id = '') {
   syncTodoTaskLinkInputs(todoModalOriginalTaskLink);
   document.getElementById('modal-todo')?.classList.remove('hidden');
   document.getElementById('input-todo-title')?.focus();
+}
+
+function openTodoModalForTask(taskId, subTaskId = '') {
+  const trackerId = String(window.currentTrackerId || (typeof currentTrackerId !== 'undefined' ? currentTrackerId : ''));
+  const taskLink = window.normalizeTodoTaskLink?.({ trackerId, taskId, subTaskId }) || null;
+  if (!taskLink) return showToast('연결할 업무를 확인해 주세요.', false);
+  openTodoModal('', taskLink);
 }
 
 function closeTodoModal() {
@@ -820,6 +886,8 @@ async function handleTodoSubmit(event) {
   const result = id ? await db_updateTodo(id, data) : await db_addTodo(data);
   if (!result?.success) return showToast(result?.error || 'To-do를 저장하지 못했습니다.', false);
   closeTodoModal();
+  if (currentViewMode === 'TODO') renderTodoView();
+  else if (typeof window.renderActiveViews === 'function') window.renderActiveViews();
   showToast(id ? 'To-do가 수정되었습니다.' : 'To-do가 추가되었습니다.');
 }
 
@@ -1017,7 +1085,13 @@ window.matchesTodoDateFilter = matchesTodoDateFilter;
 window.getTodoFilterCounts = getTodoFilterCounts;
 window.getVisibleTodos = getVisibleTodos;
 window.resolveTodoTaskLink = resolveTodoTaskLink;
+window.getTrackerLinkedTodos = getTrackerLinkedTodos;
+window.getTaskLinkedTodos = getTaskLinkedTodos;
+window.getLinkedTodosForCalendarMonth = getLinkedTodosForCalendarMonth;
+window.buildLinkedTodoListHTML = buildLinkedTodoListHTML;
 window.openTodoLinkedTask = openTodoLinkedTask;
+window.openTodoModal = openTodoModal;
+window.openTodoModalForTask = openTodoModalForTask;
 window.getTodoCalendarItems = getTodoCalendarItems;
 window.syncTodoViewMode = syncTodoViewMode;
 window.setTodoViewMode = setTodoViewMode;

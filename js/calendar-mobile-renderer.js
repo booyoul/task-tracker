@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-mobile-renderer.js v20260805-v9 loaded');
+console.info('Smart Task Flow calendar-mobile-renderer.js v20260805-v10 loaded');
 
 // ============================================================
 //  모바일 전용 캘린더 렌더러
@@ -47,8 +47,11 @@ function renderMobileCalendar(filtered, noteTaskScope = filtered) {
     const monthNotes = typeof getCachedTrackerProgressNotes === 'function' && typeof getCalendarProgressNotesForMonth === 'function'
       ? getCalendarProgressNotesForMonth(getCachedTrackerProgressNotes(activeTrackerId), noteTaskScope, year, month)
       : [];
+    const monthTodos = typeof window.getLinkedTodosForCalendarMonth === 'function'
+      ? window.getLinkedTodosForCalendarMonth(noteTaskScope, year, month)
+      : [];
     const notesOnly = window.calendarUxState?.notesOnly === true;
-    _renderMobileDayView(content, filtered, year, month, todayStr, monthNotes, notesOnly);
+    _renderMobileDayView(content, filtered, year, month, todayStr, monthNotes, notesOnly, monthTodos);
   }
 }
 
@@ -80,7 +83,7 @@ function _updateMobileCalendarNotesOnlyControl(mode) {
   button.setAttribute('aria-pressed', String(isActive));
 }
 
-function _renderMobileDayView(container, filtered, year, month, todayStr, monthNotes = [], notesOnly = false) {
+function _renderMobileDayView(container, filtered, year, month, todayStr, monthNotes = [], notesOnly = false, monthTodos = []) {
   container.dataset.notesOnly = String(notesOnly);
   const monthStr = year + '-' + String(month + 1).padStart(2, '0');
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -136,11 +139,18 @@ function _renderMobileDayView(container, filtered, year, month, todayStr, monthN
     notesByDate.get(dateKey).push(note);
     if (!dayMap.has(dateKey)) dayMap.set(dateKey, new Map());
   });
+  const todosByDate = new Map();
+  if (!notesOnly) monthTodos.forEach(function(todo) {
+    const dateKey = todo.calendarDateKey || todo.startDate || '';
+    if (!todosByDate.has(dateKey)) todosByDate.set(dateKey, []);
+    todosByDate.get(dateKey).push(todo);
+    if (!dayMap.has(dateKey)) dayMap.set(dateKey, new Map());
+  });
 
   if (dayMap.size === 0) {
     container.innerHTML = notesOnly
       ? '<div class="flex flex-col items-center justify-center py-16 text-center"><span class="text-4xl mb-3">📌</span><p class="text-sm font-semibold text-slate-500">이번 달 메모가 없습니다.</p><p class="text-xs text-slate-400 mt-1">다른 달을 선택하거나 메모만 보기를 해제해 주세요.</p></div>'
-      : '<div class="flex flex-col items-center justify-center py-16 text-center"><span class="text-4xl mb-3">📅</span><p class="text-sm font-semibold text-slate-500">이번 달 업무 또는 메모가 없습니다.</p><p class="text-xs text-slate-400 mt-1">다른 달을 선택하거나 새 업무를 추가해 주세요.</p></div>';
+      : '<div class="flex flex-col items-center justify-center py-16 text-center"><span class="text-4xl mb-3">📅</span><p class="text-sm font-semibold text-slate-500">이번 달 업무, 메모 또는 To-do가 없습니다.</p><p class="text-xs text-slate-400 mt-1">다른 달을 선택하거나 새 업무를 추가해 주세요.</p></div>';
     return;
   }
   const sortedDates = Array.from(dayMap.keys()).sort();
@@ -151,11 +161,12 @@ function _renderMobileDayView(container, filtered, year, month, todayStr, monthN
     const dayOfWeek = new Date(dateStr.replace(/-/g, '/')).getDay();
     const isToday = dateStr === todayStr;
     const dayNotes = notesByDate.get(dateStr) || [];
+    const dayTodos = todosByDate.get(dateStr) || [];
     const dayColor = dayOfWeek === 0 ? 'text-rose-500' : dayOfWeek === 6 ? 'text-blue-500' : 'text-slate-500';
 
     const dateHeader = document.createElement('div');
     dateHeader.className = 'flex items-center gap-2 mb-2 mt-4 first:mt-0';
-    dateHeader.innerHTML = '<span class="inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold shrink-0 ' + (isToday ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-800 ' + dayColor) + '">' + dayNum + '</span><span class="text-xs font-semibold ' + dayColor + '">' + dayNames[dayOfWeek] + '</span>' + (isToday ? '<span class="text-[10px] font-bold bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded-full dark:bg-indigo-950/60 dark:text-indigo-300">오늘</span>' : '') + (dayNotes.length ? '<span class="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">메모 ' + dayNotes.length + '</span>' : '') + '<div class="flex-1 h-px bg-slate-100 dark:bg-slate-800"></div>';
+    dateHeader.innerHTML = '<span class="inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold shrink-0 ' + (isToday ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-800 ' + dayColor) + '">' + dayNum + '</span><span class="text-xs font-semibold ' + dayColor + '">' + dayNames[dayOfWeek] + '</span>' + (isToday ? '<span class="text-[10px] font-bold bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded-full dark:bg-indigo-950/60 dark:text-indigo-300">오늘</span>' : '') + (dayNotes.length ? '<span class="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">메모 ' + dayNotes.length + '</span>' : '') + (dayTodos.length ? '<span class="rounded-full bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold text-violet-700 dark:bg-violet-950/60 dark:text-violet-300">To-do ' + dayTodos.length + '</span>' : '') + '<div class="flex-1 h-px bg-slate-100 dark:bg-slate-800"></div>';
     container.appendChild(dateHeader);
     const taskList = document.createElement('div');
     taskList.className = 'space-y-2';
@@ -170,6 +181,21 @@ function _renderMobileDayView(container, filtered, year, month, todayStr, monthN
       noteButton.setAttribute('aria-label', `${dateStr} 메모 보기: ${getCalendarProgressNoteTitle(note)}`);
       noteButton.addEventListener('click', function(event) { openCalendarProgressNote(note, event); });
       taskList.appendChild(noteButton);
+    });
+    dayTodos.forEach(function(todo) {
+      const todoButton = document.createElement('button');
+      todoButton.type = 'button';
+      todoButton.dataset.calendarTodoId = String(todo.id || '');
+      todoButton.dataset.calendarTodoDate = dateStr;
+      todoButton.className = `flex min-h-11 w-full items-center gap-2 rounded-xl border px-3 py-2 text-left transition active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-violet-400 ${todo.completed ? 'border-slate-200 bg-slate-100 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400' : 'border-violet-200 bg-violet-50 text-violet-900 hover:bg-violet-100 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-100 dark:hover:bg-violet-900/50'}`;
+      todoButton.innerHTML = `<span class="text-base" aria-hidden="true">${todo.completed ? '☑' : '☐'}</span><span class="min-w-0 flex-1"><span class="block truncate text-xs font-bold ${todo.completed ? 'line-through' : ''}">${escapeHTML(todo.title || '제목 없는 To-do')}</span><span class="block truncate text-[10px] opacity-75">${escapeHTML(todo.calendarTaskLabel || '')} · ${escapeHTML(todo.startDate)}~${escapeHTML(todo.dueDate)}</span></span><span class="text-xs opacity-60" aria-hidden="true">›</span>`;
+      todoButton.setAttribute('aria-label', `${dateStr} To-do 열기: ${todo.title || '제목 없는 To-do'}`);
+      todoButton.addEventListener('click', function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        window.openTodoModal?.(todo.id);
+      });
+      taskList.appendChild(todoButton);
     });
     
     const dateEntries = Array.from(dayMap.get(dateStr).values());

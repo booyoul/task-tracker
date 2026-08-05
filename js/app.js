@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow app.js v20260805-v9 loaded');
+console.info('Smart Task Flow app.js v20260805-v11 loaded');
 // --- UX optimization globals: must be declared before helper functions ---
 var focusState = window.focusState || { riskOnly: false, mineOnly: false, highOnly: false };
 window.focusState = focusState;
@@ -632,6 +632,7 @@ function buildTaskDetailCellHTML(t, subTasks, isExpanded, doneSubs, progressPct,
             ${buildListNoteButtonHTML(t.id)}
           </div>
           <div class="mt-1 text-xs text-slate-400">${escapeHTML(t.notes || '추가 지침 없음')} · 진척 ${progressPct}%${subInfo}</div>
+          ${typeof window.buildLinkedTodoListHTML === 'function' ? window.buildLinkedTodoListHTML(t.id) : ''}
           ${bottleneckHTML}
         </div>
       </div></td>`;
@@ -675,6 +676,9 @@ function renderCalendar(filteredTasks, noteTaskScope = filteredTasks) {
   }
   const monthNotes = currentCalMode === 'DAY' && typeof getCachedTrackerProgressNotes === 'function' && typeof getCalendarProgressNotesForMonth === 'function'
     ? getCalendarProgressNotesForMonth(getCachedTrackerProgressNotes(activeTrackerId), noteTaskScope, year, month)
+    : [];
+  const monthTodos = currentCalMode === 'DAY' && typeof window.getLinkedTodosForCalendarMonth === 'function'
+    ? window.getLinkedTodosForCalendarMonth(noteTaskScope, year, month)
     : [];
   if (titleEl) titleEl.textContent = currentCalMode === 'MONTH' ? `${year}년 연간 타임라인` : `${year}년 ${month + 1}월`;
 
@@ -738,7 +742,7 @@ function renderCalendar(filteredTasks, noteTaskScope = filteredTasks) {
   };
 
   if (currentCalMode === 'DAY') {
-    renderCalendarDayView({ weekdayHeader, grid, year, month, todayStr, totalCalLanes, groups: layoutGroups, monthNotes, notesOnly, showSubTaskBars, mainClass, dimIfNotCritical, useIndustryColor });
+    renderCalendarDayView({ weekdayHeader, grid, year, month, todayStr, totalCalLanes, groups: layoutGroups, monthNotes, monthTodos, notesOnly, showSubTaskBars, mainClass, dimIfNotCritical, useIndustryColor });
     return;
   }
   if (currentCalMode === 'MONTH') {
@@ -867,6 +871,8 @@ async function undoDelete() {
   updateUI();
 }
 function handleTableClick(e) {
+  const addLinkedTodo = e.target.closest('.btn-add-linked-todo');
+  const editLinkedTodo = e.target.closest('.btn-edit-linked-todo');
   const noteCount = e.target.closest('.btn-list-note-count');
   const note = e.target.closest('.btn-list-note');
   const edit = e.target.closest('.btn-edit');
@@ -874,6 +880,14 @@ function handleTableClick(e) {
   const toggle = e.target.closest('.btn-toggle-subtasks');
   const up = e.target.closest('.btn-order-up');
   const down = e.target.closest('.btn-order-down');
+  if (addLinkedTodo) {
+    window.openTodoModalForTask?.(addLinkedTodo.dataset.taskId, addLinkedTodo.dataset.subtaskId || '');
+    return;
+  }
+  if (editLinkedTodo) {
+    window.openTodoModal?.(editLinkedTodo.dataset.todoId);
+    return;
+  }
   if (noteCount) {
     openLatestListTaskNote(noteCount.dataset.taskId);
     return;

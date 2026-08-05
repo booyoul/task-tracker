@@ -150,6 +150,17 @@ expose('bulkChangeDueDate', () => {});
 expose('confirmBatchDelete', () => {});
 let openedListNote = null;
 expose('openNoteDetailPanel', note => { openedListNote = note; });
+let openedCalendarTodoId = '';
+expose('openTodoModal', id => { openedCalendarTodoId = id; });
+expose('getLinkedTodosForCalendarMonth', (_taskList, year, month) => year === 2026 && month === 6 ? [{
+  id: 'todo-linked-calendar',
+  title: '연결된 개인 To-do',
+  startDate: '2026-07-12',
+  dueDate: '2026-07-13',
+  completed: false,
+  calendarDateKey: '2026-07-12',
+  calendarTaskLabel: '장기 프로젝트 리스크 점검'
+}] : []);
 expose('setCalMode', (mode) => {
   global.currentCalMode = mode;
   window.currentCalMode = mode;
@@ -284,6 +295,8 @@ async function main() {
   const eventBindingsSource = fs.readFileSync(path.join(root, 'js/event-bindings.js'), 'utf8');
   const modalControllerSource = fs.readFileSync(path.join(root, 'js/modal-controller.js'), 'utf8');
   const tableRendererSource = fs.readFileSync(path.join(root, 'js/table-mobile-renderer.js'), 'utf8');
+  const todoControllerSource = fs.readFileSync(path.join(root, 'js/todo-controller.js'), 'utf8');
+  const todoServiceSource = fs.readFileSync(path.join(root, 'js/todo-service.js'), 'utf8');
   const calendarMobileSource = fs.readFileSync(path.join(root, 'js/calendar-mobile-renderer.js'), 'utf8');
   const kanbanRendererSource = fs.readFileSync(path.join(root, 'js/kanban-renderer.js'), 'utf8');
   const adminApprovalsSource = fs.readFileSync(path.join(root, 'js/admin-approvals.js'), 'utf8');
@@ -326,6 +339,10 @@ async function main() {
   assert(/btn-toggle-all-table-subtasks[^]*addEventListener\('click',toggleAllTableSubTasks\)/.test(eventBindingsSource), '서브 태스크 전체 펼치기 버튼의 클릭 연결이 없습니다.');
   assert(/btn-list-note[^]*openTaskNoteFromList/.test(appSource), '목록 메모 핀의 클릭 연결이 없습니다.');
   assert(/btn-list-note-count[^]*openLatestListTaskNote/.test(appSource), '목록 메모 수 버튼의 최근 메모 연결이 없습니다.');
+  assert(/btn-add-linked-todo[^]*openTodoModalForTask/.test(appSource) && /btn-edit-linked-todo[^]*openTodoModal/.test(appSource), '업무 목록의 To-do 등록 또는 수정 이벤트 연결이 없습니다.');
+  assert(/function getTaskLinkedTodos[^]*function getLinkedTodosForCalendarMonth[^]*function buildLinkedTodoListHTML/.test(todoControllerSource), '연결 To-do의 목록·월간 캘린더 표시 도우미가 없습니다.');
+  assert(/ownerId === ownerId/.test(todoControllerSource), '트래커 표시용 To-do가 현재 사용자 소유 범위로 제한되지 않습니다.');
+  assert(/currentViewMode === 'TODO'[^]*renderTodoView[^]*renderActiveViews/.test(todoServiceSource), 'To-do 실시간 변경이 현재 트래커 목록·캘린더를 다시 렌더링하지 않습니다.');
   assert(/openTaskNoteFromList[^]*openTaskModal\(taskId\)[^]*openProgressNoteComposer/.test(modalControllerSource), '목록 메모 핀이 작성 폼과 기존 이력을 함께 여는 경로로 연결되지 않았습니다.');
   assert((modalControllerSource.match(/invalidateListProgressNoteSummary/g) || []).length >= 3, '메모 추가·수정·삭제 후 목록 메모 수 캐시가 갱신되지 않습니다.');
   assert(/buildTaskDetailCellHTML[^]*buildListNoteButtonHTML\(t.id\)/.test(appSource), '데스크톱 본 업무 제목 옆 메모 핀이 없습니다.');
@@ -647,6 +664,12 @@ async function main() {
   assert([...mobileCalendarNotes].every(button => button.className.includes('min-h-11') && button.className.includes('dark:bg-')), '모바일 월간 메모의 터치 영역 또는 다크 테마 클래스가 누락되었습니다.');
   document.querySelector('#cal-mobile-content [data-calendar-note-id="note-main-older"]').click();
   assert(openedListNote?.id === 'note-main-older', '모바일 월간 캘린더 메모 클릭 시 메모 상세가 열리지 않습니다.');
+  const mobileCalendarTodo = document.querySelector('#cal-mobile-content [data-calendar-todo-id="todo-linked-calendar"]');
+  assert(mobileCalendarTodo, '연결된 개인 To-do가 모바일 트래커 월간 캘린더에 표시되지 않습니다.');
+  assert(mobileCalendarTodo.textContent.includes('연결된 개인 To-do') && mobileCalendarTodo.textContent.includes('☐'), '월간 캘린더 To-do가 메모와 다른 아이콘 또는 제목을 표시하지 않습니다.');
+  assert(mobileCalendarTodo.className.includes('dark:bg-violet-950'), '월간 캘린더 To-do에 명시적 다크 테마 배경이 없습니다.');
+  mobileCalendarTodo.click();
+  assert(openedCalendarTodoId === 'todo-linked-calendar', '월간 캘린더 To-do 클릭 시 기존 To-do 모달이 열리지 않습니다.');
   window.calendarUxState.notesOnly = true;
   window.renderMobileCalendar(tasks.slice(0, 2), [...tasks.slice(0, 2), outsideMonthTask]);
   assert(document.getElementById('btn-cal-ux-notes-only-m').getAttribute('aria-pressed') === 'true', '모바일 메모만 보기 토글의 활성 상태가 전달되지 않았습니다.');
@@ -654,6 +677,7 @@ async function main() {
   assert(document.getElementById('cal-mobile-content').dataset.notesOnly === 'true', '모바일 월간 콘텐츠에 메모만 보기 상태가 반영되지 않았습니다.');
   assert(document.querySelectorAll('#cal-mobile-content .mobile-cal-card').length === 0 && document.querySelectorAll('#cal-mobile-content [data-mobile-calendar-category]').length === 0, '모바일 메모만 보기에서 업무 카드 또는 분류 헤더가 남아 있습니다.');
   assert(document.querySelectorAll('#cal-mobile-content [data-calendar-note-id]').length === 4, '모바일 메모만 보기에서 월간 메모가 유지되지 않았습니다.');
+  assert(document.querySelectorAll('#cal-mobile-content [data-calendar-todo-id]').length === 0, '메모만 보기에서 별도 유형인 To-do가 남아 있습니다.');
   window.calendarUxState.notesOnly = false;
 
   global.currentCalMode = 'MONTH';

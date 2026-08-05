@@ -1,4 +1,4 @@
-console.info('Smart Task Flow table-mobile-renderer.js v20260805-v18 loaded');
+console.info('Smart Task Flow table-mobile-renderer.js v20260805-v19 loaded');
 // Table and mobile card renderers. Extracted from app.js in Phase 5.
 const listProgressNoteSummaryCache = {
   trackerId: '',
@@ -205,7 +205,7 @@ function renderTable(filtered) {
         sr.className = isSubTaskOverdue(st) ? 'bg-rose-50/70 border-l-2 border-l-rose-500/60 hover:bg-rose-50 transition-colors text-xs dark:bg-rose-950/25 dark:border-l-rose-700 dark:hover:bg-rose-950/40' : 'bg-slate-50/70 border-l-2 border-l-indigo-500/40 hover:bg-indigo-50/30 transition-colors text-xs dark:bg-slate-900/60 dark:border-l-indigo-700/60 dark:hover:bg-indigo-950/25';
         sr.innerHTML = `
           <td colspan="2"></td>
-          <td class="px-4 py-2 text-slate-600"><div class="flex items-center gap-2 pl-8"><span class="text-slate-300">└─</span><button type="button" class="btn-edit font-semibold text-left ${['COMPLETED', 'CANCELLED'].includes(status) ? 'line-through text-slate-400' : isSubTaskOverdue(st) ? 'text-rose-700' : 'text-slate-700'} hover:text-indigo-600 outline-none" data-id="${t.id}" title="클릭해서 업무 수정">${isSubTaskOverdue(st) ? '🚨 ' : ''}${escapeHTML(st.title)}</button>${buildListNoteButtonHTML(t.id, st.id)}<span class="shrink-0 max-w-[120px] truncate rounded border border-indigo-100 bg-indigo-50 px-1 py-0.5 text-[10px] font-bold text-indigo-700" title="${escapeHTML(subAssigneeLabel)}">👤 ${escapeHTML(subAssigneeLabel)}</span></div></td>
+          <td class="px-4 py-2 text-slate-600"><div class="pl-8"><div class="flex items-center gap-2"><span class="text-slate-300">└─</span><button type="button" class="btn-edit font-semibold text-left ${['COMPLETED', 'CANCELLED'].includes(status) ? 'line-through text-slate-400' : isSubTaskOverdue(st) ? 'text-rose-700' : 'text-slate-700'} hover:text-indigo-600 outline-none" data-id="${t.id}" title="클릭해서 업무 수정">${isSubTaskOverdue(st) ? '🚨 ' : ''}${escapeHTML(st.title)}</button>${buildListNoteButtonHTML(t.id, st.id)}<span class="shrink-0 max-w-[120px] truncate rounded border border-indigo-100 bg-indigo-50 px-1 py-0.5 text-[10px] font-bold text-indigo-700" title="${escapeHTML(subAssigneeLabel)}">👤 ${escapeHTML(subAssigneeLabel)}</span></div>${typeof window.buildLinkedTodoListHTML === 'function' ? window.buildLinkedTodoListHTML(t.id, st.id) : ''}</div></td>
           <td class="px-3 py-2 text-center text-slate-400">-</td>
           <td class="px-3 py-2 text-slate-500 whitespace-nowrap"><div class="inline-flex items-center gap-1.5 whitespace-nowrap"><span>📅 ${st.startDate ? st.startDate.substring(5) : '미정'} ~ ${st.dueDate ? st.dueDate.substring(5) : '미정'}</span><span class="inline-flex shrink-0 rounded-lg border px-2 py-0.5 text-[10px] ${stTimeline.class}">${stTimeline.text}</span></div></td>
           <td class="px-4 py-2 text-center text-slate-400">-</td>
@@ -288,7 +288,7 @@ function buildMobileSubTaskHTML(t, subTasks) {
       const stTimeline = getSubTaskTimelineStatus(st);
       const subAssignee = st.assignee || t.assignee || ['미지정'];
       const subAssigneeLabel = Array.isArray(subAssignee) ? subAssignee.join(', ') : (subAssignee || '미지정');
-      return `<div class="rounded-xl border ${overdue ? 'border-rose-100 bg-white' : 'border-slate-100 bg-white'} p-2">
+      return `<div class="rounded-xl border ${overdue ? 'border-rose-100 bg-white dark:border-rose-800 dark:bg-slate-800' : 'border-slate-100 bg-white dark:border-slate-700 dark:bg-slate-800'} p-2">
         <div class="flex items-start justify-between gap-2">
           <div class="min-w-0">
             <div class="truncate text-xs font-black ${overdue ? 'text-rose-700' : 'text-slate-700'}">${overdue ? '🚨 ' : ''}${escapeHTML(st.title || '')}</div>
@@ -304,6 +304,7 @@ function buildMobileSubTaskHTML(t, subTasks) {
             </select>
           </div>
         </div>
+        ${typeof window.buildLinkedTodoListHTML === 'function' ? window.buildLinkedTodoListHTML(t.id, st.id) : ''}
       </div>`;
     }).join('')}
   </div>`;
@@ -397,6 +398,7 @@ function renderMobileCards(filtered) {
         ${getMobileProgressBar(progressPct, effectiveStatus)}
         ${riskInfo.level !== 'NONE' ? `<div data-mobile-risk-banner class="mt-2 rounded-2xl border border-rose-100 bg-white/80 px-3 py-2 text-xs font-bold text-rose-700 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300">🚨 Risk: ${riskInfo.label} D+${riskInfo.delay}</div>` : ''}
         ${notes ? `<div class="mt-2 line-clamp-2 rounded-2xl bg-slate-50 px-3 py-2 text-xs text-slate-500">${escapeHTML(notes)}</div>` : ''}
+        ${typeof window.buildLinkedTodoListHTML === 'function' ? window.buildLinkedTodoListHTML(t.id) : ''}
         ${subTasks.length ? `<div class="mt-2 text-[11px] font-bold text-slate-400">하위 업무 ${getSubTaskProgressLabel(subTasks)}</div>` : ''}
         ${mobileStatusSegment(t.id, t.status)}
         ${buildMobileSubTaskHTML(t, subTasks)}

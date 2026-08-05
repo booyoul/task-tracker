@@ -23,7 +23,9 @@ Last updated: 2026-08-05
 - The shared task search has a dedicated clear button that resets only its text, and the top-level memo list paginates at 20 notes with previous/next navigation.
 - Personal To-do can optionally link to an accessible tracker task or normal subtask for context and direct navigation.
 - Personal To-do can select a specific occurrence of a recurring subtask and reopen that exact occurrence in the task modal.
-- Commit `c78b550` is pushed to `origin/main`. Firestore Rules release `f9af690a-362b-4b12-8d1f-288933f980b8` was deployed to `task-tracker-99af4` on 2026-08-02, and unauthenticated reads of `todos`, `tasks`, `trackers`, `users`, `activity_logs`, and `progress_notes` were denied in production.
+- The tracker list shows the current user's linked To-do separately from progress notes for each exact main task or subtask, and its add action opens the existing To-do modal with that task link preselected.
+- Desktop and mobile task month calendars show linked personal To-do on its effective monthly start position with a violet `☐/☑` marker; the marker opens the existing To-do modal and remains private to its owner.
+- Commit `3e4715d` is pushed to `origin/main`. Firestore Rules release `f9af690a-362b-4b12-8d1f-288933f980b8` was deployed to `task-tracker-99af4` on 2026-08-02, and unauthenticated reads of `todos`, `tasks`, `trackers`, `users`, `activity_logs`, and `progress_notes` were denied in production.
 - An authenticated production browser check selected one of four recurring occurrences, saved and reopened the To-do link, highlighted the exact occurrence in the task modal, and removed the disposable To-do record with zero matching records remaining.
 
 ## Product Contracts
@@ -66,6 +68,7 @@ Last updated: 2026-08-05
 - Selecting a recurring subtask reveals an optional occurrence selector with up to 12 occurrences nearest the To-do start date. A selected occurrence is stored as a `YYYY-MM-DD` `occurrenceKey`, appended to the live path, and highlighted in the expanded per-occurrence status list.
 - Missing or inaccessible targets display `연결된 업무를 볼 수 없음` without leaking titles. Ordinary To-do edits preserve that reference until the owner explicitly unlinks or replaces it.
 - Task and To-do dates/completion remain independent. Deleting or copying a task must not delete or copy personal To-do data.
+- Tracker lists and month calendars may project only the signed-in owner's linked To-do records. Main-task and subtask links remain exact, To-do dates/status stay independent, and `메모만 보기` excludes To-do markers.
 
 ### Responsive UI and dark theme
 
