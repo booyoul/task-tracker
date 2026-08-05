@@ -274,6 +274,42 @@ async function main() {
   assert.equal(createdNotePayload.workType, 'CUSTOMER_VISIT');
   assert.deepEqual(Array.from(createdNotePayload.reviewComments), []);
 
+  const todoCopy = createContext();
+  todoCopy.tasks[0].subTasks = [{ id: 'sub-1', title: '복사 대상 하위 과제' }];
+  let copiedNotePayload = null;
+  todoCopy.fs.setDoc = async (_ref, payload) => { copiedNotePayload = payload; };
+  const todoCopyResult = await todoCopy.db_copyCompletedTodoToProgressNote({
+    id: 'todo-completed',
+    ownerId: 'user-1',
+    title: '고객 조건 확인 완료',
+    memo: '견적 조건과 납기를 확인했습니다.',
+    completed: true,
+    completedAt: { toDate: () => new Date(2026, 6, 30, 15, 0, 0) },
+    taskLink: { trackerId: 'tracker-1', taskId: 'task-1', subTaskId: 'sub-1' }
+  });
+  assert.equal(todoCopyResult.success, true, '완료된 연결 To-do를 업무 메모로 복사할 수 있어야 합니다.');
+  assert.equal(copiedNotePayload.taskId, 'task-1__sub_sub-1', '연결된 하위 과제의 정확한 메모 ID를 사용해야 합니다.');
+  assert.equal(copiedNotePayload.trackerId, 'tracker-1');
+  assert.equal(copiedNotePayload.noteDate, '2026-07-30', '복사된 메모 기록일은 To-do 완료일이어야 합니다.');
+  assert.equal(copiedNotePayload.sourceTodoId, 'todo-completed', '복사 원본 To-do 식별자를 저장해야 합니다.');
+  assert.equal(copiedNotePayload.body, '견적 조건과 납기를 확인했습니다.');
+
+  const duplicateTodoCopy = createContext();
+  duplicateTodoCopy.fs.getDocs = async () => ({
+    docs: [{ id: 'existing-note', data: () => ({ sourceTodoId: 'todo-completed' }) }]
+  });
+  const duplicateResult = await duplicateTodoCopy.db_copyCompletedTodoToProgressNote({
+    id: 'todo-completed',
+    ownerId: 'user-1',
+    title: '이미 복사한 To-do',
+    memo: '',
+    completed: true,
+    completedAt: { toDate: () => new Date(2026, 6, 30) },
+    taskLink: { trackerId: 'tracker-1', taskId: 'task-1' }
+  });
+  assert.equal(duplicateResult.success, false);
+  assert.equal(duplicateResult.alreadyExists, true, '같은 To-do를 업무 메모로 중복 복사하면 안 됩니다.');
+
   const noteUpdate = createContext();
   let updatedNotePayload = null;
   noteUpdate.fs.updateDoc = async (_ref, payload) => { updatedNotePayload = payload; };

@@ -327,6 +327,17 @@ async function main() {
         body: '',
         createdBy: 'alice'
       })));
+    await check('완료 To-do 출처가 포함된 자신의 메모 생성 허용', () =>
+      assertSucceeds(setDoc(doc(aliceDb, 'progress_notes', 'alice-todo-note'), {
+        taskId: 'alice-task',
+        trackerId: 'tracker-1',
+        title: '완료 To-do 메모',
+        body: '완료 결과',
+        noteDate: '2026-07-30',
+        sourceTodoId: 'alice-todo',
+        sourceTodoCompletedDate: '2026-07-30',
+        createdBy: 'alice'
+      })));
     await check('트래커 수정 권한 사용자의 리뷰 코멘트 추가 허용', async () => {
       await setDoc(doc(aliceDb, 'progress_notes', 'acl-note'), {
         taskId: 'acl-task',

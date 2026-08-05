@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-mobile-renderer.js v20260805-v10 loaded');
+console.info('Smart Task Flow calendar-mobile-renderer.js v20260805-v11 loaded');
 
 // ============================================================
 //  모바일 전용 캘린더 렌더러
@@ -140,7 +140,7 @@ function _renderMobileDayView(container, filtered, year, month, todayStr, monthN
     if (!dayMap.has(dateKey)) dayMap.set(dateKey, new Map());
   });
   const todosByDate = new Map();
-  if (!notesOnly) monthTodos.forEach(function(todo) {
+  monthTodos.forEach(function(todo) {
     const dateKey = todo.calendarDateKey || todo.startDate || '';
     if (!todosByDate.has(dateKey)) todosByDate.set(dateKey, []);
     todosByDate.get(dateKey).push(todo);
@@ -149,7 +149,7 @@ function _renderMobileDayView(container, filtered, year, month, todayStr, monthN
 
   if (dayMap.size === 0) {
     container.innerHTML = notesOnly
-      ? '<div class="flex flex-col items-center justify-center py-16 text-center"><span class="text-4xl mb-3">📌</span><p class="text-sm font-semibold text-slate-500">이번 달 메모가 없습니다.</p><p class="text-xs text-slate-400 mt-1">다른 달을 선택하거나 메모만 보기를 해제해 주세요.</p></div>'
+      ? '<div class="flex flex-col items-center justify-center py-16 text-center"><span class="text-4xl mb-3">📌</span><p class="text-sm font-semibold text-slate-500">이번 달 메모 또는 To-do가 없습니다.</p><p class="text-xs text-slate-400 mt-1">다른 달을 선택하거나 메모만 보기를 해제해 주세요.</p></div>'
       : '<div class="flex flex-col items-center justify-center py-16 text-center"><span class="text-4xl mb-3">📅</span><p class="text-sm font-semibold text-slate-500">이번 달 업무, 메모 또는 To-do가 없습니다.</p><p class="text-xs text-slate-400 mt-1">다른 달을 선택하거나 새 업무를 추가해 주세요.</p></div>';
     return;
   }

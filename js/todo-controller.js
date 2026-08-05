@@ -1,4 +1,4 @@
-console.info('Smart Task Flow todo-controller.js v20260805-v2 loaded');
+console.info('Smart Task Flow todo-controller.js v20260805-v3 loaded');
 
 let todoDateFilter = 'TODAY';
 let todoCompletionFilter = 'ACTIVE';
@@ -726,6 +726,7 @@ function clearTodoTaskLink() {
   todoModalTaskLinkChanged = true;
   todoModalOriginalTaskLink = null;
   syncTodoTaskLinkInputs();
+  syncTodoCopyNoteAction();
 }
 
 function getTodoTaskLinkFromInputs() {
@@ -849,7 +850,9 @@ function openTodoModal(id = '', presetTaskLink = null) {
   document.getElementById('input-todo-memo').value = todo?.memo || '';
   document.getElementById('input-todo-start').value = todo?.startDate || today;
   document.getElementById('input-todo-due').value = todo?.dueDate || today;
+  document.getElementById('input-todo-status').value = todo?.completed === true ? 'COMPLETED' : 'ACTIVE';
   syncTodoTaskLinkInputs(todoModalOriginalTaskLink);
+  syncTodoCopyNoteAction();
   document.getElementById('modal-todo')?.classList.remove('hidden');
   document.getElementById('input-todo-title')?.focus();
 }
@@ -866,21 +869,43 @@ function closeTodoModal() {
   document.getElementById('form-todo')?.reset();
   todoModalOriginalTaskLink = null;
   todoModalTaskLinkChanged = false;
+  syncTodoCopyNoteAction();
+}
+
+function getTodoFormData() {
+  const taskLinkResult = getTodoTaskLinkFromInputs();
+  if (taskLinkResult.error) return { error: taskLinkResult.error };
+  return { data: {
+    title: document.getElementById('input-todo-title').value,
+    memo: document.getElementById('input-todo-memo').value,
+    startDate: document.getElementById('input-todo-start').value,
+    dueDate: document.getElementById('input-todo-due').value,
+    completed: document.getElementById('input-todo-status').value === 'COMPLETED',
+    taskLink: taskLinkResult.taskLink
+  } };
+}
+
+function syncTodoCopyNoteAction() {
+  const section = document.getElementById('todo-copy-note-section');
+  const button = document.getElementById('btn-copy-todo-to-note');
+  if (!section || !button) return;
+  const id = document.getElementById('input-todo-id')?.value || '';
+  const completed = document.getElementById('input-todo-status')?.value === 'COMPLETED';
+  const linkResult = getTodoTaskLinkFromInputs();
+  const resolved = !linkResult.error ? resolveTodoTaskLink(linkResult.taskLink) : { available: false };
+  const visible = !!id && completed && resolved.available && window.hasTaskPermission?.(resolved.task, 'update') === true;
+  section.hidden = !visible;
+  section.classList.toggle('hidden', !visible);
+  button.disabled = !visible;
+  button.textContent = '메모로 복사';
 }
 
 async function handleTodoSubmit(event) {
   event.preventDefault();
   const id = document.getElementById('input-todo-id').value;
-  const taskLinkResult = getTodoTaskLinkFromInputs();
-  if (taskLinkResult.error) return showToast(taskLinkResult.error, false);
-  const data = {
-    title: document.getElementById('input-todo-title').value,
-    memo: document.getElementById('input-todo-memo').value,
-    startDate: document.getElementById('input-todo-start').value,
-    dueDate: document.getElementById('input-todo-due').value,
-    completed: id ? todoItems.find(item => item.id === id)?.completed === true : false,
-    taskLink: taskLinkResult.taskLink
-  };
+  const formResult = getTodoFormData();
+  if (formResult.error) return showToast(formResult.error, false);
+  const data = formResult.data;
   const validationMessage = validateTodoPayload(data);
   if (validationMessage) return showToast(validationMessage, false);
   const result = id ? await db_updateTodo(id, data) : await db_addTodo(data);
@@ -889,6 +914,48 @@ async function handleTodoSubmit(event) {
   if (currentViewMode === 'TODO') renderTodoView();
   else if (typeof window.renderActiveViews === 'function') window.renderActiveViews();
   showToast(id ? 'To-do가 수정되었습니다.' : 'To-do가 추가되었습니다.');
+}
+
+async function copyTodoFormToProgressNote() {
+  const id = document.getElementById('input-todo-id')?.value || '';
+  const original = todoItems.find(item => item.id === id);
+  if (!original) return showToast('먼저 To-do를 저장해 주세요.', false);
+  const formResult = getTodoFormData();
+  if (formResult.error) return showToast(formResult.error, false);
+  const data = formResult.data;
+  const validationMessage = validateTodoPayload(data);
+  if (validationMessage) return showToast(validationMessage, false);
+  if (!data.completed) return showToast('완료된 To-do만 메모로 복사할 수 있습니다.', false);
+  const button = document.getElementById('btn-copy-todo-to-note');
+  if (button) {
+    button.disabled = true;
+    button.textContent = '복사 중...';
+  }
+  const completionDate = original.completed === true
+    ? window.getTodoCompletionDateKey?.(original) || getTodayStr()
+    : getTodayStr();
+  const saveResult = await db_updateTodo(id, data);
+  if (!saveResult?.success) {
+    if (button) {
+      button.disabled = false;
+      button.textContent = '메모로 복사';
+    }
+    return showToast(saveResult?.error || 'To-do를 저장하지 못했습니다.', false);
+  }
+  const savedTodo = saveResult.todo || { ...original, ...data };
+  const copyResult = await window.db_copyCompletedTodoToProgressNote?.(savedTodo, completionDate);
+  if (!copyResult?.success) {
+    if (button) {
+      button.disabled = false;
+      button.textContent = '메모로 복사';
+    }
+    return showToast(copyResult?.error || '업무 메모로 복사하지 못했습니다.', false);
+  }
+  window.invalidateListProgressNoteSummary?.();
+  closeTodoModal();
+  if (currentViewMode === 'TODO') renderTodoView();
+  else window.renderActiveViews?.();
+  showToast('완료 To-do를 연결된 업무 메모로 복사했습니다.');
 }
 
 function confirmTodoDelete(id) {
@@ -974,6 +1041,8 @@ function initTodoController() {
   document.getElementById('btn-close-todo-modal')?.addEventListener('click', closeTodoModal);
   document.getElementById('btn-cancel-todo')?.addEventListener('click', closeTodoModal);
   document.getElementById('form-todo')?.addEventListener('submit', handleTodoSubmit);
+  document.getElementById('input-todo-status')?.addEventListener('change', syncTodoCopyNoteAction);
+  document.getElementById('btn-copy-todo-to-note')?.addEventListener('click', copyTodoFormToProgressNote);
   document.getElementById('btn-clear-todo-task-link')?.addEventListener('click', clearTodoTaskLink);
   document.getElementById('input-todo-link-tracker')?.addEventListener('change', event => {
     todoModalTaskLinkChanged = true;
@@ -984,11 +1053,13 @@ function initTodoController() {
     populateTodoLinkTasks(trackerId);
     setTodoTaskLinkStatus('');
     document.getElementById('btn-clear-todo-task-link')?.classList.toggle('hidden', !trackerId);
+    syncTodoCopyNoteAction();
   });
   document.getElementById('input-todo-link-task')?.addEventListener('change', event => {
     todoModalTaskLinkChanged = true;
     populateTodoLinkSubTasks(event.target.value || '');
     setTodoTaskLinkStatus('');
+    syncTodoCopyNoteAction();
   });
   document.getElementById('input-todo-link-subtask')?.addEventListener('change', () => {
     todoModalTaskLinkChanged = true;
@@ -998,10 +1069,12 @@ function initTodoController() {
     const task = getTodoLinkTasks(trackerId).find(item => item.id === taskId);
     populateTodoLinkOccurrences((task?.subTasks || []).find(item => item.id === subTaskId));
     setTodoTaskLinkStatus('');
+    syncTodoCopyNoteAction();
   });
   document.getElementById('input-todo-link-occurrence')?.addEventListener('change', () => {
     todoModalTaskLinkChanged = true;
     setTodoTaskLinkStatus('');
+    syncTodoCopyNoteAction();
   });
   document.getElementById('input-todo-start')?.addEventListener('change', () => {
     const trackerId = document.getElementById('input-todo-link-tracker')?.value || '';

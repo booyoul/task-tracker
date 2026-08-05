@@ -248,6 +248,11 @@ async function main() {
           renderTodoView();
           return { success: true, id };
         };
+        window.db_copyCompletedTodoToProgressNote = async (todo, completionDate) => {
+          window.__copiedTodoNote = { todo, completionDate };
+          return { success: true, note: { id: 'copied-note' } };
+        };
+        window.getTodoCompletionDateKey = () => getTodayStr();
         updateUI();
         window.__todoBrowserInitialCalendarState = {
           mode: currentCalMode,
@@ -302,6 +307,20 @@ async function main() {
     assert.equal(desktop.noOverflow, true);
     assert.deepEqual(desktop.resultIds.slice(0, 2), ['overdue', 'today']);
     assert.ok(desktop.filterBrightness > 220 && desktop.resultsBrightness > 220 && desktop.cardBrightness > 220, '라이트 모드 To-do 표면은 밝은 계층을 유지해야 합니다.');
+
+    await evaluate(client, `
+      document.querySelector('.btn-edit-todo[data-id="today"]').click();
+      document.getElementById('input-todo-status').value = 'COMPLETED';
+      document.getElementById('input-todo-status').dispatchEvent(new Event('change'));
+    `);
+    assert.equal(await evaluate(client, `document.getElementById('todo-copy-note-section').hidden`), false, 'Completed linked To-do copy action is hidden.');
+    await evaluate(client, `document.getElementById('btn-copy-todo-to-note').click()`);
+    await waitFor(client, `window.__copiedTodoNote?.todo?.id === 'today' && document.getElementById('modal-todo').classList.contains('hidden')`, 'Completed To-do was not copied to a progress note.');
+    assert.equal(await evaluate(client, `window.__copiedTodoNote.completionDate`), await evaluate(client, `getTodayStr()`));
+    await evaluate(client, `
+      todoItems.find(item => item.id === 'today').completed = false;
+      renderTodoView();
+    `);
 
     await evaluate(client, `
       document.querySelector('.btn-edit-todo[data-id="overdue"]').click();

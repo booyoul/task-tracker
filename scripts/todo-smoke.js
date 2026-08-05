@@ -228,9 +228,15 @@ function testDateGroupingAndRendering() {
   assert.equal(context.__todoLinkedTaskTarget.subTaskId, 'sub-1');
   assert.equal(context.__todoLinkedTaskTarget.occurrenceKey, '2026-07-27');
   context.openTodoModal('today');
+  assert.equal(context.document.getElementById('input-todo-status').value, 'ACTIVE', 'To-do 모달에 현재 상태가 표시되어야 합니다.');
   assert.equal(context.document.getElementById('todo-link-occurrence-field').hidden, false);
   assert.equal(context.document.getElementById('input-todo-link-occurrence').value, '2026-07-27');
   assert.equal(context.document.querySelectorAll('#input-todo-link-occurrence option').length, 13, '회차 미지정과 가까운 12개 회차를 제공해야 합니다.');
+  context.todoItems.find(item => item.id === 'today').completed = true;
+  context.openTodoModal('today');
+  assert.equal(context.document.getElementById('input-todo-status').value, 'COMPLETED', '완료된 To-do 상태가 모달에 표시되어야 합니다.');
+  assert.equal(context.document.getElementById('todo-copy-note-section').hidden, false, '완료되고 수정 권한이 있는 연결 To-do에는 메모 복사 액션이 표시되어야 합니다.');
+  context.todoItems.find(item => item.id === 'today').completed = false;
   context.closeTodoModal();
   context.openTodoModalForTask('task-1');
   assert.equal(context.document.getElementById('input-todo-link-tracker').value, 'tracker-1', '목록에서 추가한 To-do에 현재 트래커가 미리 선택되어야 합니다.');

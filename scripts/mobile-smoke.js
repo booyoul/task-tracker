@@ -551,6 +551,15 @@ async function main() {
       monthSubTasks: []
     }],
     monthNotes: calendarMonthNotes,
+    monthTodos: [{
+      id: 'todo-notes-only-desktop',
+      title: '메모만 보기 To-do',
+      startDate: '2026-07-12',
+      dueDate: '2026-07-13',
+      completed: false,
+      calendarDateKey: '2026-07-12',
+      calendarTaskLabel: '메모만 보기 대상 업무'
+    }],
     notesOnly: true,
     showSubTaskBars: true,
     mainClass: () => 'bg-slate-200 text-slate-700',
@@ -560,6 +569,7 @@ async function main() {
   assert(document.getElementById('calendar-grid').dataset.notesOnly === 'true', '데스크톱 월간 캘린더에 메모만 보기 상태가 반영되지 않았습니다.');
   assert(!document.querySelector('#calendar-grid [data-week-index]') && !document.querySelector('#calendar-grid [data-calendar-category-header]'), '데스크톱 메모만 보기에서 업무 막대 또는 분류 헤더가 남아 있습니다.');
   assert(document.querySelectorAll('#calendar-grid [data-calendar-note-id]').length === 4, '데스크톱 메모만 보기에서 월간 메모가 유지되지 않았습니다.');
+  assert(document.querySelectorAll('#calendar-grid [data-calendar-todo-id]').length === 1, '데스크톱 메모만 보기에서 연결 To-do가 유지되지 않았습니다.');
 
   const cancelledTask = {
     id: 'task-cancelled',
@@ -677,7 +687,7 @@ async function main() {
   assert(document.getElementById('cal-mobile-content').dataset.notesOnly === 'true', '모바일 월간 콘텐츠에 메모만 보기 상태가 반영되지 않았습니다.');
   assert(document.querySelectorAll('#cal-mobile-content .mobile-cal-card').length === 0 && document.querySelectorAll('#cal-mobile-content [data-mobile-calendar-category]').length === 0, '모바일 메모만 보기에서 업무 카드 또는 분류 헤더가 남아 있습니다.');
   assert(document.querySelectorAll('#cal-mobile-content [data-calendar-note-id]').length === 4, '모바일 메모만 보기에서 월간 메모가 유지되지 않았습니다.');
-  assert(document.querySelectorAll('#cal-mobile-content [data-calendar-todo-id]').length === 0, '메모만 보기에서 별도 유형인 To-do가 남아 있습니다.');
+  assert(document.querySelectorAll('#cal-mobile-content [data-calendar-todo-id]').length === 1, '모바일 메모만 보기에서 연결 To-do가 유지되지 않았습니다.');
   window.calendarUxState.notesOnly = false;
 
   global.currentCalMode = 'MONTH';

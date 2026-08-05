@@ -14,7 +14,7 @@ Last updated: 2026-08-05
 
 - The Firebase/Firestore task tracker, tracker ACL, personal To-do, progress-note review workflow, recurrence support, responsive calendars, and class-based dark theme are implemented.
 - Production Firestore rules, authenticated To-do isolation, tracker-role permissions, formatted-note writes, and the user-document audit have been verified. Disposable verification data and accounts were removed.
-- Desktop and mobile task/list/calendar/summary/To-do routing is covered by focused smoke tests. The full suite includes 60 Firestore Rules allow/deny cases.
+- Desktop and mobile task/list/calendar/summary/To-do routing is covered by focused smoke tests. The full suite includes 61 Firestore Rules allow/deny cases.
 - The latest UI pass aligned dark surfaces across calendars, lists, all modal/dialog panels, mobile task cards, and mobile 가입 승인 관리.
 - The desktop task modal's subtask recurrence form and dynamically rendered occurrence-status rows use explicit dark surfaces, including the highlighted To-do-linked occurrence.
 - The To-do list, filters, view toggles, cards, linked-task badges, and desktop/mobile month/year calendars use explicit dark surface and semantic status colors.
@@ -25,7 +25,8 @@ Last updated: 2026-08-05
 - Personal To-do can select a specific occurrence of a recurring subtask and reopen that exact occurrence in the task modal.
 - The tracker list shows the current user's linked To-do separately from progress notes for each exact main task or subtask, and its add action opens the existing To-do modal with that task link preselected.
 - Desktop and mobile task month calendars show linked personal To-do on its effective monthly start position with a violet `☐/☑` marker; the marker opens the existing To-do modal and remains private to its owner.
-- Commit `3e4715d` is pushed to `origin/main`. Firestore Rules release `f9af690a-362b-4b12-8d1f-288933f980b8` was deployed to `task-tracker-99af4` on 2026-08-02, and unauthenticated reads of `todos`, `tasks`, `trackers`, `users`, `activity_logs`, and `progress_notes` were denied in production.
+- The To-do modal exposes its active/completed status. A completed To-do with an accessible linked task can explicitly copy its title and memo into that exact task/subtask's progress notes, using the To-do completion date as `noteDate` and preventing duplicate copies by `sourceTodoId`.
+- Commit `30a99b0` is pushed to `origin/main`. Firestore Rules release `f9af690a-362b-4b12-8d1f-288933f980b8` was deployed to `task-tracker-99af4` on 2026-08-02, and unauthenticated reads of `todos`, `tasks`, `trackers`, `users`, `activity_logs`, and `progress_notes` were denied in production.
 - An authenticated production browser check selected one of four recurring occurrences, saved and reopened the To-do link, highlighted the exact occurrence in the task modal, and removed the disposable To-do record with zero matching records remaining.
 
 ## Product Contracts
@@ -56,7 +57,7 @@ Last updated: 2026-08-05
 - Monthly summary remains note-first and supports author, work-type, search, important-only, and comment-present filters.
 - The top-level memo view is a flat latest-record-date-first review list beside the list and calendar views. It uses the shared start/end month controls as an independent effective-record-date range, combines that range with the memo's saved work type and `댓글 있음` toggle, and opens the shared note detail slide-over.
 - Monthly calendars reuse the loaded tracker-note cache, show only notes linked to currently filtered existing tasks/subtasks, and open the shared note detail slide-over.
-- Monthly calendars provide a persisted `메모만 보기` toggle on desktop and mobile; it hides task bars/cards while preserving dated notes and their detail-panel interaction.
+- Monthly calendars provide a persisted `메모만 보기` toggle on desktop and mobile; it hides task bars/cards while preserving dated notes, linked personal To-do markers, and their existing interactions.
 - A note's effective record date is independent of its linked task schedule: monthly calendars and summaries keep non-date filters but must not hide a note because the task does not overlap the selected month.
 
 ### Personal To-do
@@ -68,7 +69,8 @@ Last updated: 2026-08-05
 - Selecting a recurring subtask reveals an optional occurrence selector with up to 12 occurrences nearest the To-do start date. A selected occurrence is stored as a `YYYY-MM-DD` `occurrenceKey`, appended to the live path, and highlighted in the expanded per-occurrence status list.
 - Missing or inaccessible targets display `연결된 업무를 볼 수 없음` without leaking titles. Ordinary To-do edits preserve that reference until the owner explicitly unlinks or replaces it.
 - Task and To-do dates/completion remain independent. Deleting or copying a task must not delete or copy personal To-do data.
-- Tracker lists and month calendars may project only the signed-in owner's linked To-do records. Main-task and subtask links remain exact, To-do dates/status stay independent, and `메모만 보기` excludes To-do markers.
+- Tracker lists and month calendars may project only the signed-in owner's linked To-do records. Main-task and subtask links remain exact, and To-do dates/status stay independent.
+- The To-do modal may change active/completed status. Copying a completed linked To-do to progress notes is an explicit user action, requires update permission on the target task, uses the completion date as the note record date, and must not synchronize task status.
 
 ### Responsive UI and dark theme
 
@@ -114,7 +116,7 @@ For responsive geometry, native picker behavior, rich-text selection, or color c
 
 ## Verified Release Baseline
 
-- `npm test` passes, including 60 Firestore Rules cases.
+- `npm test` passes, including 61 Firestore Rules cases.
 - `npm run build:css`, relevant JavaScript syntax checks, and `git diff --check` pass.
 - Headless Chrome has verified the main responsive workflows and the latest mobile dark-theme surfaces at a 390px viewport.
 - Firestore production-write verification is historical evidence only; do not infer future production state without a fresh live check.

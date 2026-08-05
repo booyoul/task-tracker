@@ -1,4 +1,4 @@
-console.info('Smart Task Flow task-service.js v20260724-v3 loaded');
+console.info('Smart Task Flow task-service.js v20260805-v4 loaded');
 // Task / tracker CRUD and Firebase realtime listener helpers.
 let taskSnapshotsByTracker = new Map();
 async function db_addTask(taskData) {
@@ -593,13 +593,13 @@ function stopRealtimeListeners() {
 }
 
 // 변경 이력(Activity Log) 기록 헬퍼 함수
-async function db_recordActivity(taskId, action, changes = null) {
+async function db_recordActivity(taskId, action, changes = null, trackerId = currentTrackerId) {
   const coll = window.getActivityLogsCollection?.();
   if (!coll || !canWriteToFirestore()) return;
   const id = 'log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
   const payload = {
     taskId,
-    trackerId: currentTrackerId,
+    trackerId,
     action,
     changedBy: window.currentUser ? window.currentUser.uid : 'anonymous',
     changedByName: window.currentUser ? (window.currentUser.displayName || window.currentUser.email) : 'anonymous',
@@ -651,16 +651,19 @@ async function db_addProgressNote(taskId, {
   customerName,
   oppNo,
   workType,
-  workTypeLabel
+  workTypeLabel,
+  sourceTodoId,
+  sourceTodoCompletedDate
 }) {
   const coll = window.getProgressNotesCollection?.();
   if (!coll || !canWriteToFirestore()) return { success: false, error: '인증 실패 또는 DB 접근 불가' };
   const task = tasks.find(item => item.id === taskId.split('__sub_')[0]);
   if (!window.hasTaskPermission?.(task, 'update')) return { success: false, error: '메모 등록 권한이 없습니다.' };
+  const targetTrackerId = task?.trackerId || currentTrackerId;
   const id = 'note_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
   const payload = {
     taskId,
-    trackerId: currentTrackerId,
+    trackerId: targetTrackerId,
     title: title || '',
     body: body || '',
     bodyHtml: bodyHtml || '',
@@ -675,14 +678,74 @@ async function db_addProgressNote(taskId, {
     createdAt: getServerTimestamp(),
     updatedAt: getServerTimestamp()
   };
+  if (sourceTodoId) payload.sourceTodoId = String(sourceTodoId);
+  if (sourceTodoCompletedDate) payload.sourceTodoCompletedDate = String(sourceTodoCompletedDate);
   try {
     await window.fs.setDoc(window.fs.doc(coll, id), payload);
-    await db_recordActivity(taskId, 'NOTE_ADD', { title: title || '(제목 없음)' });
+    await db_recordActivity(taskId, 'NOTE_ADD', { title: title || '(제목 없음)' }, targetTrackerId);
     return { success: true, note: { id, ...payload } };
   } catch (e) {
     console.warn('db_addProgressNote 실패:', e);
     return { success: false, error: e.message || String(e) };
   }
+}
+
+function getTodoCompletionDateKey(todo = {}, fallbackDate = '') {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(fallbackDate || ''))) return fallbackDate;
+  const candidates = [todo.completedAt, todo.updatedAt];
+  for (const value of candidates) {
+    const date = value?.toDate ? value.toDate() : new Date(value || 0);
+    if (!Number.isNaN(date.getTime())) {
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    }
+  }
+  return typeof getTodayStr === 'function' ? getTodayStr() : '';
+}
+
+async function db_copyCompletedTodoToProgressNote(todo, fallbackCompletionDate = '') {
+  const userId = window.currentUser?.uid || '';
+  if (!todo?.id || !userId || todo.ownerId !== userId) {
+    return { success: false, error: '복사할 수 있는 To-do가 아닙니다.' };
+  }
+  if (todo.completed !== true) return { success: false, error: '완료된 To-do만 메모로 복사할 수 있습니다.' };
+  const taskLink = todo.taskLink;
+  if (!taskLink?.trackerId || !taskLink?.taskId) return { success: false, error: '연결된 업무가 없습니다.' };
+  const task = tasks.find(item => item.id === taskLink.taskId && item.trackerId === taskLink.trackerId && item.deleted !== true);
+  if (!task || !window.hasTaskPermission?.(task, 'update')) {
+    return { success: false, error: '연결된 업무에 메모를 등록할 권한이 없습니다.' };
+  }
+  const subTask = taskLink.subTaskId
+    ? (Array.isArray(task.subTasks) ? task.subTasks : []).find(item => item.id === taskLink.subTaskId)
+    : null;
+  if (taskLink.subTaskId && !subTask) return { success: false, error: '연결된 하위 과제를 찾을 수 없습니다.' };
+  const coll = window.getProgressNotesCollection?.();
+  if (!coll || !canWriteToFirestore()) return { success: false, error: '인증 실패 또는 DB 접근 불가' };
+  try {
+    const query = window.fs.query(coll, window.fs.where('trackerId', '==', task.trackerId));
+    const snapshot = await window.fs.getDocs(query);
+    const existing = snapshot.docs
+      .map(document => ({ id: document.id, ...document.data() }))
+      .find(note => note.sourceTodoId === todo.id);
+    if (existing) return { success: false, alreadyExists: true, note: existing, error: '이미 업무 메모로 복사된 To-do입니다.' };
+  } catch (error) {
+    console.warn('To-do 메모 중복 확인 실패:', error);
+    return { success: false, error: error.message || String(error) };
+  }
+  const noteDate = getTodoCompletionDateKey(todo, fallbackCompletionDate);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(noteDate)) return { success: false, error: 'To-do 완료일을 확인할 수 없습니다.' };
+  const targetTaskId = subTask ? `${task.id}__sub_${subTask.id}` : task.id;
+  return db_addProgressNote(targetTaskId, {
+    title: String(todo.title || '완료한 To-do').slice(0, 100),
+    body: String(todo.memo || ''),
+    bodyHtml: '',
+    noteDate,
+    customerName: '',
+    oppNo: '',
+    workType: '',
+    workTypeLabel: '',
+    sourceTodoId: todo.id,
+    sourceTodoCompletedDate: noteDate
+  });
 }
 
 async function db_fetchProgressNotes(taskId) {
@@ -804,6 +867,8 @@ async function db_fetchTrackerProgressNotes(trackerId) {
 }
 
 window.db_addProgressNote    = db_addProgressNote;
+window.getTodoCompletionDateKey = getTodoCompletionDateKey;
+window.db_copyCompletedTodoToProgressNote = db_copyCompletedTodoToProgressNote;
 window.db_fetchProgressNotes = db_fetchProgressNotes;
 window.db_updateProgressNote = db_updateProgressNote;
 window.db_addProgressNoteComment = db_addProgressNoteComment;

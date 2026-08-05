@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-day-renderer.js v20260805-v18 loaded');
+console.info('Smart Task Flow calendar-day-renderer.js v20260805-v19 loaded');
 
 function getCalendarProgressNoteDateKey(note = {}) {
     if (/^\d{4}-\d{2}-\d{2}$/.test(String(note.noteDate || ''))) return note.noteDate;
@@ -78,7 +78,7 @@ function renderCalendarDayView(ctx) {
       notesByDate.get(dateKey).push(note);
     });
     const todosByDate = new Map();
-    if (!notesOnly) monthTodos.forEach(todo => {
+    monthTodos.forEach(todo => {
       const dateKey = todo.calendarDateKey || todo.startDate || '';
       if (!todosByDate.has(dateKey)) todosByDate.set(dateKey, []);
       todosByDate.get(dateKey).push(todo);
