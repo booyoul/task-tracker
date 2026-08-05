@@ -1,4 +1,4 @@
-console.info('Smart Task Flow table-mobile-renderer.js v20260804-v17 loaded');
+console.info('Smart Task Flow table-mobile-renderer.js v20260805-v18 loaded');
 // Table and mobile card renderers. Extracted from app.js in Phase 5.
 const listProgressNoteSummaryCache = {
   trackerId: '',
@@ -409,17 +409,18 @@ function renderMobileCards(filtered) {
 }
 
 
-// === Final Stable View Routing Override: TABLE / CALENDAR / KANBAN / ADMIN ===
+// === Final Stable View Routing Override: TABLE / CALENDAR / NOTES / KANBAN / ADMIN ===
 function setViewVisibility(mode) {
   const table = document.getElementById('view-table');
   const mobile = document.getElementById('view-mobile');
   const calendar = document.getElementById('view-calendar');
   const calendarMobile = document.getElementById('view-calendar-mobile');
+  const notesView = document.getElementById('view-notes');
   const kanban = document.getElementById('view-kanban');
   const adminView = document.getElementById('view-admin-approvals');
   const todoView = document.getElementById('view-todo');
   const isMobile = window.matchMedia ? window.matchMedia('(max-width: 1023px)').matches : window.innerWidth < 1024;
-  [table, mobile, calendar, calendarMobile, kanban, adminView, todoView].forEach(el => {
+  [table, mobile, calendar, calendarMobile, notesView, kanban, adminView, todoView].forEach(el => {
     if (!el) return;
     el.hidden = true;
     el.classList.add('hidden');
@@ -472,6 +473,10 @@ function setViewVisibility(mode) {
     }
     return;
   }
+  if (mode === 'NOTES') {
+    showView(notesView);
+    return;
+  }
   if (mode === 'KANBAN') {
     showView(kanban);
     return;
@@ -482,10 +487,12 @@ function updateViewToggleButtons(mode) {
   const mappings = [
     ['btn-view-table', 'TABLE'],
     ['btn-view-calendar', 'CALENDAR'],
+    ['btn-view-notes', 'NOTES'],
     ['btn-view-kanban', 'KANBAN'],
     ['btn-view-admin', 'ADMIN'],
     ['btn-view-table-mobile', 'TABLE'],
     ['btn-view-calendar-mobile', 'CALENDAR'],
+    ['btn-view-notes-mobile', 'NOTES'],
     ['btn-view-kanban-mobile', 'KANBAN'],
     ['btn-view-admin-mobile', 'ADMIN']
   ];
@@ -505,7 +512,7 @@ function updateViewToggleButtons(mode) {
   });
 }
 function switchView(mode) {
-  const nextMode = mode === 'TODO' ? 'TODO' : mode === 'CALENDAR' ? 'CALENDAR' : mode === 'KANBAN' ? 'KANBAN' : mode === 'ADMIN' ? 'ADMIN' : 'TABLE';
+  const nextMode = mode === 'TODO' ? 'TODO' : mode === 'CALENDAR' ? 'CALENDAR' : mode === 'NOTES' ? 'NOTES' : mode === 'KANBAN' ? 'KANBAN' : mode === 'ADMIN' ? 'ADMIN' : 'TABLE';
   if (nextMode !== 'TODO') lastTaskViewMode = nextMode;
   currentViewMode = nextMode;
   window.currentViewMode = currentViewMode;

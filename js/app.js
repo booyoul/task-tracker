@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow app.js v20260804-v7 loaded');
+console.info('Smart Task Flow app.js v20260805-v9 loaded');
 // --- UX optimization globals: must be declared before helper functions ---
 var focusState = window.focusState || { riskOnly: false, mineOnly: false, highOnly: false };
 window.focusState = focusState;
@@ -746,11 +746,6 @@ function renderCalendar(filteredTasks, noteTaskScope = filteredTasks) {
     return;
   }
 
-  if (currentCalMode === 'NOTES') {
-    renderCalendarNotesView({ weekdayHeader, grid, year, month, noteTaskScope });
-    return;
-  }
-
   renderCalendarSummaryView({ weekdayHeader, grid, year, month, filteredTasks, noteTaskScope, todayStr });
 }
 
@@ -985,7 +980,7 @@ async function importFromJSON(e) {
 }
 function setCalMode(mode) {
   currentCalMode = mode;
-  ['day', 'month', 'summary', 'notes'].forEach(m => {
+  ['day', 'month', 'summary'].forEach(m => {
     const btn = document.getElementById(`btn-cal-mode-${m}`);
     if (!btn) return;
     btn.className = m.toUpperCase() === mode
@@ -993,6 +988,14 @@ function setCalMode(mode) {
       : 'rounded-lg px-3.5 py-1.5 text-slate-500 hover:text-slate-800 transition';
   });
   renderActiveViews();
+}
+
+function updateViewFilterContext(mode) {
+  const isNotesMode = mode === 'NOTES';
+  const desktopLabel = document.getElementById('filter-date-label');
+  const mobileLabel = document.getElementById('mobile-filter-date-label');
+  if (desktopLabel) desktopLabel.textContent = isNotesMode ? '메모 기간:' : '마감 월:';
+  if (mobileLabel) mobileLabel.textContent = isNotesMode ? '메모 기간' : '마감 월';
 }
 // Realtime Firebase listener helpers moved to js/task-service.js
 
@@ -1124,6 +1127,7 @@ function renderActiveViews(){
     if(typeof window.renderTodoView==='function')window.renderTodoView();
     return;
   }
+  updateViewFilterContext(currentViewMode);
   if (currentViewMode === 'CALENDAR') loadCalendarUxState();
   ensureAdvancedFilterOptions();
   ensureUXToolbar();
@@ -1164,14 +1168,14 @@ function renderActiveViews(){
     return;
   }
   const filtered=getFilteredTasks();
-  const noteTaskScope=currentViewMode==='CALENDAR' && ['DAY','SUMMARY','NOTES'].includes(currentCalMode)
+  const noteTaskScope=currentViewMode==='NOTES' || (currentViewMode==='CALENDAR' && ['DAY','SUMMARY'].includes(currentCalMode))
     ? getFilteredTasks({ ignoreDateRange: true })
     : filtered;
   const fStatus=document.getElementById('filter-status')?.value||'ALL';
   document.querySelectorAll('.filter-card').forEach(c=>c.classList.remove('ring-2','ring-indigo-600','bg-indigo-50/10'));
   document.getElementById(`card-${['ALL','PENDING','PROGRESS','COMPLETED','CANCELLED','OVERDUE'].includes(fStatus)?fStatus:'OVERDUE'}`)?.classList.add('ring-2','ring-indigo-600','bg-indigo-50/10');
   applyCompactDashboardStyles();
-  const mode=currentViewMode==='CALENDAR'?'CALENDAR':currentViewMode==='KANBAN'?'KANBAN':'TABLE';
+  const mode=currentViewMode==='CALENDAR'?'CALENDAR':currentViewMode==='NOTES'?'NOTES':currentViewMode==='KANBAN'?'KANBAN':'TABLE';
   setViewVisibility(mode);
   updateViewToggleButtons(mode);
   if(mode==='CALENDAR'){
@@ -1181,6 +1185,12 @@ function renderActiveViews(){
     } else {
       renderCalendar(filtered, noteTaskScope);
     }
+    return;
+  }
+  if(mode==='NOTES'){
+    const notesContent = document.getElementById('notes-content');
+    if(typeof renderCalendarNotesView==='function')renderCalendarNotesView({ grid: notesContent, noteTaskScope });
+    else if(notesContent)notesContent.innerHTML='<p class="p-8 text-center text-sm text-slate-400">메모 뷰를 불러올 수 없습니다.</p>';
     return;
   }
   if(mode==='KANBAN'){if(typeof renderKanbanView==='function')renderKanbanView(filtered);else console.warn('renderKanbanView is not available');return;}

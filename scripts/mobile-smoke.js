@@ -14,7 +14,14 @@ const dom = new JSDOM(`<!doctype html>
     <button id="btn-cal-mode-day-m"></button>
     <button id="btn-cal-mode-month-m"></button>
     <button id="btn-cal-mode-summary-m"></button>
-    <button id="btn-cal-mode-notes-m"></button>
+    <button id="btn-view-notes-mobile"></button>
+    <button id="btn-view-notes"></button>
+    <div id="calendar-date-navigation"></div>
+    <div id="calendar-date-navigation-m"></div>
+    <span id="filter-date-label">마감 월:</span>
+    <span id="mobile-filter-date-label">마감 월</span>
+    <input id="filter-start-month" type="month">
+    <input id="filter-end-month" type="month">
     <div id="calendar-notes-only-control-m" hidden class="hidden">
       <button id="btn-cal-ux-notes-only-m" aria-pressed="false"></button>
     </div>
@@ -30,6 +37,7 @@ const dom = new JSDOM(`<!doctype html>
     <div id="calendar-month-year"></div>
     <div id="calendar-weekday-header"></div>
     <div id="calendar-grid"></div>
+    <main id="view-notes"><div id="notes-content"></div></main>
   </body>
 </html>`, {
   url: 'http://localhost/',
@@ -102,6 +110,17 @@ window.db_fetchTrackerProgressNotes = async () => [
     createdByName: 'manager@example.com',
     noteDate: '2026-07-13',
     createdAt: new Date('2026-07-13T11:00:00+09:00')
+  },
+  {
+    id: 'note-previous-month',
+    taskId: 'task-1',
+    title: '6월 영업 회의',
+    body: '기간 필터 확장 검증용 메모',
+    createdByName: 'bd@example.com',
+    workType: 'SALES_MEETING',
+    workTypeLabel: 'Sales Meeting',
+    noteDate: '2026-06-20',
+    createdAt: new Date('2026-06-20T14:00:00+09:00')
   }
 ];
 
@@ -249,13 +268,15 @@ async function main() {
   const desktopYearModeButton = indexDom.window.document.getElementById('btn-cal-mode-month');
   const mobileMonthModeButton = indexDom.window.document.getElementById('btn-cal-mode-day-m');
   const mobileYearModeButton = indexDom.window.document.getElementById('btn-cal-mode-month-m');
-  const desktopNotesModeButton = indexDom.window.document.getElementById('btn-cal-mode-notes');
-  const mobileNotesModeButton = indexDom.window.document.getElementById('btn-cal-mode-notes-m');
+  const desktopNotesViewButton = indexDom.window.document.getElementById('btn-view-notes');
+  const mobileNotesViewButton = indexDom.window.document.getElementById('btn-view-notes-mobile');
   assert(desktopYearModeButton?.classList.contains('bg-white') && !desktopMonthModeButton?.classList.contains('bg-white'), '데스크톱 캘린더의 초기 활성 버튼이 연간 보기가 아닙니다.');
   assert(mobileYearModeButton?.classList.contains('bg-white') && !mobileMonthModeButton?.classList.contains('bg-white'), '모바일 캘린더의 초기 활성 버튼이 연간 보기가 아닙니다.');
   assert(desktopYearModeButton?.textContent.replace(/\s+/g, ' ').trim() === '연간 보기', '데스크톱 캘린더의 연간 보기 문구가 일관되지 않습니다.');
   assert(mobileYearModeButton?.textContent.trim() === '연간', '모바일 캘린더의 연간 문구가 일관되지 않습니다.');
-  assert(desktopNotesModeButton?.textContent.trim() === '메모' && mobileNotesModeButton?.textContent.trim() === '메모', '데스크톱 또는 모바일 캘린더에 메모 뷰 버튼이 없습니다.');
+  assert(desktopNotesViewButton?.textContent.trim() === '메모' && mobileNotesViewButton?.textContent.trim() === '메모', '데스크톱 또는 모바일 최상위 탐색에 메모 뷰 버튼이 없습니다.');
+  assert(!indexDom.window.document.getElementById('btn-cal-mode-notes') && !indexDom.window.document.getElementById('btn-cal-mode-notes-m'), '캘린더 하위 모드에 이전 메모 버튼이 남아 있습니다.');
+  assert(indexDom.window.document.getElementById('view-notes')?.contains(indexDom.window.document.getElementById('notes-content')), '독립 메모 뷰 콘텐츠 영역이 없습니다.');
   assert(indexDom.window.document.getElementById('btn-cal-ux-notes-only-m')?.getAttribute('aria-pressed') === 'false', '모바일 메모만 보기 토글의 초기 접근성 상태가 없습니다.');
   assert(indexDom.window.document.querySelector('#todo-calendar-section p')?.textContent.trim() === 'To-do 캘린더', 'To-do 캘린더 헤더가 한국어 UI 문구를 따르지 않습니다.');
   assert(indexDom.window.document.querySelector('#empty-state-kanban h3')?.textContent.trim() === '칸반에 표시할 업무가 없습니다.', '칸반 빈 상태 문구가 일관되지 않습니다.');
@@ -294,6 +315,9 @@ async function main() {
   assert(/statusFilter\.value = statusFilter\.value === status \? 'ALL' : status/.test(appSource), '활성 상태 KPI 버튼을 다시 눌렀을 때 필터가 해제되지 않습니다.');
   assert(/priorityFilter\.value = priorityFilter\.value === priority \? 'ALL' : priority/.test(appSource), '활성 High KPI 버튼을 다시 눌렀을 때 필터가 해제되지 않습니다.');
   assert(/function getFilteredTasks\(options = \{\}\)[^]*!options\.ignoreDateRange[^]*getFilteredTasks\(\{ ignoreDateRange: true \}\)[^]*renderMobileCalendar\(filtered, noteTaskScope\)[^]*renderCalendar\(filtered, noteTaskScope\)/.test(appSource), '월간 메모 연결 업무 범위가 날짜 필터와 독립적으로 데스크톱·모바일 캘린더에 전달되지 않습니다.');
+  assert(/function updateViewFilterContext[^]*mode === ['"]NOTES['"][^]*메모 기간/.test(appSource), '독립 메모 뷰가 공유 기간 필터의 문맥을 메모 기간으로 전환하지 않습니다.');
+  assert(/currentViewMode===['"]NOTES['"][^]*getFilteredTasks\(\{ ignoreDateRange: true \}\)[^]*notes-content[^]*renderCalendarNotesView/.test(appSource), '독립 메모 뷰가 기간과 무관한 연결 업무 범위 또는 전용 콘텐츠 영역을 사용하지 않습니다.');
+  assert(/btn-view-notes[^]*switchView[^]*NOTES[^]*btn-view-notes-mobile[^]*switchView[^]*NOTES/.test(eventBindingsSource), '데스크톱 또는 모바일 메모 뷰 전환 이벤트가 없습니다.');
   assert(/btn-toggle-all-table-subtasks[^]*addEventListener\('click',toggleAllTableSubTasks\)/.test(eventBindingsSource), '서브 태스크 전체 펼치기 버튼의 클릭 연결이 없습니다.');
   assert(/btn-list-note[^]*openTaskNoteFromList/.test(appSource), '목록 메모 핀의 클릭 연결이 없습니다.');
   assert(/btn-list-note-count[^]*openLatestListTaskNote/.test(appSource), '목록 메모 수 버튼의 최근 메모 연결이 없습니다.');
@@ -384,7 +408,7 @@ async function main() {
     subTasks: []
   };
   await global.ensureListProgressNoteSummaryLoaded(global.currentTrackerId);
-  assert(global.getListProgressNoteSummary('task-1').count === 2, '본 업무의 메모 수가 정확히 집계되지 않습니다.');
+  assert(global.getListProgressNoteSummary('task-1').count === 3, '본 업무의 메모 수가 정확히 집계되지 않습니다.');
   assert(global.getListProgressNoteSummary('task-1__sub_sub-1').count === 1, '서브 태스크의 메모 수가 정확히 집계되지 않습니다.');
   const calendarMonthNotes = global.getCalendarProgressNotesForMonth(
     global.getCachedTrackerProgressNotes(global.currentTrackerId),
@@ -575,7 +599,7 @@ async function main() {
   assert(!document.querySelector('.mobile-command-deck'), '모바일 목록에 중복 Focus 및 Risk 제어 영역이 남아 있습니다.');
   assert(document.querySelector('#task-card-container .btn-list-note[data-task-id="task-1"]:not([data-subtask-id])'), '모바일 본 업무 제목 옆 메모 핀이 없습니다.');
   assert(document.querySelector('#task-card-container .btn-list-note[data-task-id="task-1"][data-subtask-id="sub-1"]'), '모바일 서브 태스크 제목 옆 메모 핀이 없습니다.');
-  assert(document.querySelector('#task-card-container .btn-list-note-count[data-task-id="task-1"]')?.textContent.trim() === '2', '모바일 본 업무 메모 수가 핀 옆에 표시되지 않습니다.');
+  assert(document.querySelector('#task-card-container .btn-list-note-count[data-task-id="task-1"]')?.textContent.trim() === '3', '모바일 본 업무 메모 수가 핀 옆에 표시되지 않습니다.');
   assert(document.querySelector('#task-card-container .btn-list-note-count[data-task-id="task-1__sub_sub-1"]')?.textContent.trim() === '1', '모바일 서브 태스크 메모 수가 핀 옆에 표시되지 않습니다.');
   assert(!document.querySelector('#task-card-container .btn-delete'), '모바일 목록에 개별 삭제 버튼이 남아 있습니다.');
   assert(document.querySelector('.btn-toggle-subtasks[data-expanded="true"]'), '하위 업무 펼침 상태가 렌더링되지 않았습니다.');
@@ -686,16 +710,29 @@ async function main() {
   assert(summary.querySelector('[data-task-id="task-1__sub_sub-1"]')?.querySelectorAll('[data-summary-note-entry]').length === 1, '하위 업무 메모가 해당 하위 업무 카드에 분리되지 않았습니다.');
   assert(summary.textContent.includes('취소 1'), '월별 요약에 취소 업무 집계가 없습니다.');
 
-  global.currentCalMode = 'NOTES';
-  window.currentCalMode = 'NOTES';
+  global.currentViewMode = 'NOTES';
+  window.currentViewMode = 'NOTES';
+  document.getElementById('filter-start-month').value = '2026-06';
+  document.getElementById('filter-end-month').value = '2026-07';
   await global.renderCalendarNotesView({
-    grid: document.getElementById('cal-mobile-content'),
-    year: 2026,
-    month: 6,
+    grid: document.getElementById('notes-content'),
+    year: 2030,
+    month: 0,
     noteTaskScope: [...tasks, cancelledTask, outsideMonthTask]
   });
-  const notesView = document.getElementById('cal-mobile-content');
-  assert(notesView.querySelector('[data-calendar-notes-view]'), '월별 메모 리스트 뷰가 렌더링되지 않았습니다.');
+  const notesView = document.getElementById('notes-content');
+  assert(notesView.querySelector('[data-calendar-notes-view]'), '기간별 메모 리스트 뷰가 렌더링되지 않았습니다.');
+  assert(notesView.querySelectorAll('[data-calendar-note-list-item]').length === 5, '메모 뷰가 선택 월과 무관하게 지정 기간의 메모를 표시하지 않습니다.');
+  assert(notesView.textContent.includes('2026년 6월 – 2026년 7월 메모'), '메모 뷰에 적용된 조회 기간이 표시되지 않습니다.');
+
+  document.getElementById('filter-start-month').value = '2026-07';
+  document.getElementById('filter-end-month').value = '2026-07';
+  await global.renderCalendarNotesView({
+    grid: document.getElementById('notes-content'),
+    year: 2030,
+    month: 0,
+    noteTaskScope: [...tasks, cancelledTask, outsideMonthTask]
+  });
   assert(notesView.querySelectorAll('[data-calendar-note-list-item]').length === 4, '메모 뷰가 일정 밖 실행 메모를 포함한 월간 메모 전체를 표시하지 않습니다.');
   assert(notesView.textContent.includes('일정 밖 실행 메모'), '메모 뷰에 태스크 일정 밖 실행일의 메모가 없습니다.');
   const notesWorkTypeFilter = notesView.querySelector('[data-calendar-notes-work-type]');

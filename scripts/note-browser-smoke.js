@@ -479,14 +479,14 @@ async function main() {
         window.closeModal();
         document.getElementById('toast')?.classList.add('opacity-0');
         window.__noteBrowserNotes[0].reviewComments = [...window.__noteBrowserComments];
-        currentCalDate = new Date();
-        switchView('CALENDAR');
-        setCalMode('NOTES');
+        document.getElementById('filter-start-month').value = '2026-01';
+        document.getElementById('filter-end-month').value = '2026-12';
+        switchView('NOTES');
       })()
     `);
-    await waitFor(client, `document.querySelector('#cal-mobile-content [data-calendar-notes-view]')`, 'Mobile monthly note list did not render.');
+    await waitFor(client, `document.querySelector('#notes-content [data-calendar-notes-view]')`, 'Mobile top-level period-filtered note list did not render.');
     const mobileNotesView = await evaluate(client, `(() => {
-      const root = document.querySelector('#cal-mobile-content [data-calendar-notes-view]');
+      const root = document.querySelector('#notes-content [data-calendar-notes-view]');
       const workType = root.querySelector('[data-calendar-notes-work-type]');
       const comments = root.querySelector('[data-calendar-notes-comments-only]');
       workType.value = window.__noteBrowserNotes[0].workType;
@@ -497,7 +497,10 @@ async function main() {
         commentsPressed: comments.getAttribute('aria-pressed'),
         pageFits: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1,
         rootFits: root.scrollWidth <= document.documentElement.clientWidth + 1,
-        activeTab: document.getElementById('btn-cal-mode-notes-m').classList.contains('bg-white')
+        activeTab: document.getElementById('btn-view-notes-mobile').classList.contains('bg-white'),
+        calendarHidden: document.getElementById('view-calendar-mobile').hidden,
+        dateLabel: document.getElementById('mobile-filter-date-label').textContent.trim(),
+        hasRangeHeading: root.textContent.includes('2026년 1월 – 2026년 12월 메모')
       };
     })()`);
     assert.equal(mobileNotesView.itemCount, 1);
@@ -505,6 +508,9 @@ async function main() {
     assert.equal(mobileNotesView.pageFits, true);
     assert.equal(mobileNotesView.rootFits, true);
     assert.equal(mobileNotesView.activeTab, true);
+    assert.equal(mobileNotesView.calendarHidden, true);
+    assert.equal(mobileNotesView.dateLabel, '메모 기간');
+    assert.equal(mobileNotesView.hasRangeHeading, true);
 
     if (process.env.NOTE_VIEW_SCREENSHOT) {
       await delay(350);
@@ -520,15 +526,19 @@ async function main() {
       mobile: false
     });
     await evaluate(client, 'renderActiveViews()');
-    await waitFor(client, `document.querySelector('#calendar-grid [data-calendar-notes-view]')`, 'Desktop monthly note list did not render.');
+    await waitFor(client, `document.querySelector('#notes-content [data-calendar-notes-view]')`, 'Desktop top-level period-filtered note list did not render.');
     const desktopNotesView = await evaluate(client, `(() => ({
-      itemCount: document.querySelectorAll('#calendar-grid [data-calendar-note-list-item]').length,
+      itemCount: document.querySelectorAll('#notes-content [data-calendar-note-list-item]').length,
       pageFits: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1,
-      activeTab: document.getElementById('btn-cal-mode-notes').classList.contains('bg-white')
+      activeTab: document.getElementById('btn-view-notes').classList.contains('bg-white'),
+      calendarHidden: document.getElementById('view-calendar').hidden,
+      dateLabel: document.getElementById('filter-date-label').textContent.trim()
     }))()`);
     assert.equal(desktopNotesView.itemCount, 1);
     assert.equal(desktopNotesView.pageFits, true);
     assert.equal(desktopNotesView.activeTab, true);
+    assert.equal(desktopNotesView.calendarHidden, true);
+    assert.equal(desktopNotesView.dateLabel, '메모 기간:');
 
     const runtimeErrors = await evaluate(client, 'window.__noteBrowserSmokeErrors');
     assert.deepEqual(runtimeErrors, []);

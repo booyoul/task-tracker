@@ -1,15 +1,25 @@
-console.info('Smart Task Flow calendar-notes-renderer.js v20260804-v1 loaded');
+console.info('Smart Task Flow calendar-notes-renderer.js v20260805-v3 loaded');
 
 let _calendarNotesRenderToken = 0;
 
-async function renderCalendarNotesView({ weekdayHeader, grid, year, month, noteTaskScope = [] }) {
+async function renderCalendarNotesView({ weekdayHeader, grid, noteTaskScope = [] }) {
     if (!grid) return;
     const renderToken = ++_calendarNotesRenderToken;
-    const desktopTitle = document.getElementById('calendar-month-year');
-    if (desktopTitle) desktopTitle.textContent = `${year}년 ${month + 1}월 메모`;
+    const startMonth = document.getElementById('filter-start-month')?.value || '';
+    const endMonth = document.getElementById('filter-end-month')?.value || '';
+    const formatMonth = value => {
+        if (!/^\d{4}-\d{2}$/.test(value)) return '';
+        const [rangeYear, rangeMonth] = value.split('-').map(Number);
+        return `${rangeYear}년 ${rangeMonth}월`;
+    };
+    const rangeLabel = startMonth && endMonth
+        ? (startMonth === endMonth ? formatMonth(startMonth) : `${formatMonth(startMonth)} – ${formatMonth(endMonth)}`)
+        : (startMonth ? `${formatMonth(startMonth)} 이후` : (endMonth ? `${formatMonth(endMonth)} 이전` : '전체 기간'));
     if (weekdayHeader) weekdayHeader.classList.add('hidden');
 
-    const isMobile = grid.id === 'cal-mobile-content';
+    const isMobile = window.matchMedia
+        ? window.matchMedia('(max-width: 1023px)').matches
+        : window.innerWidth < 1024;
     grid.className = isMobile
         ? 'flex min-h-[250px] flex-col gap-3 bg-white p-3 pb-24 dark:bg-slate-950'
         : 'flex min-h-[250px] flex-col gap-3 rounded-xl border border-slate-100 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950';
@@ -19,11 +29,11 @@ async function renderCalendarNotesView({ weekdayHeader, grid, year, month, noteT
         </div>`;
 
     try {
-        const { monthNotes } = await loadCalendarNotesForMonth({ year, month, noteTaskScope });
+        const { notes: rangeNotes } = await loadCalendarNotesForRange({ startMonth, endMonth, noteTaskScope });
         if (renderToken !== _calendarNotesRenderToken) return;
-        if (typeof currentCalMode !== 'undefined' && currentCalMode !== 'NOTES') return;
+        if (typeof currentViewMode !== 'undefined' && currentViewMode !== 'NOTES') return;
 
-        const notes = [...monthNotes].sort((a, b) => b.createdAtTime - a.createdAtTime);
+        const notes = [...rangeNotes].sort((a, b) => b.createdAtTime - a.createdAtTime);
         const workTypes = [...new Map(
             notes
                 .filter(note => note.workTypeKey)
@@ -40,8 +50,8 @@ async function renderCalendarNotesView({ weekdayHeader, grid, year, month, noteT
                             <div class="flex items-center gap-2">
                                 <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 text-sm dark:bg-amber-950/40" aria-hidden="true">📌</span>
                                 <div>
-                                    <h3 class="text-sm font-black text-slate-900 dark:text-slate-100">${year}년 ${month + 1}월 메모</h3>
-                                    <p class="mt-0.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">기록일 최신순으로 메모를 확인합니다.</p>
+                                    <h3 class="text-sm font-black text-slate-900 dark:text-slate-100">${escapeHTML(rangeLabel)} 메모</h3>
+                                    <p class="mt-0.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">메모 기록일 기준 · 최신순</p>
                                 </div>
                             </div>
                         </div>
@@ -123,8 +133,8 @@ async function renderCalendarNotesView({ weekdayHeader, grid, year, month, noteT
             if (filteredNotes.length === 0) {
                 list.innerHTML = `
                     <div class="px-5 py-12 text-center">
-                        <p class="text-sm font-bold text-slate-500 dark:text-slate-400">${notes.length ? '선택한 조건에 맞는 메모가 없습니다.' : '이 달에 기록된 메모가 없습니다.'}</p>
-                        <p class="mt-1 text-xs text-slate-400">다른 월이나 메모 유형을 확인해 주세요.</p>
+                        <p class="text-sm font-bold text-slate-500 dark:text-slate-400">${notes.length ? '선택한 조건에 맞는 메모가 없습니다.' : '선택한 기간에 기록된 메모가 없습니다.'}</p>
+                        <p class="mt-1 text-xs text-slate-400">다른 기간이나 메모 유형을 확인해 주세요.</p>
                     </div>`;
             } else {
                 filteredNotes.forEach(note => list.appendChild(createNoteRow(note)));

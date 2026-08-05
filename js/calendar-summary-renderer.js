@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-summary-renderer.js v20260804-v3 loaded');
+console.info('Smart Task Flow calendar-summary-renderer.js v20260805-v4 loaded');
 
 function getSummaryNoteDate(note = {}) {
     if (note.noteDate && /^\d{4}-\d{2}-\d{2}$/.test(note.noteDate)) {
@@ -111,18 +111,29 @@ function buildSummaryNoteItem(note, taskList) {
     };
 }
 
-async function loadCalendarNotesForMonth({ year, month, noteTaskScope = [] }) {
+function getCalendarNoteMonthBoundary(monthValue, isEnd = false) {
+    if (!/^\d{4}-\d{2}$/.test(monthValue || '')) return null;
+    const [year, month] = monthValue.split('-').map(Number);
+    if (!Number.isInteger(year) || month < 1 || month > 12) return null;
+    return isEnd
+        ? new Date(year, month, 0, 23, 59, 59, 999)
+        : new Date(year, month - 1, 1);
+}
+
+async function loadCalendarNotesForRange({ startMonth = '', endMonth = '', noteTaskScope = [] }) {
     let trackerNotes = [];
     if (typeof window.db_fetchTrackerProgressNotes === 'function' && window.currentTrackerId) {
         trackerNotes = await window.db_fetchTrackerProgressNotes(window.currentTrackerId);
     }
 
-    const monthStart = new Date(year, month, 1);
-    const monthEnd = new Date(year, month + 1, 0, 23, 59, 59);
+    const rangeStart = getCalendarNoteMonthBoundary(startMonth, false);
+    const rangeEnd = getCalendarNoteMonthBoundary(endMonth, true);
     const activeTaskIds = new Set(noteTaskScope.map(task => task.id));
-    const monthNotes = trackerNotes.filter(note => {
+    const notes = trackerNotes.filter(note => {
         const noteDate = getSummaryNoteDate(note);
-        if (!noteDate || noteDate < monthStart || noteDate > monthEnd || !note.taskId) return false;
+        if (!noteDate || !note.taskId) return false;
+        if (rangeStart && noteDate < rangeStart) return false;
+        if (rangeEnd && noteDate > rangeEnd) return false;
 
         const [baseTaskId, subTaskId] = note.taskId.split('__sub_');
         if (!activeTaskIds.has(baseTaskId)) return false;
@@ -132,7 +143,17 @@ async function loadCalendarNotesForMonth({ year, month, noteTaskScope = [] }) {
         return Boolean(parentTask?.subTasks?.some(subTask => subTask.id === subTaskId));
     }).map(note => buildSummaryNoteItem(note, noteTaskScope));
 
-    return { trackerNotes, monthNotes };
+    return { trackerNotes, notes };
+}
+
+async function loadCalendarNotesForMonth({ year, month, noteTaskScope = [] }) {
+    const monthValue = `${year}-${String(month + 1).padStart(2, '0')}`;
+    const { trackerNotes, notes } = await loadCalendarNotesForRange({
+        startMonth: monthValue,
+        endMonth: monthValue,
+        noteTaskScope
+    });
+    return { trackerNotes, monthNotes: notes };
 }
 
 // Helper functions for monthly calculations

@@ -1,10 +1,10 @@
-console.info('Smart Task Flow calendar-mobile-renderer.js v20260804-v7 loaded');
+console.info('Smart Task Flow calendar-mobile-renderer.js v20260805-v9 loaded');
 
 // ============================================================
 //  모바일 전용 캘린더 렌더러
 //  - 일별 뷰: 선택 월의 날짜별 업무 리스트 카드
 //  - 월별 뷰: 12개월 업무 현황 요약 리스트
-//  - 요약/메모 뷰: 데스크탑과 동일한 월간 렌더러 호출
+//  - 요약 뷰: 데스크탑과 동일한 월간 렌더러 호출
 // ============================================================
 
 function renderMobileCalendar(filtered, noteTaskScope = filtered) {
@@ -22,8 +22,6 @@ function renderMobileCalendar(filtered, noteTaskScope = filtered) {
       monthYearEl.textContent = year + '년 연간 현황';
     } else if (mode === 'SUMMARY') {
       monthYearEl.textContent = year + '년 ' + (month + 1) + '월 요약';
-    } else if (mode === 'NOTES') {
-      monthYearEl.textContent = year + '년 ' + (month + 1) + '월 메모';
     } else {
       monthYearEl.textContent = year + '년 ' + (month + 1) + '월';
     }
@@ -43,12 +41,6 @@ function renderMobileCalendar(filtered, noteTaskScope = filtered) {
     } else {
       content.innerHTML = '<p class="text-slate-400 text-sm text-center py-8">요약 뷰를 불러올 수 없습니다.</p>';
     }
-  } else if (mode === 'NOTES') {
-    if (typeof renderCalendarNotesView === 'function') {
-      renderCalendarNotesView({ grid: content, year, month, noteTaskScope });
-    } else {
-      content.innerHTML = '<p class="py-8 text-center text-sm text-slate-400">메모 뷰를 불러올 수 없습니다.</p>';
-    }
   } else {
     const activeTrackerId = String(window.currentTrackerId || (typeof currentTrackerId !== 'undefined' ? currentTrackerId : ''));
     if (typeof ensureListProgressNoteSummaryLoaded === 'function') ensureListProgressNoteSummaryLoaded(activeTrackerId);
@@ -66,11 +58,9 @@ function _updateMobileCalModeButtons(mode) {
   const dayBtn = document.getElementById('btn-cal-mode-day-m');
   const monthBtn = document.getElementById('btn-cal-mode-month-m');
   const summaryBtn = document.getElementById('btn-cal-mode-summary-m');
-  const notesBtn = document.getElementById('btn-cal-mode-notes-m');
   if (dayBtn) dayBtn.className = mode === 'DAY' ? active : inactive;
   if (monthBtn) monthBtn.className = mode === 'MONTH' ? active : inactive;
   if (summaryBtn) summaryBtn.className = mode === 'SUMMARY' ? active : inactive;
-  if (notesBtn) notesBtn.className = mode === 'NOTES' ? active : inactive;
 }
 
 function _updateMobileCalendarNotesOnlyControl(mode) {
@@ -655,11 +645,6 @@ function initMobileCalendarEvents() {
   document.getElementById('btn-cal-mode-summary-m')?.addEventListener('click', function() {
     currentCalMode = 'SUMMARY';
     if (typeof setCalMode === 'function') setCalMode('SUMMARY');
-    else if (typeof renderActiveViews === 'function') renderActiveViews();
-  });
-  document.getElementById('btn-cal-mode-notes-m')?.addEventListener('click', function() {
-    currentCalMode = 'NOTES';
-    if (typeof setCalMode === 'function') setCalMode('NOTES');
     else if (typeof renderActiveViews === 'function') renderActiveViews();
   });
   document.getElementById('btn-cal-ux-notes-only-m')?.addEventListener('click', function() {

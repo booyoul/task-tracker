@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow event-bindings.js v20260804-v2 loaded');
+console.info('Smart Task Flow event-bindings.js v20260805-v3 loaded');
 
 function initEventBindings(){
   if(window.__eventBindingsInitialized)return;
@@ -75,13 +75,13 @@ function initEventBindings(){
   document.getElementById('cal-mobile-content')?.addEventListener('change',handleTableChange);
   document.getElementById('btn-view-table')?.addEventListener('click',()=>window.switchView?.('TABLE'));
   document.getElementById('btn-view-calendar')?.addEventListener('click',()=>window.switchView?.('CALENDAR'));
+  document.getElementById('btn-view-notes')?.addEventListener('click',()=>window.switchView?.('NOTES'));
   document.getElementById('btn-view-kanban')?.addEventListener('click',()=>window.switchView?.('KANBAN'));
   document.getElementById('btn-view-admin')?.addEventListener('click',()=>window.switchView?.('ADMIN'));
 
   document.getElementById('btn-cal-mode-day')?.addEventListener('click',()=>setCalMode('DAY'));
   document.getElementById('btn-cal-mode-month')?.addEventListener('click',()=>setCalMode('MONTH'));
   document.getElementById('btn-cal-mode-summary')?.addEventListener('click',()=>setCalMode('SUMMARY'));
-  document.getElementById('btn-cal-mode-notes')?.addEventListener('click',()=>setCalMode('NOTES'));
   document.getElementById('btn-prev-month')?.addEventListener('click',()=>{currentCalDate.setMonth(currentCalDate.getMonth()-1);renderActiveViews();});
   document.getElementById('btn-today-month')?.addEventListener('click',()=>{currentCalDate=new Date();renderActiveViews();});
   document.getElementById('btn-next-month')?.addEventListener('click',()=>{currentCalDate.setMonth(currentCalDate.getMonth()+1);renderActiveViews();});
@@ -195,6 +195,7 @@ function initEventBindings(){
   // 모바일 뷰 전환 버튼 이벤트 바인딩
   document.getElementById('btn-view-table-mobile')?.addEventListener('click',()=>window.switchView?.('TABLE'));
   document.getElementById('btn-view-calendar-mobile')?.addEventListener('click',()=>window.switchView?.('CALENDAR'));
+  document.getElementById('btn-view-notes-mobile')?.addEventListener('click',()=>window.switchView?.('NOTES'));
   document.getElementById('btn-view-kanban-mobile')?.addEventListener('click',()=>window.switchView?.('KANBAN'));
   document.getElementById('btn-view-admin-mobile')?.addEventListener('click',()=>window.switchView?.('ADMIN'));
 
