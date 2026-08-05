@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-notes-renderer.js v20260805-v3 loaded');
+console.info('Smart Task Flow calendar-notes-renderer.js v20260805-v4 loaded');
 
 let _calendarNotesRenderToken = 0;
 
@@ -40,7 +40,8 @@ async function renderCalendarNotesView({ weekdayHeader, grid, noteTaskScope = []
                 .map(note => [note.workTypeKey, note.workTypeDisplayLabel || note.workTypeKey])
         ).entries()].sort((a, b) => a[1].localeCompare(b[1], 'ko'));
         const hasUncategorizedNotes = notes.some(note => !note.workTypeKey);
-        const filterState = { workType: 'all', commentsOnly: false };
+        const pageSize = 20;
+        const filterState = { workType: 'all', commentsOnly: false, currentPage: 1 };
 
         grid.innerHTML = `
             <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900" data-calendar-notes-view>
@@ -72,12 +73,21 @@ async function renderCalendarNotesView({ weekdayHeader, grid, noteTaskScope = []
                     </div>
                 </header>
                 <div class="divide-y divide-slate-100 dark:divide-slate-800" data-calendar-notes-list></div>
+                <nav class="hidden items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 dark:border-slate-800 sm:px-5" data-calendar-notes-pagination aria-label="메모 페이지 이동">
+                    <button type="button" data-calendar-notes-prev class="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-amber-300 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">이전</button>
+                    <span class="text-xs font-black tabular-nums text-slate-600 dark:text-slate-300" data-calendar-notes-page-status></span>
+                    <button type="button" data-calendar-notes-next class="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-amber-300 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">다음</button>
+                </nav>
             </section>`;
 
         const list = grid.querySelector('[data-calendar-notes-list]');
         const count = grid.querySelector('[data-calendar-notes-count]');
         const workTypeFilter = grid.querySelector('[data-calendar-notes-work-type]');
         const commentsToggle = grid.querySelector('[data-calendar-notes-comments-only]');
+        const pagination = grid.querySelector('[data-calendar-notes-pagination]');
+        const pageStatus = grid.querySelector('[data-calendar-notes-page-status]');
+        const prevButton = grid.querySelector('[data-calendar-notes-prev]');
+        const nextButton = grid.querySelector('[data-calendar-notes-next]');
 
         function getFilteredNotes() {
             return notes.filter(note => {
@@ -129,6 +139,10 @@ async function renderCalendarNotesView({ weekdayHeader, grid, noteTaskScope = []
 
         function renderList() {
             const filteredNotes = getFilteredNotes();
+            const totalPages = Math.max(1, Math.ceil(filteredNotes.length / pageSize));
+            filterState.currentPage = Math.min(Math.max(filterState.currentPage, 1), totalPages);
+            const pageStart = (filterState.currentPage - 1) * pageSize;
+            const visibleNotes = filteredNotes.slice(pageStart, pageStart + pageSize);
             list.innerHTML = '';
             if (filteredNotes.length === 0) {
                 list.innerHTML = `
@@ -137,9 +151,16 @@ async function renderCalendarNotesView({ weekdayHeader, grid, noteTaskScope = []
                         <p class="mt-1 text-xs text-slate-400">다른 기간이나 메모 유형을 확인해 주세요.</p>
                     </div>`;
             } else {
-                filteredNotes.forEach(note => list.appendChild(createNoteRow(note)));
+                visibleNotes.forEach(note => list.appendChild(createNoteRow(note)));
             }
-            count.textContent = `메모 ${filteredNotes.length}/${notes.length}건`;
+            count.textContent = totalPages > 1
+                ? `메모 ${filteredNotes.length}/${notes.length}건 · ${filterState.currentPage}/${totalPages}페이지`
+                : `메모 ${filteredNotes.length}/${notes.length}건`;
+            pagination.classList.toggle('hidden', totalPages <= 1);
+            pagination.classList.toggle('flex', totalPages > 1);
+            pageStatus.textContent = `${filterState.currentPage} / ${totalPages} 페이지`;
+            prevButton.disabled = filterState.currentPage <= 1;
+            nextButton.disabled = filterState.currentPage >= totalPages;
             commentsToggle.setAttribute('aria-pressed', String(filterState.commentsOnly));
             commentsToggle.classList.toggle('border-amber-400', filterState.commentsOnly);
             commentsToggle.classList.toggle('bg-amber-50', filterState.commentsOnly);
@@ -151,10 +172,23 @@ async function renderCalendarNotesView({ weekdayHeader, grid, noteTaskScope = []
 
         workTypeFilter?.addEventListener('change', event => {
             filterState.workType = event.target.value || 'all';
+            filterState.currentPage = 1;
             renderList();
         });
         commentsToggle?.addEventListener('click', () => {
             filterState.commentsOnly = !filterState.commentsOnly;
+            filterState.currentPage = 1;
+            renderList();
+        });
+        prevButton?.addEventListener('click', () => {
+            if (filterState.currentPage <= 1) return;
+            filterState.currentPage -= 1;
+            renderList();
+        });
+        nextButton?.addEventListener('click', () => {
+            const totalPages = Math.max(1, Math.ceil(getFilteredNotes().length / pageSize));
+            if (filterState.currentPage >= totalPages) return;
+            filterState.currentPage += 1;
             renderList();
         });
         renderList();

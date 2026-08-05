@@ -934,6 +934,8 @@ function updateUndoButton() {
 }
 function resetFilters() {
   ['filter-search', 'filter-start-month', 'filter-end-month', 'mobile-filter-start-month', 'mobile-filter-end-month'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const clearSearchButton = document.getElementById('btn-clear-search');
+  if (clearSearchButton) clearSearchButton.disabled = true;
   ['filter-status', 'filter-priority', 'mobile-filter-status', 'mobile-filter-priority'].forEach(id => { const el = document.getElementById(id); if (el) el.value = 'ALL'; });
   focusState.riskOnly = false;
   focusState.highOnly = false;

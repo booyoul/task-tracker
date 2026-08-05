@@ -801,6 +801,9 @@
   .min-w-7 {
     min-width: calc(var(--spacing) * 7);
   }
+  .min-w-11 {
+    min-width: calc(var(--spacing) * 11);
+  }
   .min-w-\[3\.5rem\] {
     min-width: 3.5rem;
   }
@@ -2981,6 +2984,11 @@
       --tw-ring-color: var(--color-indigo-100);
     }
   }
+  .focus\:ring-indigo-200 {
+    &:focus {
+      --tw-ring-color: var(--color-indigo-200);
+    }
+  }
   .focus\:ring-indigo-300 {
     &:focus {
       --tw-ring-color: var(--color-indigo-300);
@@ -3010,6 +3018,11 @@
   .focus\:ring-inset {
     &:focus {
       --tw-ring-inset: inset;
+    }
+  }
+  .active\:scale-\[0\.97\] {
+    &:active {
+      scale: 0.97;
     }
   }
   .active\:scale-\[0\.98\] {
@@ -4316,6 +4329,15 @@
       }
     }
   }
+  .dark\:hover\:border-indigo-600 {
+    &:where(.dark, .dark *) {
+      &:hover {
+        @media (hover: hover) {
+          border-color: var(--color-indigo-600);
+        }
+      }
+    }
+  }
   .dark\:hover\:border-indigo-700 {
     &:where(.dark, .dark *) {
       &:hover {
@@ -4595,6 +4617,13 @@
       }
     }
   }
+  .dark\:focus\:border-indigo-500 {
+    &:where(.dark, .dark *) {
+      &:focus {
+        border-color: var(--color-indigo-500);
+      }
+    }
+  }
   .dark\:focus\:border-violet-500 {
     &:where(.dark, .dark *) {
       &:focus {
@@ -4616,6 +4645,13 @@
         @supports (color: color-mix(in lab, red, red)) {
           --tw-ring-color: color-mix(in oklab, var(--color-amber-950) 50%, transparent);
         }
+      }
+    }
+  }
+  .dark\:focus\:ring-indigo-950 {
+    &:where(.dark, .dark *) {
+      &:focus {
+        --tw-ring-color: var(--color-indigo-950);
       }
     }
   }

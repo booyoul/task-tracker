@@ -522,15 +522,24 @@
                 </div>
                 <div class="flex flex-col gap-3">
                     <!-- 공통 검색 영역 -->
-                    <div class="relative w-full">
-                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    <div class="flex w-full items-center gap-2">
+                        <div class="relative min-w-0 flex-1">
+                            <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                            </span>
+                            <input type="text" id="filter-search" placeholder="업무명 또는 담당자 검색..."
+                                class="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-3 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-indigo-500 dark:focus:bg-slate-800 dark:focus:ring-indigo-950">
+                        </div>
+                        <button type="button" id="btn-clear-search" disabled
+                            class="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-slate-500 shadow-sm transition hover:border-indigo-300 hover:text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-200 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-indigo-600 dark:hover:text-indigo-300 dark:focus:ring-indigo-950"
+                            aria-label="검색어 지우기" title="검색어만 지우기">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                             </svg>
-                        </span>
-                        <input type="text" id="filter-search" placeholder="업무명 또는 담당자 검색..."
-                            class="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-3 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100">
+                        </button>
                     </div>
 
                     <!-- 모바일용 필터 컨트롤러 버튼 -->
@@ -1878,7 +1887,7 @@
     <script defer src="./js/calendar-day-renderer.js?v=20260804-v17"></script>
     <script defer src="./js/calendar-month-renderer.js?v=20260724-v12"></script>
     <script defer src="./js/calendar-summary-renderer.js?v=20260805-v4"></script>
-    <script defer src="./js/calendar-notes-renderer.js?v=20260805-v3"></script>
+    <script defer src="./js/calendar-notes-renderer.js?v=20260805-v4"></script>
     <script defer src="./js/calendar-mobile-renderer.js?v=20260805-v9"></script>
     <script defer src="./js/table-mobile-renderer.js?v=20260805-v18"></script>
     <script defer src="./js/kanban-renderer.js?v=20260731-v13"></script>
@@ -1887,9 +1896,9 @@
     <script defer src="./js/todo-controller.js?v=20260802-v1"></script>
     <script defer src="./js/admin-approvals.js?v=20260731-v2"></script>
     <script defer src="./js/month-picker-controller.js?v=20260731-v2"></script>
-    <script defer src="./js/event-bindings.js?v=20260805-v3"></script>
+    <script defer src="./js/event-bindings.js?v=20260805-v4"></script>
     <script defer src="./js/bootstrap-service.js?v=20260727-v12"></script>
-    <script defer src="./js/app.js?v=20260805-v9"></script>
+    <script defer src="./js/app.js?v=20260805-v10"></script>
     <script defer src="./js/task-service.js?v=20260724-v3"></script>
     <script defer src="./js/export-service.js?v=20260714-v2"></script>
 </body>

@@ -481,6 +481,30 @@ async function main() {
         window.__noteBrowserNotes[0].reviewComments = [...window.__noteBrowserComments];
         document.getElementById('filter-start-month').value = '2026-01';
         document.getElementById('filter-end-month').value = '2026-12';
+        for (let index = 1; index <= 24; index += 1) {
+          window.__noteBrowserNotes.push({
+            id: 'note-browser-page-' + index,
+            taskId: 'task-note-browser',
+            trackerId: currentTrackerId,
+            title: '페이지 검증 메모 ' + index,
+            body: '20건 단위 페이지 이동 검증',
+            noteDate: '2026-02-' + String(index).padStart(2, '0'),
+            createdBy: window.currentUser.uid,
+            createdByName: window.currentUser.displayName,
+            createdAt: new Date('2026-02-' + String(index).padStart(2, '0') + 'T09:00:00+09:00').toISOString(),
+            reviewComments: []
+          });
+        }
+        const sharedSearch = document.getElementById('filter-search');
+        sharedSearch.value = '메모 브라우저';
+        sharedSearch.dispatchEvent(new Event('input', { bubbles: true }));
+        document.getElementById('btn-clear-search').click();
+        window.__noteSearchClearState = {
+          search: sharedSearch.value,
+          startMonth: document.getElementById('filter-start-month').value,
+          endMonth: document.getElementById('filter-end-month').value,
+          disabled: document.getElementById('btn-clear-search').disabled
+        };
         switchView('NOTES');
       })()
     `);
@@ -489,11 +513,22 @@ async function main() {
       const root = document.querySelector('#notes-content [data-calendar-notes-view]');
       const workType = root.querySelector('[data-calendar-notes-work-type]');
       const comments = root.querySelector('[data-calendar-notes-comments-only]');
+      const initialItemCount = root.querySelectorAll('[data-calendar-note-list-item]').length;
+      const initialPageStatus = root.querySelector('[data-calendar-notes-page-status]').textContent.trim();
+      root.querySelector('[data-calendar-notes-next]').click();
+      const nextPageItemCount = root.querySelectorAll('[data-calendar-note-list-item]').length;
+      const nextPageStatus = root.querySelector('[data-calendar-notes-page-status]').textContent.trim();
+      root.querySelector('[data-calendar-notes-prev]').click();
       workType.value = window.__noteBrowserNotes[0].workType;
       workType.dispatchEvent(new Event('change', { bubbles: true }));
       comments.click();
       return {
         itemCount: root.querySelectorAll('[data-calendar-note-list-item]').length,
+        initialItemCount,
+        initialPageStatus,
+        nextPageItemCount,
+        nextPageStatus,
+        paginationHiddenAfterFilter: root.querySelector('[data-calendar-notes-pagination]').classList.contains('hidden'),
         commentsPressed: comments.getAttribute('aria-pressed'),
         pageFits: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1,
         rootFits: root.scrollWidth <= document.documentElement.clientWidth + 1,
@@ -503,6 +538,13 @@ async function main() {
         hasRangeHeading: root.textContent.includes('2026년 1월 – 2026년 12월 메모')
       };
     })()`);
+    const searchClearState = await evaluate(client, 'window.__noteSearchClearState');
+    assert.deepEqual(searchClearState, { search: '', startMonth: '2026-01', endMonth: '2026-12', disabled: true });
+    assert.equal(mobileNotesView.initialItemCount, 20);
+    assert.equal(mobileNotesView.initialPageStatus, '1 / 2 페이지');
+    assert.equal(mobileNotesView.nextPageItemCount, 5);
+    assert.equal(mobileNotesView.nextPageStatus, '2 / 2 페이지');
+    assert.equal(mobileNotesView.paginationHiddenAfterFilter, true);
     assert.equal(mobileNotesView.itemCount, 1);
     assert.equal(mobileNotesView.commentsPressed, 'true');
     assert.equal(mobileNotesView.pageFits, true);
@@ -514,7 +556,15 @@ async function main() {
 
     if (process.env.NOTE_VIEW_SCREENSHOT) {
       await delay(350);
-      await evaluate(client, `document.getElementById('toast').style.display = 'none'`);
+      await evaluate(client, `(() => {
+        document.getElementById('toast').style.display = 'none';
+        const root = document.querySelector('#notes-content [data-calendar-notes-view]');
+        const workType = root.querySelector('[data-calendar-notes-work-type]');
+        const comments = root.querySelector('[data-calendar-notes-comments-only]');
+        workType.value = 'all';
+        workType.dispatchEvent(new Event('change', { bubbles: true }));
+        if (comments.getAttribute('aria-pressed') === 'true') comments.click();
+      })()`);
       const screenshot = await client.send('Page.captureScreenshot', { format: 'png', fromSurface: true });
       fs.writeFileSync(process.env.NOTE_VIEW_SCREENSHOT, Buffer.from(screenshot.data, 'base64'));
     }
@@ -534,7 +584,7 @@ async function main() {
       calendarHidden: document.getElementById('view-calendar').hidden,
       dateLabel: document.getElementById('filter-date-label').textContent.trim()
     }))()`);
-    assert.equal(desktopNotesView.itemCount, 1);
+    assert.equal(desktopNotesView.itemCount, 20);
     assert.equal(desktopNotesView.pageFits, true);
     assert.equal(desktopNotesView.activeTab, true);
     assert.equal(desktopNotesView.calendarHidden, true);

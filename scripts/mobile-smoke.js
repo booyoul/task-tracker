@@ -293,6 +293,9 @@ async function main() {
   const undoButton = indexDom.window.document.getElementById('btn-undo');
   assert(batchDeleteButton?.hidden && undoButton?.hidden, '일괄 삭제 또는 되돌리기 버튼의 초기 숨김 속성이 누락되었습니다.');
   assert(indexDom.window.document.querySelectorAll('#filter-search').length === 1 && !indexDom.window.document.getElementById('filter-search-desktop'), '업무 검색 입력이 하나의 통합 영역으로 정리되지 않았습니다.');
+  const clearSearchButton = indexDom.window.document.getElementById('btn-clear-search');
+  assert(clearSearchButton && indexDom.window.document.getElementById('filter-search')?.parentElement?.nextElementSibling === clearSearchButton, '검색창 옆에 검색어 전용 초기화 버튼이 없습니다.');
+  assert(clearSearchButton.getAttribute('aria-label') === '검색어 지우기' && clearSearchButton.disabled, '검색어 초기화 버튼의 접근성 이름 또는 초기 비활성 상태가 올바르지 않습니다.');
   assert(indexDom.window.document.getElementById('unified-status-host') && indexDom.window.document.getElementById('unified-risk-host'), 'KPI와 Risk를 수용할 통합 현황 영역이 없습니다.');
   const dashboardRow = indexDom.window.document.getElementById('unified-dashboard-row');
   assert(dashboardRow?.contains(indexDom.window.document.getElementById('unified-status-host')) && dashboardRow?.contains(indexDom.window.document.getElementById('secondary-tools-menu')), '모바일에서 KPI와 도구가 같은 행에 배치되지 않았습니다.');
@@ -318,6 +321,8 @@ async function main() {
   assert(/function updateViewFilterContext[^]*mode === ['"]NOTES['"][^]*메모 기간/.test(appSource), '독립 메모 뷰가 공유 기간 필터의 문맥을 메모 기간으로 전환하지 않습니다.');
   assert(/currentViewMode===['"]NOTES['"][^]*getFilteredTasks\(\{ ignoreDateRange: true \}\)[^]*notes-content[^]*renderCalendarNotesView/.test(appSource), '독립 메모 뷰가 기간과 무관한 연결 업무 범위 또는 전용 콘텐츠 영역을 사용하지 않습니다.');
   assert(/btn-view-notes[^]*switchView[^]*NOTES[^]*btn-view-notes-mobile[^]*switchView[^]*NOTES/.test(eventBindingsSource), '데스크톱 또는 모바일 메모 뷰 전환 이벤트가 없습니다.');
+  assert(/btn-clear-search[^]*searchInput\.value = ''[^]*dispatchEvent\(new Event\('input'/.test(eventBindingsSource), '검색어 전용 초기화 버튼이 다른 필터를 건드리지 않고 검색 입력 이벤트를 발생시키지 않습니다.');
+  assert(/function resetFilters\(\)[^]*btn-clear-search[^]*disabled = true/.test(appSource), '전체 필터 초기화 후 검색어 초기화 버튼이 비활성 상태로 동기화되지 않습니다.');
   assert(/btn-toggle-all-table-subtasks[^]*addEventListener\('click',toggleAllTableSubTasks\)/.test(eventBindingsSource), '서브 태스크 전체 펼치기 버튼의 클릭 연결이 없습니다.');
   assert(/btn-list-note[^]*openTaskNoteFromList/.test(appSource), '목록 메모 핀의 클릭 연결이 없습니다.');
   assert(/btn-list-note-count[^]*openLatestListTaskNote/.test(appSource), '목록 메모 수 버튼의 최근 메모 연결이 없습니다.');
@@ -749,6 +754,31 @@ async function main() {
   notesCommentsToggle.click();
   notesView.querySelector('[data-note-id="note-outside-task-range"]').click();
   assert(openedListNote?.id === 'note-outside-task-range', '메모 리스트 항목 클릭 시 기존 메모 상세 패널이 열리지 않습니다.');
+
+  const originalFetchTrackerNotes = window.db_fetchTrackerProgressNotes;
+  window.db_fetchTrackerProgressNotes = async () => Array.from({ length: 25 }, (_, index) => ({
+    id: `note-page-${index + 1}`,
+    taskId: 'task-1',
+    title: `페이지 메모 ${index + 1}`,
+    body: '20건 단위 페이지 이동 검증',
+    createdByName: 'pagination@example.com',
+    noteDate: `2026-07-${String(index + 1).padStart(2, '0')}`,
+    createdAt: new Date(`2026-07-${String(index + 1).padStart(2, '0')}T09:00:00+09:00`)
+  }));
+  await global.renderCalendarNotesView({
+    grid: document.getElementById('notes-content'),
+    noteTaskScope: tasks
+  });
+  const pagination = notesView.querySelector('[data-calendar-notes-pagination]');
+  assert(notesView.querySelectorAll('[data-calendar-note-list-item]').length === 20, '메모 첫 페이지가 20건으로 제한되지 않습니다.');
+  assert(pagination?.classList.contains('flex') && !pagination.classList.contains('hidden'), '메모가 20건을 초과해도 페이지 이동 영역이 표시되지 않습니다.');
+  assert(notesView.querySelector('[data-calendar-notes-page-status]')?.textContent.trim() === '1 / 2 페이지', '메모 첫 페이지 상태가 올바르지 않습니다.');
+  notesView.querySelector('[data-calendar-notes-next]').click();
+  assert(notesView.querySelectorAll('[data-calendar-note-list-item]').length === 5, '메모 두 번째 페이지에 나머지 5건이 표시되지 않습니다.');
+  assert(notesView.querySelector('[data-calendar-notes-page-status]')?.textContent.trim() === '2 / 2 페이지', '메모 다음 페이지 이동 상태가 올바르지 않습니다.');
+  notesView.querySelector('[data-calendar-notes-prev]').click();
+  assert(notesView.querySelectorAll('[data-calendar-note-list-item]').length === 20, '메모 이전 페이지 이동이 첫 페이지를 복원하지 않습니다.');
+  window.db_fetchTrackerProgressNotes = originalFetchTrackerNotes;
 
   console.log('mobile smoke passed: calendar default, task and subtask cancelled status, list, calendar day, calendar year, summary, notes');
 }

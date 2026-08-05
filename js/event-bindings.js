@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow event-bindings.js v20260805-v3 loaded');
+console.info('Smart Task Flow event-bindings.js v20260805-v4 loaded');
 
 function initEventBindings(){
   if(window.__eventBindingsInitialized)return;
@@ -51,6 +51,19 @@ function initEventBindings(){
   document.getElementById('btn-edit-tracker-open')?.addEventListener('click',()=>window.openTrackerModal?.(currentTrackerId));
   document.querySelectorAll('.filter-card').forEach(card=>card.addEventListener('click',()=>{const status=card.getAttribute('data-status');const el=document.getElementById('filter-status');if(el)el.value=status;renderActiveViews();}));
   ['filter-search','filter-start-month','filter-end-month'].forEach(id=>document.getElementById(id)?.addEventListener('input',renderActiveViews));
+  const searchInput = document.getElementById('filter-search');
+  const clearSearchButton = document.getElementById('btn-clear-search');
+  const syncClearSearchButton = () => {
+    if (clearSearchButton) clearSearchButton.disabled = !(searchInput?.value || '');
+  };
+  searchInput?.addEventListener('input', syncClearSearchButton);
+  clearSearchButton?.addEventListener('click', () => {
+    if (!searchInput) return;
+    searchInput.value = '';
+    searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+    searchInput.focus();
+  });
+  syncClearSearchButton();
   ['filter-status','filter-priority','filter-assignee','filter-start-month','filter-end-month'].forEach(id=>document.getElementById(id)?.addEventListener('change',renderActiveViews));
   document.getElementById('filter-start-month')?.addEventListener('change', (e) => {
     const val = e.target.value;
