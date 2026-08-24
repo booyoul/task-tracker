@@ -1333,6 +1333,9 @@
   .border-violet-300 {
     border-color: var(--color-violet-300);
   }
+  .border-violet-500 {
+    border-color: var(--color-violet-500);
+  }
   .border-l-amber-400 {
     border-left-color: var(--color-amber-400);
   }

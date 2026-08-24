@@ -1,6 +1,6 @@
 # Smart Task Flow Task
 
-Last updated: 2026-08-05
+Last updated: 2026-08-24
 
 ## Startup
 
@@ -19,6 +19,7 @@ Last updated: 2026-08-05
 - The desktop task modal's subtask recurrence form and dynamically rendered occurrence-status rows use explicit dark surfaces, including the highlighted To-do-linked occurrence.
 - The To-do list, filters, view toggles, cards, linked-task badges, and desktop/mobile month/year calendars use explicit dark surface and semantic status colors.
 - Desktop and mobile monthly task calendars display progress notes on their effective record date and open the existing note detail slide-over when selected.
+- Desktop and mobile monthly task calendars provide independent `메모만 보기` and `To-do만 보기` filters; selecting both shows memos and To-do together while hiding task schedules.
 - Desktop and mobile navigation provides a top-level memo list beside the list and calendar views, with record-period, memo work-type, and comment-present filters.
 - The shared task search has a dedicated clear button that resets only its text, and the top-level memo list paginates at 20 notes with previous/next navigation.
 - Personal To-do can optionally link to an accessible tracker task or normal subtask for context and direct navigation.
@@ -57,7 +58,7 @@ Last updated: 2026-08-05
 - Monthly summary remains note-first and supports author, work-type, search, important-only, and comment-present filters.
 - The top-level memo view is a flat latest-record-date-first review list beside the list and calendar views. It uses the shared start/end month controls as an independent effective-record-date range, combines that range with the memo's saved work type and `댓글 있음` toggle, and opens the shared note detail slide-over.
 - Monthly calendars reuse the loaded tracker-note cache, show only notes linked to currently filtered existing tasks/subtasks, and open the shared note detail slide-over.
-- Monthly calendars provide a persisted `메모만 보기` toggle on desktop and mobile; it hides task bars/cards while preserving dated notes, linked personal To-do markers, and their existing interactions.
+- Monthly calendars persist independent `메모만 보기` and `To-do만 보기` toggles on desktop and mobile. Either active toggle hides task bars/cards; each toggle includes its matching content, and selecting both shows dated notes and linked personal To-do markers together with their existing interactions.
 - A note's effective record date is independent of its linked task schedule: monthly calendars and summaries keep non-date filters but must not hide a note because the task does not overlap the selected month.
 
 ### Personal To-do

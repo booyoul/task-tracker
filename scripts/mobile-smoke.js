@@ -24,6 +24,7 @@ const dom = new JSDOM(`<!doctype html>
     <input id="filter-end-month" type="month">
     <div id="calendar-notes-only-control-m" hidden class="hidden">
       <button id="btn-cal-ux-notes-only-m" aria-pressed="false"></button>
+      <button id="btn-cal-ux-todos-only-m" aria-pressed="false"></button>
     </div>
     <button id="btn-prev-month-mobile"></button>
     <button id="btn-today-month-mobile"></button>
@@ -59,7 +60,8 @@ global.calendarUxState = {
   colorByIndustry: false,
   groupByAssignee: false,
   duplicateMultiAssignee: true,
-  notesOnly: false
+  notesOnly: false,
+  todosOnly: false
 };
 global.focusState = { riskOnly: false, highOnly: false };
 global.selectedAssigneeFilters = new Set();
@@ -289,6 +291,7 @@ async function main() {
   assert(!indexDom.window.document.getElementById('btn-cal-mode-notes') && !indexDom.window.document.getElementById('btn-cal-mode-notes-m'), '캘린더 하위 모드에 이전 메모 버튼이 남아 있습니다.');
   assert(indexDom.window.document.getElementById('view-notes')?.contains(indexDom.window.document.getElementById('notes-content')), '독립 메모 뷰 콘텐츠 영역이 없습니다.');
   assert(indexDom.window.document.getElementById('btn-cal-ux-notes-only-m')?.getAttribute('aria-pressed') === 'false', '모바일 메모만 보기 토글의 초기 접근성 상태가 없습니다.');
+  assert(indexDom.window.document.getElementById('btn-cal-ux-todos-only-m')?.getAttribute('aria-pressed') === 'false', '모바일 To-do만 보기 토글의 초기 접근성 상태가 없습니다.');
   assert(indexDom.window.document.querySelector('#todo-calendar-section p')?.textContent.trim() === 'To-do 캘린더', 'To-do 캘린더 헤더가 한국어 UI 문구를 따르지 않습니다.');
   assert(indexDom.window.document.querySelector('#empty-state-kanban h3')?.textContent.trim() === '칸반에 표시할 업무가 없습니다.', '칸반 빈 상태 문구가 일관되지 않습니다.');
   const appSource = fs.readFileSync(path.join(root, 'js/app.js'), 'utf8');
@@ -362,6 +365,8 @@ async function main() {
   assert(tableRendererSource.includes('bg-indigo-50/80') && tableRendererSource.includes('dark:bg-indigo-950/35'), '목록 업무 분류 헤더의 다크 테마 배경이 누락되었습니다.');
   assert(calendarMobileSource.includes('bg-indigo-50/80') && calendarMobileSource.includes('dark:bg-indigo-950/35'), '모바일 캘린더 업무 분류 헤더의 다크 테마 배경이 누락되었습니다.');
   assert(calendarMobileSource.includes("btn-cal-ux-notes-only-m") && appSource.includes("btn-cal-ux-notes-only"), '데스크톱·모바일 메모만 보기 토글 연결이 누락되었습니다.');
+  assert(calendarMobileSource.includes("btn-cal-ux-todos-only-m") && appSource.includes("btn-cal-ux-todos-only"), '데스크톱·모바일 To-do만 보기 토글 연결이 누락되었습니다.');
+  assert(!/function setCalendarTodosOnly[^]*calendarUxState\.notesOnly = false/.test(appSource) && !/function setCalendarNotesOnly[^]*calendarUxState\.todosOnly = false/.test(appSource), '메모만 보기와 To-do만 보기를 동시에 선택할 수 없습니다.');
   const modalDarkSurfaces = [...indexDom.window.document.querySelectorAll('[data-modal-dark-surface]')];
   assert(modalDarkSurfaces.length === 4, '조건부 업무·트래커 모달 다크 표면 식별자가 누락되었습니다.');
   assert(modalDarkSurfaces.every(surface => surface.className.includes('dark:bg-') && surface.className.includes('dark:border-')), '조건부 업무·트래커 모달에 다크 배경 또는 테두리가 누락되었습니다.');
@@ -569,7 +574,42 @@ async function main() {
   assert(document.getElementById('calendar-grid').dataset.notesOnly === 'true', '데스크톱 월간 캘린더에 메모만 보기 상태가 반영되지 않았습니다.');
   assert(!document.querySelector('#calendar-grid [data-week-index]') && !document.querySelector('#calendar-grid [data-calendar-category-header]'), '데스크톱 메모만 보기에서 업무 막대 또는 분류 헤더가 남아 있습니다.');
   assert(document.querySelectorAll('#calendar-grid [data-calendar-note-id]').length === 4, '데스크톱 메모만 보기에서 월간 메모가 유지되지 않았습니다.');
-  assert(document.querySelectorAll('#calendar-grid [data-calendar-todo-id]').length === 1, '데스크톱 메모만 보기에서 연결 To-do가 유지되지 않았습니다.');
+  assert(document.querySelectorAll('#calendar-grid [data-calendar-todo-id]').length === 0, '데스크톱 메모만 보기에서 To-do가 남아 있습니다.');
+  global.renderCalendarDayView({
+    weekdayHeader: document.getElementById('calendar-weekday-header'),
+    grid: document.getElementById('calendar-grid'),
+    year: 2026,
+    month: 6,
+    todayStr: '2026-07-12',
+    groups: [],
+    monthNotes: calendarMonthNotes,
+    monthTodos: [{ id: 'todo-only-desktop', title: 'To-do만 보기 대상', startDate: '2026-07-12', dueDate: '2026-07-13', calendarDateKey: '2026-07-12' }],
+    todosOnly: true,
+    showSubTaskBars: true,
+    mainClass: () => '',
+    dimIfNotCritical: () => '',
+    useIndustryColor: false
+  });
+  assert(document.getElementById('calendar-grid').dataset.todosOnly === 'true', '데스크톱 월간 캘린더에 To-do만 보기 상태가 반영되지 않았습니다.');
+  assert(document.querySelectorAll('#calendar-grid [data-calendar-note-id]').length === 0, '데스크톱 To-do만 보기에서 메모가 남아 있습니다.');
+  assert(document.querySelectorAll('#calendar-grid [data-calendar-todo-id]').length === 1, '데스크톱 To-do만 보기에서 To-do가 유지되지 않았습니다.');
+  global.renderCalendarDayView({
+    weekdayHeader: document.getElementById('calendar-weekday-header'),
+    grid: document.getElementById('calendar-grid'),
+    year: 2026,
+    month: 6,
+    todayStr: '2026-07-12',
+    groups: [],
+    monthNotes: calendarMonthNotes,
+    monthTodos: [{ id: 'todo-combined-desktop', title: '함께 보기 대상', startDate: '2026-07-12', dueDate: '2026-07-13', calendarDateKey: '2026-07-12' }],
+    notesOnly: true,
+    todosOnly: true,
+    showSubTaskBars: true,
+    mainClass: () => '',
+    dimIfNotCritical: () => '',
+    useIndustryColor: false
+  });
+  assert(document.querySelectorAll('#calendar-grid [data-calendar-note-id]').length === 4 && document.querySelectorAll('#calendar-grid [data-calendar-todo-id]').length === 1, '데스크톱에서 두 필터를 함께 선택하면 메모와 To-do가 같이 보여야 합니다.');
 
   const cancelledTask = {
     id: 'task-cancelled',
@@ -687,8 +727,21 @@ async function main() {
   assert(document.getElementById('cal-mobile-content').dataset.notesOnly === 'true', '모바일 월간 콘텐츠에 메모만 보기 상태가 반영되지 않았습니다.');
   assert(document.querySelectorAll('#cal-mobile-content .mobile-cal-card').length === 0 && document.querySelectorAll('#cal-mobile-content [data-mobile-calendar-category]').length === 0, '모바일 메모만 보기에서 업무 카드 또는 분류 헤더가 남아 있습니다.');
   assert(document.querySelectorAll('#cal-mobile-content [data-calendar-note-id]').length === 4, '모바일 메모만 보기에서 월간 메모가 유지되지 않았습니다.');
-  assert(document.querySelectorAll('#cal-mobile-content [data-calendar-todo-id]').length === 1, '모바일 메모만 보기에서 연결 To-do가 유지되지 않았습니다.');
+  assert(document.querySelectorAll('#cal-mobile-content [data-calendar-todo-id]').length === 0, '모바일 메모만 보기에서 To-do가 남아 있습니다.');
   window.calendarUxState.notesOnly = false;
+  window.calendarUxState.todosOnly = true;
+  window.renderMobileCalendar(tasks.slice(0, 2), [...tasks.slice(0, 2), outsideMonthTask]);
+  assert(document.getElementById('btn-cal-ux-todos-only-m').getAttribute('aria-pressed') === 'true', '모바일 To-do만 보기 토글의 활성 상태가 전달되지 않았습니다.');
+  assert(document.getElementById('cal-mobile-content').dataset.todosOnly === 'true', '모바일 월간 콘텐츠에 To-do만 보기 상태가 반영되지 않았습니다.');
+  assert(document.querySelectorAll('#cal-mobile-content .mobile-cal-card').length === 0 && document.querySelectorAll('#cal-mobile-content [data-mobile-calendar-category]').length === 0, '모바일 To-do만 보기에서 업무 카드 또는 분류 헤더가 남아 있습니다.');
+  assert(document.querySelectorAll('#cal-mobile-content [data-calendar-note-id]').length === 0, '모바일 To-do만 보기에서 메모가 남아 있습니다.');
+  assert(document.querySelectorAll('#cal-mobile-content [data-calendar-todo-id]').length === 1, '모바일 To-do만 보기에서 연결 To-do가 유지되지 않았습니다.');
+  window.calendarUxState.notesOnly = true;
+  window.renderMobileCalendar(tasks.slice(0, 2), [...tasks.slice(0, 2), outsideMonthTask]);
+  assert(document.getElementById('btn-cal-ux-notes-only-m').getAttribute('aria-pressed') === 'true' && document.getElementById('btn-cal-ux-todos-only-m').getAttribute('aria-pressed') === 'true', '모바일에서 메모와 To-do 필터가 동시에 활성화되지 않았습니다.');
+  assert(document.querySelectorAll('#cal-mobile-content [data-calendar-note-id]').length === 4 && document.querySelectorAll('#cal-mobile-content [data-calendar-todo-id]').length === 1, '모바일에서 두 필터를 함께 선택하면 메모와 To-do가 같이 보여야 합니다.');
+  window.calendarUxState.notesOnly = false;
+  window.calendarUxState.todosOnly = false;
 
   global.currentCalMode = 'MONTH';
   window.renderMobileCalendar(tasks);

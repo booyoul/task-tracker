@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-day-renderer.js v20260805-v19 loaded');
+console.info('Smart Task Flow calendar-day-renderer.js v20260824-v20 loaded');
 
 function getCalendarProgressNoteDateKey(note = {}) {
     if (/^\d{4}-\d{2}-\d{2}$/.test(String(note.noteDate || ''))) return note.noteDate;
@@ -50,7 +50,7 @@ function openCalendarProgressNote(note, event) {
 
 // DAY calendar mini-Gantt renderer. Extracted from app.js in Phase 4B.
 function renderCalendarDayView(ctx) {
-    const { weekdayHeader, grid, year, month, todayStr, groups, monthNotes = [], monthTodos = [], notesOnly = false, showSubTaskBars, mainClass, dimIfNotCritical, useIndustryColor } = ctx;
+    const { weekdayHeader, grid, year, month, todayStr, groups, monthNotes = [], monthTodos = [], notesOnly = false, todosOnly = false, showSubTaskBars, mainClass, dimIfNotCritical, useIndustryColor } = ctx;
     weekdayHeader?.classList.remove('hidden');
     grid.className = 'relative bg-white border border-slate-200 rounded-b-lg overflow-hidden';
     grid.innerHTML = '';
@@ -71,14 +71,18 @@ function renderCalendarDayView(ctx) {
     const rowDateHeight = 34;
     const noteRowHeight = 20;
     const maxVisibleNoteRows = 3;
+    const contentFilterActive = notesOnly || todosOnly;
+    const showTasks = !contentFilterActive;
+    const showNotes = !contentFilterActive || notesOnly;
+    const showTodos = !contentFilterActive || todosOnly;
     const notesByDate = new Map();
-    monthNotes.forEach(note => {
+    if (showNotes) monthNotes.forEach(note => {
       const dateKey = note.calendarDateKey || getCalendarProgressNoteDateKey(note);
       if (!notesByDate.has(dateKey)) notesByDate.set(dateKey, []);
       notesByDate.get(dateKey).push(note);
     });
     const todosByDate = new Map();
-    monthTodos.forEach(todo => {
+    if (showTodos) monthTodos.forEach(todo => {
       const dateKey = todo.calendarDateKey || todo.startDate || '';
       if (!todosByDate.has(dateKey)) todosByDate.set(dateKey, []);
       todosByDate.get(dateKey).push(todo);
@@ -95,7 +99,7 @@ function renderCalendarDayView(ctx) {
     });
     const weekLayouts = weekBounds.map(({ start, end }) => {
       const activeLanes = new Set();
-      if (!notesOnly) groups.forEach(g => {
+      if (showTasks) groups.forEach(g => {
         let groupHasVisibleItem = false;
         if (g.startDate <= end && g.dueDate >= start) {
           activeLanes.add(g.globalLineStart);
@@ -136,6 +140,7 @@ function renderCalendarDayView(ctx) {
     }, 0);
     grid.dataset.weekLaneCounts = weekLayouts.map(layout => layout.laneCount).join(',');
     grid.dataset.notesOnly = String(notesOnly);
+    grid.dataset.todosOnly = String(todosOnly);
 
     const plate = document.createElement('div');
     plate.className = 'grid grid-cols-7 gap-px bg-slate-200 relative z-0';
@@ -271,7 +276,7 @@ function renderCalendarDayView(ctx) {
       }
     };
 
-    if (!notesOnly) {
+    if (showTasks) {
       const renderedCategoryLabels = new Set();
       groups.forEach(g => {
         if (g.categoryHeaderLine == null || renderedCategoryLabels.has(g.categoryGroupKey)) return;
@@ -292,7 +297,7 @@ function renderCalendarDayView(ctx) {
       });
     }
 
-    if (!notesOnly) groups.forEach(g => {
+    if (showTasks) groups.forEach(g => {
       // Main task bar
       if (g.startDate <= lastDayStr && g.dueDate >= monthFirstStr) {
         drawWeekFragment({ id: g.id, title: g.title, isSub: false, status: g.status, priority: g.priority, industry: g.industry, industryLabel: g.industryLabel, taskType: g.taskType, lane: g.globalLineStart, start: g.startDate, end: g.dueDate, parentId: g.id, assignee: g.assignee, notes: g.notes, dueDate: g.dueDate, subCount: getSubTaskCompletionCounts(g.monthSubTasks || []).active, subDone: getSubTaskCompletionCounts(g.monthSubTasks || []).completed, progressPct: getTaskProgress(g) });

@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow app.js v20260805-v11 loaded');
+console.info('Smart Task Flow app.js v20260824-v12 loaded');
 // --- UX optimization globals: must be declared before helper functions ---
 var focusState = window.focusState || { riskOnly: false, mineOnly: false, highOnly: false };
 window.focusState = focusState;
@@ -11,7 +11,7 @@ var isRiskPanelCollapsed = true;
 window.isRiskPanelCollapsed = isRiskPanelCollapsed;
 var selectedAssigneeFilters = window.selectedAssigneeFilters || new Set();
 window.selectedAssigneeFilters = selectedAssigneeFilters;
-var calendarUxState = window.calendarUxState || { subtasksExpanded: true, criticalOnly: false, colorByIndustry: false, groupByAssignee: false, duplicateMultiAssignee: true, notesOnly: false };
+var calendarUxState = window.calendarUxState || { subtasksExpanded: true, criticalOnly: false, colorByIndustry: false, groupByAssignee: false, duplicateMultiAssignee: true, notesOnly: false, todosOnly: false };
 window.calendarUxState = calendarUxState;
 function safeLocalStorageGet(key, fallback = '') {
   try { return window.localStorage ? (localStorage.getItem(key) || fallback) : fallback; }
@@ -28,7 +28,7 @@ function loadCalendarUxState() {
     const raw = safeLocalStorageGet(CALENDAR_UX_STORAGE_KEY, '');
     if (!raw) return;
     const parsed = JSON.parse(raw);
-    calendarUxState = { subtasksExpanded: true, criticalOnly: false, colorByIndustry: false, groupByAssignee: false, duplicateMultiAssignee: true, notesOnly: false, ...calendarUxState, ...parsed };
+    calendarUxState = { subtasksExpanded: true, criticalOnly: false, colorByIndustry: false, groupByAssignee: false, duplicateMultiAssignee: true, notesOnly: false, todosOnly: false, ...calendarUxState, ...parsed };
     window.calendarUxState = calendarUxState;
   } catch (e) { console.warn('calendar UX state load failed', e); }
 }
@@ -46,6 +46,7 @@ function updateCalendarUxButtons() {
   const riskBtn = document.getElementById('btn-cal-ux-risk');
   const industryBtn = document.getElementById('btn-cal-ux-industry');
   const notesOnlyBtn = document.getElementById('btn-cal-ux-notes-only');
+  const todosOnlyBtn = document.getElementById('btn-cal-ux-todos-only');
   if (subBtn) {
     subBtn.textContent = calendarUxState.subtasksExpanded ? '하위 펼침' : '하위 접힘';
     subBtn.className = getCalendarUxButtonClass(calendarUxState.subtasksExpanded);
@@ -65,9 +66,23 @@ function updateCalendarUxButtons() {
     notesOnlyBtn.textContent = calendarUxState.notesOnly ? '📌 메모만 보기 ON' : '📌 메모만 보기';
     notesOnlyBtn.setAttribute('aria-pressed', String(calendarUxState.notesOnly));
   }
+  if (todosOnlyBtn) {
+    const isMonthlyMode = currentCalMode === 'DAY';
+    todosOnlyBtn.hidden = !isMonthlyMode;
+    todosOnlyBtn.className = `${getCalendarUxButtonClass(calendarUxState.todosOnly)}${isMonthlyMode ? '' : ' hidden'}`;
+    todosOnlyBtn.textContent = calendarUxState.todosOnly ? '☐ To-do만 보기 ON' : '☐ To-do만 보기';
+    todosOnlyBtn.setAttribute('aria-pressed', String(calendarUxState.todosOnly));
+  }
 }
 function setCalendarNotesOnly(enabled) {
   calendarUxState.notesOnly = enabled === true;
+  window.calendarUxState = calendarUxState;
+  saveCalendarUxState();
+  updateCalendarUxButtons();
+  if (typeof renderActiveViews === 'function') renderActiveViews();
+}
+function setCalendarTodosOnly(enabled) {
+  calendarUxState.todosOnly = enabled === true;
   window.calendarUxState = calendarUxState;
   saveCalendarUxState();
   updateCalendarUxButtons();
@@ -85,7 +100,8 @@ function ensureCalendarUxControls() {
     <button type="button" id="btn-cal-ux-subtasks"></button>
     <button type="button" id="btn-cal-ux-risk"></button>
     <button type="button" id="btn-cal-ux-industry"></button>
-    <button type="button" id="btn-cal-ux-notes-only" aria-pressed="false"></button>`;
+    <button type="button" id="btn-cal-ux-notes-only" aria-pressed="false"></button>
+    <button type="button" id="btn-cal-ux-todos-only" aria-pressed="false"></button>`;
   anchor.insertAdjacentElement('afterend', controls);
   document.getElementById('btn-cal-ux-subtasks')?.addEventListener('click', e => {
     e.preventDefault(); e.stopPropagation();
@@ -108,6 +124,10 @@ function ensureCalendarUxControls() {
   document.getElementById('btn-cal-ux-notes-only')?.addEventListener('click', e => {
     e.preventDefault(); e.stopPropagation();
     setCalendarNotesOnly(!calendarUxState.notesOnly);
+  });
+  document.getElementById('btn-cal-ux-todos-only')?.addEventListener('click', e => {
+    e.preventDefault(); e.stopPropagation();
+    setCalendarTodosOnly(!calendarUxState.todosOnly);
   });
   updateCalendarUxButtons();
 }
@@ -670,6 +690,7 @@ function renderCalendar(filteredTasks, noteTaskScope = filteredTasks) {
   const highlightRiskOnly = calendarUxState.criticalOnly;
   const useIndustryColor = calendarUxState.colorByIndustry;
   const notesOnly = currentCalMode === 'DAY' && calendarUxState.notesOnly === true;
+  const todosOnly = currentCalMode === 'DAY' && calendarUxState.todosOnly === true;
   const activeTrackerId = String(window.currentTrackerId || (typeof currentTrackerId !== 'undefined' ? currentTrackerId : ''));
   if (currentCalMode === 'DAY' && typeof ensureListProgressNoteSummaryLoaded === 'function') {
     ensureListProgressNoteSummaryLoaded(activeTrackerId);
@@ -742,7 +763,7 @@ function renderCalendar(filteredTasks, noteTaskScope = filteredTasks) {
   };
 
   if (currentCalMode === 'DAY') {
-    renderCalendarDayView({ weekdayHeader, grid, year, month, todayStr, totalCalLanes, groups: layoutGroups, monthNotes, monthTodos, notesOnly, showSubTaskBars, mainClass, dimIfNotCritical, useIndustryColor });
+    renderCalendarDayView({ weekdayHeader, grid, year, month, todayStr, totalCalLanes, groups: layoutGroups, monthNotes, monthTodos, notesOnly, todosOnly, showSubTaskBars, mainClass, dimIfNotCritical, useIndustryColor });
     return;
   }
   if (currentCalMode === 'MONTH') {
