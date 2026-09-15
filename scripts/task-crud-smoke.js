@@ -158,6 +158,33 @@ async function main() {
     { view: true, create: true, update: true, delete: true },
     '트래커 등록자는 항상 전체 권한을 가져야 합니다.'
   );
+  assert.equal(trackerCreatePayload.kpis.length, 1, '새 트래커에 기본 KPI 목록이 생성되지 않았습니다.');
+  assert.equal(trackerCreatePayload.selectedKpiId, trackerCreatePayload.kpis[0].id, '새 트래커의 표시 KPI가 기본 KPI와 일치하지 않습니다.');
+
+  const legacyKpiContext = createContext();
+  const legacyKpis = legacyKpiContext.normalizeTrackerKpis({
+    kpiTitle: '기존 완료 목표',
+    kpiTarget: 92,
+    kpiUnit: '%',
+    kpiType: 'AUTO_DONE_PCT',
+    kpiCurrent: 0,
+  });
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(legacyKpis)),
+    [{ id: 'kpi_default', title: '기존 완료 목표', target: 92, unit: '%', type: 'AUTO_DONE_PCT', current: 0 }],
+    '기존 단일 KPI 필드가 KPI 목록으로 호환 변환되지 않았습니다.'
+  );
+  assert.equal(
+    legacyKpiContext.getSelectedTrackerKpi({
+      kpis: [
+        { id: 'first', title: '첫 KPI', target: 1, unit: '건', type: 'MANUAL', current: 0 },
+        { id: 'second', title: '표시 KPI', target: 10, unit: '회', type: 'MANUAL', current: 4 },
+      ],
+      selectedKpiId: 'second',
+    }).title,
+    '표시 KPI',
+    '선택한 KPI를 표시 대상으로 해석하지 못했습니다.'
+  );
 
   const trackerAclUpdate = createContext();
   let trackerUpdatePayload = null;
@@ -176,6 +203,11 @@ async function main() {
     desc: '복사할 설명',
     kpiTitle: '완료 목표',
     kpiTarget: 90,
+    kpis: [
+      { id: 'done-rate', title: '완료 목표', target: 90, unit: '%', type: 'AUTO_DONE_PCT', current: 0 },
+      { id: 'meeting-count', title: '고객 미팅', target: 12, unit: '회', type: 'MANUAL', current: 7 },
+    ],
+    selectedKpiId: 'meeting-count',
     taskCategoryOptions: [{ id: 'FNB', label: '식음료' }],
     accessControl: {
       'source-owner': { view: true, create: true, update: true, delete: true },
@@ -230,6 +262,9 @@ async function main() {
   assert.equal(copiedTask.createdAt, 'server-time');
   assert.equal(copiedTask.notes, '', '태스크의 세부 안내 및 메모 필드는 복사하면 안 됩니다.');
   assert.deepEqual(JSON.parse(JSON.stringify(copyWrites[0].payload.taskCategoryOptions)), [{ id: 'FNB', label: '식음료' }], '업무 분류 설정이 새 트래커에 복사되지 않았습니다.');
+  assert.equal(copyWrites[0].payload.kpis.length, 2, '추가 KPI 목록이 새 트래커에 복사되지 않았습니다.');
+  assert.equal(copyWrites[0].payload.selectedKpiId, 'meeting-count', '선택한 표시 KPI가 새 트래커에 유지되지 않았습니다.');
+  assert.equal(copyWrites[0].payload.kpiTitle, '고객 미팅', '선택 KPI의 기존 호환 필드가 복사본에 동기화되지 않았습니다.');
   assert.equal(copiedTask.industryLabel, '식음료', '업무 분류 표시명이 복사된 태스크에 유지되지 않았습니다.');
   assert.equal(copiedTask.subTasks[0].recurrenceCompletions['2026-07-01'], 'COMPLETED');
   assert.equal(copyWrites.some(write => write.ref.collection === 'progress_notes'), false, '진행 메모는 복사하면 안 됩니다.');

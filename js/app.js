@@ -1,5 +1,5 @@
 
-console.info('Smart Task Flow app.js v20260824-v12 loaded');
+console.info('Smart Task Flow app.js v20260915-v13 loaded');
 // --- UX optimization globals: must be declared before helper functions ---
 var focusState = window.focusState || { riskOnly: false, mineOnly: false, highOnly: false };
 window.focusState = focusState;
@@ -1251,10 +1251,19 @@ function renderTrackerKpiBadge() {
   const today = getTodayStr();
   
   // Custom KPI configuration from tracker
-  const kpiTitle = tracker.kpiTitle || '업무 완료율';
-  const kpiTarget = typeof tracker.kpiTarget === 'number' ? tracker.kpiTarget : 80;
-  const kpiUnit = tracker.kpiUnit || '%';
-  const kpiType = tracker.kpiType || 'AUTO_DONE_PCT';
+  const selectedKpi = typeof window.getSelectedTrackerKpi === 'function'
+    ? window.getSelectedTrackerKpi(tracker)
+    : {
+        title: tracker.kpiTitle || '업무 완료율',
+        target: typeof tracker.kpiTarget === 'number' ? tracker.kpiTarget : 80,
+        unit: tracker.kpiUnit || '%',
+        type: tracker.kpiType || 'AUTO_DONE_PCT',
+        current: typeof tracker.kpiCurrent === 'number' ? tracker.kpiCurrent : 0,
+      };
+  const kpiTitle = selectedKpi.title;
+  const kpiTarget = selectedKpi.target;
+  const kpiUnit = selectedKpi.unit;
+  const kpiType = selectedKpi.type;
   
   let currentVal = 0;
   let donePct = 0;
@@ -1274,7 +1283,7 @@ function renderTrackerKpiBadge() {
   } else if (kpiType === 'AUTO_OVERDUE_COUNT') {
     currentVal = overdueCount;
   } else if (kpiType === 'MANUAL') {
-    currentVal = typeof tracker.kpiCurrent === 'number' ? tracker.kpiCurrent : 0;
+    currentVal = selectedKpi.current;
   }
 
   // Determine progress percent for circular SVG gauge

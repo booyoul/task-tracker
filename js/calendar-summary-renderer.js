@@ -1,4 +1,4 @@
-console.info('Smart Task Flow calendar-summary-renderer.js v20260805-v4 loaded');
+console.info('Smart Task Flow calendar-summary-renderer.js v20260915-v5 loaded');
 
 function getSummaryNoteDate(note = {}) {
     if (note.noteDate && /^\d{4}-\d{2}-\d{2}$/.test(note.noteDate)) {
@@ -125,11 +125,15 @@ async function loadCalendarNotesForRange({ startMonth = '', endMonth = '', noteT
     if (typeof window.db_fetchTrackerProgressNotes === 'function' && window.currentTrackerId) {
         trackerNotes = await window.db_fetchTrackerProgressNotes(window.currentTrackerId);
     }
+    const authorScopedTrackerNotes = trackerNotes.filter(note => (
+        typeof window.isProgressNoteAuthorFilterMatched !== 'function'
+        || window.isProgressNoteAuthorFilterMatched(note)
+    ));
 
     const rangeStart = getCalendarNoteMonthBoundary(startMonth, false);
     const rangeEnd = getCalendarNoteMonthBoundary(endMonth, true);
     const activeTaskIds = new Set(noteTaskScope.map(task => task.id));
-    const notes = trackerNotes.filter(note => {
+    const notes = authorScopedTrackerNotes.filter(note => {
         const noteDate = getSummaryNoteDate(note);
         if (!noteDate || !note.taskId) return false;
         if (rangeStart && noteDate < rangeStart) return false;
@@ -143,7 +147,7 @@ async function loadCalendarNotesForRange({ startMonth = '', endMonth = '', noteT
         return Boolean(parentTask?.subTasks?.some(subTask => subTask.id === subTaskId));
     }).map(note => buildSummaryNoteItem(note, noteTaskScope));
 
-    return { trackerNotes, notes };
+    return { trackerNotes: authorScopedTrackerNotes, notes };
 }
 
 async function loadCalendarNotesForMonth({ year, month, noteTaskScope = [] }) {

@@ -1,4 +1,29 @@
-console.info('Smart Task Flow calendar-day-renderer.js v20260824-v20 loaded');
+console.info('Smart Task Flow calendar-day-renderer.js v20260915-v21 loaded');
+
+function normalizeProgressNoteAuthorIdentity(value) {
+    return String(value || '').toLowerCase().replace(/\s*\([^)]*\)\s*/g, '').trim();
+}
+
+function isProgressNoteAuthorFilterMatched(note = {}) {
+    const selectedFilters = window.selectedAssigneeFilters;
+    if (!(selectedFilters instanceof Set) || selectedFilters.size === 0) return true;
+
+    const selectedNames = new Set(
+        Array.from(selectedFilters, normalizeProgressNoteAuthorIdentity).filter(Boolean)
+    );
+    const noteAuthorName = normalizeProgressNoteAuthorIdentity(note.createdByName);
+    if (noteAuthorName && selectedNames.has(noteAuthorName)) return true;
+
+    const noteAuthorUid = String(note.createdBy || '');
+    return (window.approvedUsers || []).some(user => {
+        const displayName = normalizeProgressNoteAuthorIdentity(user?.displayName);
+        if (!displayName || !selectedNames.has(displayName)) return false;
+        if (noteAuthorUid && String(user?.uid || '') === noteAuthorUid) return true;
+        const email = normalizeProgressNoteAuthorIdentity(user?.email);
+        return Boolean(noteAuthorName && email && noteAuthorName === email);
+    });
+}
+window.isProgressNoteAuthorFilterMatched = isProgressNoteAuthorFilterMatched;
 
 function getCalendarProgressNoteDateKey(note = {}) {
     if (/^\d{4}-\d{2}-\d{2}$/.test(String(note.noteDate || ''))) return note.noteDate;
@@ -18,6 +43,7 @@ function getCalendarProgressNotesForMonth(notes, taskList, year, month) {
     const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}-`;
     const taskMap = new Map((taskList || []).map(task => [String(task.id || ''), task]));
     return (notes || []).flatMap(note => {
+        if (!isProgressNoteAuthorFilterMatched(note)) return [];
         const dateKey = getCalendarProgressNoteDateKey(note);
         if (!dateKey.startsWith(monthPrefix)) return [];
         const [baseTaskId, subTaskId = ''] = String(note.taskId || '').split('__sub_');

@@ -100,7 +100,8 @@ window.db_fetchTrackerProgressNotes = async () => [
     taskId: 'task-1',
     title: '후속 검토',
     body: '회의 결과 후속 조치 확인',
-    createdByName: 'bd@example.com',
+    createdBy: 'user-bd',
+    createdByName: 'former-bd@example.com',
     noteDate: '2026-07-12',
     createdAt: new Date('2026-07-12T10:00:00+09:00')
   },
@@ -313,6 +314,9 @@ async function main() {
   assert(clearSearchButton && indexDom.window.document.getElementById('filter-search')?.parentElement?.nextElementSibling === clearSearchButton, '검색창 옆에 검색어 전용 초기화 버튼이 없습니다.');
   assert(clearSearchButton.getAttribute('aria-label') === '검색어 지우기' && clearSearchButton.disabled, '검색어 초기화 버튼의 접근성 이름 또는 초기 비활성 상태가 올바르지 않습니다.');
   assert(indexDom.window.document.getElementById('unified-status-host') && indexDom.window.document.getElementById('unified-risk-host'), 'KPI와 Risk를 수용할 통합 현황 영역이 없습니다.');
+  assert(indexDom.window.document.getElementById('select-active-kpi'), '표시할 KPI 선택 컨트롤이 없습니다.');
+  assert(indexDom.window.document.getElementById('btn-add-kpi') && indexDom.window.document.getElementById('btn-delete-kpi'), 'KPI 추가 또는 삭제 컨트롤이 없습니다.');
+  assert(indexDom.window.document.getElementById('input-kpi-title')?.maxLength === 80 && indexDom.window.document.getElementById('input-kpi-unit')?.maxLength === 16, 'KPI 명칭 또는 단위의 입력 길이 제한이 없습니다.');
   const dashboardRow = indexDom.window.document.getElementById('unified-dashboard-row');
   assert(dashboardRow?.contains(indexDom.window.document.getElementById('unified-status-host')) && dashboardRow?.contains(indexDom.window.document.getElementById('secondary-tools-menu')), '모바일에서 KPI와 도구가 같은 행에 배치되지 않았습니다.');
   assert(!dashboardRow.textContent.includes('업무 현황 및 필터') && !dashboardRow.textContent.includes('현황 확인과 업무 탐색'), '삭제하기로 한 통합 영역 제목 또는 설명이 남아 있습니다.');
@@ -354,6 +358,8 @@ async function main() {
   assert(!/#[0-9a-fA-F]{3,8}\//.test(inputCssSource), '다크 테마 CSS에 브라우저가 무시하는 hex/alpha 색상 문법이 남아 있습니다.');
   assert(indexDom.window.document.getElementById('tracker-access-section')?.className.includes('dark:bg-'), '트래커 권한 패널의 다크 테마 배경이 누락되었습니다.');
   assert(/kpi-compact-chip[^`]*dark:bg-/.test(appSource), '상단 KPI 배지의 다크 테마 배경이 누락되었습니다.');
+  assert(/getSelectedTrackerKpi\(tracker\)/.test(appSource), '선택된 KPI를 상단 배지에 표시하는 경로가 없습니다.');
+  assert(/kpiSettingsDraft[^]*btn-add-kpi[^]*btn-delete-kpi[^]*selectedKpiId/.test(modalControllerSource), '다중 KPI 추가·삭제·표시 선택 로직이 없습니다.');
   assert(/const mainClass[^]*dark:bg-/.test(appSource) && /const subClass[^]*dark:bg-/.test(appSource), '데스크톱 캘린더 막대의 다크 테마 상태색이 누락되었습니다.');
   assert(/function getIndustryBarClass[^]*dark:bg-/.test(dateRiskSource), '업무 분류별 캘린더 막대의 다크 테마 색상이 누락되었습니다.');
   assert(/function kanbanTone[^]*dark:bg-/.test(kanbanRendererSource), '칸반 열의 다크 테마 배경이 누락되었습니다.');
@@ -841,6 +847,56 @@ async function main() {
   notesCommentsToggle.click();
   notesView.querySelector('[data-note-id="note-outside-task-range"]').click();
   assert(openedListNote?.id === 'note-outside-task-range', '메모 리스트 항목 클릭 시 기존 메모 상세 패널이 열리지 않습니다.');
+
+  const previousApprovedUsers = window.approvedUsers;
+  const assigneeAuthorFilter = new Set(['김BD']);
+  global.selectedAssigneeFilters = assigneeAuthorFilter;
+  window.selectedAssigneeFilters = assigneeAuthorFilter;
+  window.approvedUsers = [
+    { uid: 'user-bd', displayName: '김BD', email: 'bd@example.com' },
+    { uid: 'user-engineer', displayName: '박엔지니어', email: 'engineer@example.com' },
+    { uid: 'user-manager', displayName: '이매니저', email: 'manager@example.com' }
+  ];
+
+  const assigneeFilteredMonthNotes = global.getCalendarProgressNotesForMonth(
+    global.getCachedTrackerProgressNotes(global.currentTrackerId),
+    [...tasks, cancelledTask, outsideMonthTask],
+    2026,
+    6
+  );
+  assert(
+    assigneeFilteredMonthNotes.length === 2
+      && assigneeFilteredMonthNotes.every(note => ['note-main-older', 'note-main-latest'].includes(note.id)),
+    '담당자 필터가 작성자 UID 또는 기존 작성자 이메일에 맞는 월간 캘린더 메모만 남기지 않습니다.'
+  );
+
+  global.currentViewMode = 'CALENDAR';
+  window.currentViewMode = 'CALENDAR';
+  await global.renderCalendarSummaryView({
+    grid: document.getElementById('calendar-grid'),
+    year: 2026,
+    month: 6,
+    filteredTasks: [...tasks, cancelledTask, outsideMonthTask],
+    noteTaskScope: [...tasks, cancelledTask, outsideMonthTask],
+    todayStr: '2026-07-12'
+  });
+  const authorFilteredSummary = document.getElementById('calendar-grid');
+  assert(authorFilteredSummary.querySelectorAll('[data-summary-note-entry]').length === 2, '월간 요약이 선택 담당자의 메모만 표시하지 않습니다.');
+  assert(!authorFilteredSummary.textContent.includes('하위 업무 점검') && !authorFilteredSummary.textContent.includes('일정 밖 실행 메모'), '월간 요약에 선택하지 않은 작성자의 메모가 남아 있습니다.');
+
+  global.currentViewMode = 'NOTES';
+  window.currentViewMode = 'NOTES';
+  await global.renderCalendarNotesView({
+    grid: document.getElementById('notes-content'),
+    noteTaskScope: [...tasks, cancelledTask, outsideMonthTask]
+  });
+  assert(notesView.querySelectorAll('[data-calendar-note-list-item]').length === 2, '메모 뷰가 선택 담당자의 작성 메모만 표시하지 않습니다.');
+  assert(notesView.textContent.includes('리스크 회의 결과') && notesView.textContent.includes('후속 검토'), '메모 뷰에서 선택 담당자의 메모가 누락되었습니다.');
+
+  const clearedAssigneeAuthorFilter = new Set();
+  global.selectedAssigneeFilters = clearedAssigneeAuthorFilter;
+  window.selectedAssigneeFilters = clearedAssigneeAuthorFilter;
+  window.approvedUsers = previousApprovedUsers;
 
   const originalFetchTrackerNotes = window.db_fetchTrackerProgressNotes;
   window.db_fetchTrackerProgressNotes = async () => Array.from({ length: 25 }, (_, index) => ({

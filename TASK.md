@@ -1,6 +1,6 @@
 # Smart Task Flow Task
 
-Last updated: 2026-08-24
+Last updated: 2026-09-15
 
 ## Startup
 
@@ -26,6 +26,8 @@ Last updated: 2026-08-24
 - Personal To-do can select a specific occurrence of a recurring subtask and reopen that exact occurrence in the task modal.
 - The tracker list shows the current user's linked To-do separately from progress notes for each exact main task or subtask, and its add action opens the existing To-do modal with that task link preselected.
 - Desktop and mobile task month calendars show linked personal To-do on its effective monthly start position with a violet `☐/☑` marker; the marker opens the existing To-do modal and remains private to its owner.
+- Selecting one or more tracker assignees also limits calendar and memo-view notes to notes authored by those users, using the note author UID when available and the saved author name/email as a compatibility fallback.
+- Each tracker can store up to 20 goal KPIs, select one for the header badge, and add, edit, or remove KPI definitions from the KPI settings modal; legacy single-KPI tracker fields remain synchronized for compatibility.
 - The To-do modal exposes its active/completed status. A completed To-do with an accessible linked task can explicitly copy its title and memo into that exact task/subtask's progress notes, using the To-do completion date as `noteDate` and preventing duplicate copies by `sourceTodoId`.
 - Commit `30a99b0` is pushed to `origin/main`. Firestore Rules release `f9af690a-362b-4b12-8d1f-288933f980b8` was deployed to `task-tracker-99af4` on 2026-08-02, and unauthenticated reads of `todos`, `tasks`, `trackers`, `users`, `activity_logs`, and `progress_notes` were denied in production.
 - An authenticated production browser check selected one of four recurring occurrences, saved and reopened the To-do link, highlighted the exact occurrence in the task modal, and removed the disposable To-do record with zero matching records remaining.
@@ -41,6 +43,7 @@ Last updated: 2026-08-24
 - Tracker owners configure per-user `view/create/update/delete` access. Owners and admins retain full access; legacy trackers retain legacy behavior until ACL settings are explicitly saved.
 - Users with view access may copy active tasks and embedded subtasks into a new tracker they own. Notes, history, deleted tasks, source ACL, and personal To-do items are excluded; one copy is limited to 499 tasks.
 - Task restore and tracker ordering writes remain in `js/task-service.js`; renderers must not write directly to Firestore.
+- Tracker KPI definitions live in `kpis[]` with `selectedKpiId`; existing `kpiTitle`, `kpiTarget`, `kpiUnit`, `kpiType`, `kpiCurrent`, and `targetKpi` mirror the selected KPI for backward compatibility. Tracker copies preserve the KPI list and selected item.
 
 ### Subtasks and recurrence
 
@@ -59,6 +62,7 @@ Last updated: 2026-08-24
 - The top-level memo view is a flat latest-record-date-first review list beside the list and calendar views. It uses the shared start/end month controls as an independent effective-record-date range, combines that range with the memo's saved work type and `댓글 있음` toggle, and opens the shared note detail slide-over.
 - Monthly calendars reuse the loaded tracker-note cache, show only notes linked to currently filtered existing tasks/subtasks, and open the shared note detail slide-over.
 - Monthly calendars persist independent `메모만 보기` and `To-do만 보기` toggles on desktop and mobile. Either active toggle hides task bars/cards; each toggle includes its matching content, and selecting both shows dated notes and linked personal To-do markers together with their existing interactions.
+- The shared assignee filter continues to scope tasks by task/subtask assignee and additionally scopes visible notes by note author across monthly calendars, monthly summaries, and the top-level memo view.
 - A note's effective record date is independent of its linked task schedule: monthly calendars and summaries keep non-date filters but must not hide a note because the task does not overlap the selected month.
 
 ### Personal To-do
@@ -104,6 +108,7 @@ Last updated: 2026-08-24
 - Mobile regression: `npm run smoke:mobile`
 - Security contract: `npm run smoke:security`
 - CRUD behavior: `npm run smoke:crud`
+- Multi-KPI settings: `npm run smoke:kpi`
 - Tracker access UI: `npm run smoke:access`
 - Note detail/history: `npm run smoke:notes`
 - Personal To-do: `npm run smoke:todo`

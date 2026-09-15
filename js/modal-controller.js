@@ -1,4 +1,4 @@
-console.info('Smart Task Flow modal-controller.js v20260802-v2 loaded');
+console.info('Smart Task Flow modal-controller.js v20260915-v3 loaded');
 // Task modal, subtask modal list, tracker modal, and form submit handlers.
 function resetSubTaskButton() {
   const btn = document.getElementById('btn-add-subtask');
@@ -809,6 +809,68 @@ document.addEventListener('click', (e) => {
 window.populateAssigneeDropdowns = populateAssigneeDropdowns;
 
 // === Custom KPI Settings Modal Logic ===
+let kpiSettingsDraft = [];
+let editingKpiId = '';
+let kpiSettingsSaving = false;
+
+function setKpiFormValue(id, value) {
+  const element = document.getElementById(id);
+  if (element) element.value = value;
+}
+
+function updateKpiManualInputVisibility() {
+  const isManual = document.getElementById('select-kpi-type')?.value === 'MANUAL';
+  document.getElementById('kpi-manual-input-wrapper')?.classList.toggle('hidden', !isManual);
+}
+
+function readKpiSettingsForm() {
+  const numberValue = id => {
+    const value = Number(document.getElementById(id)?.value);
+    return Number.isFinite(value) ? Math.max(0, value) : 0;
+  };
+  return {
+    id: editingKpiId,
+    title: String(document.getElementById('input-kpi-title')?.value || '').trim(),
+    target: numberValue('input-kpi-target'),
+    unit: String(document.getElementById('input-kpi-unit')?.value || '').trim(),
+    type: document.getElementById('select-kpi-type')?.value || 'MANUAL',
+    current: numberValue('input-kpi-current'),
+  };
+}
+
+function captureKpiSettingsForm() {
+  const index = kpiSettingsDraft.findIndex(kpi => kpi.id === editingKpiId);
+  if (index !== -1) kpiSettingsDraft[index] = readKpiSettingsForm();
+}
+
+function showKpiSettingsEditor(kpiId) {
+  const kpi = kpiSettingsDraft.find(item => item.id === kpiId) || kpiSettingsDraft[0];
+  if (!kpi) return;
+  editingKpiId = kpi.id;
+  setKpiFormValue('select-active-kpi', kpi.id);
+  setKpiFormValue('input-kpi-title', kpi.title);
+  setKpiFormValue('input-kpi-target', kpi.target);
+  setKpiFormValue('input-kpi-unit', kpi.unit);
+  setKpiFormValue('select-kpi-type', kpi.type);
+  setKpiFormValue('input-kpi-current', kpi.current);
+  updateKpiManualInputVisibility();
+  const deleteButton = document.getElementById('btn-delete-kpi');
+  if (deleteButton) deleteButton.disabled = kpiSettingsDraft.length <= 1;
+}
+
+function renderKpiSettingsOptions(selectedKpiId) {
+  const select = document.getElementById('select-active-kpi');
+  if (!select) return;
+  select.innerHTML = '';
+  kpiSettingsDraft.forEach(kpi => {
+    const option = document.createElement('option');
+    option.value = kpi.id;
+    option.textContent = kpi.title || '이름 없는 KPI';
+    select.appendChild(option);
+  });
+  showKpiSettingsEditor(selectedKpiId);
+}
+
 function openKpiSettingsModal() {
   const tracker = trackers.find(t => t.id === currentTrackerId);
   if (!tracker) {
@@ -816,29 +878,16 @@ function openKpiSettingsModal() {
     return;
   }
 
-  const kpiTitle = tracker.kpiTitle || '업무 완료율';
-  const kpiTarget = typeof tracker.kpiTarget === 'number' ? tracker.kpiTarget : 80;
-  const kpiUnit = tracker.kpiUnit || '%';
-  const kpiType = tracker.kpiType || 'AUTO_DONE_PCT';
-  const kpiCurrent = typeof tracker.kpiCurrent === 'number' ? tracker.kpiCurrent : 0;
-
-  const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
-  setVal('input-kpi-title', kpiTitle);
-  setVal('input-kpi-target', kpiTarget);
-  setVal('input-kpi-unit', kpiUnit);
-  setVal('select-kpi-type', kpiType);
-  setVal('input-kpi-current', kpiCurrent);
-
-  const wrapper = document.getElementById('kpi-manual-input-wrapper');
-  if (wrapper) {
-    if (kpiType === 'MANUAL') {
-      wrapper.classList.remove('hidden');
-    } else {
-      wrapper.classList.add('hidden');
-    }
-  }
+  kpiSettingsDraft = typeof window.normalizeTrackerKpis === 'function'
+    ? window.normalizeTrackerKpis(tracker)
+    : [{ id: 'kpi_default', title: tracker.kpiTitle || '업무 완료율', target: tracker.kpiTarget ?? 80, unit: tracker.kpiUnit || '%', type: tracker.kpiType || 'AUTO_DONE_PCT', current: tracker.kpiCurrent ?? 0 }];
+  const selectedKpiId = kpiSettingsDraft.some(kpi => kpi.id === tracker.selectedKpiId)
+    ? tracker.selectedKpiId
+    : kpiSettingsDraft[0].id;
+  renderKpiSettingsOptions(selectedKpiId);
 
   document.getElementById('modal-kpi-settings')?.classList.remove('hidden');
+  document.getElementById('select-active-kpi')?.focus();
 }
 
 function closeKpiSettingsModal() {
@@ -847,16 +896,30 @@ function closeKpiSettingsModal() {
 
 function initKpiSettingsEvents() {
   const selectType = document.getElementById('select-kpi-type');
-  const wrapper = document.getElementById('kpi-manual-input-wrapper');
-  if (selectType && wrapper) {
-    selectType.addEventListener('change', () => {
-      if (selectType.value === 'MANUAL') {
-        wrapper.classList.remove('hidden');
-      } else {
-        wrapper.classList.add('hidden');
-      }
-    });
-  }
+  selectType?.addEventListener('change', updateKpiManualInputVisibility);
+
+  document.getElementById('select-active-kpi')?.addEventListener('change', event => {
+    captureKpiSettingsForm();
+    showKpiSettingsEditor(event.target.value);
+  });
+
+  document.getElementById('btn-add-kpi')?.addEventListener('click', () => {
+    captureKpiSettingsForm();
+    if (kpiSettingsDraft.length >= 20) {
+      showToast('KPI는 최대 20개까지 등록할 수 있습니다.', false);
+      return;
+    }
+    const id = `kpi_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    kpiSettingsDraft.push({ id, title: `새 KPI ${kpiSettingsDraft.length + 1}`, target: 0, unit: '건', type: 'MANUAL', current: 0 });
+    renderKpiSettingsOptions(id);
+    document.getElementById('input-kpi-title')?.select();
+  });
+
+  document.getElementById('btn-delete-kpi')?.addEventListener('click', () => {
+    if (kpiSettingsDraft.length <= 1) return;
+    kpiSettingsDraft = kpiSettingsDraft.filter(kpi => kpi.id !== editingKpiId);
+    renderKpiSettingsOptions(kpiSettingsDraft[0].id);
+  });
 
   const closeIds = ['btn-close-kpi-settings', 'btn-cancel-kpi-settings', 'modal-kpi-backdrop'];
   closeIds.forEach(id => {
@@ -867,29 +930,47 @@ function initKpiSettingsEvents() {
   if (form) {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      
-      const getVal = (id) => document.getElementById(id)?.value || '';
-      const getNum = (id) => {
-        const val = document.getElementById(id)?.value;
-        return val !== undefined && val !== '' ? Number(val) : 0;
-      };
-
+      if (kpiSettingsSaving) return;
+      if (!form.reportValidity()) return;
+      captureKpiSettingsForm();
+      const normalizedKpis = typeof window.normalizeTrackerKpis === 'function'
+        ? window.normalizeTrackerKpis({ kpis: kpiSettingsDraft })
+        : kpiSettingsDraft;
+      const selectedKpiId = normalizedKpis.some(kpi => kpi.id === editingKpiId)
+        ? editingKpiId
+        : normalizedKpis[0].id;
+      const selectedKpi = normalizedKpis.find(kpi => kpi.id === selectedKpiId) || normalizedKpis[0];
       const payload = {
-        kpiTitle: getVal('input-kpi-title'),
-        kpiTarget: getNum('input-kpi-target'),
-        kpiUnit: getVal('input-kpi-unit'),
-        kpiType: getVal('select-kpi-type'),
-        kpiCurrent: getNum('input-kpi-current'),
-        targetKpi: getNum('input-kpi-target')
+        kpis: normalizedKpis,
+        selectedKpiId,
+        kpiTitle: selectedKpi.title,
+        kpiTarget: selectedKpi.target,
+        kpiUnit: selectedKpi.unit,
+        kpiType: selectedKpi.type,
+        kpiCurrent: selectedKpi.current,
+        targetKpi: selectedKpi.target,
       };
 
-      if (typeof window.db_updateTracker === 'function') {
-        showToast('KPI 설정을 저장하는 중...');
-        const result = await window.db_updateTracker(currentTrackerId, payload);
-        if (!result || !result.success) return;
+      const saveButton = document.getElementById('btn-save-kpi-settings');
+      kpiSettingsSaving = true;
+      if (saveButton) saveButton.disabled = true;
+      let saveSucceeded = true;
+      try {
+        if (typeof window.db_updateTracker === 'function') {
+          showToast('KPI 설정을 저장하는 중...');
+          const result = await window.db_updateTracker(currentTrackerId, payload);
+          saveSucceeded = Boolean(result?.success);
+        }
+      } catch (error) {
+        saveSucceeded = false;
+        console.warn('KPI 설정 저장 실패:', error);
+        showToast('KPI 설정을 저장하지 못했습니다.', false);
+      } finally {
+        kpiSettingsSaving = false;
+        if (saveButton) saveButton.disabled = false;
       }
 
-      closeKpiSettingsModal();
+      if (saveSucceeded) closeKpiSettingsModal();
     });
   }
 }

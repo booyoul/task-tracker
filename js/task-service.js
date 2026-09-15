@@ -1,4 +1,46 @@
-console.info('Smart Task Flow task-service.js v20260805-v4 loaded');
+console.info('Smart Task Flow task-service.js v20260915-v5 loaded');
+
+const TRACKER_KPI_TYPES = new Set(['AUTO_DONE_PCT', 'AUTO_OVERDUE_COUNT', 'MANUAL']);
+
+function normalizeTrackerKpis(tracker = {}) {
+  const source = Array.isArray(tracker.kpis) && tracker.kpis.length
+    ? tracker.kpis
+    : [{
+        id: 'kpi_default',
+        title: tracker.kpiTitle || '업무 완료율',
+        target: typeof tracker.kpiTarget === 'number' ? tracker.kpiTarget : (typeof tracker.targetKpi === 'number' ? tracker.targetKpi : 80),
+        unit: tracker.kpiUnit || '%',
+        type: tracker.kpiType || 'AUTO_DONE_PCT',
+        current: typeof tracker.kpiCurrent === 'number' ? tracker.kpiCurrent : 0,
+      }];
+  const usedIds = new Set();
+  return source.slice(0, 20).map((item, index) => {
+    const rawId = String(item?.id || `kpi_${index + 1}`).trim() || `kpi_${index + 1}`;
+    let id = rawId;
+    let suffix = 2;
+    while (usedIds.has(id)) id = `${rawId}_${suffix++}`;
+    usedIds.add(id);
+    const target = typeof item?.target === 'number' && Number.isFinite(item.target) ? Math.max(0, item.target) : 0;
+    const current = typeof item?.current === 'number' && Number.isFinite(item.current) ? Math.max(0, item.current) : 0;
+    return {
+      id,
+      title: String(item?.title || '').trim().slice(0, 80) || `KPI ${index + 1}`,
+      target,
+      unit: String(item?.unit || '').trim().slice(0, 16) || '건',
+      type: TRACKER_KPI_TYPES.has(item?.type) ? item.type : 'MANUAL',
+      current,
+    };
+  });
+}
+
+function getSelectedTrackerKpi(tracker = {}) {
+  const kpis = normalizeTrackerKpis(tracker);
+  const selectedKpiId = String(tracker.selectedKpiId || '');
+  return kpis.find(kpi => kpi.id === selectedKpiId) || kpis[0];
+}
+
+window.normalizeTrackerKpis = normalizeTrackerKpis;
+window.getSelectedTrackerKpi = getSelectedTrackerKpi;
 // Task / tracker CRUD and Firebase realtime listener helpers.
 let taskSnapshotsByTracker = new Map();
 async function db_addTask(taskData) {
@@ -261,14 +303,19 @@ async function db_addTracker(data) {
   const nextOrder = trackers.length ? Math.max(...trackers.map(t => typeof t.order === 'number' ? t.order : 0)) + 1 : 1;
   const ownerId = window.currentUser ? window.currentUser.uid : 'anonymous';
   const ownerPermissions = { view: true, create: true, update: true, delete: true };
+  const kpis = normalizeTrackerKpis(data);
+  const selectedKpi = kpis.find(kpi => kpi.id === data.selectedKpiId) || kpis[0];
   const payload = {
     ...data,
     accessControl: { ...(data.accessControl || {}), [ownerId]: ownerPermissions },
-    kpiTitle: data.kpiTitle || '업무 완료율',
-    kpiTarget: typeof data.kpiTarget === 'number' ? data.kpiTarget : (typeof data.targetKpi === 'number' ? data.targetKpi : 80),
-    kpiUnit: data.kpiUnit || '%',
-    kpiType: data.kpiType || 'AUTO_DONE_PCT',
-    kpiCurrent: typeof data.kpiCurrent === 'number' ? data.kpiCurrent : 0,
+    kpis,
+    selectedKpiId: selectedKpi.id,
+    kpiTitle: selectedKpi.title,
+    kpiTarget: selectedKpi.target,
+    kpiUnit: selectedKpi.unit,
+    kpiType: selectedKpi.type,
+    kpiCurrent: selectedKpi.current,
+    targetKpi: selectedKpi.target,
     order: nextOrder,
     deleted: false,
     createdAt: getServerTimestamp(),
@@ -340,15 +387,20 @@ async function db_duplicateTracker(sourceTrackerId, data = {}) {
   const ownerName = window.currentUser ? (window.currentUser.displayName || window.currentUser.email) : 'anonymous';
   const ownerPermissions = { view: true, create: true, update: true, delete: true };
   const nextOrder = trackers.length ? Math.max(...trackers.map(tracker => typeof tracker.order === 'number' ? tracker.order : 0)) + 1 : 1;
+  const sourceKpis = normalizeTrackerKpis(sourceTracker);
+  const sourceSelectedKpi = sourceKpis.find(kpi => kpi.id === sourceTracker.selectedKpiId) || sourceKpis[0];
   const trackerPayload = {
     name: String(data.name || `${sourceTracker.name || '트래커'} - 복사본`).trim(),
     desc: String(data.desc ?? sourceTracker.desc ?? '').trim(),
     accessControl: { [ownerId]: ownerPermissions },
-    kpiTitle: sourceTracker.kpiTitle || '업무 완료율',
-    kpiTarget: typeof sourceTracker.kpiTarget === 'number' ? sourceTracker.kpiTarget : 80,
-    kpiUnit: sourceTracker.kpiUnit || '%',
-    kpiType: sourceTracker.kpiType || 'AUTO_DONE_PCT',
-    kpiCurrent: typeof sourceTracker.kpiCurrent === 'number' ? sourceTracker.kpiCurrent : 0,
+    kpis: sourceKpis.map(kpi => ({ ...kpi })),
+    selectedKpiId: sourceSelectedKpi.id,
+    kpiTitle: sourceSelectedKpi.title,
+    kpiTarget: sourceSelectedKpi.target,
+    kpiUnit: sourceSelectedKpi.unit,
+    kpiType: sourceSelectedKpi.type,
+    kpiCurrent: sourceSelectedKpi.current,
+    targetKpi: sourceSelectedKpi.target,
     ...(Array.isArray(sourceTracker.noteTypeOptions)
       ? { noteTypeOptions: sourceTracker.noteTypeOptions.map(option => ({ ...option })) }
       : {}),
@@ -522,6 +574,8 @@ function setupRealtimeListeners() {
     const incoming = sortTrackersByOrder(snapshot.docs.map(doc => {
       const d = doc.data();
       const targetVal = typeof d.kpiTarget === 'number' ? d.kpiTarget : (typeof d.targetKpi === 'number' ? d.targetKpi : 80);
+      const normalizedKpis = normalizeTrackerKpis(d);
+      const selectedKpiId = normalizedKpis.some(kpi => kpi.id === d.selectedKpiId) ? d.selectedKpiId : normalizedKpis[0].id;
       return { 
         id: doc.id, 
         kpiTitle: d.kpiTitle || '업무 완료율',
@@ -529,7 +583,9 @@ function setupRealtimeListeners() {
         kpiUnit: d.kpiUnit || '%',
         kpiType: d.kpiType || 'AUTO_DONE_PCT',
         kpiCurrent: typeof d.kpiCurrent === 'number' ? d.kpiCurrent : 0,
-        ...d 
+        ...d,
+        kpis: normalizedKpis,
+        selectedKpiId,
       };
     }).filter(t => t.deleted !== true && window.canAccessTracker?.(t) === true));
     trackers = incoming;
