@@ -1,4 +1,4 @@
-console.info('Smart Task Flow task-service.js v20260915-v5 loaded');
+console.info('Smart Task Flow task-service.js v20261006-v1 loaded');
 
 const TRACKER_KPI_TYPES = new Set(['AUTO_DONE_PCT', 'AUTO_OVERDUE_COUNT', 'MANUAL']);
 
@@ -486,12 +486,19 @@ async function db_updateTracker(id, data) {
   const coll = getTrackersCollection();
   const ownerId = original?.ownerId || original?.createdBy;
   const ownerPermissions = { view: true, create: true, update: true, delete: true };
+  const accessControl = data.accessControl
+    ? { ...data.accessControl, ...(ownerId ? { [ownerId]: ownerPermissions } : {}) }
+    : original?.accessControl;
+  const order = original && typeof original.order === 'number' ? original.order : data.order;
   const payload = {
     ...data,
-    accessControl: data.accessControl ? { ...data.accessControl, ...(ownerId ? { [ownerId]: ownerPermissions } : {}) } : original?.accessControl,
-    order: original && typeof original.order === 'number' ? original.order : data.order,
     updatedAt: getServerTimestamp()
   };
+  // Legacy trackers may lack these fields; Firestore rejects undefined values.
+  if (accessControl !== undefined) payload.accessControl = accessControl;
+  else delete payload.accessControl;
+  if (order !== undefined) payload.order = order;
+  else delete payload.order;
   markSaving();
   if (!coll || !canWriteToFirestore()) {
     markSaveError();

@@ -1,6 +1,6 @@
 # Smart Task Flow Task
 
-Last updated: 2026-09-15
+Last updated: 2026-10-06
 
 ## Startup
 
@@ -12,6 +12,7 @@ Last updated: 2026-09-15
 
 ## Current State
 
+- Local fix pending release: tracker updates omit absent legacy `accessControl`/`order` fields so Firestore does not reject category saves with `undefined`. `smoke:categories` covers adding, saving, reopening, and preserving existing ACL/order through the real UI/service path with a strict Firestore write stub. Category, CRUD, access, KPI smoke checks, JavaScript syntax, and whitespace checks passed; production saving has not been verified for this fix.
 - The Firebase/Firestore task tracker, tracker ACL, personal To-do, progress-note review workflow, recurrence support, responsive calendars, and class-based dark theme are implemented.
 - Production Firestore rules, authenticated To-do isolation, tracker-role permissions, formatted-note writes, and the user-document audit have been verified. Disposable verification data and accounts were removed.
 - Desktop and mobile task/list/calendar/summary/To-do routing is covered by focused smoke tests. The full suite includes 61 Firestore Rules allow/deny cases.
@@ -108,6 +109,7 @@ Last updated: 2026-09-15
 - Mobile regression: `npm run smoke:mobile`
 - Security contract: `npm run smoke:security`
 - CRUD behavior: `npm run smoke:crud`
+- Task category add/save: `npm run smoke:categories`
 - Multi-KPI settings: `npm run smoke:kpi`
 - Tracker access UI: `npm run smoke:access`
 - Note detail/history: `npm run smoke:notes`
@@ -129,7 +131,7 @@ For responsive geometry, native picker behavior, rich-text selection, or color c
 
 ## Next Work
 
-- No required release work remains. Select the next product improvement before changing behavior or data contracts.
+- Release the 2026-10-06 legacy tracker category-save fix and verify saving a category on an affected tracker in production.
 
 ## Cautions
 
