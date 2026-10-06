@@ -12,10 +12,11 @@ Last updated: 2026-10-06
 
 ## Current State
 
-- Local fix pending release: tracker updates omit absent legacy `accessControl`/`order` fields so Firestore does not reject category saves with `undefined`. `smoke:categories` covers adding, saving, reopening, and preserving existing ACL/order through the real UI/service path with a strict Firestore write stub. Category, CRUD, access, KPI smoke checks, JavaScript syntax, and whitespace checks passed; production saving has not been verified for this fix.
+- Users with tracker `update` permission can add, rename, and delete task categories through a category-only tracker update. Firestore Rules permit those users to change only `taskCategoryOptions`/`updatedAt`; other tracker settings and users without `update` permission remain blocked. `smoke:categories` covers the UI/service path, and Rules tests cover both standard and environment-specific collections.
+- Firestore Ruleset `00a3f8a0-f3d5-4b65-bca6-e963d599e7ce` was deployed to `task-tracker-99af4` on 2026-10-06. The full local regression suite passed with 66 Rules cases; an authenticated production save by a non-owner user remains to be verified.
 - The Firebase/Firestore task tracker, tracker ACL, personal To-do, progress-note review workflow, recurrence support, responsive calendars, and class-based dark theme are implemented.
 - Production Firestore rules, authenticated To-do isolation, tracker-role permissions, formatted-note writes, and the user-document audit have been verified. Disposable verification data and accounts were removed.
-- Desktop and mobile task/list/calendar/summary/To-do routing is covered by focused smoke tests. The full suite includes 61 Firestore Rules allow/deny cases.
+- Desktop and mobile task/list/calendar/summary/To-do routing is covered by focused smoke tests. The full suite includes 66 Firestore Rules allow/deny cases.
 - The latest UI pass aligned dark surfaces across calendars, lists, all modal/dialog panels, mobile task cards, and mobile 가입 승인 관리.
 - The desktop task modal's subtask recurrence form and dynamically rendered occurrence-status rows use explicit dark surfaces, including the highlighted To-do-linked occurrence.
 - The To-do list, filters, view toggles, cards, linked-task badges, and desktop/mobile month/year calendars use explicit dark surface and semantic status colors.
@@ -42,6 +43,7 @@ Last updated: 2026-10-06
 - Tasks and subtasks persist `PENDING`, `PROGRESS`, `COMPLETED`, or `CANCELLED`. Cancelled items remain visible but are excluded from overdue, risk, progress, and completion-rate calculations.
 - Mobile cards show calculated operational status such as `기한 초과`, while their status controls must reflect the persisted task status. Do not pass `OVERDUE` into the editable status selector.
 - Tracker owners configure per-user `view/create/update/delete` access. Owners and admins retain full access; legacy trackers retain legacy behavior until ACL settings are explicitly saved.
+- Users with tracker `update` access may add, rename, or delete task-category options. Their tracker-document write is restricted to `taskCategoryOptions` and `updatedAt`.
 - Users with view access may copy active tasks and embedded subtasks into a new tracker they own. Notes, history, deleted tasks, source ACL, and personal To-do items are excluded; one copy is limited to 499 tasks.
 - Task restore and tracker ordering writes remain in `js/task-service.js`; renderers must not write directly to Firestore.
 - Tracker KPI definitions live in `kpis[]` with `selectedKpiId`; existing `kpiTitle`, `kpiTarget`, `kpiUnit`, `kpiType`, `kpiCurrent`, and `targetKpi` mirror the selected KPI for backward compatibility. Tracker copies preserve the KPI list and selected item.
@@ -124,14 +126,14 @@ For responsive geometry, native picker behavior, rich-text selection, or color c
 
 ## Verified Release Baseline
 
-- `npm test` passes, including 61 Firestore Rules cases.
+- `npm test` passes, including 66 Firestore Rules cases.
 - `npm run build:css`, relevant JavaScript syntax checks, and `git diff --check` pass.
 - Headless Chrome has verified the main responsive workflows and the latest mobile dark-theme surfaces at a 390px viewport.
 - Firestore production-write verification is historical evidence only; do not infer future production state without a fresh live check.
 
 ## Next Work
 
-- Release the 2026-10-06 legacy tracker category-save fix and verify saving a category on an affected tracker in production.
+- Verify category add/rename/delete in production with a non-owner user who has tracker `update` permission.
 
 ## Cautions
 

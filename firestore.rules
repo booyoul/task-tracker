@@ -146,6 +146,10 @@ service cloud.firestore {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deleted', 'deletedAt', 'updatedAt']);
     }
 
+    function changesOnlyTaskCategorySettings() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['taskCategoryOptions', 'updatedAt']);
+    }
+
     function keepsDeleteState() {
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['deleted', 'deletedAt']);
     }
@@ -195,7 +199,11 @@ service cloud.firestore {
     match /trackers/{trackerId} {
       allow read: if isApproved();
       allow create: if isApproved() && (isAdmin() || isCreatedByCurrentUser());
-      allow update: if isApproved() && (isAdmin() || (isResourceOwner() && keepsOwnership()));
+      allow update: if isApproved() && (
+        isAdmin() ||
+        (isResourceOwner() && keepsOwnership()) ||
+        (hasTrackerPermission(trackerId, 'update') && changesOnlyTaskCategorySettings())
+      );
       allow delete: if isApproved() && (isAdmin() || isResourceOwner());
     }
 
@@ -239,7 +247,11 @@ service cloud.firestore {
     match /artifacts/{envAppId}/public/data/trackers/{trackerId} {
       allow read: if isEnvApproved(envAppId);
       allow create: if isEnvApproved(envAppId) && (isEnvAdmin(envAppId) || isCreatedByCurrentUser());
-      allow update: if isEnvApproved(envAppId) && (isEnvAdmin(envAppId) || (isResourceOwner() && keepsOwnership()));
+      allow update: if isEnvApproved(envAppId) && (
+        isEnvAdmin(envAppId) ||
+        (isResourceOwner() && keepsOwnership()) ||
+        (hasEnvTrackerPermission(envAppId, trackerId, 'update') && changesOnlyTaskCategorySettings())
+      );
       allow delete: if isEnvApproved(envAppId) && (isEnvAdmin(envAppId) || isResourceOwner());
     }
 

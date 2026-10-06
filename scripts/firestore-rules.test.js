@@ -210,6 +210,18 @@ async function main() {
       assertSucceeds(updateDoc(doc(bobDb, 'tasks', 'acl-task'), { status: 'PROGRESS' })));
     await check('트래커 수정 권한 없는 사용자의 업무 수정 차단', () =>
       assertFails(updateDoc(doc(creatorDb, 'tasks', 'acl-task'), { status: 'COMPLETED' })));
+    await check('트래커 수정 권한 사용자의 업무 분류 설정 변경 허용', () =>
+      assertSucceeds(updateDoc(doc(bobDb, 'trackers', 'tracker-acl'), {
+        taskCategoryOptions: [{ id: 'SALES', label: '영업' }],
+        updatedAt: 'now'
+      })));
+    await check('트래커 수정 권한 사용자의 일반 트래커 설정 변경 차단', () =>
+      assertFails(updateDoc(doc(bobDb, 'trackers', 'tracker-acl'), { name: '권한 밖 변경' })));
+    await check('트래커 수정 권한 없는 사용자의 업무 분류 설정 변경 차단', () =>
+      assertFails(updateDoc(doc(creatorDb, 'trackers', 'tracker-acl'), {
+        taskCategoryOptions: [{ id: 'SALES', label: '영업' }],
+        updatedAt: 'now'
+      })));
     await check('트래커 삭제 권한 없는 사용자의 업무 삭제 차단', () =>
       assertFails(deleteDoc(doc(bobDb, 'tasks', 'acl-task'))));
     await check('트래커 삭제 권한 없는 사용자의 소프트 삭제 차단', () =>
@@ -383,6 +395,17 @@ async function main() {
     const envAclTaskPath = ['artifacts', ENV_APP_ID, 'public', 'data', 'tasks', 'acl-task'];
     await check('환경별 컬렉션에서 ACL 수정 권한 허용', () =>
       assertSucceeds(updateDoc(doc(bobDb, ...envAclTaskPath), { status: 'PROGRESS' })));
+    const envAclTrackerPath = ['artifacts', ENV_APP_ID, 'public', 'data', 'trackers', 'tracker-acl'];
+    await check('환경별 컬렉션에서 수정 권한 사용자의 업무 분류 설정 변경 허용', () =>
+      assertSucceeds(updateDoc(doc(bobDb, ...envAclTrackerPath), {
+        taskCategoryOptions: [{ id: 'SERVICE', label: '서비스' }],
+        updatedAt: 'now'
+      })));
+    await check('환경별 컬렉션에서 수정 권한 없는 사용자의 업무 분류 설정 변경 차단', () =>
+      assertFails(updateDoc(doc(creatorDb, ...envAclTrackerPath), {
+        taskCategoryOptions: [{ id: 'SERVICE', label: '서비스' }],
+        updatedAt: 'now'
+      })));
     await check('환경별 컬렉션에서 ACL 없는 사용자 읽기 차단', () =>
       assertFails(getDoc(doc(noAccessDb, ...envAclTaskPath))));
     await check('환경별 컬렉션에서 새 트래커와 태스크 일괄 복사 허용', () => {

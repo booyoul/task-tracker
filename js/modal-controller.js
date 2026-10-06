@@ -1,4 +1,4 @@
-console.info('Smart Task Flow modal-controller.js v20260915-v3 loaded');
+console.info('Smart Task Flow modal-controller.js v20261006-v1 loaded');
 // Task modal, subtask modal list, tracker modal, and form submit handlers.
 function resetSubTaskButton() {
   const btn = document.getElementById('btn-add-subtask');
@@ -1584,8 +1584,8 @@ function renderTaskCategorySettings(options = getCurrentTaskCategoryOptions()) {
 
 function openTaskCategorySettings() {
   const tracker = Array.isArray(trackers) ? trackers.find(item => item.id === currentTrackerId) : null;
-  if (typeof window.hasTrackerWritePermission === 'function' && !window.hasTrackerWritePermission(tracker)) {
-    showToast('업무 분류 설정은 트래커 소유자 또는 관리자만 변경할 수 있습니다.', false);
+  if (window.hasTaskPermission?.(tracker, 'update') !== true) {
+    showToast('업무 분류 설정을 변경할 수정 권한이 없습니다.', false);
     return;
   }
   renderTaskCategorySettings();
@@ -1627,7 +1627,7 @@ function initTaskCategorySettingsEvents() {
     const previousValue = select?.value || '';
     const editingTaskId = document.getElementById('input-task-id')?.value || '';
     const editingTask = editingTaskId ? tasks.find(task => task.id === editingTaskId) : null;
-    const result = await window.db_updateTracker?.(currentTrackerId, { taskCategoryOptions: options });
+    const result = await window.db_updateTrackerCategories?.(currentTrackerId, options);
     if (!result?.success) {
       showToast(`업무 분류 저장 실패: ${result?.error || '알 수 없는 오류'}`, false);
       return;

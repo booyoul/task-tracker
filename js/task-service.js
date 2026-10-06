@@ -1,4 +1,4 @@
-console.info('Smart Task Flow task-service.js v20261006-v1 loaded');
+console.info('Smart Task Flow task-service.js v20261006-v2 loaded');
 
 const TRACKER_KPI_TYPES = new Set(['AUTO_DONE_PCT', 'AUTO_OVERDUE_COUNT', 'MANUAL']);
 
@@ -511,6 +511,37 @@ async function db_updateTracker(id, data) {
     markSaveError();
     console.warn('트래커 수정 실패', e);
     showToast('Firebase 트래커 수정 실패', false);
+    return { success: false, error: e.message || String(e) };
+  }
+  const idx = trackers.findIndex(t => t.id === id);
+  if (idx !== -1) trackers[idx] = { ...trackers[idx], ...payload };
+  updateTrackerUI();
+  updateUI();
+  return { success: true, id, tracker: idx !== -1 ? trackers[idx] : { id, ...payload } };
+}
+async function db_updateTrackerCategories(id, taskCategoryOptions) {
+  const original = trackers.find(t => t.id === id);
+  if (!original || window.hasTaskPermission?.(original, 'update') !== true) {
+    showToast('업무 분류 설정을 변경할 수정 권한이 없습니다.', false);
+    return { success: false, error: '업무 분류 설정 수정 권한이 없습니다.' };
+  }
+  const coll = getTrackersCollection();
+  const payload = {
+    taskCategoryOptions: taskCategoryOptions.map(option => ({ ...option })),
+    updatedAt: getServerTimestamp()
+  };
+  markSaving();
+  if (!coll || !canWriteToFirestore()) {
+    markSaveError();
+    return { success: false, error: '인증 실패 또는 DB 접근 불가' };
+  }
+  try {
+    await window.fs.setDoc(window.fs.doc(coll, id), payload, { merge: true });
+    markSaved();
+  } catch (e) {
+    markSaveError();
+    console.warn('업무 분류 설정 수정 실패', e);
+    showToast('Firebase 업무 분류 설정 수정 실패', false);
     return { success: false, error: e.message || String(e) };
   }
   const idx = trackers.findIndex(t => t.id === id);
