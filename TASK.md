@@ -12,6 +12,7 @@ Last updated: 2026-10-22
 
 ## Current State
 
+- UI consistency pass (2026-10-22) is implemented locally: mobile task/subtask completion styling, shared semantic status labels/colors, 44px mobile controls, compact collapsible mobile overview, Korean KPI wording, and consistent modal labels, Escape handling, focus trapping, and focus restoration. `npm run test:release` passes, including 74 Rules cases and both headless browser suites.
 - Code review fixes (2026-10-22) are implemented locally: field-level transactional task updates with conflict preservation, form submit guards, atomic completed-To-do note copies, safe month navigation, persistent memo filters and explicit query retry states. Validation passed: npm test (10 smoke suites and 74 Rules cases), both headless browser suites, JavaScript syntax, CSS build, and git diff --check.
 - The new atomic To-do copy reads a missing destination document. Deploy the updated `firestore.rules` before publishing this client change; current production rules have not been changed in this work.
 - `npm run test:release` combines syntax, CSS build, full regression including form/notes-view checks, both headless browser suites, and whitespace validation.
@@ -89,6 +90,9 @@ Last updated: 2026-10-22
 ### Responsive UI and dark theme
 
 - Tailwind dark mode is controlled by the app's `.dark` class, not OS preference.
+- At mobile widths, the overview/status summary starts collapsed so search and primary views remain above the fold; interactive controls use a 44px minimum touch height where space permits.
+- Completed or cancelled mobile subtask titles use the same muted strike-through treatment as desktop rows, and status labels/icons/colors come from the shared status presentation helper.
+- Managed modal dialogs close only the topmost dialog on Escape, trap keyboard focus, restore focus to their trigger, and expose an accessible label.
 - The compact KPI/status controls are canonical; the legacy full-size dashboard stays hidden through task/To-do routing.
 - Selection, undo, batch-delete, and bulk-action controls are visible only in task-selectable list and Kanban views.
 - Every modal, dialog, and note slide-over uses the shared `data-theme-modal-panel` contract: `slate-900` panel, `slate-800` nested/input surfaces, `slate-700` borders, and a transparent alignment wrapper.

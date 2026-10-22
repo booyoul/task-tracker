@@ -151,6 +151,7 @@ expose('openAssigneeModal', () => {});
 expose('bulkChangeStatus', () => {});
 expose('bulkChangeDueDate', () => {});
 expose('confirmBatchDelete', () => {});
+expose('updateSelectAllState', () => {});
 let openedListNote = null;
 expose('openNoteDetailPanel', note => { openedListNote = note; });
 let openedCalendarTodoId = '';
@@ -391,7 +392,7 @@ async function main() {
   assert(/bg-rose-50\/70[^']*dark:bg-rose-950\/30/.test(tableRendererSource), 'High/Risk 목록 행의 다크 테마 강조가 누락되었습니다.');
   assert(/bg-amber-50\/50[^']*dark:bg-amber-950\/30/.test(tableRendererSource), '기한 초과 목록 행의 다크 테마 강조가 누락되었습니다.');
   assert(/bg-rose-50\/70[^']*dark:bg-rose-950\/25/.test(tableRendererSource), '기한 초과 서브 태스크 행의 다크 테마 강조가 누락되었습니다.');
-  assert(/function getMobileRiskAccent[^]*dark:bg-rose-950\/30[^]*dark:bg-amber-950\/30/.test(tableRendererSource), '모바일 Risk·기한 초과 카드의 다크 테마 강조가 누락되었습니다.');
+  assert(/function getMobileRiskAccent[^]*effective === 'OVERDUE'[^]*dark:bg-rose-950\/30/.test(tableRendererSource), '모바일 기한 초과 카드의 rose 다크 테마 강조가 누락되었습니다.');
   assert(/mobile-bulk-action-bar[^]*bg-white\/95[^]*dark:bg-slate-900\/95/.test(tableRendererSource), '모바일 일괄 작업 바의 다크 테마 배경이 누락되었습니다.');
 
   indexDom.window.escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, ch => ({
@@ -428,10 +429,18 @@ async function main() {
   loadScript('js/calendar-mobile-renderer.js');
   loadScript('js/table-mobile-renderer.js');
 
+  assert(global.getStatusOptionLabel('COMPLETED') === '완료됨 ✅', '완료 상태의 공통 라벨 또는 아이콘이 올바르지 않습니다.');
+  assert(global.getStatusOptionLabel('OVERDUE') === '기한 초과 🚨', '기한 초과 운영 상태의 공통 라벨 또는 아이콘이 올바르지 않습니다.');
+  assert(global.getStatusPresentation('OVERDUE').badgeClass.includes('bg-rose-50') && global.getStatusPresentation('OVERDUE').badgeClass.includes('dark:bg-rose-950/40'), '기한 초과 운영 상태가 rose 계열의 라이트·다크 스타일을 사용하지 않습니다.');
+  global.updateViewToggleButtons('NOTES');
+  assert(document.getElementById('btn-view-notes')?.classList.contains('min-h-11') && document.getElementById('btn-view-notes')?.classList.contains('md:min-h-0'), '좁은 화면의 공용 뷰 전환 버튼이 44px 터치 높이와 데스크톱 축소 규칙을 함께 갖지 않습니다.');
+  assert(document.getElementById('btn-view-notes-mobile')?.classList.contains('min-h-11'), '모바일 뷰 전환 버튼에 44px 터치 높이가 없습니다.');
+
   // Exercise the real desktop bindings in an isolated DOM to avoid duplicate app listeners.
   const navDom = new JSDOM('<input id="filter-start-month" type="month"><button id="btn-prev-month"></button><button id="btn-next-month"></button>');
   const navContext = vm.createContext({
     window: navDom.window, document: navDom.window.document, console,
+    MutationObserver: navDom.window.MutationObserver,
     currentCalDate: new Date(2026, 0, 31), renderActiveViews() {}
   });
   vm.runInContext(eventBindingsSource, navContext);
@@ -536,6 +545,15 @@ async function main() {
   await global.ensureListProgressNoteSummaryLoaded(global.currentTrackerId);
   assert(global.getListProgressNoteSummary('task-1').count === 3, '본 업무의 메모 수가 정확히 집계되지 않습니다.');
   assert(global.getListProgressNoteSummary('task-1__sub_sub-1').count === 1, '서브 태스크의 메모 수가 정확히 집계되지 않습니다.');
+  const mobileNoteControls = new JSDOM(global.buildListNoteButtonHTML('task-1', '', { mobile: true })).window.document;
+  assert(mobileNoteControls.querySelector('.btn-list-note')?.classList.contains('min-h-11') && mobileNoteControls.querySelector('.btn-list-note')?.classList.contains('min-w-11'), '모바일 메모 핀의 44px 터치 영역이 없습니다.');
+  assert(mobileNoteControls.querySelector('.btn-list-note-count')?.classList.contains('min-h-11') && mobileNoteControls.querySelector('.btn-list-note-count')?.classList.contains('min-w-11'), '모바일 메모 수 버튼의 44px 터치 영역이 없습니다.');
+  const desktopNoteControls = new JSDOM(global.buildListNoteButtonHTML('task-1')).window.document;
+  assert(desktopNoteControls.querySelector('.btn-list-note')?.classList.contains('h-7') && !desktopNoteControls.querySelector('.btn-list-note')?.classList.contains('min-h-11'), '데스크톱 메모 핀이 모바일 크기로 불필요하게 커졌습니다.');
+  global.renderTable([{ ...completionTask, subTasks: [], status: 'COMPLETED' }]);
+  const desktopStatusOptions = [...document.querySelectorAll('#task-table-body .sel-status option')];
+  assert(desktopStatusOptions.map(option => option.textContent.trim()).join('|') === ['PENDING', 'PROGRESS', 'COMPLETED', 'CANCELLED'].map(global.getStatusOptionLabel).join('|'), '데스크톱 업무 상태 선택이 공통 상태 라벨과 아이콘을 사용하지 않습니다.');
+  document.getElementById('task-table-body').innerHTML = '';
   const calendarMonthNotes = global.getCalendarProgressNotesForMonth(
     global.getCachedTrackerProgressNotes(global.currentTrackerId),
     [...tasks.slice(0, 2), outsideMonthTask],
@@ -749,8 +767,13 @@ async function main() {
   assert(document.querySelectorAll('.mobile-task-card').length === 2, '모바일 목록 카드가 렌더링되지 않았습니다.');
   const progressTaskCard = document.querySelector('.mobile-task-card[data-id="task-1"]');
   assert(progressTaskCard?.textContent.includes('기한 초과'), '모바일 목록의 계산된 기한 초과 운영 상태가 표시되지 않았습니다.');
+  const overdueStatusBadge = progressTaskCard?.querySelector('[data-mobile-status]');
+  assert(overdueStatusBadge?.textContent.trim() === '기한 초과 🚨' && overdueStatusBadge.className.includes('bg-rose-50'), '모바일 기한 초과 운영 상태가 공통 문구·아이콘·rose 스타일로 표시되지 않습니다.');
   assert(progressTaskCard?.querySelector('.mobile-status-btn[data-status="PROGRESS"]')?.getAttribute('aria-pressed') === 'true', '기한 초과된 진행 중 업무가 모바일 상태 선택기에서 대기로 표시됩니다.');
   assert(progressTaskCard?.querySelector('.mobile-status-btn[data-status="PENDING"]')?.getAttribute('aria-pressed') === 'false', '기한 초과된 진행 중 업무의 대기 상태가 모바일에서 잘못 활성화됩니다.');
+  assert([...progressTaskCard.querySelectorAll('.mobile-status-btn')].every(button => button.classList.contains('min-h-11')), '모바일 업무 상태 버튼 중 44px 터치 높이가 없는 항목이 있습니다.');
+  assert([...progressTaskCard.querySelectorAll('.mobile-status-btn')].map(button => button.textContent.trim()).join('|') === ['PENDING', 'PROGRESS', 'COMPLETED', 'CANCELLED'].map(global.getStatusOptionLabel).join('|'), '모바일 업무 상태 버튼이 공통 상태 라벨과 아이콘을 사용하지 않습니다.');
+  assert(progressTaskCard.querySelector('[data-mobile-task-metadata]')?.classList.contains('text-xs'), '모바일 본 업무 메타데이터 글자 크기가 12px로 개선되지 않았습니다.');
   assert(document.querySelectorAll('#task-card-container [data-task-category-group]').length === 2, '모바일 목록이 업무 분류 최상위 그룹으로 나뉘지 않았습니다.');
   assert([...document.querySelectorAll('#task-card-container [data-task-category-group]')].every(header => header.className.includes('dark:bg-') && header.className.includes('dark:text-')), '모바일 목록 업무 분류 헤더에 다크 테마 클래스가 적용되지 않았습니다.');
   assert(global.getIndustryBarClass(tasks[0], false).includes('dark:bg-'), '업무 분류별 본 업무 막대에 다크 테마 클래스가 적용되지 않았습니다.');
@@ -768,10 +791,15 @@ async function main() {
   assert(mobileSubTaskGroup?.className.includes('dark:bg-'), '모바일 하위 업무 컨테이너의 다크 테마 배경이 누락되었습니다.');
   assert(document.getElementById('mobile-bulk-action-bar')?.className.includes('dark:bg-'), '렌더링된 모바일 일괄 작업 바의 다크 테마 배경이 누락되었습니다.');
   assert(!document.querySelector('.mobile-command-deck'), '모바일 목록에 중복 Focus 및 Risk 제어 영역이 남아 있습니다.');
-  assert(document.querySelector('#task-card-container .btn-list-note[data-task-id="task-1"]:not([data-subtask-id])'), '모바일 본 업무 제목 옆 메모 핀이 없습니다.');
-  assert(document.querySelector('#task-card-container .btn-list-note[data-task-id="task-1"][data-subtask-id="sub-1"]'), '모바일 서브 태스크 제목 옆 메모 핀이 없습니다.');
+  const renderedMainNoteButton = document.querySelector('#task-card-container .btn-list-note[data-task-id="task-1"]:not([data-subtask-id])');
+  const renderedSubTaskNoteButton = document.querySelector('#task-card-container .btn-list-note[data-task-id="task-1"][data-subtask-id="sub-1"]');
+  assert(renderedMainNoteButton, '모바일 본 업무 제목 옆 메모 핀이 없습니다.');
+  assert(renderedSubTaskNoteButton, '모바일 서브 태스크 제목 옆 메모 핀이 없습니다.');
+  assert(renderedMainNoteButton.classList.contains('min-h-11') && renderedSubTaskNoteButton.classList.contains('min-h-11'), '렌더링된 모바일 메모 핀에 44px 터치 높이가 없습니다.');
   assert(document.querySelector('#task-card-container .btn-list-note-count[data-task-id="task-1"]')?.textContent.trim() === '3', '모바일 본 업무 메모 수가 핀 옆에 표시되지 않습니다.');
   assert(document.querySelector('#task-card-container .btn-list-note-count[data-task-id="task-1__sub_sub-1"]')?.textContent.trim() === '1', '모바일 서브 태스크 메모 수가 핀 옆에 표시되지 않습니다.');
+  assert(progressTaskCard.querySelector('.sel-subtask-status')?.classList.contains('min-h-11'), '모바일 하위 업무 상태 선택에 44px 터치 높이가 없습니다.');
+  assert(progressTaskCard.querySelector('[data-mobile-subtask-metadata]')?.classList.contains('text-xs'), '모바일 하위 업무 메타데이터 글자 크기가 12px로 개선되지 않았습니다.');
   assert(!document.querySelector('#task-card-container .btn-delete'), '모바일 목록에 개별 삭제 버튼이 남아 있습니다.');
   assert(document.querySelector('.btn-toggle-subtasks[data-expanded="true"]'), '하위 업무 펼침 상태가 렌더링되지 않았습니다.');
   assert(document.querySelector('.line-clamp-2'), '긴 업무명 줄임 클래스가 누락되었습니다.');
@@ -799,6 +827,13 @@ async function main() {
   global.renderMobileCards([taskWithCancelledSubTask]);
   assert(document.getElementById('task-card-container').textContent.includes('취소 1'), '모바일 목록에 취소 하위 업무 집계가 없습니다.');
   assert(document.querySelector('.sel-subtask-status option[value="CANCELLED"]'), '하위 업무 상태 선택에 취소가 없습니다.');
+  const completedSubTaskTitle = [...document.querySelectorAll('[data-mobile-subtask-title]')].find(title => title.textContent.includes('완료된 유효 하위 업무'));
+  const cancelledSubTaskTitle = [...document.querySelectorAll('[data-mobile-subtask-title]')].find(title => title.textContent.includes('취소된 하위 업무'));
+  for (const title of [completedSubTaskTitle, cancelledSubTaskTitle]) {
+    assert(title?.classList.contains('line-through') && title.classList.contains('text-slate-400'), '완료 또는 취소된 모바일 하위 업무 제목에 회색 취소선이 없습니다.');
+  }
+  const mobileSubTaskStatusOptions = [...document.querySelector('.sel-subtask-status').options];
+  assert(mobileSubTaskStatusOptions.map(option => option.textContent.trim()).join('|') === ['PENDING', 'PROGRESS', 'COMPLETED', 'CANCELLED'].map(global.getStatusOptionLabel).join('|'), '모바일 하위 업무 상태 선택이 공통 상태 라벨과 아이콘을 사용하지 않습니다.');
 
   global.currentCalMode = 'DAY';
   window.renderMobileCalendar(tasks.slice(0, 2), [...tasks.slice(0, 2), outsideMonthTask]);

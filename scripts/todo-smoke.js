@@ -116,7 +116,7 @@ async function testService() {
 
 function testDateGroupingAndRendering() {
   const dom = new JSDOM(fs.readFileSync('index.html', 'utf8'), { url: 'https://example.test/' });
-  const dialogRoots = [...dom.window.document.querySelectorAll('dialog, [role="dialog"]')];
+  const dialogRoots = [...dom.window.document.querySelectorAll('dialog, [role="dialog"], [role="alertdialog"]')];
   assert.equal(dialogRoots.length >= 10, true, '주요 정적 모달 목록을 찾을 수 있어야 합니다.');
   assert.equal(
     dialogRoots.every(root => root.matches('[data-theme-modal-panel]') || root.querySelector('[data-theme-modal-panel]')),

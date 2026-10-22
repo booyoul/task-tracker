@@ -1,9 +1,166 @@
 
 console.info('Smart Task Flow event-bindings.js v20260805-v4 loaded');
 
+const modalFocusState = new WeakMap();
+let lastFocusOutsideModal = null;
+
+const modalInitialFocusSelectors = {
+  'modal-task': '#input-task-title',
+  'modal-tracker': '#input-tracker-name',
+  'modal-todo': '#input-todo-title',
+  'modal-todo-reminder': '#btn-view-todos-from-reminder',
+  'modal-confirm': '#btn-cancel-confirm',
+  'modal-kpi-settings': '#select-active-kpi',
+  'modal-task-category-settings': '#btn-add-task-category',
+  'modal-note-type-settings': '#btn-add-note-type',
+  'note-detail-panel': '#btn-close-note-panel',
+  'assignee-filter-modal': '#btn-close-assignee-modal'
+};
+
+const modalCloseSelectors = {
+  'modal-task': '#btn-close-task-modal',
+  'modal-tracker': '#btn-close-tracker-modal',
+  'modal-todo': '#btn-close-todo-modal',
+  'modal-todo-reminder': '#btn-close-todo-reminder',
+  'modal-confirm': '#btn-cancel-confirm',
+  'modal-kpi-settings': '#btn-close-kpi-settings',
+  'modal-task-category-settings': '#btn-close-task-category-settings',
+  'modal-note-type-settings': '#btn-close-note-type-settings',
+  'note-detail-panel': '#btn-close-note-panel',
+  'assignee-filter-modal': '#btn-close-assignee-modal'
+};
+
+function getManagedModals() {
+  return Array.from(document.querySelectorAll('[role="dialog"][aria-modal="true"], [role="alertdialog"][aria-modal="true"]'));
+}
+
+function isManagedModalVisible(modal) {
+  if (!modal || modal.classList.contains('hidden')) return false;
+  if (modal.id === 'note-detail-panel' && modal.classList.contains('translate-x-full')) return false;
+  return true;
+}
+
+function getVisibleManagedModals() {
+  return getManagedModals().filter(isManagedModalVisible);
+}
+
+function getTopmostManagedModal() {
+  return getVisibleManagedModals().sort((left, right) => {
+    const zDifference = (Number.parseInt(getComputedStyle(left).zIndex, 10) || 0)
+      - (Number.parseInt(getComputedStyle(right).zIndex, 10) || 0);
+    if (zDifference) return zDifference;
+    return left.compareDocumentPosition(right) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
+  }).at(-1) || null;
+}
+
+function getModalFocusableElements(modal) {
+  return Array.from(modal.querySelectorAll(
+    'button:not([disabled]), [href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  )).filter(element => !element.hidden && element.getClientRects().length > 0);
+}
+
+function syncManagedModalFocus() {
+  const modals = getManagedModals();
+  modals.forEach(modal => {
+    const visible = isManagedModalVisible(modal);
+    const wasVisible = modalFocusState.get(modal)?.visible === true;
+    if (visible && !wasVisible) {
+      const otherVisible = getVisibleManagedModals().filter(candidate => candidate !== modal);
+      const returnTarget = otherVisible.length ? document.activeElement : lastFocusOutsideModal;
+      modalFocusState.set(modal, { visible: true, returnTarget });
+      queueMicrotask(() => {
+        if (!isManagedModalVisible(modal) || modal.contains(document.activeElement)) return;
+        const preferred = modal.querySelector(modalInitialFocusSelectors[modal.id] || '[autofocus]');
+        (preferred || getModalFocusableElements(modal)[0] || modal).focus?.();
+      });
+    } else if (!visible && wasVisible) {
+      const state = modalFocusState.get(modal);
+      modalFocusState.set(modal, { ...state, visible: false });
+      queueMicrotask(() => {
+        const topmost = getTopmostManagedModal();
+        if (topmost) {
+          if (!topmost.contains(document.activeElement)) {
+            const target = state?.returnTarget && topmost.contains(state.returnTarget)
+              ? state.returnTarget
+              : getModalFocusableElements(topmost)[0];
+            target?.focus?.();
+          }
+          return;
+        }
+        if (state?.returnTarget?.isConnected) state.returnTarget.focus?.();
+      });
+    } else {
+      modalFocusState.set(modal, { ...(modalFocusState.get(modal) || {}), visible });
+    }
+  });
+}
+
+function initModalAccessibility() {
+  document.addEventListener('click', event => {
+    if (getVisibleManagedModals().length) return;
+    const trigger = event.target.closest?.('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if (trigger) lastFocusOutsideModal = trigger;
+  }, true);
+  document.addEventListener('focusin', event => {
+    if (!getVisibleManagedModals().some(modal => modal.contains(event.target))) {
+      lastFocusOutsideModal = event.target;
+    }
+  });
+  const observedModals = new WeakSet();
+  const modalClassObserver = new MutationObserver(syncManagedModalFocus);
+  const observeModal = modal => {
+    if (observedModals.has(modal)) return;
+    observedModals.add(modal);
+    modalClassObserver.observe(modal, { attributes: true, attributeFilter: ['class'] });
+  };
+  getManagedModals().forEach(observeModal);
+  const addedModalObserver = new MutationObserver(mutations => {
+    mutations.forEach(mutation => {
+      mutation.addedNodes.forEach(node => {
+        if (node.nodeType !== 1) return;
+        if (node.matches?.('[role="dialog"][aria-modal="true"], [role="alertdialog"][aria-modal="true"]')) observeModal(node);
+        node.querySelectorAll?.('[role="dialog"][aria-modal="true"], [role="alertdialog"][aria-modal="true"]').forEach(observeModal);
+      });
+    });
+    syncManagedModalFocus();
+  });
+  addedModalObserver.observe(document.body, { childList: true, subtree: true });
+  syncManagedModalFocus();
+
+  document.addEventListener('keydown', event => {
+    const modal = getTopmostManagedModal();
+    if (!modal) return;
+    if (event.key === 'Escape') {
+      const closeControl = modal.querySelector(modalCloseSelectors[modal.id] || '[data-modal-close]');
+      if (!closeControl) return;
+      event.preventDefault();
+      event.stopPropagation();
+      closeControl.click();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const focusable = getModalFocusableElements(modal);
+    if (!focusable.length) {
+      event.preventDefault();
+      modal.focus?.();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && (document.activeElement === first || !modal.contains(document.activeElement))) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }, true);
+}
+
 function initEventBindings(){
   if(window.__eventBindingsInitialized)return;
   window.__eventBindingsInitialized=true;
+  initModalAccessibility();
 
   // Theme toggle initialization and binding
   const themeToggleBtn = document.getElementById('btn-theme-toggle');
@@ -75,6 +232,18 @@ function initEventBindings(){
     }
   });
   document.getElementById('btn-reset-filters')?.addEventListener('click',resetFilters);
+  document.getElementById('btn-toggle-mobile-overview')?.addEventListener('click', event => {
+    const button = event.currentTarget;
+    const content = document.getElementById('mobile-overview-content');
+    if (!content) return;
+    const expanded = button.getAttribute('aria-expanded') !== 'true';
+    button.setAttribute('aria-expanded', String(expanded));
+    content.classList.toggle('hidden', !expanded);
+    content.classList.toggle('flex', expanded);
+    const label = button.querySelector('[data-mobile-overview-label]');
+    if (label) label.textContent = expanded ? '접어 두기' : '펼쳐 보기';
+    button.querySelector('[data-mobile-overview-icon]')?.classList.toggle('rotate-180', expanded);
+  });
   document.getElementById('checkbox-select-all')?.addEventListener('change',toggleSelectAll);
   document.getElementById('btn-toggle-all-table-subtasks')?.addEventListener('click',toggleAllTableSubTasks);
   document.getElementById('task-table-body')?.addEventListener('click',handleTableClick);
@@ -262,28 +431,6 @@ function initEventBindings(){
   document.getElementById('modal-confirm')?.addEventListener('click', e => {
     if (e.target.closest('#modal-confirm .inline-block') === null && document.contains(e.target)) {
       window.closeConfirmModal?.();
-    }
-  });
-
-  // ESC key listener to close modals
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') {
-      const modalTask = document.getElementById('modal-task');
-      if (modalTask && !modalTask.classList.contains('hidden')) {
-        window.closeModal?.();
-      }
-      const modalTracker = document.getElementById('modal-tracker');
-      if (modalTracker && !modalTracker.classList.contains('hidden')) {
-        window.closeTrackerModal?.();
-      }
-      const modalConfirm = document.getElementById('modal-confirm');
-      if (modalConfirm && !modalConfirm.classList.contains('hidden')) {
-        window.closeConfirmModal?.();
-      }
-      const modalAssignee = document.getElementById('assignee-filter-modal');
-      if (modalAssignee && !modalAssignee.classList.contains('hidden')) {
-        window.closeAssigneeModal?.();
-      }
     }
   });
 

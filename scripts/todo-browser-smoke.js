@@ -824,6 +824,47 @@ async function main() {
     assert.equal(returnedTaskView.linkedTodoVisible, true);
     assert.equal(returnedTaskView.hasTodoAdd, true);
 
+    const mobileOverview = await evaluate(client, `(() => {
+      const toggle = document.getElementById('btn-toggle-mobile-overview');
+      const content = document.getElementById('mobile-overview-content');
+      const initiallyCollapsed = getComputedStyle(content).display === 'none' && toggle.getAttribute('aria-expanded') === 'false';
+      toggle.click();
+      const expanded = getComputedStyle(content).display !== 'none' && toggle.getAttribute('aria-expanded') === 'true';
+      toggle.click();
+      return {
+        initiallyCollapsed,
+        expanded,
+        collapsedAgain: getComputedStyle(content).display === 'none' && toggle.getAttribute('aria-expanded') === 'false',
+        toggleHeight: Math.round(toggle.getBoundingClientRect().height),
+        addTaskHeight: Math.round(document.getElementById('btn-add-task').getBoundingClientRect().height)
+      };
+    })()`);
+    assert.equal(mobileOverview.initiallyCollapsed, true);
+    assert.equal(mobileOverview.expanded, true);
+    assert.equal(mobileOverview.collapsedAgain, true);
+    assert.ok(mobileOverview.toggleHeight >= 44);
+    assert.ok(mobileOverview.addTaskHeight >= 44);
+
+    await evaluate(client, `(() => {
+      const opener = document.getElementById('btn-add-task');
+      opener.focus();
+      opener.click();
+    })()`);
+    await delay(50);
+    assert.equal(await evaluate(client, `document.activeElement?.id`), 'input-task-title');
+    await evaluate(client, `document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))`);
+    await delay(50);
+    const modalKeyboardState = await evaluate(client, `({
+      closed: document.getElementById('modal-task').classList.contains('hidden'),
+      restoredFocus: document.activeElement?.id === 'btn-add-task',
+      labelledConfirm: document.getElementById('modal-confirm').getAttribute('role') === 'alertdialog'
+        && document.getElementById('modal-confirm').getAttribute('aria-labelledby') === 'confirm-title'
+        && document.getElementById('modal-confirm').getAttribute('aria-describedby') === 'confirm-message'
+    })`);
+    assert.equal(modalKeyboardState.closed, true);
+    assert.equal(modalKeyboardState.restoredFocus, true);
+    assert.equal(modalKeyboardState.labelledConfirm, true);
+
     await evaluate(client, `switchView('CALENDAR'); setCalMode('DAY');`);
     await waitFor(client, `document.querySelector('#cal-mobile-content [data-calendar-todo-id="today"]')`, 'Linked To-do did not render in the tracker mobile month calendar.');
     const mobileTrackerCalendar = await evaluate(client, `(() => {
@@ -846,7 +887,7 @@ async function main() {
       fs.writeFileSync(process.env.TODO_TRACKER_SCREENSHOT, Buffer.from(screenshot.data, 'base64'));
     }
 
-    console.log('todo browser smoke passed: task linking, split list/calendar views, task-style desktop/mobile calendars, CRUD, filters, reminder, and task-view return');
+    console.log('todo browser smoke passed: task linking, split list/calendar views, task-style desktop/mobile calendars, CRUD, filters, reminder, compact mobile controls, modal keyboard access, and task-view return');
   } catch (error) {
     if (client) {
       try {

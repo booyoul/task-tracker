@@ -269,7 +269,7 @@ function ensureAssigneeModal() {
           <div id="assignee-filter-modal-title" class="text-sm font-black text-slate-800">담당자 선택</div>
           <div class="text-[11px] text-slate-400">현재 트래커의 본 업무/하위 업무 담당자 기준</div>
         </div>
-        <button type="button" id="btn-close-assignee-modal" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">✕</button>
+        <button type="button" id="btn-close-assignee-modal" aria-label="담당자 선택 닫기" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">✕</button>
       </div>
       <div class="px-5 py-4">
         <div class="mb-3 flex items-center justify-between gap-2">
@@ -1112,7 +1112,7 @@ function relocateHeaderActionsToToolbar() {
   });
   const addTask = document.getElementById('btn-add-task');
   if (addTask && addTask.parentElement !== primaryHost) {
-    addTask.className = 'inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl bg-indigo-600 px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-indigo-700';
+    addTask.className = 'inline-flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-xl bg-indigo-600 px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-indigo-700 lg:min-h-0';
     primaryHost.appendChild(addTask);
   }
   const goalBadge = document.getElementById('tracker-kpi-badge-container');
@@ -1142,8 +1142,8 @@ function applyCompactDashboardStyles() {
     <span data-status="PROGRESS" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700 border border-blue-200 cursor-pointer hover:bg-blue-100 transition duration-150 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/50 ${activeClass('PROGRESS')}">진행 <b>${k.progress}</b></span>
     <span data-status="COMPLETED" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700 border border-emerald-200 cursor-pointer hover:bg-emerald-100 transition duration-150 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 dark:hover:bg-emerald-900/50 ${activeClass('COMPLETED')}">완료 <b>${k.completed}</b></span>
     <span data-status="CANCELLED" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-500 border border-slate-200 cursor-pointer hover:bg-slate-200 transition duration-150 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700 dark:hover:bg-slate-800 ${activeClass('CANCELLED')}">취소 <b>${k.cancelled}</b></span>
-    <span data-status="OVERDUE" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-rose-700 border border-rose-200 cursor-pointer hover:bg-rose-100 transition duration-150 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800 dark:hover:bg-rose-900/50 ${activeClass('OVERDUE')}">Risk <b>${k.overdue}</b></span>
-    <span data-priority="HIGH" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700 border border-amber-200 cursor-pointer hover:bg-amber-100 transition duration-150 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 dark:hover:bg-amber-900/50 ${document.getElementById('filter-priority')?.value === 'HIGH' ? 'ring-2 ring-indigo-600 ring-offset-1 ring-offset-white scale-[1.02] dark:ring-indigo-400 dark:ring-offset-slate-900' : ''}">High <b>${k.high}</b></span>`;
+    <span data-status="OVERDUE" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-rose-700 border border-rose-200 cursor-pointer hover:bg-rose-100 transition duration-150 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800 dark:hover:bg-rose-900/50 ${activeClass('OVERDUE')}">기한 초과 <b>${k.overdue}</b></span>
+    <span data-priority="HIGH" class="kpi-compact-chip inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700 border border-amber-200 cursor-pointer hover:bg-amber-100 transition duration-150 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 dark:hover:bg-amber-900/50 ${document.getElementById('filter-priority')?.value === 'HIGH' ? 'ring-2 ring-indigo-600 ring-offset-1 ring-offset-white scale-[1.02] dark:ring-indigo-400 dark:ring-offset-slate-900' : ''}">높음 <b>${k.high}</b></span>`;
 }
 function ensureUXToolbar() {
   const filterBox = document.getElementById('unified-control-center');
@@ -1314,32 +1314,32 @@ function renderTrackerKpiBadge() {
   if (kpiType === 'AUTO_DONE_PCT') {
     if (currentVal >= kpiTarget) {
       badgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/60';
-      statusText = 'On Track';
+      statusText = '순항';
     } else if (overduePct < 20) {
       badgeColor = 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60';
-      statusText = 'At Risk';
+      statusText = '주의';
     } else {
       badgeColor = 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60';
-      statusText = 'Off Track';
+      statusText = '위험';
     }
   } else if (kpiType === 'AUTO_OVERDUE_COUNT') {
     if (currentVal <= kpiTarget) {
       badgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/60';
-      statusText = 'On Track';
+      statusText = '순항';
     } else {
       badgeColor = 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60';
-      statusText = 'Off Track';
+      statusText = '위험';
     }
   } else { // MANUAL
     if (currentVal >= kpiTarget) {
       badgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/60';
-      statusText = 'On Track';
+      statusText = '순항';
     } else if (currentVal >= kpiTarget * 0.8) {
       badgeColor = 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60';
-      statusText = 'At Risk';
+      statusText = '주의';
     } else {
       badgeColor = 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60';
-      statusText = 'Off Track';
+      statusText = '위험';
     }
   }
 
