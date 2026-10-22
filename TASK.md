@@ -1,6 +1,6 @@
 # Smart Task Flow Task
 
-Last updated: 2026-10-06
+Last updated: 2026-10-22
 
 ## Startup
 
@@ -11,6 +11,8 @@ Last updated: 2026-10-06
 - Keep changes small and repo-native. Continue from current files after any model switch rather than relying on model memory.
 
 ## Current State
+
+- Desktop and mobile list titles use the existing subtask gray strikethrough style when the main task persisted status is `COMPLETED`.
 
 - Users with tracker `update` permission can add, rename, and delete task categories through a category-only tracker update. Firestore Rules permit those users to change only `taskCategoryOptions`/`updatedAt`; other tracker settings and users without `update` permission remain blocked. `smoke:categories` covers the UI/service path, and Rules tests cover both standard and environment-specific collections.
 - Firestore Ruleset `00a3f8a0-f3d5-4b65-bca6-e963d599e7ce` was deployed to `task-tracker-99af4` on 2026-10-06. The full local regression suite passed with 66 Rules cases; an authenticated production save by a non-owner user remains to be verified.

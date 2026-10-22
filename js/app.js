@@ -648,7 +648,7 @@ function buildTaskDetailCellHTML(t, subTasks, isExpanded, doneSubs, progressPct,
         </button>
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2">
-            <button type="button" class="btn-edit text-left block min-w-0 max-w-full rounded px-1 -mx-1 text-base font-black leading-snug text-slate-900 hover:text-indigo-600 outline-none" data-id="${t.id}" title="클릭해서 업무 수정">${escapeHTML(t.title)}</button>
+            <button type="button" class="btn-edit text-left block min-w-0 max-w-full rounded px-1 -mx-1 text-base font-black leading-snug ${normalizeStatus(t.status) === 'COMPLETED' ? 'line-through text-slate-400' : 'text-slate-900'} hover:text-indigo-600 outline-none" data-id="${t.id}" title="클릭해서 업무 수정">${escapeHTML(t.title)}</button>
             ${buildListNoteButtonHTML(t.id)}
           </div>
           <div class="mt-1 text-xs text-slate-400">${escapeHTML(t.notes || '추가 지침 없음')} · 진척 ${progressPct}%${subInfo}</div>

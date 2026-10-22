@@ -382,7 +382,7 @@ function renderMobileCards(filtered) {
       <div class="min-w-0 flex-1">
         <div class="flex items-start justify-between gap-2">
           <button type="button" class="btn-edit min-w-0 flex-1 text-left" data-id="${escapeHTML(t.id)}">
-            <div class="line-clamp-2 text-[15px] font-black leading-snug text-slate-900">${escapeHTML(t.title || '')}</div>
+            <div class="line-clamp-2 text-[15px] font-black leading-snug ${normalizeStatus(t.status) === 'COMPLETED' ? 'line-through text-slate-400' : 'text-slate-900'}">${escapeHTML(t.title || '')}</div>
           </button>
           ${buildListNoteButtonHTML(t.id)}
         </div>
