@@ -1,12 +1,26 @@
 console.info('Smart Task Flow calendar-notes-renderer.js v20260805-v4 loaded');
 
 let _calendarNotesRenderToken = 0;
+const calendarNotesFilterStates = new Map();
 
 async function renderCalendarNotesView({ weekdayHeader, grid, noteTaskScope = [] }) {
     if (!grid) return;
     const renderToken = ++_calendarNotesRenderToken;
     const startMonth = document.getElementById('filter-start-month')?.value || '';
     const endMonth = document.getElementById('filter-end-month')?.value || '';
+    const scopeKey = JSON.stringify([window.currentUser?.uid || '', window.currentTrackerId || '']);
+    const rangeKey = `${startMonth}|${endMonth}`;
+    if (!calendarNotesFilterStates.has(scopeKey)) {
+        calendarNotesFilterStates.set(scopeKey, { workType: 'all', commentsOnly: false, currentPage: 1, rangeKey });
+    }
+    const filterState = calendarNotesFilterStates.get(scopeKey);
+    if (filterState.rangeKey !== rangeKey) {
+        filterState.rangeKey = rangeKey;
+        filterState.currentPage = 1;
+    }
+    const isCurrentRender = () => renderToken === _calendarNotesRenderToken
+        && scopeKey === JSON.stringify([window.currentUser?.uid || '', window.currentTrackerId || ''])
+        && (typeof currentViewMode === 'undefined' || currentViewMode === 'NOTES');
     const formatMonth = value => {
         if (!/^\d{4}-\d{2}$/.test(value)) return '';
         const [rangeYear, rangeMonth] = value.split('-').map(Number);
@@ -30,8 +44,7 @@ async function renderCalendarNotesView({ weekdayHeader, grid, noteTaskScope = []
 
     try {
         const { notes: rangeNotes } = await loadCalendarNotesForRange({ startMonth, endMonth, noteTaskScope });
-        if (renderToken !== _calendarNotesRenderToken) return;
-        if (typeof currentViewMode !== 'undefined' && currentViewMode !== 'NOTES') return;
+        if (!isCurrentRender()) return;
 
         const notes = [...rangeNotes].sort((a, b) => b.createdAtTime - a.createdAtTime);
         const workTypes = [...new Map(
@@ -41,7 +54,10 @@ async function renderCalendarNotesView({ weekdayHeader, grid, noteTaskScope = []
         ).entries()].sort((a, b) => a[1].localeCompare(b[1], 'ko'));
         const hasUncategorizedNotes = notes.some(note => !note.workTypeKey);
         const pageSize = 20;
-        const filterState = { workType: 'all', commentsOnly: false, currentPage: 1 };
+        if (filterState.workType !== 'all' && filterState.workType !== '__uncategorized__'
+            && !workTypes.some(([key]) => key === filterState.workType)) {
+            workTypes.push([filterState.workType, filterState.workType]);
+        }
 
         grid.innerHTML = `
             <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900" data-calendar-notes-view>
@@ -64,7 +80,7 @@ async function renderCalendarNotesView({ weekdayHeader, grid, noteTaskScope = []
                             <select data-calendar-notes-work-type class="min-h-10 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700 outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-amber-950/50">
                                 <option value="all">전체 유형</option>
                                 ${workTypes.map(([key, label]) => `<option value="${escapeHTML(key)}">${escapeHTML(label)}</option>`).join('')}
-                                ${hasUncategorizedNotes ? '<option value="__uncategorized__">유형 미지정</option>' : ''}
+                                ${(hasUncategorizedNotes || filterState.workType === '__uncategorized__') ? '<option value="__uncategorized__">유형 미지정</option>' : ''}
                             </select>
                         </label>
                         <button type="button" aria-pressed="false" data-calendar-notes-comments-only class="inline-flex min-h-10 items-center justify-center gap-1.5 self-stretch whitespace-nowrap rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-amber-300 active:scale-[0.98] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:self-end">
@@ -83,6 +99,7 @@ async function renderCalendarNotesView({ weekdayHeader, grid, noteTaskScope = []
         const list = grid.querySelector('[data-calendar-notes-list]');
         const count = grid.querySelector('[data-calendar-notes-count]');
         const workTypeFilter = grid.querySelector('[data-calendar-notes-work-type]');
+        workTypeFilter.value = filterState.workType;
         const commentsToggle = grid.querySelector('[data-calendar-notes-comments-only]');
         const pagination = grid.querySelector('[data-calendar-notes-pagination]');
         const pageStatus = grid.querySelector('[data-calendar-notes-page-status]');
@@ -194,8 +211,11 @@ async function renderCalendarNotesView({ weekdayHeader, grid, noteTaskScope = []
         renderList();
     } catch (error) {
         console.error('메모 뷰 렌더링 실패:', error);
-        if (renderToken !== _calendarNotesRenderToken) return;
-        grid.innerHTML = '<div class="rounded-xl border border-rose-200 bg-rose-50 p-8 text-center text-sm font-semibold text-rose-600 dark:border-rose-900/60 dark:bg-rose-950/20 dark:text-rose-300">메모를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</div>';
+        if (!isCurrentRender()) return;
+        grid.innerHTML = '<div role="alert" class="rounded-xl border border-rose-200 bg-rose-50 p-8 text-center text-sm font-semibold text-rose-600 dark:border-rose-900/60 dark:bg-rose-950/20 dark:text-rose-300">메모를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.<button type="button" data-notes-retry class="ml-3 rounded border border-current px-3 py-2">다시 시도</button></div>';
+        grid.querySelector('[data-notes-retry]').addEventListener('click', () => {
+            if (isCurrentRender()) renderCalendarNotesView({ weekdayHeader, grid, noteTaskScope });
+        });
     }
 }
 

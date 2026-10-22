@@ -18,7 +18,11 @@
     "smoke:todo": "node scripts/todo-smoke.js",
     "smoke:todo:browser": "node scripts/todo-browser-smoke.js",
     "test:rules": "firebase emulators:exec --only firestore --project demo-task-tracker-security \"node scripts/firestore-rules.test.js\"",
-    "test": "npm run smoke:security && npm run smoke:crud && npm run smoke:categories && npm run smoke:kpi && npm run smoke:access && npm run smoke:notes && npm run smoke:todo && npm run test:rules && npm run smoke:mobile"
+    "test": "npm run smoke:security && npm run smoke:crud && npm run smoke:categories && npm run smoke:kpi && npm run smoke:access && npm run smoke:notes && npm run smoke:notes:view && npm run smoke:forms && npm run smoke:todo && npm run test:rules && npm run smoke:mobile",
+    "check:syntax": "node scripts/check-syntax.js",
+    "smoke:forms": "node scripts/task-form-smoke.js",
+    "smoke:notes:view": "node scripts/notes-view-smoke.js",
+    "test:release": "npm run check:syntax && npm run build:css && npm test && npm run smoke:notes:browser && npm run smoke:todo:browser && git diff --check"
   },
   "keywords": [],
   "author": "",

@@ -1,5 +1,35 @@
 console.info('Smart Task Flow modal-controller.js v20261006-v1 loaded');
 // Task modal, subtask modal list, tracker modal, and form submit handlers.
+let taskSubmitInFlight = false;
+let trackerSubmitInFlight = false;
+let taskEditBaseline = null;
+let taskFormBaseline = null;
+
+function collectTaskModalData() {
+  const id = document.getElementById('input-task-id').value;
+  const assignees = Array.from(document.querySelectorAll('.task-assignee-checkbox:checked')).map(cb => cb.value);
+  return {
+    trackerId: taskEditBaseline?.trackerId || currentTrackerId,
+    title: document.getElementById('input-task-title').value.trim(),
+    assignee: assignees.length ? assignees : ['미지정'],
+    startDate: document.getElementById('input-task-start').value,
+    dueDate: document.getElementById('input-task-due').value,
+    priority: document.getElementById('input-task-priority').value,
+    status: document.getElementById('input-task-status').value,
+    ...getSelectedTaskCategory(document.getElementById('input-task-industry')),
+    taskType: id ? (taskEditBaseline?.taskType || 'GENERAL') : 'GENERAL',
+    notes: document.getElementById('input-task-notes').value.trim(),
+    subTasks: currentSubTasks.map(st => ({ ...st, status: normalizeStatus(st.status) }))
+  };
+}
+
+function showTaskSaveError(message = '') {
+  const error = document.getElementById('task-save-error');
+  if (error) {
+    error.textContent = message;
+    error.classList.toggle('hidden', !message);
+  }
+}
 function resetSubTaskButton() {
   const btn = document.getElementById('btn-add-subtask');
   if (!btn) return;
@@ -320,6 +350,7 @@ function getSelectedTaskCategory(select) {
   };
 }
 function openTaskModal(id = null) {
+  if (taskSubmitInFlight) return showToast('업무를 저장 중입니다. 잠시 기다려 주세요.', false);
   const targetTask = id ? tasks.find(task => task.id === id) : null;
   const targetTracker = trackers.find(tracker => tracker.id === currentTrackerId);
   const canSave = id
@@ -329,6 +360,9 @@ function openTaskModal(id = null) {
     showToast('이 트래커에 업무를 등록할 권한이 없습니다.', false);
     return;
   }
+  taskEditBaseline = targetTask ? JSON.parse(JSON.stringify(targetTask)) : null;
+  taskFormBaseline = null;
+  showTaskSaveError();
   bindSubTaskRecurrenceControls();
   document.getElementById('form-task')?.reset();
   _currentNoteTaskId = id; // Set task ID immediately for subtask notes visibility
@@ -373,6 +407,7 @@ function openTaskModal(id = null) {
     if (advancedSection) advancedSection.open = false;
     if (subTasksSection) subTasksSection.open = false;
   }
+  taskFormBaseline = JSON.parse(JSON.stringify(collectTaskModalData()));
   renderModalSubTasks();
   updateMainTaskNoteButton();
   document.querySelector('#form-task button[type="submit"]')?.classList.toggle('hidden', !canSave);
@@ -488,6 +523,7 @@ function collectTrackerAccessControl() {
 }
 
 function openTrackerModal(id = null) {
+  if (trackerSubmitInFlight) return showToast('트래커를 저장 중입니다. 잠시 기다려 주세요.', false);
   trackerCopySourceId = '';
   document.getElementById('form-tracker')?.reset();
   const del = document.getElementById('btn-delete-tracker');
@@ -565,60 +601,85 @@ function closeTrackerModal() {
 
 async function handleTrackerSubmit(e) {
   e.preventDefault();
-  const id = document.getElementById('input-tracker-id').value;
-  const data = {
-    name: document.getElementById('input-tracker-name').value.trim(),
-    desc: document.getElementById('input-tracker-desc').value.trim()
-  };
-  let result;
-  if (trackerCopySourceId) {
-    result = await db_duplicateTracker(trackerCopySourceId, data);
-  } else {
-    const accessControl = collectTrackerAccessControl();
-    if (accessControl) data.accessControl = accessControl;
-    result = id ? await db_updateTracker(id, data) : await db_addTracker(data);
+  if (trackerSubmitInFlight) return;
+  trackerSubmitInFlight = true;
+  const submit = document.querySelector('#form-tracker button[type="submit"]');
+  if (submit) submit.disabled = true;
+  try {
+    const id = document.getElementById('input-tracker-id').value;
+    const data = {
+      name: document.getElementById('input-tracker-name').value.trim(),
+      desc: document.getElementById('input-tracker-desc').value.trim()
+    };
+    let result;
+    if (trackerCopySourceId) {
+      result = await db_duplicateTracker(trackerCopySourceId, data);
+    } else {
+      const accessControl = collectTrackerAccessControl();
+      if (accessControl) data.accessControl = accessControl;
+      result = id ? await db_updateTracker(id, data) : await db_addTracker(data);
+    }
+    if (!result || !result.success) return;
+    showToast(trackerCopySourceId ? `트래커와 태스크 ${result.taskCount}개가 복사되었습니다.` : (id ? '트래커가 수정되었습니다.' : '새 트래커 공간이 생성되었습니다.'));
+    closeTrackerModal();
+  } catch (error) {
+    console.error('트래커 저장 실패:', error);
+    showToast(`트래커 저장 실패: ${error.message || String(error)}`, false);
+  } finally {
+    trackerSubmitInFlight = false;
+    if (submit) submit.disabled = false;
   }
-  if (!result || !result.success) return;
-  showToast(trackerCopySourceId ? `트래커와 태스크 ${result.taskCount}개가 복사되었습니다.` : (id ? '트래커가 수정되었습니다.' : '새 트래커 공간이 생성되었습니다.'));
-  closeTrackerModal();
 }
 async function handleTaskSubmit(e) {
   e.preventDefault();
+  if (taskSubmitInFlight) return;
+  taskSubmitInFlight = true;
+  const form = document.getElementById('form-task');
+  const submit = form?.querySelector('button[type="submit"]');
+  if (submit) submit.disabled = true;
+  form?.setAttribute('aria-busy', 'true');
+  showTaskSaveError();
   try {
     const id = document.getElementById('input-task-id').value;
-    const start = document.getElementById('input-task-start').value;
-    const due = document.getElementById('input-task-due').value;
-    if (start && due && start > due) return showToast('시작일은 마감일보다 늦을 수 없습니다.', false);
-    let order = 1;
-    if (!id) {
-      const scoped = tasks.filter(t => t.trackerId === currentTrackerId);
-      if (scoped.length) order = Math.max(...scoped.map(t => t.order ?? 0)) + 1;
-    }
-    const taskAssignees = Array.from(document.querySelectorAll('.task-assignee-checkbox:checked')).map(cb => cb.value);
-    const taskCategory = getSelectedTaskCategory(document.getElementById('input-task-industry'));
-    const data = {
-      trackerId: currentTrackerId,
-      title: document.getElementById('input-task-title').value.trim(),
-      assignee: taskAssignees.length ? taskAssignees : ['미지정'],
-      startDate: start,
-      dueDate: due,
-      priority: document.getElementById('input-task-priority').value,
-      status: document.getElementById('input-task-status').value,
-      ...taskCategory,
-      taskType: id ? (tasks.find(task => task.id === id)?.taskType || 'GENERAL') : 'GENERAL',
-      notes: document.getElementById('input-task-notes').value.trim(),
-      subTasks: currentSubTasks.map(st => ({ ...st, status: normalizeStatus(st.status) }))
-    };
+    const data = collectTaskModalData();
     const validationMessage = validateTaskPayload(data);
-    if (validationMessage) return showToast(validationMessage, false);
-    if (!id) data.order = order;
-    const result = id ? await db_updateTask(id, data) : await db_addTask(data);
-    if (!result || !result.success) return;
+    if (validationMessage) {
+      showTaskSaveError(validationMessage);
+      return showToast(validationMessage, false);
+    }
+    let result;
+    if (id) {
+      if (!taskEditBaseline || !taskFormBaseline || taskEditBaseline.id !== id) {
+        showTaskSaveError('업무를 다시 열어 최신 내용을 확인한 후 저장해 주세요.');
+        return;
+      }
+      const patch = Object.fromEntries(Object.entries(data).filter(([key, value]) => (
+        JSON.stringify(value) !== JSON.stringify(taskFormBaseline[key])
+      )));
+      if (!Object.keys(patch).length) {
+        closeModal();
+        return;
+      }
+      result = await db_updateTask(id, patch, { expectedTask: taskEditBaseline });
+    } else {
+      const scoped = tasks.filter(t => t.trackerId === data.trackerId);
+      data.order = scoped.length ? Math.max(...scoped.map(t => t.order ?? 0)) + 1 : 1;
+      result = await db_addTask(data);
+    }
+    if (!result || !result.success) {
+      showTaskSaveError(result?.error || '저장하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+      return;
+    }
     showToast(id ? '수정되었습니다.' : '추가되었습니다.');
     closeModal();
   } catch (err) {
     console.error('handleTaskSubmit 에러 발생:', err);
+    showTaskSaveError(`저장 실패: ${err.message || String(err)}`);
     showToast(`저장 실패: ${err.message || String(err)}`, false);
+  } finally {
+    taskSubmitInFlight = false;
+    if (submit) submit.disabled = false;
+    form?.removeAttribute('aria-busy');
   }
 }
 

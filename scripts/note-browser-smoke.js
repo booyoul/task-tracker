@@ -569,6 +569,11 @@ async function main() {
       fs.writeFileSync(process.env.NOTE_VIEW_SCREENSHOT, Buffer.from(screenshot.data, 'base64'));
     }
 
+    const notesBeforeResize = await evaluate(client, `({
+      itemCount: document.querySelectorAll('#notes-content [data-calendar-note-list-item]').length,
+      workType: document.querySelector('#notes-content [data-calendar-notes-work-type]').value,
+      commentsPressed: document.querySelector('#notes-content [data-calendar-notes-comments-only]').getAttribute('aria-pressed')
+    })`);
     await client.send('Emulation.setDeviceMetricsOverride', {
       width: 1440,
       height: 900,
@@ -578,13 +583,17 @@ async function main() {
     await evaluate(client, 'renderActiveViews()');
     await waitFor(client, `document.querySelector('#notes-content [data-calendar-notes-view]')`, 'Desktop top-level period-filtered note list did not render.');
     const desktopNotesView = await evaluate(client, `(() => ({
+      workType: document.querySelector('#notes-content [data-calendar-notes-work-type]').value,
+      commentsPressed: document.querySelector('#notes-content [data-calendar-notes-comments-only]').getAttribute('aria-pressed'),
       itemCount: document.querySelectorAll('#notes-content [data-calendar-note-list-item]').length,
       pageFits: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1,
       activeTab: document.getElementById('btn-view-notes').classList.contains('bg-white'),
       calendarHidden: document.getElementById('view-calendar').hidden,
       dateLabel: document.getElementById('filter-date-label').textContent.trim()
     }))()`);
-    assert.equal(desktopNotesView.itemCount, 20);
+    assert.equal(desktopNotesView.itemCount, notesBeforeResize.itemCount, '화면 크기 변경 시 필터 결과를 유지해야 합니다.');
+    assert.equal(desktopNotesView.workType, notesBeforeResize.workType);
+    assert.equal(desktopNotesView.commentsPressed, notesBeforeResize.commentsPressed);
     assert.equal(desktopNotesView.pageFits, true);
     assert.equal(desktopNotesView.activeTab, true);
     assert.equal(desktopNotesView.calendarHidden, true);

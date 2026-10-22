@@ -685,6 +685,7 @@ function renderCalendar(filteredTasks, noteTaskScope = filteredTasks) {
   const monthStartDate = new Date(year, month, 1);
   const monthEndDate = new Date(year, month + 1, 0, 23, 59, 59);
   if (!grid) return;
+  grid.parentElement?.querySelector('[data-desktop-calendar-notes-error]')?.remove();
   ensureCalendarUxControls();
   const showSubTaskBars = calendarUxState.subtasksExpanded;
   const highlightRiskOnly = calendarUxState.criticalOnly;
@@ -764,6 +765,18 @@ function renderCalendar(filteredTasks, noteTaskScope = filteredTasks) {
 
   if (currentCalMode === 'DAY') {
     renderCalendarDayView({ weekdayHeader, grid, year, month, todayStr, totalCalLanes, groups: layoutGroups, monthNotes, monthTodos, notesOnly, todosOnly, showSubTaskBars, mainClass, dimIfNotCritical, useIndustryColor });
+    if ((!todosOnly || notesOnly) && typeof getListProgressNoteLoadState === 'function'
+        && getListProgressNoteLoadState(activeTrackerId) === 'error') {
+      const notice = document.createElement('div');
+      notice.dataset.desktopCalendarNotesError = '';
+      notice.setAttribute('role', 'alert');
+      notice.className = 'rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 dark:border-rose-900 dark:bg-rose-950/20 dark:text-rose-300';
+      notice.innerHTML = '메모를 불러오지 못했습니다. <button type="button" class="ml-2 rounded border border-current px-3 py-2">다시 시도</button>';
+      notice.querySelector('button').addEventListener('click', () => {
+        if (activeTrackerId === String(window.currentTrackerId || '')) retryListProgressNoteSummary(activeTrackerId);
+      });
+      grid.before(notice);
+    }
     return;
   }
   if (currentCalMode === 'MONTH') {

@@ -40,7 +40,7 @@ function createContext() {
   };
   context.hasTrackerWritePermission = tracker => tracker && tracker.ownerId === 'user-1';
   context.fs = {
-    doc: (_collection, id) => ({ id }),
+    doc: (_collection, id) => ({ id, collection: _collection.name }),
     setDoc: async () => {},
     updateDoc: async () => {},
     arrayUnion: value => ({ arrayUnion: value }),
@@ -51,6 +51,30 @@ function createContext() {
       set() {},
       commit: async () => {},
     }),
+  };
+  const storedNotes = new Map();
+  let transactionQueue = Promise.resolve();
+  context.fs.runTransaction = (_db, action) => {
+    const run = transactionQueue.then(async () => {
+      const writes = [];
+      const result = await action({
+        get: async ref => {
+          const value = ref.collection === 'tasks'
+            ? (context.remoteTasks || context.tasks).find(task => task.id === ref.id)
+            : storedNotes.get(ref.id);
+          return { id: ref.id, exists: () => !!value, data: () => value };
+        },
+        update: (ref, payload) => writes.push({ ref, payload }),
+        set: (ref, payload) => writes.push({ ref, payload })
+      });
+      for (const { ref, payload } of writes) {
+        await context.fs.setDoc(ref, payload);
+        if (ref.collection === 'progress_notes') storedNotes.set(ref.id, payload);
+      }
+      return result;
+    });
+    transactionQueue = run.catch(() => {});
+    return run;
   };
   context.toasts = toasts;
   vm.createContext(context);
@@ -120,6 +144,44 @@ async function main() {
   assert.equal(successResult.success, true);
   assert.equal(successfulUpdate.tasks[0].title, '저장된 업무');
   assert.equal(successfulUpdate.saveState, 'saved');
+
+  const concurrentUpdate = createContext();
+  const baseline = { ...concurrentUpdate.tasks[0], subTasks: [{ id: 'sub-1', status: 'PENDING' }] };
+  concurrentUpdate.tasks[0] = baseline;
+  concurrentUpdate.remoteTasks = [{ ...baseline, subTasks: [{ id: 'sub-1', status: 'COMPLETED' }] }];
+  let updatePatch;
+  concurrentUpdate.fs.setDoc = async (_ref, payload) => { updatePatch = payload; };
+  const merged = await concurrentUpdate.db_updateTask('task-1', { title: '제목만 변경' }, { expectedTask: baseline });
+  assert.equal(merged.success, true);
+  assert.equal(merged.task.subTasks[0].status, 'COMPLETED', '다른 필드의 동시 변경을 보존해야 합니다.');
+  assert.deepEqual(Object.keys(updatePatch).sort(), ['title', 'updatedAt']);
+  const conflicting = await concurrentUpdate.db_updateTask('task-1', { subTasks: [] }, { expectedTask: baseline });
+  assert.equal(conflicting.conflict, true, '같은 필드의 변경은 충돌로 거부해야 합니다.');
+  concurrentUpdate.remoteTasks = [];
+  const deleted = await concurrentUpdate.db_updateTask('task-1', { title: '삭제 후 변경' });
+  assert.equal(deleted.conflict, true, '삭제된 문서를 다시 생성하면 안 됩니다.');
+  concurrentUpdate.remoteTasks = [{ ...baseline, deleted: true }];
+  assert.equal((await concurrentUpdate.db_updateTask('task-1', { title: '휴지통 변경' })).conflict, true);
+
+  const legacyUpdate = createContext();
+  legacyUpdate.getTodayStr = () => '2026-10-22';
+  legacyUpdate.normalizeStatus = value => value || 'PENDING';
+  vm.runInContext(fs.readFileSync('js/schema-service.js', 'utf8'), legacyUpdate);
+  legacyUpdate.remoteTasks = [{ ...legacyUpdate.tasks[0], assignee: 'Alice' }];
+  legacyUpdate.tasks[0] = legacyUpdate.normalizeTaskForSchema(legacyUpdate.remoteTasks[0]);
+  const legacyResult = await legacyUpdate.db_updateTask('task-1', { assignee: ['Bob'], notes: '새 메모' });
+  assert.equal(legacyResult.success, true, '정규화된 로컬 기본값과 원본 문서가 달라도 허위 충돌이 없어야 합니다.');
+  const dateUpdate = createContext();
+  dateUpdate.tasks[0] = { ...dateUpdate.tasks[0], startDate: '2026-10-01', dueDate: '2026-10-30' };
+  dateUpdate.remoteTasks = [{ ...dateUpdate.tasks[0], dueDate: '2026-10-10' }];
+  const invalidDate = await dateUpdate.db_updateTask('task-1', { startDate: '2026-10-15' });
+  assert.equal(invalidDate.conflict, true, '다른 사용자의 날짜 변경과 결합되어 역전된 일정은 거부해야 합니다.');
+
+  const failedNoteRead = createContext();
+  failedNoteRead.fs.getDocs = async () => { throw new Error('read denied'); };
+  await assert.rejects(failedNoteRead.db_fetchTrackerProgressNotes('tracker-1'), /read denied/);
+  failedNoteRead.getProgressNotesCollection = () => null;
+  await assert.rejects(failedNoteRead.db_fetchTrackerProgressNotes('tracker-1'), /연결/);
 
   const successfulRestore = createContext();
   const successfulRestoreResult = await successfulRestore.db_restoreTasks([{ ...successfulRestore.tasks[0], deleted: true }]);
@@ -328,6 +390,22 @@ async function main() {
   assert.equal(copiedNotePayload.noteDate, '2026-07-30', '복사된 메모 기록일은 To-do 완료일이어야 합니다.');
   assert.equal(copiedNotePayload.sourceTodoId, 'todo-completed', '복사 원본 To-do 식별자를 저장해야 합니다.');
   assert.equal(copiedNotePayload.body, '견적 조건과 납기를 확인했습니다.');
+
+  const simultaneousCopy = createContext();
+  const completedTodo = { id: 'same-todo', ownerId: 'user-1', completed: true, title: '원본',
+    taskLink: { trackerId: 'tracker-1', taskId: 'task-1' } };
+  let atomicWrites = 0;
+  simultaneousCopy.fs.setDoc = async () => { atomicWrites += 1; };
+  const copyResults = await Promise.all([
+    simultaneousCopy.db_copyCompletedTodoToProgressNote(completedTodo, '2026-10-22'),
+    simultaneousCopy.db_copyCompletedTodoToProgressNote(completedTodo, '2026-10-22')
+  ]);
+  assert.equal(copyResults.filter(result => result.success).length, 1);
+  assert.equal(copyResults.filter(result => result.alreadyExists).length, 1);
+  assert.equal(atomicWrites, 1, '동시 복사는 메모 한 개만 생성해야 합니다.');
+  const retried = await simultaneousCopy.db_copyCompletedTodoToProgressNote({ ...completedTodo, title: '나중 제목' }, '2026-10-22');
+  assert.equal(retried.alreadyExists, true);
+  assert.equal(retried.note.title, '원본', '재시도가 기존 메모를 덮어쓰면 안 됩니다.');
 
   const duplicateTodoCopy = createContext();
   duplicateTodoCopy.fs.getDocs = async () => ({

@@ -2,6 +2,8 @@ console.info('Smart Task Flow table-mobile-renderer.js v20260805-v19 loaded');
 // Table and mobile card renderers. Extracted from app.js in Phase 5.
 const listProgressNoteSummaryCache = {
   trackerId: '',
+  userId: '',
+  error: false,
   loaded: false,
   loading: false,
   requestId: 0,
@@ -23,16 +25,21 @@ function getListProgressNoteSortTime(note = {}) {
   return Number.isNaN(createdAt.getTime()) ? 0 : createdAt.getTime();
 }
 function getListProgressNoteSummary(taskId) {
+  if (listProgressNoteSummaryCache.userId !== (window.currentUser?.uid || '')) return { count: 0, latestNote: null };
   return listProgressNoteSummaryCache.byTaskId.get(String(taskId || '')) || { count: 0, latestNote: null };
 }
 async function ensureListProgressNoteSummaryLoaded(trackerId) {
   const normalizedTrackerId = String(trackerId || '');
   if (!normalizedTrackerId || typeof window.db_fetchTrackerProgressNotes !== 'function') return;
+  const userId = window.currentUser?.uid || '';
   if (listProgressNoteSummaryCache.trackerId === normalizedTrackerId
-      && (listProgressNoteSummaryCache.loaded || listProgressNoteSummaryCache.loading)) return;
+      && listProgressNoteSummaryCache.userId === userId
+      && (listProgressNoteSummaryCache.loaded || listProgressNoteSummaryCache.loading || listProgressNoteSummaryCache.error)) return;
 
   const requestId = ++listProgressNoteSummaryCache.requestId;
   listProgressNoteSummaryCache.trackerId = normalizedTrackerId;
+  listProgressNoteSummaryCache.userId = userId;
+  listProgressNoteSummaryCache.error = false;
   listProgressNoteSummaryCache.loaded = false;
   listProgressNoteSummaryCache.loading = true;
   listProgressNoteSummaryCache.notes = [];
@@ -42,8 +49,13 @@ async function ensureListProgressNoteSummaryLoaded(trackerId) {
     notes = await window.db_fetchTrackerProgressNotes(normalizedTrackerId);
   } catch (error) {
     console.warn('목록 메모 수 조회 실패:', error);
+    if (requestId !== listProgressNoteSummaryCache.requestId || userId !== (window.currentUser?.uid || '')) return;
+    listProgressNoteSummaryCache.error = true;
+    listProgressNoteSummaryCache.loading = false;
+    if (String(window.currentTrackerId || '') === normalizedTrackerId && typeof renderActiveViews === 'function') renderActiveViews();
+    return;
   }
-  if (requestId !== listProgressNoteSummaryCache.requestId) return;
+  if (requestId !== listProgressNoteSummaryCache.requestId || userId !== (window.currentUser?.uid || '')) return;
 
   listProgressNoteSummaryCache.notes = Array.isArray(notes) ? notes : [];
   listProgressNoteSummaryCache.notes.forEach(note => {
@@ -65,10 +77,43 @@ function getCachedTrackerProgressNotes(trackerId) {
   const normalizedTrackerId = String(trackerId || '');
   if (!normalizedTrackerId
       || listProgressNoteSummaryCache.trackerId !== normalizedTrackerId
+      || listProgressNoteSummaryCache.userId !== (window.currentUser?.uid || '')
       || !listProgressNoteSummaryCache.loaded) return [];
   return [...listProgressNoteSummaryCache.notes];
 }
+function getListProgressNoteLoadState(trackerId) {
+  if (listProgressNoteSummaryCache.trackerId !== String(trackerId || '')
+      || listProgressNoteSummaryCache.userId !== (window.currentUser?.uid || '')) return 'idle';
+  if (listProgressNoteSummaryCache.error) return 'error';
+  return listProgressNoteSummaryCache.loaded ? 'loaded' : listProgressNoteSummaryCache.loading ? 'loading' : 'idle';
+}
+async function retryListProgressNoteSummary(trackerId) {
+  if (getListProgressNoteLoadState(trackerId) !== 'error') return;
+  invalidateListProgressNoteSummary();
+  const request = ensureListProgressNoteSummaryLoaded(trackerId);
+  if (typeof renderActiveViews === 'function') renderActiveViews();
+  await request;
+}
+function renderListProgressNoteError(container) {
+  if (!container?.parentElement) return;
+  const target = container.tagName === 'TBODY' ? container.closest('table') : container;
+  if (!target?.parentElement) return;
+  const previous = target.parentElement.querySelector('[data-list-notes-error]');
+  previous?.remove();
+  const trackerId = window.currentTrackerId || '';
+  if (getListProgressNoteLoadState(trackerId) !== 'error') return;
+  const banner = document.createElement('div');
+  banner.dataset.listNotesError = '';
+  banner.setAttribute('role', 'alert');
+  banner.className = 'rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 dark:border-rose-900 dark:bg-rose-950/20 dark:text-rose-300';
+  banner.innerHTML = '메모 수를 불러오지 못했습니다. <button type="button" class="ml-2 rounded border border-current px-3 py-2">다시 시도</button>';
+  banner.querySelector('button').addEventListener('click', () => {
+    if (trackerId === (window.currentTrackerId || '')) retryListProgressNoteSummary(trackerId);
+  });
+  target.before(banner);
+}
 function invalidateListProgressNoteSummary() {
+  listProgressNoteSummaryCache.error = false;
   listProgressNoteSummaryCache.requestId += 1;
   listProgressNoteSummaryCache.loaded = false;
   listProgressNoteSummaryCache.loading = false;
@@ -131,6 +176,7 @@ function renderTable(filtered) {
   const tbody = document.getElementById('task-table-body');
   const emptyState = document.getElementById('empty-state-table');
   if (!tbody) return;
+  renderListProgressNoteError(tbody.closest('table'));
   tbody.innerHTML = '';
   if (filtered.length === 0) {
     emptyState?.classList.replace('hidden', 'flex');
@@ -348,6 +394,7 @@ function renderMobileCards(filtered) {
   const container = document.getElementById('task-card-container');
   const emptyState = document.getElementById('empty-state-mobile');
   if (!container) return;
+  renderListProgressNoteError(container);
   ensureMobileBulkActionBar();
   container.innerHTML = '';
   if (!filtered || filtered.length === 0) {

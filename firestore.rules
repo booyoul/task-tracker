@@ -317,6 +317,8 @@ service cloud.firestore {
     }
 
     match /progress_notes/{noteId} {
+      // A create-once transaction must be able to read an absent destination.
+      allow get: if isApproved() && !exists(/databases/$(database)/documents/progress_notes/$(noteId));
       allow read: if isApproved() && (
         isAdmin() || !trackerUsesAcl(resource.data.trackerId) || hasTrackerPermission(resource.data.trackerId, 'view')
       );
@@ -336,6 +338,7 @@ service cloud.firestore {
     }
 
     match /artifacts/{envAppId}/public/data/progress_notes/{noteId} {
+      allow get: if isEnvApproved(envAppId) && !exists(/databases/$(database)/documents/artifacts/$(envAppId)/public/data/progress_notes/$(noteId));
       allow read: if isEnvApproved(envAppId) && (
         isEnvAdmin(envAppId) || !envTrackerUsesAcl(envAppId, resource.data.trackerId) || hasEnvTrackerPermission(envAppId, resource.data.trackerId, 'view')
       );

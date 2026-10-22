@@ -1,4 +1,6 @@
 const fs = require('node:fs');
+const vm = require('node:vm');
+const assert = require('node:assert/strict');
 const {
   assertFails,
   assertSucceeds,
@@ -322,6 +324,66 @@ async function main() {
       assertSucceeds(getDoc(doc(aliceDb, 'artifacts', ENV_APP_ID, 'public', 'data', 'todos', 'alice-todo'))));
     await check('환경별 컬렉션에서 다른 사용자의 To-do 조회 차단', () =>
       assertFails(getDoc(doc(bobDb, 'artifacts', ENV_APP_ID, 'public', 'data', 'todos', 'alice-todo'))));
+
+    for (const prefix of [[], ['artifacts', ENV_APP_ID, 'public', 'data']]) {
+      const scope = prefix.length ? '환경별' : '기본';
+      const missingPath = [...prefix, 'progress_notes', 'absent-note'];
+      await check(`${scope} 승인 사용자 없는 메모 단건 조회 허용`, () =>
+        assertSucceeds(getDoc(doc(bobDb, ...missingPath))));
+      await check(`${scope} 미승인 사용자 없는 메모 조회 차단`, () =>
+        assertFails(getDoc(doc(pendingDb, ...missingPath))));
+      await check(`${scope} 비인증 사용자 없는 메모 조회 차단`, () =>
+        assertFails(getDoc(doc(anonymousDb, ...missingPath))));
+      await check(`${scope} 실제 서비스 동시 To-do 복사와 메모 수정 보존`, async () => {
+        const sdk = require('firebase/firestore');
+        await setDoc(doc(aliceDb, ...prefix, 'tasks', 'atomic-task'), taskData('alice', '동시 저장', 'tracker-acl'));
+        const task = { id: 'atomic-task', ...taskData('alice', '동시 저장', 'tracker-acl') };
+        const context = {
+          console: { info() {}, warn() {}, error() {} }, db: bobDb,
+          fs: { ...sdk, runTransaction: (db, callback) => sdk.runTransaction(db, transaction => callback({
+            get: ref => transaction.get(ref),
+            set: (ref, payload) => transaction.set(ref, JSON.parse(JSON.stringify(payload))),
+            update: (ref, payload) => transaction.update(ref, JSON.parse(JSON.stringify(payload)))
+          })) },
+          currentUser: { uid: 'bob', displayName: 'Bob' }, tasks: [task], trackers: [],
+          currentTrackerId: 'tracker-acl', hasTaskPermission: () => true,
+          getTasksCollection: () => collection(bobDb, ...prefix, 'tasks'),
+          getProgressNotesCollection: () => collection(bobDb, ...prefix, 'progress_notes'),
+          canWriteToFirestore: () => true, getServerTimestamp: () => 'test-time',
+          db_recordActivity: async () => {}, normalizeTaskForSchema: value => value,
+          markSaving() {}, markSaved() {}, markSaveError() {}, showToast() {}, updateUI() {}
+        };
+        context.window = context;
+        vm.createContext(context);
+        vm.runInContext(fs.readFileSync('js/task-service.js', 'utf8'), context);
+        const todo = { id: 'atomic-todo', ownerId: 'bob', completed: true, title: '완료 결과',
+          taskLink: { taskId: 'atomic-task', trackerId: 'tracker-acl' } };
+        const results = await Promise.all([
+          context.db_copyCompletedTodoToProgressNote(todo, '2026-10-22'),
+          context.db_copyCompletedTodoToProgressNote(todo, '2026-10-22')
+        ]);
+        assert.equal(results.filter(result => result.success).length, 1, JSON.stringify(results));
+        assert.equal(results.filter(result => result.alreadyExists).length, 1);
+        const noteId = results.find(result => result.success).note.id;
+        const noteRef = doc(bobDb, ...prefix, 'progress_notes', noteId);
+        await updateDoc(noteRef, { body: '후속 수정', reviewComments: [{ body: '리뷰' }] });
+        const retry = await context.db_copyCompletedTodoToProgressNote(todo, '2026-10-22');
+        assert.equal(retry.alreadyExists, true);
+        assert.equal((await getDoc(noteRef)).data().body, '후속 수정');
+        await assertFails(getDoc(doc(noAccessDb, ...prefix, 'progress_notes', noteId)));
+        await assertFails(getDocs(collection(noAccessDb, ...prefix, 'progress_notes')));
+
+        const taskRef = doc(bobDb, ...prefix, 'tasks', 'atomic-task');
+        const baseline = { id: 'atomic-task', ...(await getDoc(taskRef)).data() };
+        context.tasks = [baseline];
+        await updateDoc(taskRef, { status: 'COMPLETED' });
+        const saved = await context.db_updateTask('atomic-task', { title: '제목만 수정' }, { expectedTask: baseline });
+        assert.equal(saved.success, true, JSON.stringify(saved));
+        assert.equal((await getDoc(taskRef)).data().status, 'COMPLETED');
+        const conflict = await context.db_updateTask('atomic-task', { title: '오래된 수정' }, { expectedTask: baseline });
+        assert.equal(conflict.conflict, true);
+      });
+    }
 
     await check('메모 작성자 UID 위조 차단', () =>
       assertFails(setDoc(doc(aliceDb, 'progress_notes', 'spoofed-note'), {

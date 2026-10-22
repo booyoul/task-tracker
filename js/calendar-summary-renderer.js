@@ -213,12 +213,15 @@ function getMonthlySubTaskSummary(task, monthStart, monthEnd) {
     };
 }
 
-let _summaryRenderInProgress = false;
+let _summaryRenderToken = 0;
 async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, filteredTasks, noteTaskScope = filteredTasks, todayStr }) {
     if (!grid) return;
-    // 연속 호출(onSnapshot 중복 트리거) 방지: 이미 렌더링 중이면 스킵
-    if (_summaryRenderInProgress) return;
-    _summaryRenderInProgress = true;
+    const renderToken = ++_summaryRenderToken;
+    const scopeKey = JSON.stringify([window.currentUser?.uid || '', window.currentTrackerId || '']);
+    const isCurrentRender = () => renderToken === _summaryRenderToken
+        && scopeKey === JSON.stringify([window.currentUser?.uid || '', window.currentTrackerId || ''])
+        && (typeof currentViewMode === 'undefined' || currentViewMode === 'CALENDAR')
+        && (typeof currentCalMode === 'undefined' || currentCalMode === 'SUMMARY');
 
     try {
     const calMonthYearEl = document.getElementById('calendar-month-year');
@@ -239,6 +242,7 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
 
     // ★ 메모를 먼저 가져옴 — 업무 유무와 무관하게 항상 메모를 표시해야 하므로
     const { trackerNotes, monthNotes } = await loadCalendarNotesForMonth({ year, month, noteTaskScope });
+    if (!isCurrentRender()) return;
 
     // 태스크 ID 기준(서브태스크 포함)으로 메모 분류
     const notesByTaskId = {};
@@ -256,7 +260,6 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
     // 업무도 없고 메모도 없을 때만 빈 화면 표시
     if (currentMonthTasks.length === 0 && monthNotesCount === 0) {
         grid.innerHTML = `<div class="text-center py-16 text-sm text-slate-400 font-semibold">현재 조건 혹은 조회 기간 중 해당 월(${month + 1}월)의 업무 또는 메모 정보가 없습니다.</div>`;
-        _summaryRenderInProgress = false;
         return;
     }
 
@@ -573,7 +576,6 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
         noTaskEl.className = 'text-center py-6 text-sm text-slate-400';
         noTaskEl.textContent = `${month + 1}월에 해당하는 업무가 없습니다.`;
         grid.appendChild(noTaskEl);
-        _summaryRenderInProgress = false;
         return;
     }
 
@@ -668,7 +670,10 @@ async function renderCalendarSummaryView({ weekdayHeader, grid, year, month, fil
 
     } catch(e) {
         console.error('[CalendarSummary] 렌더링 중 오류:', e);
-    } finally {
-        _summaryRenderInProgress = false;
+        if (!isCurrentRender()) return;
+        grid.innerHTML = '<div role="alert" class="rounded-xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-700 dark:border-rose-900 dark:bg-rose-950/20 dark:text-rose-300">메모를 불러오지 못했습니다. <button type="button" data-summary-retry class="ml-2 rounded border border-current px-3 py-2">다시 시도</button></div>';
+        grid.querySelector('[data-summary-retry]').addEventListener('click', () => {
+            if (isCurrentRender()) renderCalendarSummaryView({ weekdayHeader, grid, year, month, filteredTasks, noteTaskScope, todayStr });
+        });
     }
 }

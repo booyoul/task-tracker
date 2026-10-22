@@ -52,7 +52,28 @@ function renderMobileCalendar(filtered, noteTaskScope = filtered) {
       : [];
     const notesOnly = window.calendarUxState?.notesOnly === true;
     const todosOnly = window.calendarUxState?.todosOnly === true;
-    _renderMobileDayView(content, filtered, year, month, todayStr, monthNotes, notesOnly, monthTodos, todosOnly);
+    const noteLoadFailed = typeof getListProgressNoteLoadState === 'function'
+      && getListProgressNoteLoadState(activeTrackerId) === 'error';
+    _renderMobileDayView(content, filtered, year, month, todayStr, monthNotes, notesOnly, monthTodos, todosOnly, noteLoadFailed);
+    if (noteLoadFailed && (!todosOnly || notesOnly)) {
+      const notice = document.createElement('div');
+      notice.className = 'rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300';
+      notice.dataset.calendarNotesError = 'true';
+      notice.setAttribute('role', 'alert');
+      notice.innerHTML = '<p>메모를 불러오지 못했습니다.</p><button type="button" class="mt-2 min-h-11 rounded-lg border border-current px-3 font-semibold">다시 시도</button>';
+      notice.querySelector('button').onclick = async function() {
+        this.disabled = true;
+        try {
+          await retryListProgressNoteSummary(activeTrackerId);
+        } finally {
+          this.disabled = false;
+          if (content.contains(notice) && String(window.currentTrackerId || currentTrackerId) === activeTrackerId) {
+            renderMobileCalendar(filtered, noteTaskScope);
+          }
+        }
+      };
+      content.prepend(notice);
+    }
   }
 }
 
@@ -92,7 +113,7 @@ function _updateMobileCalendarNotesOnlyControl(mode) {
   todosButton.setAttribute('aria-pressed', String(todosOnlyActive));
 }
 
-function _renderMobileDayView(container, filtered, year, month, todayStr, monthNotes = [], notesOnly = false, monthTodos = [], todosOnly = false) {
+function _renderMobileDayView(container, filtered, year, month, todayStr, monthNotes = [], notesOnly = false, monthTodos = [], todosOnly = false, noteLoadFailed = false) {
   container.dataset.notesOnly = String(notesOnly);
   container.dataset.todosOnly = String(todosOnly);
   const contentFilterActive = notesOnly || todosOnly;
@@ -162,6 +183,7 @@ function _renderMobileDayView(container, filtered, year, month, todayStr, monthN
   });
 
   if (dayMap.size === 0) {
+    if (noteLoadFailed && showNotes) return;
     container.innerHTML = notesOnly && todosOnly
       ? '<div class="flex flex-col items-center justify-center py-16 text-center"><span class="text-4xl mb-3">📌</span><p class="text-sm font-semibold text-slate-500">이번 달 메모 또는 To-do가 없습니다.</p><p class="text-xs text-slate-400 mt-1">다른 달을 선택하거나 보기 필터를 해제해 주세요.</p></div>'
       : todosOnly
@@ -403,7 +425,7 @@ function _renderMobileMonthView(container, filtered, year, todayStr, containerWi
   buildSubTaskLayout(showSubTaskBars);
 
   const goToMonthDayView = function(monthIndex) {
-    currentCalDate.setMonth(monthIndex);
+    currentCalDate.setMonth(monthIndex, 1);
     if (typeof setCalMode === 'function') setCalMode('DAY');
     else {
       currentCalMode = 'DAY';
@@ -665,7 +687,7 @@ function _buildMobileTaskCard(task, startSubTasks, todayStr) {
 
 function initMobileCalendarEvents() {
   document.getElementById('btn-prev-month-mobile')?.addEventListener('click', function() {
-    currentCalDate.setMonth(currentCalDate.getMonth() - 1);
+    currentCalDate.setMonth(currentCalDate.getMonth() - 1, 1);
     if (typeof renderActiveViews === 'function') renderActiveViews();
   });
   document.getElementById('btn-today-month-mobile')?.addEventListener('click', function() {
@@ -673,7 +695,7 @@ function initMobileCalendarEvents() {
     if (typeof renderActiveViews === 'function') renderActiveViews();
   });
   document.getElementById('btn-next-month-mobile')?.addEventListener('click', function() {
-    currentCalDate.setMonth(currentCalDate.getMonth() + 1);
+    currentCalDate.setMonth(currentCalDate.getMonth() + 1, 1);
     if (typeof renderActiveViews === 'function') renderActiveViews();
   });
   document.getElementById('btn-cal-mode-day-m')?.addEventListener('click', function() {

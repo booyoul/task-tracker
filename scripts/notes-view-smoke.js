@@ -1,0 +1,107 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const { JSDOM } = require('jsdom');
+
+async function main() {
+  const dom = new JSDOM('<body><input id="filter-start-month" value="2026-01"><input id="filter-end-month" value="2026-12"><div id="grid"></div><div id="list-parent"><div id="list"></div></div></body>', { runScripts: 'outside-only' });
+  const w = dom.window;
+  const context = dom.getInternalVMContext();
+  w.currentUser = { uid: 'alice' };
+  w.currentTrackerId = 'tracker-a';
+  w.currentViewMode = 'NOTES';
+  w.currentCalMode = 'SUMMARY';
+  w.escapeHTML = value => String(value || '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+  w.console = { info() {}, warn() {}, error() {} };
+  for (const file of ['calendar-summary-renderer.js', 'calendar-notes-renderer.js', 'table-mobile-renderer.js']) {
+    vm.runInContext(fs.readFileSync(`js/${file}`, 'utf8'), context, { filename: file });
+  }
+  let notes = Array.from({ length: 45 }, (_, i) => ({ id: `note-${i}`, taskId: 'task-1', noteDate: '2026-06-01', title: `메모 ${i}`, workType: 'VISIT', reviewComments: [{ body: '확인' }] }));
+  let failed = false;
+  let requests = 0;
+  w.db_fetchTrackerProgressNotes = async () => {
+    requests += 1;
+    if (failed) throw new Error('network unavailable');
+    return notes;
+  };
+  const grid = w.document.getElementById('grid');
+  const args = { grid, noteTaskScope: [{ id: 'task-1', title: '업무' }] };
+  const render = () => w.renderCalendarNotesView(args);
+  const query = selector => grid.querySelector(selector);
+  const tick = () => new Promise(resolve => setImmediate(resolve));
+  await render();
+  query('[data-calendar-notes-work-type]').value = 'VISIT';
+  query('[data-calendar-notes-work-type]').dispatchEvent(new w.Event('change'));
+  query('[data-calendar-notes-comments-only]').click();
+  query('[data-calendar-notes-next]').click();
+  await render();
+  assert.equal(query('[data-calendar-notes-work-type]').value, 'VISIT');
+  assert.equal(query('[data-calendar-notes-comments-only]').getAttribute('aria-pressed'), 'true');
+  assert.equal(query('[data-calendar-notes-page-status]').textContent, '2 / 3 페이지');
+  notes = notes.slice(0, 5);
+  await render();
+  assert.equal(query('[data-calendar-notes-page-status]').textContent, '1 / 1 페이지');
+  w.currentTrackerId = 'tracker-b';
+  await render();
+  assert.equal(query('[data-calendar-notes-work-type]').value, 'all');
+  assert.equal(query('[data-calendar-notes-comments-only]').getAttribute('aria-pressed'), 'false');
+  w.currentTrackerId = 'tracker-a';
+  await render();
+  assert.equal(query('[data-calendar-notes-work-type]').value, 'VISIT');
+  w.currentUser = { uid: 'bob' };
+  await render();
+  assert.equal(query('[data-calendar-notes-work-type]').value, 'all');
+  w.currentUser = { uid: 'alice' };
+  failed = true;
+  await render();
+  assert(query('[data-notes-retry]'), '실패는 빈 목록과 구분해야 합니다.');
+  failed = false;
+  query('[data-notes-retry]').click();
+  await tick();
+  assert.equal(query('[data-calendar-notes-work-type]').value, 'VISIT');
+  assert.equal(query('[data-calendar-notes-comments-only]').getAttribute('aria-pressed'), 'true');
+
+  let resolveOld;
+  w.db_fetchTrackerProgressNotes = () => new Promise(resolve => { resolveOld = resolve; });
+  const oldRender = render();
+  w.currentViewMode = 'TABLE';
+  grid.textContent = '새 화면';
+  resolveOld(notes);
+  await oldRender;
+  assert.equal(grid.textContent, '새 화면', '이전 요청이 변경된 뷰를 덮어쓰면 안 됩니다.');
+
+  w.db_fetchTrackerProgressNotes = async () => { requests += 1; if (failed) throw new Error('offline'); return notes; };
+  let redraws = 0;
+  w.renderActiveViews = () => { redraws += 1; w.ensureListProgressNoteSummaryLoaded(w.currentTrackerId); };
+  failed = true;
+  await w.ensureListProgressNoteSummaryLoaded('tracker-a');
+  assert.equal(w.getListProgressNoteLoadState('tracker-a'), 'error');
+  const requestsAtFailure = requests;
+  await w.ensureListProgressNoteSummaryLoaded('tracker-a');
+  assert.equal(requests, requestsAtFailure, '렌더 반복이 자동 재시도 루프를 만들면 안 됩니다.');
+  assert.equal(w.getCachedTrackerProgressNotes('tracker-a').length, 0);
+  w.renderListProgressNoteError(w.document.getElementById('list'));
+  assert(w.document.querySelector('[data-list-notes-error] button'));
+  failed = false;
+  w.document.querySelector('[data-list-notes-error] button').click();
+  await tick();
+  assert.equal(w.getListProgressNoteLoadState('tracker-a'), 'loaded');
+  assert.equal(w.getCachedTrackerProgressNotes('tracker-a').length, 5);
+  assert(redraws >= 2);
+  w.currentUser = { uid: 'charlie' };
+  assert.equal(w.getCachedTrackerProgressNotes('tracker-a').length, 0, '다른 사용자에게 캐시를 표시하면 안 됩니다.');
+
+  w.currentViewMode = 'CALENDAR';
+  failed = true;
+  const summaryArgs = { grid, year: 2026, month: 5, filteredTasks: [], noteTaskScope: [] };
+  await w.renderCalendarSummaryView(summaryArgs);
+  assert(query('[data-summary-retry]'));
+  failed = false;
+  query('[data-summary-retry]').click();
+  await tick();
+  assert(!query('[data-summary-retry]'));
+  assert(grid.textContent.includes('정보가 없습니다.'));
+  dom.window.close();
+  console.log('notes view smoke passed: scoped filters/page, clamping, stale render guards, failure/retry recovery, cache retry-loop prevention');
+}
+main().catch(error => { console.error(error); process.exitCode = 1; });

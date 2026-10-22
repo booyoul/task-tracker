@@ -13,7 +13,7 @@ function renderCalendarMonthView(ctx) {
       h.textContent = `${m}월`;
       h.title = `${m}월 일별 보기로 이동`;
       h.onclick = () => {
-        currentCalDate.setMonth(m - 1);
+        currentCalDate.setMonth(m - 1, 1);
         setCalMode('DAY');
       };
       header.appendChild(h);
@@ -32,7 +32,7 @@ function renderCalendarMonthView(ctx) {
       tile.style.height = `${bodyHeight}px`;
       tile.title = `${i + 1}월 일별 보기로 이동`;
       tile.onclick = () => {
-        currentCalDate.setMonth(i);
+        currentCalDate.setMonth(i, 1);
         setCalMode('DAY');
       };
       tiles.appendChild(tile);

@@ -83,48 +83,74 @@ async function db_addTask(taskData) {
   updateUI();
   return { success: true, id, task: { id, ...payload } };
 }
-async function db_updateTask(id, taskData) {
+function taskFieldValuesEqual(left, right) {
+  if (left === right) return true;
+  if (left == null || right == null || typeof left !== 'object' || typeof right !== 'object') return false;
+  if (Array.isArray(left) !== Array.isArray(right)) return false;
+  const keys = Object.keys(left);
+  return keys.length === Object.keys(right).length && keys.every(key =>
+    Object.prototype.hasOwnProperty.call(right, key) && taskFieldValuesEqual(left[key], right[key]));
+}
+
+async function db_updateTask(id, taskData, { expectedTask } = {}) {
   const originalTask = tasks.find(t => t.id === id) || {};
+  const baseline = expectedTask || originalTask;
   if (!window.hasTaskPermission?.(originalTask, 'update')) {
     showToast('수정 권한이 없습니다.', false);
     return { success: false, error: '수정 권한이 없습니다.' };
   }
-  
-  // Calculate field changes
-  const changes = {};
-  const fields = ['title', 'status', 'priority', 'assignee', 'startDate', 'dueDate', 'notes'];
-  fields.forEach(f => {
-    const oldVal = originalTask[f];
-    const newVal = taskData[f];
-    if (newVal !== undefined && JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
-      changes[f] = { old: oldVal || '', new: newVal || '' };
-    }
-  });
-
   const coll = getTasksCollection();
-  const tracker = trackers.find(t => t.id === (taskData.trackerId || currentTrackerId));
-  const payload = normalizeTaskForSchema({ ...originalTask, ...taskData, trackerName: tracker ? tracker.name : taskData.trackerName, updatedAt: getServerTimestamp() });
+  const keys = Object.keys(taskData).filter(key => key !== 'id' && key !== 'updatedAt' && taskData[key] !== undefined);
   markSaving();
   if (!coll || !canWriteToFirestore()) {
     markSaveError();
     return { success: false, error: '인증 실패 또는 DB 접근 불가' };
   }
+  let savedTask;
+  let changes;
   try {
-    await window.fs.setDoc(window.fs.doc(coll, id), payload, { merge: true });
+    const ref = window.fs.doc(coll, id);
+    await window.fs.runTransaction(window.db, async transaction => {
+      const snapshot = await transaction.get(ref);
+      const current = snapshot.exists() ? snapshot.data() : null;
+      const normalizedCurrent = current ? normalizeTaskForSchema(current) : null;
+      const normalizedBaseline = normalizeTaskForSchema(baseline);
+      if (!current || current.deleted === true || keys.some(key => !taskFieldValuesEqual(normalizedCurrent[key], normalizedBaseline[key]))) {
+        const error = new Error('다른 사용자가 업무를 변경했거나 삭제했습니다. 최신 내용을 확인한 뒤 다시 저장해주세요.');
+        error.conflict = true;
+        throw error;
+      }
+      const merged = { ...current, ...taskData };
+      // Validate the merged dates before normalization can clamp the start date.
+      if ((keys.includes('startDate') || keys.includes('dueDate')) && merged.startDate && merged.dueDate && merged.startDate > merged.dueDate) {
+        const error = new Error('최신 업무의 시작일과 마감일을 확인한 뒤 다시 저장해주세요.');
+        error.conflict = true;
+        throw error;
+      }
+      const normalized = normalizeTaskForSchema(merged);
+      const payload = { updatedAt: getServerTimestamp() };
+      keys.forEach(key => { payload[key] = normalized[key]; });
+      changes = {};
+      ['title', 'status', 'priority', 'assignee', 'startDate', 'dueDate', 'notes'].forEach(key => {
+        if (keys.includes(key) && !taskFieldValuesEqual(current[key], payload[key])) {
+          changes[key] = { old: current[key] || '', new: payload[key] || '' };
+        }
+      });
+      transaction.update(ref, payload);
+      savedTask = { id, ...current, ...payload };
+    });
     markSaved();
-    if (Object.keys(changes).length > 0) {
-      await db_recordActivity(id, 'UPDATE', changes);
-    }
+    if (Object.keys(changes).length > 0) await db_recordActivity(id, 'UPDATE', changes);
   } catch (e) {
     markSaveError();
     console.error('업무 수정 실패 상세 에러:', e);
-    showToast(`Firebase 수정 실패: ${e.message || e}`, false);
-    return { success: false, error: e.message || String(e) };
+    showToast(e.conflict ? e.message : `Firebase 수정 실패: ${e.message || e}`, false);
+    return { success: false, conflict: e.conflict === true, error: e.message || String(e) };
   }
   const idx = tasks.findIndex(t => t.id === id);
-  if (idx !== -1) tasks[idx] = { ...tasks[idx], ...payload };
+  if (idx !== -1) tasks[idx] = savedTask;
   updateUI();
-  return { success: true, id, task: idx !== -1 ? tasks[idx] : { id, ...payload } };
+  return { success: true, id, task: savedTask };
 }
 async function db_deleteTask(id) {
   const originalTask = tasks.find(t => t.id === id);
@@ -748,13 +774,13 @@ async function db_addProgressNote(taskId, {
   workTypeLabel,
   sourceTodoId,
   sourceTodoCompletedDate
-}) {
+}, { documentId, createOnce = false } = {}) {
   const coll = window.getProgressNotesCollection?.();
   if (!coll || !canWriteToFirestore()) return { success: false, error: '인증 실패 또는 DB 접근 불가' };
   const task = tasks.find(item => item.id === taskId.split('__sub_')[0]);
   if (!window.hasTaskPermission?.(task, 'update')) return { success: false, error: '메모 등록 권한이 없습니다.' };
   const targetTrackerId = task?.trackerId || currentTrackerId;
-  const id = 'note_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+  const id = documentId || 'note_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
   const payload = {
     taskId,
     trackerId: targetTrackerId,
@@ -775,7 +801,18 @@ async function db_addProgressNote(taskId, {
   if (sourceTodoId) payload.sourceTodoId = String(sourceTodoId);
   if (sourceTodoCompletedDate) payload.sourceTodoCompletedDate = String(sourceTodoCompletedDate);
   try {
-    await window.fs.setDoc(window.fs.doc(coll, id), payload);
+    const ref = window.fs.doc(coll, id);
+    if (createOnce) {
+      const existing = await window.fs.runTransaction(window.db, async transaction => {
+        const snapshot = await transaction.get(ref);
+        if (snapshot.exists()) return { id: snapshot.id || id, ...snapshot.data() };
+        transaction.set(ref, payload);
+        return null;
+      });
+      if (existing) return { success: false, alreadyExists: true, note: existing, error: '이미 업무 메모로 복사된 To-do입니다.' };
+    } else {
+      await window.fs.setDoc(ref, payload);
+    }
     await db_recordActivity(taskId, 'NOTE_ADD', { title: title || '(제목 없음)' }, targetTrackerId);
     return { success: true, note: { id, ...payload } };
   } catch (e) {
@@ -819,7 +856,7 @@ async function db_copyCompletedTodoToProgressNote(todo, fallbackCompletionDate =
     const snapshot = await window.fs.getDocs(query);
     const existing = snapshot.docs
       .map(document => ({ id: document.id, ...document.data() }))
-      .find(note => note.sourceTodoId === todo.id);
+      .find(note => note.sourceTodoId === todo.id && (!note.createdBy || note.createdBy === userId));
     if (existing) return { success: false, alreadyExists: true, note: existing, error: '이미 업무 메모로 복사된 To-do입니다.' };
   } catch (error) {
     console.warn('To-do 메모 중복 확인 실패:', error);
@@ -839,6 +876,9 @@ async function db_copyCompletedTodoToProgressNote(todo, fallbackCompletionDate =
     workTypeLabel: '',
     sourceTodoId: todo.id,
     sourceTodoCompletedDate: noteDate
+  }, {
+    documentId: 'todo_copy_' + [userId, task.trackerId, todo.id].map(value => encodeURIComponent(value).replace(/_/g, '%5F')).join('_'),
+    createOnce: true
   });
 }
 
@@ -940,7 +980,7 @@ async function db_deleteProgressNote(noteId, taskId) {
 
 async function db_fetchTrackerProgressNotes(trackerId) {
   const coll = window.getProgressNotesCollection?.();
-  if (!coll) return [];
+  if (!coll) throw new Error('메모 데이터베이스에 연결할 수 없습니다.');
   try {
     const q = window.fs.query(
       coll,
@@ -956,7 +996,7 @@ async function db_fetchTrackerProgressNotes(trackerId) {
     return notes;
   } catch (e) {
     console.error('db_fetchTrackerProgressNotes 실패:', e);
-    return [];
+    throw e;
   }
 }
 

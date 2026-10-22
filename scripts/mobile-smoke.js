@@ -428,6 +428,99 @@ async function main() {
   loadScript('js/calendar-mobile-renderer.js');
   loadScript('js/table-mobile-renderer.js');
 
+  // Exercise the real desktop bindings in an isolated DOM to avoid duplicate app listeners.
+  const navDom = new JSDOM('<input id="filter-start-month" type="month"><button id="btn-prev-month"></button><button id="btn-next-month"></button>');
+  const navContext = vm.createContext({
+    window: navDom.window, document: navDom.window.document, console,
+    currentCalDate: new Date(2026, 0, 31), renderActiveViews() {}
+  });
+  vm.runInContext(eventBindingsSource, navContext);
+  navContext.window.initEventBindings();
+  const checkMonth = (date, year, month, label) => {
+    assert(date.getFullYear() === year && date.getMonth() === month && date.getDate() === 1, `${label}: 대상 월의 1일로 이동하지 않았습니다.`);
+  };
+  for (const [start, button, year, month] of [
+    [[2026, 0, 31], 'next', 2026, 1],
+    [[2026, 0, 31], 'prev', 2025, 11],
+    [[2026, 2, 31], 'prev', 2026, 1],
+    [[2024, 0, 31], 'next', 2024, 1],
+    [[2024, 1, 29], 'next', 2024, 2],
+    [[2026, 11, 31], 'next', 2027, 0]
+  ]) {
+    navContext.currentCalDate = new Date(...start);
+    navDom.window.document.getElementById(`btn-${button}-month`).click();
+    checkMonth(navContext.currentCalDate, year, month, `데스크톱 ${start} ${button}`);
+  }
+  navContext.currentCalDate = new Date(2024, 1, 29);
+  const monthFilter = navDom.window.document.getElementById('filter-start-month');
+  monthFilter.value = '2025-02';
+  monthFilter.dispatchEvent(new navDom.window.Event('change'));
+  checkMonth(navContext.currentCalDate, 2025, 1, '윤년에서 평년 월 선택');
+  navDom.window.close();
+
+  const savedCalDate = global.currentCalDate;
+  global.initMobileCalendarEvents();
+  for (const [start, button, year, month] of [
+    [[2026, 0, 31], 'next', 2026, 1],
+    [[2026, 0, 31], 'prev', 2025, 11],
+    [[2026, 2, 31], 'prev', 2026, 1],
+    [[2024, 0, 31], 'next', 2024, 1],
+    [[2024, 1, 29], 'next', 2024, 2],
+    [[2026, 11, 31], 'next', 2027, 0]
+  ]) {
+    global.currentCalDate = new Date(...start);
+    document.getElementById(`btn-${button}-month-mobile`).click();
+    checkMonth(global.currentCalDate, year, month, `모바일 ${start} ${button}`);
+  }
+  loadScript('js/calendar-month-renderer.js');
+  global.currentCalDate = new Date(2026, 0, 31);
+  global.renderCalendarMonthView({
+    weekdayHeader: document.getElementById('calendar-weekday-header'),
+    grid: document.getElementById('calendar-grid'), year: 2026, groups: [], lines: []
+  });
+  const desktopFebruaryTargets = [...document.querySelectorAll('#calendar-grid [title="2월 일별 보기로 이동"]')];
+  assert(desktopFebruaryTargets.length === 2, '연간 달력의 월 헤더와 배경 이동 대상이 없습니다.');
+  for (const target of desktopFebruaryTargets) {
+    global.currentCalDate = new Date(2026, 0, 31);
+    target.click();
+    checkMonth(global.currentCalDate, 2026, 1, '데스크톱 연간 달력 2월 선택');
+  }
+  global.currentCalMode = 'MONTH';
+  window.renderMobileCalendar(makeTasks());
+  const mobileFebruaryTargets = [...document.querySelectorAll('#cal-mobile-content [title="2월 일별 보기로 이동"]')];
+  assert(mobileFebruaryTargets.length === 2, '모바일 연간 달력의 월 라벨과 배경 이동 대상이 없습니다.');
+  for (const target of mobileFebruaryTargets) {
+    global.currentCalDate = new Date(2026, 0, 31);
+    target.click();
+    checkMonth(global.currentCalDate, 2026, 1, '모바일 연간 달력 2월 선택');
+  }
+  global.currentCalDate = savedCalDate;
+  global.currentCalMode = 'DAY';
+
+  // Render the actual desktop title builder and mobile cards across persisted status changes.
+  const titleBuilder = appSource.slice(appSource.indexOf('function buildTaskDetailCellHTML('), appSource.indexOf('function subTaskStatusSelect('));
+  vm.runInThisContext(titleBuilder, { filename: 'app-title-builder' });
+  const completionTask = { ...makeTasks()[0], id: 'completion-title', subTasks: [], status: 'PROGRESS' };
+  for (const status of ['PROGRESS', 'COMPLETED', 'PROGRESS']) {
+    completionTask.status = status;
+    const desktopTitle = new JSDOM(`<table><tbody><tr>${global.buildTaskDetailCellHTML(completionTask, [], false, 0, 0, '')}</tr></tbody></table>`);
+    const desktopButton = desktopTitle.window.document.querySelector('.btn-edit');
+    global.renderMobileCards([completionTask]);
+    const mobileTitle = document.querySelector('#task-card-container .line-clamp-2');
+    for (const title of [desktopButton, mobileTitle]) {
+      assert(title?.classList.contains('line-through') === (status === 'COMPLETED'), `본 업무 ${status} 취소선 상태가 올바르지 않습니다.`);
+      if (status === 'COMPLETED') assert(title.classList.contains('text-slate-400'), '완료된 본 업무의 회색 제목이 누락되었습니다.');
+    }
+    desktopTitle.window.close();
+  }
+  completionTask.subTasks = [{ id: 'completed-child', title: '완료된 하위 과제', status: 'COMPLETED' }];
+  assert(global.getEffectiveStatus(completionTask) === 'COMPLETED', '하위 과제로 계산한 완료 상태 fixture가 올바르지 않습니다.');
+  const calculatedTitle = new JSDOM(`<table><tbody><tr>${global.buildTaskDetailCellHTML(completionTask, completionTask.subTasks, false, 1, 100, '')}</tr></tbody></table>`);
+  global.renderMobileCards([completionTask]);
+  assert(!calculatedTitle.window.document.querySelector('.btn-edit').classList.contains('line-through'), '계산된 완료 상태가 저장된 진행 상태의 데스크톱 제목에 취소선을 적용합니다.');
+  assert(!document.querySelector('#task-card-container .line-clamp-2').classList.contains('line-through'), '계산된 완료 상태가 저장된 진행 상태의 모바일 제목에 취소선을 적용합니다.');
+  calculatedTitle.window.close();
+
   const tasks = makeTasks();
   const outsideMonthTask = {
     id: 'task-outside-month',
@@ -760,6 +853,7 @@ async function main() {
   const mobileYearGantt = document.querySelector('[data-mobile-year-gantt]');
   assert(mobileYearGantt?.dataset.layoutFits === 'true', `390px 연간 간트 계산 폭(${mobileYearGantt?.dataset.layoutWidth})이 가용 폭(${mobileYearGantt?.dataset.availableWidth})을 넘습니다.`);
 
+  global.currentViewMode = 'CALENDAR';
   global.currentCalMode = 'SUMMARY';
   await global.renderCalendarSummaryView({
     grid: document.getElementById('cal-mobile-content'),

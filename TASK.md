@@ -12,13 +12,17 @@ Last updated: 2026-10-22
 
 ## Current State
 
+- Code review fixes (2026-10-22) are implemented locally: field-level transactional task updates with conflict preservation, form submit guards, atomic completed-To-do note copies, safe month navigation, persistent memo filters and explicit query retry states. Validation passed: npm test (10 smoke suites and 74 Rules cases), both headless browser suites, JavaScript syntax, CSS build, and git diff --check.
+- The new atomic To-do copy reads a missing destination document. Deploy the updated `firestore.rules` before publishing this client change; current production rules have not been changed in this work.
+- `npm run test:release` combines syntax, CSS build, full regression including form/notes-view checks, both headless browser suites, and whitespace validation.
+
 - Desktop and mobile list titles use the existing subtask gray strikethrough style when the main task persisted status is `COMPLETED`.
 
 - Users with tracker `update` permission can add, rename, and delete task categories through a category-only tracker update. Firestore Rules permit those users to change only `taskCategoryOptions`/`updatedAt`; other tracker settings and users without `update` permission remain blocked. `smoke:categories` covers the UI/service path, and Rules tests cover both standard and environment-specific collections.
 - Firestore Ruleset `00a3f8a0-f3d5-4b65-bca6-e963d599e7ce` was deployed to `task-tracker-99af4` on 2026-10-06. The full local regression suite passed with 66 Rules cases; an authenticated production save by a non-owner user remains to be verified.
 - The Firebase/Firestore task tracker, tracker ACL, personal To-do, progress-note review workflow, recurrence support, responsive calendars, and class-based dark theme are implemented.
 - Production Firestore rules, authenticated To-do isolation, tracker-role permissions, formatted-note writes, and the user-document audit have been verified. Disposable verification data and accounts were removed.
-- Desktop and mobile task/list/calendar/summary/To-do routing is covered by focused smoke tests. The full suite includes 66 Firestore Rules allow/deny cases.
+- Desktop and mobile task/list/calendar/summary/To-do routing is covered by focused smoke tests. The full suite includes 74 Firestore Rules allow/deny cases.
 - The latest UI pass aligned dark surfaces across calendars, lists, all modal/dialog panels, mobile task cards, and mobile 가입 승인 관리.
 - The desktop task modal's subtask recurrence form and dynamically rendered occurrence-status rows use explicit dark surfaces, including the highlighted To-do-linked occurrence.
 - The To-do list, filters, view toggles, cards, linked-task badges, and desktop/mobile month/year calendars use explicit dark surface and semantic status colors.
@@ -121,6 +125,9 @@ Last updated: 2026-10-22
 - Personal To-do browser: `npm run smoke:todo:browser`
 - Firestore Rules Emulator: `npm run test:rules`
 - Combined regression: `npm test`
+- Form save regression: `npm run smoke:forms`
+- Memo filter/error regression: `npm run smoke:notes:view`
+- Release validation: `npm run test:release`
 - Changed JavaScript: `node --check path/to/file.js`
 - Whitespace: `git diff --check`
 
@@ -128,12 +135,14 @@ For responsive geometry, native picker behavior, rich-text selection, or color c
 
 ## Verified Release Baseline
 
-- `npm test` passes, including 66 Firestore Rules cases.
+- `npm test` passes, including 74 Firestore Rules cases (2026-10-22).
 - `npm run build:css`, relevant JavaScript syntax checks, and `git diff --check` pass.
 - Headless Chrome has verified the main responsive workflows and the latest mobile dark-theme surfaces at a 390px viewport.
 - Firestore production-write verification is historical evidence only; do not infer future production state without a fresh live check.
 
 ## Next Work
+
+- Deploy updated Firestore Rules before publishing the locally verified review fixes. Production Rules deployment remains pending.
 
 - Verify category add/rename/delete in production with a non-owner user who has tracker `update` permission.
 
